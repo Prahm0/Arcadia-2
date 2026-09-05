@@ -1,0 +1,220 @@
+@import "tailwindcss";
+
+@theme {
+  --color-black: #000000;
+  --color-white: #ffffff;
+
+  --color-ink-900: #090909;
+  --color-ink-800: #111111;
+  --color-ink-700: #181818;
+
+  --color-paper-100: #f8f8f8;
+  --color-paper-200: #eeeeee;
+
+  --color-accent: #7c5cff;
+  --color-accent-300: #9d87ff;
+  --color-accent-200: #c6b8ff;
+
+  --color-ui-text: #111111;
+  --color-ui-muted: #707070;
+  --color-ui-border: #e8e8e8;
+  --color-ui-surface: #f8f8f8;
+
+  --font-sans:
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --breakpoint-2xl: 90rem;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 88px;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  html,
+  body {
+    overflow-x: clip;
+  }
+
+  body {
+    background: var(--color-black);
+    color: var(--color-white);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01", "ss03";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: rgba(124, 92, 255, 0.35);
+    color: inherit;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent-300);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}
+
+@utility type-hero {
+  font-size: clamp(40px, 11.3vw, 56px);
+  line-height: 0.96;
+  letter-spacing: -0.04em;
+  font-weight: 500;
+  text-wrap: balance;
+
+  @media (width >= 40rem) {
+    font-size: clamp(72px, 8vw, 116px);
+    line-height: 0.94;
+  }
+}
+
+@utility type-display {
+  font-size: clamp(40px, 11vw, 48px);
+  line-height: 1;
+  letter-spacing: -0.035em;
+  font-weight: 500;
+  text-wrap: balance;
+
+  @media (width >= 40rem) {
+    font-size: clamp(48px, 6vw, 88px);
+    line-height: 0.98;
+  }
+}
+
+@utility type-title {
+  font-size: clamp(28px, 4vw, 44px);
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  font-weight: 500;
+  text-wrap: balance;
+}
+
+@utility type-body-lg {
+  font-size: 18px;
+  line-height: 1.55;
+  letter-spacing: -0.005em;
+
+  @media (width >= 40rem) {
+    font-size: 20px;
+  }
+}
+
+@utility type-body {
+  font-size: 17px;
+  line-height: 1.6;
+  letter-spacing: -0.003em;
+}
+
+@utility type-small {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+@utility type-eyebrow {
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hero entrance runs in CSS so the first paint never waits for hydration. */
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(105%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes hero-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes hero-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@utility hero-rise {
+  animation: hero-rise 1s var(--ease-out-expo) both;
+  animation-delay: var(--d, 0s);
+
+  @media (prefers-reduced-motion: reduce) {
+    animation-name: hero-fade;
+    animation-duration: 0.5s;
+  }
+}
+
+@utility hero-fade-up {
+  animation: hero-fade-up 0.9s var(--ease-out-expo) both;
+  animation-delay: var(--d, 0s);
+
+  @media (prefers-reduced-motion: reduce) {
+    animation-name: hero-fade;
+    animation-duration: 0.5s;
+  }
+}
+
+@utility hero-fade {
+  animation: hero-fade 0.8s var(--ease-out-expo) both;
+  animation-delay: var(--d, 0s);
+}
+
+@keyframes arcadia-ping {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@utility animate-ping-once {
+  animation: arcadia-ping 1.6s var(--ease-out-expo) 1 both;
+}
+
+/* Fragments that resolve into place, driven by a single --p custom property on the parent. */
+@utility resolve-fragment {
+  transform: translate(
+      calc(var(--sx, 0) * 1vw * (1 - var(--p, 1))),
+      calc(var(--sy, 0) * 1vh * (1 - var(--p, 1)))
+    )
+    scale(calc(0.94 + 0.06 * var(--p, 1)));
+  opacity: calc(0.45 + 0.55 * var(--p, 1));
+  will-change: transform, opacity;
+}

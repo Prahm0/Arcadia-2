@@ -2,10 +2,8 @@
 
 import { motion, useTransform } from "framer-motion";
 import { useRef } from "react";
-import { heroEdges, heroEdgesMobile, heroNodes, heroNodesMobile } from "@/lib/constellation";
-import { useIsMobile, usePrefersReducedMotion, useScrollProgress } from "@/lib/hooks";
+import { usePrefersReducedMotion, useScrollProgress } from "@/lib/hooks";
 import { cn } from "@/lib/cn";
-import Constellation from "./Constellation";
 import { useEarlyAccess } from "./EarlyAccessProvider";
 import HeroInterface from "./HeroInterface";
 import Starfield from "./Starfield";
@@ -15,7 +13,6 @@ import Container from "./ui/Container";
 export default function Hero() {
   const ref = useRef<HTMLElement>(null);
   const reduced = usePrefersReducedMotion();
-  const isMobile = useIsMobile();
   const { open } = useEarlyAccess();
 
   const scrollYProgress = useScrollProgress(ref);
@@ -25,39 +22,37 @@ export default function Hero() {
   const headlineVisibility = useTransform(headlineOpacity, (v) => (v <= 0.01 ? "hidden" : "visible"));
   const cueOpacity = useTransform(scrollYProgress, [0, 0.08], [1, 0]);
   const starsOpacity = useTransform(scrollYProgress, [0.55, 1], [1, 0.5]);
-  const constellationOpacity = useTransform(scrollYProgress, [0.72, 0.92], [1, 0]);
 
   return (
     <section
       id="top"
       ref={ref}
       aria-label="Introduction"
-      className={cn("relative bg-black", reduced ? "" : "h-[200svh]")}
+      className={cn("relative bg-[#050a10]", reduced ? "" : "h-[200svh]")}
     >
       <div
         className={cn(
+          "bg-[radial-gradient(circle_at_50%_42%,#0b1d2d_0%,#07111a_38%,#050a10_72%)]",
           reduced ? "relative min-h-[100svh]" : "sticky top-0 h-[100svh] overflow-hidden",
         )}
       >
-        <motion.div className="absolute inset-0" style={reduced ? undefined : { opacity: starsOpacity }}>
-          <Starfield parallax count={460} mobileCount={150} seed={11} />
+        <motion.div
+          className="pointer-events-none absolute inset-0"
+          style={reduced ? undefined : { opacity: starsOpacity }}
+        >
+          <Starfield
+            parallax
+            count={2400}
+            mobileCount={1600}
+            constellationCount={9}
+            seed={11}
+          />
         </motion.div>
 
-        {!reduced && (
-          <Constellation
-            nodes={isMobile ? heroNodesMobile : heroNodes}
-            edges={isMobile ? heroEdgesMobile : heroEdges}
-            progress={scrollYProgress}
-            drawRange={[0.12, 0.5]}
-            moveRange={[0.3, 0.75]}
-            style={{ opacity: constellationOpacity }}
-          />
-        )}
-
-        <Container className="relative flex h-full min-h-[100svh] flex-col justify-center pb-16 pt-24 sm:pt-28">
+        <Container className="relative z-10 flex h-full min-h-[100svh] flex-col justify-center pb-16 pt-24 sm:pt-28">
           <motion.div
             style={reduced ? undefined : { y: headlineY, opacity: headlineOpacity, visibility: headlineVisibility }}
-            className="max-w-[1160px]"
+            className="max-w-[1160px] [text-shadow:0_2px_24px_rgba(0,0,0,0.62)]"
           >
             <p
               className="hero-fade type-eyebrow flex items-center gap-3 text-white/55"

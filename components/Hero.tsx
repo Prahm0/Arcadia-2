@@ -28,11 +28,11 @@ export default function Hero() {
       id="top"
       ref={ref}
       aria-label="Introduction"
-      className={cn("relative bg-[#050a10]", reduced ? "" : "h-[200svh]")}
+      className={cn("relative bg-black", reduced ? "" : "h-[200svh]")}
     >
       <div
         className={cn(
-          "bg-[radial-gradient(circle_at_50%_42%,#0b1d2d_0%,#07111a_38%,#050a10_72%)]",
+          "bg-black",
           reduced ? "relative min-h-[100svh]" : "sticky top-0 h-[100svh] overflow-hidden",
         )}
       >

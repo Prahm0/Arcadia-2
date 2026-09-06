@@ -1,19 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
-import type { PlannerEvent } from "@/lib/api/types";
+import type { DashboardResponse, PlannerEvent } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { dateKey, formatClock } from "@/lib/api/time";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import NewTaskSheet from "./NewTaskSheet";
+import EventDetailSheet from "./EventDetailSheet";
 
 const DAY_MS = 86_400_000;
 const HOUR_START = 7;
 const HOUR_END = 23;
 const HOUR_SPAN = HOUR_END - HOUR_START;
 const HOUR_MARKS = [7, 9, 11, 13, 15, 17, 19, 21, 23];
+const SNAP_MINUTES = 15;
 
 const CATEGORY_STYLE: Record<string, { bg: string; text: string; border: string }> = {
   study: {
@@ -49,11 +52,13 @@ const CATEGORY_STYLE: Record<string, { bg: string; text: string; border: string 
 };
 
 export default function ScheduleView() {
-  const { data } = useDashboardData();
+  const { data, patch, reload } = useDashboardData();
   const timezone = data.profile?.timezone || "Australia/Sydney";
   const [weekOffset, setWeekOffset] = useState(0);
   const [now, setNow] = useState(new Date());
   const [showTaskSheet, setShowTaskSheet] = useState(false);
+  const [newTaskDefaultDate, setNewTaskDefaultDate] = useState<string | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<PlannerEvent | null>(null);
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000);
@@ -74,6 +79,55 @@ export default function ScheduleView() {
       top: ((totalHours - HOUR_START) / HOUR_SPAN) * 100,
     };
   }, [now, week, timezone]);
+
+  // The selected event needs to track the freshest copy from the dashboard cache
+  // so optimistic outcome/reschedule updates flow into the open sheet.
+  const liveSelectedEvent = useMemo(() => {
+    if (!selectedEvent) return null;
+    return data.events.find((event) => event.id === selectedEvent.id) ?? null;
+  }, [data.events, selectedEvent]);
+
+  const openNewTaskForDay = useCallback((dayKey: string) => {
+    setNewTaskDefaultDate(dayKey);
+    setShowTaskSheet(true);
+  }, []);
+
+  const reschedule = useCallback(
+    async (eventId: string, newStartMs: number) => {
+      const existing = data.events.find((event) => event.id === eventId);
+      if (!existing) return;
+      const durationMs = Date.parse(existing.endAt) - Date.parse(existing.startAt);
+      const nextStart = new Date(newStartMs).toISOString();
+      const nextEnd = new Date(newStartMs + durationMs).toISOString();
+      const previousStart = existing.startAt;
+      const previousEnd = existing.endAt;
+
+      // Optimistic
+      patch((prev: DashboardResponse) => ({
+        ...prev,
+        events: prev.events.map((event) =>
+          event.id === eventId ? { ...event, startAt: nextStart, endAt: nextEnd } : event,
+        ),
+      }));
+
+      try {
+        await api(`/api/events/${encodeURIComponent(eventId)}`, {
+          method: "PATCH",
+          body: JSON.stringify({ startAt: nextStart, endAt: nextEnd }),
+        });
+        await reload();
+      } catch (err) {
+        patch((prev: DashboardResponse) => ({
+          ...prev,
+          events: prev.events.map((event) =>
+            event.id === eventId ? { ...event, startAt: previousStart, endAt: previousEnd } : event,
+          ),
+        }));
+        console.warn("Reschedule failed", err);
+      }
+    },
+    [data.events, patch, reload],
+  );
 
   const weekLabel = weekLabelFor(week);
   const upToDate = weekOffset === 0;
@@ -104,7 +158,10 @@ export default function ScheduleView() {
             </div>
             <AppButton
               variant="primary"
-              onClick={() => setShowTaskSheet(true)}
+              onClick={() => {
+                setNewTaskDefaultDate(null);
+                setShowTaskSheet(true);
+              }}
               icon={<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M10 4v12M4 10h12" strokeLinecap="round" /></svg>}
             >
               New task
@@ -133,6 +190,8 @@ export default function ScheduleView() {
                 style={{ background: upToDate ? "var(--app-success)" : "var(--app-text-faint)" }}
               />
               <span>Live · {upToDate ? "Up to date" : "Historical"}</span>
+              <span className="mx-2" style={{ color: "var(--app-text-faint)" }}>·</span>
+              <span>Click a block to open · drag study blocks to move · click empty to add</span>
             </div>
           </div>
 
@@ -141,11 +200,26 @@ export default function ScheduleView() {
             events={events}
             timezone={timezone}
             currentPosition={currentPosition}
+            onSelectEvent={setSelectedEvent}
+            onCreateAtDay={openNewTaskForDay}
+            onReschedule={reschedule}
           />
         </div>
       </div>
 
-      <NewTaskSheet open={showTaskSheet} onClose={() => setShowTaskSheet(false)} />
+      <NewTaskSheet
+        open={showTaskSheet}
+        onClose={() => {
+          setShowTaskSheet(false);
+          setNewTaskDefaultDate(null);
+        }}
+        defaultDueDate={newTaskDefaultDate}
+      />
+      <EventDetailSheet
+        event={liveSelectedEvent}
+        timezone={timezone}
+        onClose={() => setSelectedEvent(null)}
+      />
     </>
   );
 }
@@ -179,10 +253,111 @@ interface WeekGridProps {
   events: PlannerEvent[];
   timezone: string;
   currentPosition: { dayIndex: number; top: number } | null;
+  onSelectEvent: (event: PlannerEvent) => void;
+  onCreateAtDay: (dayKey: string) => void;
+  onReschedule: (eventId: string, newStartMs: number) => void | Promise<void>;
 }
 
-function WeekGrid({ days, events, timezone, currentPosition }: WeekGridProps) {
+function WeekGrid({
+  days,
+  events,
+  timezone,
+  currentPosition,
+  onSelectEvent,
+  onCreateAtDay,
+  onReschedule,
+}: WeekGridProps) {
   const HEIGHT = 720;
+  const canvasRef = useRef<HTMLDivElement>(null);
+
+  // Drag state — tracked in a ref so pointermove listeners don't force React re-renders.
+  const dragRef = useRef<{
+    eventId: string;
+    startMs: number;
+    pointerY: number;
+    hasMoved: boolean;
+  } | null>(null);
+  const [dragOffsetPct, setDragOffsetPct] = useState(0);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+
+  const beginDrag = useCallback(
+    (event: PlannerEvent, e: React.PointerEvent) => {
+      // Only study blocks are draggable — school/sport/sleep/extracurricular
+      // are usually driven by commitments, so moving them from here would
+      // desync the source.
+      if (event.category !== "study") return;
+      if (event.editable === false) return;
+      if (event.outcome !== "planned") return;
+      e.preventDefault();
+      e.stopPropagation();
+      dragRef.current = {
+        eventId: event.id,
+        startMs: Date.parse(event.startAt),
+        pointerY: e.clientY,
+        hasMoved: false,
+      };
+      setDraggingId(event.id);
+      setDragOffsetPct(0);
+      (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!draggingId) return;
+    const pixelsPerHour = HEIGHT / HOUR_SPAN;
+    const pixelsPerMinute = pixelsPerHour / 60;
+
+    function onMove(e: PointerEvent) {
+      const drag = dragRef.current;
+      if (!drag) return;
+      const rawDeltaPx = e.clientY - drag.pointerY;
+      if (Math.abs(rawDeltaPx) > 3) drag.hasMoved = true;
+      // Snap to SNAP_MINUTES grid
+      const deltaMin = Math.round(rawDeltaPx / pixelsPerMinute / SNAP_MINUTES) * SNAP_MINUTES;
+      const snappedPx = deltaMin * pixelsPerMinute;
+      setDragOffsetPct((snappedPx / HEIGHT) * 100);
+    }
+
+    function onUp() {
+      const drag = dragRef.current;
+      if (!drag) return;
+      const pxPerMin = HEIGHT / HOUR_SPAN / 60;
+      // Read the latest offset via the setState callback (a plain ref would race
+      // with the last pointermove tick).
+      setDragOffsetPct((offset) => {
+        if (drag.hasMoved) {
+          const deltaMinutes = Math.round((offset / 100) * HEIGHT / pxPerMin);
+          if (deltaMinutes !== 0) {
+            const nextStart = drag.startMs + deltaMinutes * 60 * 1000;
+            void onReschedule(drag.eventId, nextStart);
+          }
+        }
+        return 0;
+      });
+      dragRef.current = null;
+      setDraggingId(null);
+    }
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [draggingId, onReschedule]);
+
+  const handleDayClick = useCallback(
+    (day: DayColumn, e: React.MouseEvent) => {
+      // Only fire when the click hit the day surface itself, not an event.
+      if (e.target !== e.currentTarget) return;
+      onCreateAtDay(day.key);
+    },
+    [onCreateAtDay],
+  );
+
   return (
     <div className="relative">
       <div
@@ -199,11 +374,11 @@ function WeekGrid({ days, events, timezone, currentPosition }: WeekGridProps) {
         ))}
       </div>
 
-      <div className="relative" style={{ height: HEIGHT }}>
+      <div className="relative" style={{ height: HEIGHT }} ref={canvasRef}>
         {HOUR_MARKS.map((hour) => {
           const top = ((hour - HOUR_START) / HOUR_SPAN) * 100;
           return (
-            <div key={hour} className="absolute inset-x-0" style={{ top: `${top}%` }}>
+            <div key={hour} className="pointer-events-none absolute inset-x-0" style={{ top: `${top}%` }}>
               <span
                 className="absolute -top-[8px] left-4 text-[11px] font-mono"
                 style={{ color: "var(--app-text-muted)" }}
@@ -218,7 +393,7 @@ function WeekGrid({ days, events, timezone, currentPosition }: WeekGridProps) {
         {days.slice(1).map((day, i) => (
           <div
             key={day.key}
-            className="absolute bottom-0 top-0 w-px"
+            className="pointer-events-none absolute bottom-0 top-0 w-px"
             style={{
               left: `calc(64px + (100% - 64px) * ${(i + 1) / 7})`,
               background: "color-mix(in oklab, var(--app-border) 70%, transparent)",
@@ -231,7 +406,7 @@ function WeekGrid({ days, events, timezone, currentPosition }: WeekGridProps) {
           return (
             <div
               key={`today-${day.key}`}
-              className="absolute inset-y-0 pointer-events-none"
+              className="pointer-events-none absolute inset-y-0"
               style={{
                 left: `calc(64px + (100% - 64px) * ${dayIndex / 7})`,
                 width: `calc((100% - 64px) / 7)`,
@@ -242,7 +417,23 @@ function WeekGrid({ days, events, timezone, currentPosition }: WeekGridProps) {
           );
         })}
 
+        {/* Day surfaces underlay events so clicking the empty grid opens New Task */}
         <div className="absolute inset-y-0 left-16 right-0">
+          {days.map((day, dayIndex) => (
+            <button
+              key={`bg-${day.key}`}
+              type="button"
+              aria-label={`Add a task due ${day.label}`}
+              onClick={(e) => handleDayClick(day, e)}
+              className="absolute h-full cursor-copy hover:bg-[color:var(--app-accent-soft)]/40"
+              style={{
+                left: `${(dayIndex / 7) * 100}%`,
+                width: `${100 / 7}%`,
+                background: "transparent",
+              }}
+            />
+          ))}
+
           {events.map((event) => {
             const { dayIndex, top, height, visible } = positionFor(event, days, timezone);
             if (!visible) return null;
@@ -252,23 +443,46 @@ function WeekGrid({ days, events, timezone, currentPosition }: WeekGridProps) {
             const isCompleted = event.outcome === "completed";
             const isMissed = event.outcome === "missed";
             const isSleep = event.category === "sleep";
+            const isBeingDragged = draggingId === event.id;
+            const draggable = event.category === "study" && event.editable !== false && event.outcome === "planned";
+            const topPct = top + (isBeingDragged ? dragOffsetPct : 0);
             return (
               <div
                 key={event.id}
-                className="absolute px-1"
+                className={cn(
+                  "absolute px-1",
+                  isBeingDragged && "z-20",
+                )}
                 style={{
-                  top: `${top}%`,
+                  top: `${topPct}%`,
                   height: `${Math.max(height, 3.5)}%`,
                   left: `${(dayIndex / 7) * 100}%`,
                   width: `${100 / 7}%`,
-                  zIndex: event.category === "sport" || event.category === "extracurricular" ? 2 : 1,
+                  zIndex: isBeingDragged
+                    ? 20
+                    : event.category === "sport" || event.category === "extracurricular"
+                      ? 2
+                      : 1,
+                  transition: isBeingDragged ? "none" : "top 0.18s var(--ease-out-expo)",
                 }}
               >
-                <div
+                <button
+                  type="button"
+                  onPointerDown={draggable ? (e) => beginDrag(event, e) : undefined}
+                  onClick={(e) => {
+                    // Suppress the click that a drag would otherwise fire on release
+                    if (dragRef.current || draggingId === event.id) {
+                      e.preventDefault();
+                      return;
+                    }
+                    onSelectEvent(event);
+                  }}
                   className={cn(
-                    "h-full overflow-hidden rounded-[8px] px-2.5 py-1.5 leading-tight",
+                    "block h-full w-full overflow-hidden rounded-[8px] px-2.5 py-1.5 text-left leading-tight transition-shadow duration-150",
                     isCompleted && "opacity-55",
                     isMissed && "opacity-40",
+                    draggable && "cursor-grab",
+                    isBeingDragged && "cursor-grabbing shadow-[0_16px_40px_-12px_rgba(0,0,0,0.35)]",
                   )}
                   style={{
                     background: styles.bg,
@@ -291,7 +505,7 @@ function WeekGrid({ days, events, timezone, currentPosition }: WeekGridProps) {
                       {formatClock(event.startAt, timezone)}–{formatClock(event.endAt, timezone)}
                     </div>
                   ) : null}
-                </div>
+                </button>
               </div>
             );
           })}
@@ -299,7 +513,7 @@ function WeekGrid({ days, events, timezone, currentPosition }: WeekGridProps) {
           {currentPosition ? (
             <div
               aria-hidden="true"
-              className="absolute z-10"
+              className="pointer-events-none absolute z-10"
               style={{
                 top: `${currentPosition.top}%`,
                 left: `${(currentPosition.dayIndex / 7) * 100}%`,
@@ -344,7 +558,6 @@ function buildWeek(now: Date, offset: number, timezone: string): DayColumn[] {
   const todayKey = dateKey(now.toISOString(), timezone);
   const [year, month, day] = todayKey.split("-").map(Number);
   const utcNoon = Date.UTC(year, month - 1, day, 12, 0, 0);
-  const jsDate = new Date(utcNoon);
   const weekday = new Date(`${todayKey}T12:00:00Z`).getUTCDay();
   const daysFromMonday = (weekday + 6) % 7;
   const mondayNoon = utcNoon - daysFromMonday * DAY_MS + offset * 7 * DAY_MS;

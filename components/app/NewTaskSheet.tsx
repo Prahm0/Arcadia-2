@@ -10,6 +10,8 @@ interface NewTaskSheetProps {
   open: boolean;
   onClose: () => void;
   editing?: PlannerTask | null;
+  /** YYYY-MM-DD to pre-fill the Due field when creating a task (ignored when editing). */
+  defaultDueDate?: string | null;
 }
 
 const TASK_TYPES = [
@@ -20,7 +22,7 @@ const TASK_TYPES = [
   { value: "project", label: "Project" },
 ];
 
-export default function NewTaskSheet({ open, onClose, editing }: NewTaskSheetProps) {
+export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: initialDue }: NewTaskSheetProps) {
   const { data, reload } = useDashboardData();
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState(data.subjects[0]?.name ?? "");
@@ -46,12 +48,12 @@ export default function NewTaskSheet({ open, onClose, editing }: NewTaskSheetPro
         setTitle("");
         setSubject(data.subjects[0]?.name || "");
         setTaskType("homework");
-        setDueDate(defaultDueDate());
+        setDueDate(initialDue || defaultDueDate());
         setMinutes(60);
       }
       setTimeout(() => titleRef.current?.focus(), 40);
     }
-  }, [open, editing, data.subjects]);
+  }, [open, editing, data.subjects, initialDue]);
 
   useEffect(() => {
     if (!open) return;

@@ -75,15 +75,14 @@ export default function Navbar() {
               ))}
             </ul>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => open("login")}
+              <Link
+                href="/login"
                 className="rounded-[8px] px-3 py-2 text-[14px] text-white/80 transition-colors duration-200 hover:text-white"
               >
-                Log in
-              </button>
-              <Button size="sm" tone="dark" onClick={() => open("access")}>
-                Get early access
+                Sign in
+              </Link>
+              <Button size="sm" tone="dark" href="/register">
+                Get started
               </Button>
             </div>
           </div>
@@ -150,24 +149,16 @@ export default function Navbar() {
               transition={{ duration: 0.5, delay: 0.3, ease: EASE_OUT }}
               className="mt-auto flex flex-col gap-3 px-5 pb-10 sm:px-8"
             >
-              <Button
-                tone="dark"
-                onClick={() => {
-                  setMenuOpen(false);
-                  open("access");
-                }}
-              >
-                Get early access
+              <Button tone="dark" href="/register" onClick={() => setMenuOpen(false)}>
+                Get started
               </Button>
               <Button
                 tone="dark"
                 variant="secondary"
-                onClick={() => {
-                  setMenuOpen(false);
-                  open("login");
-                }}
+                href="/login"
+                onClick={() => setMenuOpen(false)}
               >
-                Log in
+                Sign in
               </Button>
             </motion.div>
           </motion.div>

@@ -85,7 +85,7 @@ export default function SettingsView() {
     <>
       <PageHeader
         eyebrow="Settings"
-        title="Account & preferences"
+        title={<><span className="accent-serif">Account</span> & preferences</>}
         meta={account ? `Signed in as ${account.email}` : undefined}
       />
 

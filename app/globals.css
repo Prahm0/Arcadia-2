@@ -48,39 +48,46 @@
 
   --breakpoint-2xl: 90rem;
 
-  /* App shell tokens (light theme defaults). App pages opt in via [data-app-theme]. */
-  --app-bg: #f4f2ee;
+  /* App shell tokens.
+     Light default = warm paper (the morning version of the landing).
+     Dark override lives below under [data-app-theme="dark"] and uses the
+     landing page's night palette so the marketing → product transition
+     is one continuous world. */
+  --app-bg: #faf9f7;              /* warm paper — one shade off landing --color-noon */
   --app-surface: #ffffff;
-  --app-surface-soft: #faf9f7;
+  --app-surface-soft: #f4f0ea;    /* warmer paper for insets */
   --app-elev: #ffffff;
-  --app-border: #e6e4df;
-  --app-border-strong: #d5d1c9;
-  --app-text: #141414;
-  --app-text-soft: #4a4a48;
-  --app-text-muted: #78766f;
-  --app-text-faint: #a19f97;
-  --app-accent: #7c5cff;
-  --app-accent-soft: rgba(124, 92, 255, 0.12);
+  --app-border: #e4ddd3;          /* landing --color-day-border */
+  --app-border-strong: #cec5b6;
+  --app-text: #171512;            /* landing --color-day-text */
+  --app-text-soft: #3d3a34;
+  --app-text-muted: #6f6a63;      /* landing --color-day-muted */
+  --app-text-faint: #a5a099;
+  --app-accent: #7c5cff;          /* landing --color-accent */
+  --app-accent-soft: rgba(124, 92, 255, 0.10);
   --app-accent-strong: #6a49f5;
-  --app-danger: #d64545;
-  --app-success: #2f9e5b;
+  --app-danger: #b73838;
+  --app-success: #2f7a4c;
 }
 
-/* Dark theme overrides — applied via [data-app-theme="dark"] on the app root */
+/* Dark theme = landing night palette, softened just enough for extended reading.
+   Applied via [data-app-theme="dark"] on <html>. */
 [data-app-theme="dark"] {
-  --app-bg: #0b0b0d;
-  --app-surface: #131317;
-  --app-surface-soft: #17171c;
-  --app-elev: #1a1a20;
-  --app-border: #26262d;
-  --app-border-strong: #34343d;
-  --app-text: #f4f3ef;
-  --app-text-soft: #cfcec9;
-  --app-text-muted: #8f8e88;
-  --app-text-faint: #5a5a56;
-  --app-accent: #9d87ff;
-  --app-accent-soft: rgba(157, 135, 255, 0.15);
-  --app-accent-strong: #7c5cff;
+  --app-bg: #060810;              /* deeper than pure black; blue-tinted like landing dusk */
+  --app-surface: #0d111c;
+  --app-surface-soft: #0a0d16;
+  --app-elev: #131826;
+  --app-border: #1b2233;
+  --app-border-strong: #2b3247;
+  --app-text: #f4f2ea;            /* warm off-white matching landing --color-dawn */
+  --app-text-soft: #c8c6bd;
+  --app-text-muted: #8a8880;
+  --app-text-faint: #55534b;
+  --app-accent: #9d87ff;          /* landing --color-accent-300 */
+  --app-accent-soft: rgba(157, 135, 255, 0.14);
+  --app-accent-strong: #7c5cff;   /* landing --color-accent */
+  --app-danger: #ff8080;
+  --app-success: #5fd08a;
 }
 
 @layer base {
@@ -104,6 +111,20 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+  }
+
+  /* On /app pages the ThemeProvider stamps data-app-theme onto <html>. That
+     signal lets us paint the body itself with the app palette so light mode
+     doesn't leak black around the shell. */
+  html[data-app-theme] body {
+    background: var(--app-bg);
+    color: var(--app-text);
+  }
+
+  /* The film-grain overlay reads as artful over black on the landing but
+     as noise over light paper on the app. Hide it in light mode. */
+  html[data-app-theme="light"] body::after {
+    display: none;
   }
 
   /* Film grain over everything: keeps the dark surfaces from reading as flat. */

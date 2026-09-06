@@ -64,7 +64,11 @@ export default function AnalyticsView() {
     <>
       <PageHeader
         eyebrow="Analytics"
-        title={period === "week" ? "This week" : "This month"}
+        title={
+          <>
+            This <span className="accent-serif">{period === "week" ? "week" : "month"}</span>
+          </>
+        }
         meta={analytics ? `${formatMinutes(totalMinutes)} of focused study` : undefined}
         action={
           <div className="inline-flex rounded-[10px] p-1" style={{ background: "var(--app-surface-soft)", border: "1px solid var(--app-border)" }}>

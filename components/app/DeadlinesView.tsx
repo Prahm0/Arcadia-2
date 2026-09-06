@@ -31,7 +31,15 @@ export default function DeadlinesView() {
     <>
       <PageHeader
         eyebrow="Deadlines"
-        title={total === 0 ? "All caught up." : `${total} open ${total === 1 ? "task" : "tasks"}`}
+        title={
+          total === 0 ? (
+            <>All <span className="accent-serif">caught up</span>.</>
+          ) : (
+            <>
+              {total} open <span className="accent-serif">{total === 1 ? "task" : "tasks"}</span>
+            </>
+          )
+        }
         meta={total > 0 ? `${formatDurationMinutes(totalMinutes)} of work remaining across ${data.subjects.length} subjects` : undefined}
         action={
           <AppButton

@@ -81,7 +81,11 @@ export default function TodayView() {
     <>
       <PageHeader
         eyebrow="Today"
-        title={`${greeting}, ${firstName}.`}
+        title={
+          <>
+            {greeting}, <span className="accent-serif">{firstName}</span>.
+          </>
+        }
         meta={formatFriendlyDate(now.toISOString(), timezone)}
         action={
           <AppButton

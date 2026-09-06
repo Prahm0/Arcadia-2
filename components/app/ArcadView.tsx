@@ -208,7 +208,7 @@ export default function ArcadView() {
     <>
       <PageHeader
         eyebrow="Arcad"
-        title="Your planning partner."
+        title={<>Your <span className="accent-serif">planning</span> partner.</>}
         meta={activeConversationTitle}
         action={
           <AppButton

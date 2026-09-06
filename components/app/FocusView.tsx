@@ -102,7 +102,13 @@ export default function FocusView() {
     <>
       <PageHeader
         eyebrow="Focus"
-        title={phase === "break" ? "Take a breather." : "Lock in."}
+        title={
+          phase === "break" ? (
+            <>Take a <span className="accent-serif">breather</span>.</>
+          ) : (
+            <><span className="accent-serif">Lock</span> in.</>
+          )
+        }
         meta={`${todayMinutes} min of focused study today`}
       />
       <div className="mx-auto grid w-full max-w-[960px] gap-8 px-6 py-10 sm:px-10 lg:grid-cols-[minmax(0,1fr)_320px]">

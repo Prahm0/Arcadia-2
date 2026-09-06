@@ -32,7 +32,7 @@ app/
   layout.tsx          fonts (Inter, JetBrains Mono, Instrument Serif), metadata
   page.tsx            section order (one week, night to night)
   globals.css         hour tokens, type scale, grain, marquee and hero keyframes
-  api/waitlist/       waitlist route handler (the only server code)
+  api/[...path]/      proxy to the Cloudflare API, including the waitlist
   privacy/, terms/    early-access legal pages
 components/
   Hero, HeroInterface, LiveNow, Starfield, Constellation
@@ -54,10 +54,19 @@ lib/
 
 ## Waitlist
 
-`POST /api/waitlist` validates the address and then either forwards it to
-`WAITLIST_WEBHOOK_URL` (if set) or appends it to `.data/waitlist.jsonl` on the
-server. Swap the `deliver()` function in `app/api/waitlist/route.ts` to connect
-a real provider.
+`POST /api/waitlist` passes through the shared API proxy to the Cloudflare
+backend, which validates the address and stores it in D1. New addresses receive
+a confirmation email when Resend is configured. Repeat submissions do not add
+a second row.
+
+Run the backend locally using [backend/README.md](backend/README.md). The proxy
+defaults to `http://127.0.0.1:8787`; set `ARCADIA_BACKEND_ORIGIN` in `.env.local`
+if the backend runs elsewhere. Production uses the value in `wrangler.jsonc`.
+See [backend/DEPLOY.md](backend/DEPLOY.md) for deployment and waitlist checks.
+
+The old `WAITLIST_WEBHOOK_URL` and local `.data/waitlist.jsonl` handler are no
+longer used. Existing local waitlist records are left in place and are not
+migrated automatically.
 
 ## Notes
 

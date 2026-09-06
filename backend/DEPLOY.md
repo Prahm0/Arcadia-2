@@ -103,11 +103,23 @@ ARCADIA_BACKEND_ORIGIN = https://api.arcadiahq.app
 Not a secret, so it can also live in the frontend's `wrangler.jsonc` under
 `vars`. Redeploy the frontend after setting it.
 
+## Check the landing-page waitlist
+
+Submit an address through the landing-page form after deploying both Workers.
+The frontend forwards `/api/waitlist` through its shared proxy to the API.
+Confirm the address appears once in the D1 `waitlist` table and, when Resend is
+configured, that the confirmation email arrives. Submit the same address again
+to check that no duplicate row is created.
+
+`WAITLIST_WEBHOOK_URL` is no longer used. Any old `.data/waitlist.jsonl` records
+remain on the previous server and need a separate migration if you want them
+in D1.
+
 ## Order that matters
 
 Migrations before deploy, or the first request hits tables that do not exist.
 `ARCADIA_BACKEND_ORIGIN` after the custom domain, or the frontend proxies to
-`localhost:5173` and every `/api` call fails.
+`127.0.0.1:8787` and every `/api` call fails.
 
 ## Rolling back
 

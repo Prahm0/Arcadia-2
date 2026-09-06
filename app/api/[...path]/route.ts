@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND = process.env.ARCADIA_BACKEND_ORIGIN || "http://localhost:5173";
+const BACKEND = process.env.ARCADIA_BACKEND_ORIGIN || "http://127.0.0.1:8787";
 
 const HOP_BY_HOP = new Set([
   "connection",

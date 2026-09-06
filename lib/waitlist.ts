@@ -1,7 +1,7 @@
 /**
  * Client-side waitlist submission. The request goes to the app's own route
- * handler (`app/api/waitlist/route.ts`), which is the single place to connect
- * a real provider.
+ * proxy (`app/api/[...path]/route.ts`), which forwards it to the backend for
+ * validation, D1 storage and confirmation email delivery.
  */
 
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;

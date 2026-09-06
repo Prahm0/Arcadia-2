@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
@@ -259,52 +260,74 @@ function FocusRow({
 }) {
   const isDone = event.outcome === "completed";
   const isMissed = event.outcome === "missed";
+  const isActionable = !isDone && !isMissed;
   const minutes = Math.round((Date.parse(event.endAt) - Date.parse(event.startAt)) / 60000);
   const startClock = formatClock(event.startAt, timezone);
+  const focusHref = `/app/focus?eventId=${encodeURIComponent(event.id)}`;
+
+  const rowContent = (
+    <>
+      <span
+        aria-hidden="true"
+        className="h-8 w-[3px] shrink-0 rounded-full transition-colors duration-200"
+        style={{
+          background: isDone || isMissed ? "var(--app-border)" : CATEGORY_BAR[event.category] ?? "var(--app-accent)",
+        }}
+      />
+      <span className="min-w-0 flex-1">
+        <span className="block text-[12px]" style={{ color: "var(--app-text-muted)" }}>
+          {event.subject || "Study"}
+        </span>
+        <span
+          className={cn(
+            "mt-0.5 block truncate text-[16px] font-medium transition-opacity",
+            (isDone || isMissed) && "line-through",
+          )}
+          style={{
+            color: "var(--app-text)",
+            opacity: isDone ? 0.4 : isMissed ? 0.35 : 1,
+          }}
+        >
+          {event.title}
+        </span>
+      </span>
+      <span className="flex shrink-0 flex-col items-end gap-1">
+        <span className="font-mono text-[13px]" style={{ color: "var(--app-text)" }}>
+          {formatDurationMinutes(minutes)}
+        </span>
+        <span className="text-[11px] font-mono" style={{ color: "var(--app-text-muted)" }}>
+          {startClock}
+        </span>
+      </span>
+      {isActionable ? (
+        <span
+          aria-hidden="true"
+          className="ml-2 hidden shrink-0 text-[11px] opacity-0 transition-opacity group-hover:opacity-100 sm:block"
+          style={{ color: "var(--app-accent-strong)" }}
+        >
+          Focus →
+        </span>
+      ) : null}
+    </>
+  );
 
   return (
     <li
-      className={cn(
-        "group flex items-center gap-1 rounded-[10px] pr-2 transition-colors duration-200",
-      )}
-      style={{
-        background: "transparent",
-      }}
+      className="group flex items-center gap-1 rounded-[10px] pr-2 transition-colors duration-200 hover:bg-[color:var(--app-surface-soft)]"
     >
-      <div className="group flex min-w-0 flex-1 items-center gap-4 rounded-[10px] px-3 py-3.5 text-left">
-        <span
-          aria-hidden="true"
-          className="h-8 w-[3px] shrink-0 rounded-full transition-colors duration-200"
-          style={{
-            background: isDone || isMissed ? "var(--app-border)" : CATEGORY_BAR[event.category] ?? "var(--app-accent)",
-          }}
-        />
-        <span className="min-w-0 flex-1">
-          <span className="block text-[12px]" style={{ color: "var(--app-text-muted)" }}>
-            {event.subject || "Study"}
-          </span>
-          <span
-            className={cn(
-              "mt-0.5 block truncate text-[16px] font-medium transition-opacity",
-              (isDone || isMissed) && "line-through",
-            )}
-            style={{
-              color: "var(--app-text)",
-              opacity: isDone ? 0.4 : isMissed ? 0.35 : 1,
-            }}
-          >
-            {event.title}
-          </span>
-        </span>
-        <span className="flex shrink-0 flex-col items-end gap-1">
-          <span className="font-mono text-[13px]" style={{ color: "var(--app-text)" }}>
-            {formatDurationMinutes(minutes)}
-          </span>
-          <span className="text-[11px] font-mono" style={{ color: "var(--app-text-muted)" }}>
-            {startClock}
-          </span>
-        </span>
-      </div>
+      {isActionable ? (
+        <Link
+          href={focusHref}
+          className="flex min-w-0 flex-1 items-center gap-4 rounded-[10px] px-3 py-3.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--app-accent)]"
+          aria-label={`Start focus on ${event.title}`}
+        >
+          {rowContent}
+        </Link>
+      ) : (
+        <div className="flex min-w-0 flex-1 items-center gap-4 rounded-[10px] px-3 py-3.5 text-left">
+          {rowContent}
+        </div>
+      )}
       <span className="flex shrink-0 items-center">
         {isMissed ? (
           <span className="mr-1 text-[11px] font-medium" style={{ color: "var(--app-text-muted)" }}>Missed</span>

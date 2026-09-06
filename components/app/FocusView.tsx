@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
+import type { DashboardResponse, PlannerEvent } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
+import { formatClock as formatWallClock } from "@/lib/api/time";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 
@@ -16,16 +20,72 @@ const PRESETS = [
 type Phase = "focus" | "break" | "idle";
 
 export default function FocusView() {
-  const { data, reload } = useDashboardData();
-  const [presetIndex, setPresetIndex] = useState(0);
+  return (
+    <Suspense fallback={null}>
+      <FocusViewInner />
+    </Suspense>
+  );
+}
+
+function pickPresetForMinutes(minutes: number): number {
+  let best = 0;
+  let bestDelta = Infinity;
+  PRESETS.forEach((p, i) => {
+    const delta = Math.abs(p.focus / 60 - minutes);
+    if (delta < bestDelta) {
+      best = i;
+      bestDelta = delta;
+    }
+  });
+  return best;
+}
+
+function FocusViewInner() {
+  const { data, reload, patch } = useDashboardData();
+  const params = useSearchParams();
+  const router = useRouter();
+  const timezone = data.profile?.timezone || data.user.timezone || "Australia/Sydney";
+
+  const eventId = params.get("eventId");
+  const linkedEvent = useMemo<PlannerEvent | null>(() => {
+    if (!eventId) return null;
+    return data.events.find((event) => event.id === eventId) ?? null;
+  }, [data.events, eventId]);
+
+  const linkedMinutes = linkedEvent
+    ? Math.round((Date.parse(linkedEvent.endAt) - Date.parse(linkedEvent.startAt)) / 60000)
+    : null;
+
+  const [presetIndex, setPresetIndex] = useState(() =>
+    linkedMinutes ? pickPresetForMinutes(linkedMinutes) : 0,
+  );
   const [phase, setPhase] = useState<Phase>("idle");
-  const [remaining, setRemaining] = useState(PRESETS[0].focus);
+  const [remaining, setRemaining] = useState(PRESETS[presetIndex].focus);
   const [running, setRunning] = useState(false);
-  const [subject, setSubject] = useState(data.subjects[0]?.name || "General");
-  const [goal, setGoal] = useState("");
+  const [subject, setSubject] = useState(
+    linkedEvent?.subject || data.subjects[0]?.name || "General",
+  );
+  const [goal, setGoal] = useState(linkedEvent?.title ?? "");
   const [distractions, setDistractions] = useState(0);
   const intervalRef = useRef<number | null>(null);
   const preset = PRESETS[presetIndex];
+
+  // If the ?eventId= arrives after mount (rare but possible with client-side nav),
+  // sync the visible fields once — do not clobber values the user already edited.
+  const hasHydrated = useRef(false);
+  useEffect(() => {
+    if (hasHydrated.current) return;
+    if (!linkedEvent) {
+      hasHydrated.current = true;
+      return;
+    }
+    hasHydrated.current = true;
+    const nextIdx = linkedMinutes ? pickPresetForMinutes(linkedMinutes) : 0;
+    setPresetIndex(nextIdx);
+    setRemaining(PRESETS[nextIdx].focus);
+    setSubject(linkedEvent.subject || data.subjects[0]?.name || "General");
+    setGoal(linkedEvent.title);
+  }, [linkedEvent, linkedMinutes, data.subjects]);
 
   useEffect(() => {
     if (!running) return;
@@ -40,7 +100,7 @@ export default function FocusView() {
   useEffect(() => {
     if (remaining !== 0) return;
     if (phase === "focus") {
-      void logSession("focus", preset.focus);
+      void logSession("focus", preset.focus, { markEvent: "completed" });
       setPhase("break");
       setRemaining(preset.break);
     } else if (phase === "break") {
@@ -48,14 +108,50 @@ export default function FocusView() {
       setRemaining(preset.focus);
       setRunning(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remaining, phase, preset]);
 
-  async function logSession(type: string, seconds: number) {
+  async function logSession(
+    type: string,
+    seconds: number,
+    opts: { markEvent?: "completed" | "missed" } = {},
+  ) {
     try {
       await api("/api/study-sessions", {
         method: "POST",
-        body: JSON.stringify([{ type, seconds, subject, goal, distractions, endedAt: new Date().toISOString() }]),
+        body: JSON.stringify([
+          { type, seconds, subject, goal, distractions, endedAt: new Date().toISOString() },
+        ]),
       });
+    } catch {
+      /* swallow — the local timer stays truthful even if the log fails */
+    }
+
+    if (linkedEvent && opts.markEvent) {
+      const outcome = opts.markEvent;
+      try {
+        await api(`/api/events/${encodeURIComponent(linkedEvent.id)}/outcome`, {
+          method: "POST",
+          body: JSON.stringify({ outcome }),
+        });
+        patch((prev: DashboardResponse) => ({
+          ...prev,
+          events: prev.events.map((existing) =>
+            existing.id === linkedEvent.id
+              ? {
+                  ...existing,
+                  outcome,
+                  status: outcome === "completed" ? "completed" : "missed",
+                }
+              : existing,
+          ),
+        }));
+      } catch {
+        /* ignore */
+      }
+    }
+
+    try {
       await reload();
     } catch {
       /* ignore */
@@ -83,7 +179,10 @@ export default function FocusView() {
 
   function skip() {
     if (phase === "focus") {
-      void logSession("focus", preset.focus - remaining);
+      // Skipping out of focus = you didn't finish. If linked, mark the block missed.
+      void logSession("focus", preset.focus - remaining, {
+        markEvent: linkedEvent ? "missed" : undefined,
+      });
       setPhase("break");
       setRemaining(preset.break);
     } else {
@@ -91,6 +190,10 @@ export default function FocusView() {
       setRemaining(preset.focus);
     }
     setRunning(false);
+  }
+
+  function detach() {
+    router.replace("/app/focus");
   }
 
   const totalForPhase = phase === "break" ? preset.break : preset.focus;
@@ -111,6 +214,40 @@ export default function FocusView() {
         }
         meta={`${todayMinutes} min of focused study today`}
       />
+
+      {linkedEvent ? (
+        <div className="border-b px-6 py-3 sm:px-10" style={{ borderColor: "var(--app-border)", background: "var(--app-accent-soft)" }}>
+          <div className="mx-auto flex max-w-[960px] flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <span
+                aria-hidden="true"
+                className="h-1.5 w-1.5 rounded-full"
+                style={{ background: "var(--app-accent)" }}
+              />
+              <span className="type-eyebrow" style={{ color: "var(--app-accent-strong)" }}>
+                Focusing on
+              </span>
+              <span className="truncate text-[14px] font-medium" style={{ color: "var(--app-text)" }}>
+                {linkedEvent.title}
+              </span>
+              <span className="type-mono-label hidden sm:inline" style={{ color: "var(--app-text-muted)" }}>
+                {linkedEvent.subject ? `${linkedEvent.subject} · ` : ""}
+                {formatWallClock(linkedEvent.startAt, timezone)}–{formatWallClock(linkedEvent.endAt, timezone)}
+                {linkedMinutes ? ` · ${linkedMinutes} min` : ""}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={detach}
+              className="rounded-full px-2.5 py-1 text-[12px] hover:underline"
+              style={{ color: "var(--app-text-muted)" }}
+            >
+              Detach
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="mx-auto grid w-full max-w-[960px] gap-8 px-6 py-10 sm:px-10 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div
           className="flex flex-col items-center rounded-[20px] px-6 py-12"
@@ -130,7 +267,7 @@ export default function FocusView() {
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-[13px] font-mono uppercase tracking-[0.14em]" style={{ color: "var(--app-text-muted)" }}>
+              <span className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>
                 {phase === "break" ? "Break" : phase === "focus" ? "Focus" : "Ready"}
               </span>
               <span className="mt-3 text-[64px] font-medium tabular-nums tracking-[-0.03em]" style={{ color: "var(--app-text)" }}>
@@ -163,6 +300,16 @@ export default function FocusView() {
             >
               Distraction · {distractions}
             </button>
+          ) : null}
+
+          {!linkedEvent && data.events.some((e) => e.category === "study" && e.outcome === "planned") ? (
+            <Link
+              href="/app"
+              className="mt-6 text-[12.5px] underline underline-offset-4"
+              style={{ color: "var(--app-text-muted)" }}
+            >
+              Focus on a scheduled study block
+            </Link>
           ) : null}
         </div>
 
@@ -209,6 +356,7 @@ export default function FocusView() {
                   {data.subjects.map((s) => (
                     <option key={s.id} value={s.name}>{s.name}</option>
                   ))}
+                  {data.subjects.length === 0 ? <option value="General">General</option> : null}
                 </select>
               </label>
               <label className="block">

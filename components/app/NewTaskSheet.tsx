@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
+import type { PlannerTask } from "@/lib/api/types";
 import AppButton from "./AppButton";
 
 interface NewTaskSheetProps {
   open: boolean;
   onClose: () => void;
+  editing?: PlannerTask | null;
 }
 
 const TASK_TYPES = [
@@ -18,7 +20,7 @@ const TASK_TYPES = [
   { value: "project", label: "Project" },
 ];
 
-export default function NewTaskSheet({ open, onClose }: NewTaskSheetProps) {
+export default function NewTaskSheet({ open, onClose, editing }: NewTaskSheetProps) {
   const { data, reload } = useDashboardData();
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState(data.subjects[0]?.name ?? "");
@@ -26,20 +28,30 @@ export default function NewTaskSheet({ open, onClose }: NewTaskSheetProps) {
   const [dueDate, setDueDate] = useState(() => defaultDueDate());
   const [minutes, setMinutes] = useState(60);
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
+  const isEditing = Boolean(editing);
 
   useEffect(() => {
     if (open) {
-      setTimeout(() => titleRef.current?.focus(), 40);
-    } else {
       setError(null);
-      setTitle("");
-      setMinutes(60);
-      setTaskType("homework");
-      setDueDate(defaultDueDate());
+      if (editing) {
+        setTitle(editing.title);
+        setSubject(editing.subject || data.subjects[0]?.name || "");
+        setTaskType(editing.taskType || "homework");
+        setDueDate(editing.dueAt.slice(0, 10));
+        setMinutes(editing.remainingMinutes || 60);
+      } else {
+        setTitle("");
+        setSubject(data.subjects[0]?.name || "");
+        setTaskType("homework");
+        setDueDate(defaultDueDate());
+        setMinutes(60);
+      }
+      setTimeout(() => titleRef.current?.focus(), 40);
     }
-  }, [open]);
+  }, [open, editing, data.subjects]);
 
   useEffect(() => {
     if (!open) return;
@@ -55,23 +67,44 @@ export default function NewTaskSheet({ open, onClose }: NewTaskSheetProps) {
     setLoading(true);
     setError(null);
     try {
-      await api("/api/tasks", {
-        method: "POST",
-        body: JSON.stringify({
-          title,
-          subject,
-          taskType,
-          dueAt: new Date(`${dueDate}T23:59:00`).toISOString(),
-          estimatedMinutes: minutes,
-          priority: 2,
-        }),
-      });
+      const body = {
+        title,
+        subject,
+        taskType,
+        dueAt: new Date(`${dueDate}T23:59:00`).toISOString(),
+        estimatedMinutes: minutes,
+        priority: 2,
+      };
+      if (isEditing && editing) {
+        await api(`/api/tasks/${encodeURIComponent(editing.id)}`, {
+          method: "PATCH",
+          body: JSON.stringify(body),
+        });
+      } else {
+        await api("/api/tasks", { method: "POST", body: JSON.stringify(body) });
+      }
       await reload();
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function remove() {
+    if (!editing) return;
+    if (!confirm(`Delete "${editing.title}"? This also removes its scheduled study blocks.`)) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await api(`/api/tasks/${encodeURIComponent(editing.id)}`, { method: "DELETE" });
+      await reload();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -94,8 +127,10 @@ export default function NewTaskSheet({ open, onClose }: NewTaskSheetProps) {
       >
         <div className="flex items-start justify-between">
           <div>
-            <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Add</p>
-            <h2 id="new-task-title" className="mt-1 text-[22px] font-medium tracking-[-0.015em]">New task</h2>
+            <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>{isEditing ? "Edit" : "Add"}</p>
+            <h2 id="new-task-title" className="mt-1 text-[22px] font-medium tracking-[-0.015em]">
+              {isEditing ? editing?.title : "New task"}
+            </h2>
           </div>
           <button
             type="button"
@@ -168,7 +203,7 @@ export default function NewTaskSheet({ open, onClose }: NewTaskSheetProps) {
                 step={15}
                 value={minutes}
                 onChange={(e) => setMinutes(Number(e.target.value))}
-                className="mt-3 w-full accent-accent"
+                className="mt-3 w-full"
                 style={{ accentColor: "var(--app-accent)" }}
               />
             </Field>
@@ -178,9 +213,20 @@ export default function NewTaskSheet({ open, onClose }: NewTaskSheetProps) {
             <p className="text-[13.5px]" style={{ color: "var(--app-danger)" }}>{error}</p>
           ) : null}
 
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <AppButton type="button" variant="ghost" onClick={onClose}>Cancel</AppButton>
-            <AppButton type="submit" variant="primary" loading={loading}>Add & schedule</AppButton>
+          <div className="flex items-center justify-between gap-2 pt-2">
+            {isEditing ? (
+              <AppButton type="button" variant="ghost" onClick={remove} loading={deleting}>
+                Delete
+              </AppButton>
+            ) : (
+              <span />
+            )}
+            <div className="flex items-center gap-2">
+              <AppButton type="button" variant="ghost" onClick={onClose}>Cancel</AppButton>
+              <AppButton type="submit" variant="primary" loading={loading}>
+                {isEditing ? "Save" : "Add & schedule"}
+              </AppButton>
+            </div>
           </div>
         </form>
       </div>

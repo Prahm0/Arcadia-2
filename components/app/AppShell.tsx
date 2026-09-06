@@ -7,6 +7,7 @@ import { api, saveCsrf } from "@/lib/api/client";
 import type { AuthUser } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { useTheme } from "@/lib/app/theme";
+import PageMount from "./PageMount";
 
 interface AppShellProps {
   user: AuthUser | null;
@@ -33,7 +34,9 @@ const NAV: NavItem[] = [
   { label: "Today", href: "/app", icon: icon(<path d="M4 6h12M4 10h12M4 14h8" />) },
   { label: "Schedule", href: "/app/schedule", icon: icon(<><rect x="3" y="4" width="14" height="13" rx="2" /><path d="M3 8h14M7 2v4M13 2v4" /></>) },
   { label: "Deadlines", href: "/app/deadlines", icon: icon(<><circle cx="10" cy="10" r="7" /><path d="M10 6v4l3 2" /></>) },
+  { label: "Commitments", href: "/app/commitments", icon: icon(<><path d="M3 9h14M10 3v14M3 6a3 3 0 013-3h8a3 3 0 013 3v8a3 3 0 01-3 3H6a3 3 0 01-3-3V6z" /></>) },
   { label: "Focus", href: "/app/focus", icon: icon(<><circle cx="10" cy="10" r="7" /><circle cx="10" cy="10" r="3" /></>) },
+  { label: "Analytics", href: "/app/analytics", icon: icon(<><path d="M4 15v-4M9 15V7M14 15v-6" strokeLinecap="round" /><path d="M2 17h16" strokeLinecap="round" /></>) },
   { label: "Arcad", href: "/app/arcad", icon: icon(<path d="M4 5h12v9H8l-4 3V5z" />) },
   { label: "Settings", href: "/app/settings", icon: icon(<><circle cx="10" cy="10" r="2.5" /><path d="M10 3v2M10 15v2M3 10h2M15 10h2M4.9 4.9l1.4 1.4M13.7 13.7l1.4 1.4M4.9 15.1l1.4-1.4M13.7 6.3l1.4-1.4" /></>) },
 ];
@@ -210,7 +213,7 @@ export default function AppShell({ user, streak, briefing, children }: AppShellP
               <span>{briefing}</span>
             </div>
           ) : null}
-          {children}
+          <PageMount>{children}</PageMount>
         </main>
       </div>
     </div>

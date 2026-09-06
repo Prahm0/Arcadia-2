@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import type { PlannerTask } from "@/lib/api/types";
 import { dateKey, formatDurationMinutes, formatDueSoon } from "@/lib/api/time";
@@ -11,9 +10,10 @@ import AppButton from "./AppButton";
 import NewTaskSheet from "./NewTaskSheet";
 
 export default function DeadlinesView() {
-  const { data, reload } = useDashboardData();
+  const { data } = useDashboardData();
   const timezone = data.profile?.timezone || "Australia/Sydney";
-  const [showTaskSheet, setShowTaskSheet] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [editing, setEditing] = useState<PlannerTask | null>(null);
 
   const subjectColor = useMemo(() => {
     const map = new Map<string, string>();
@@ -36,7 +36,7 @@ export default function DeadlinesView() {
         action={
           <AppButton
             variant="primary"
-            onClick={() => setShowTaskSheet(true)}
+            onClick={() => { setEditing(null); setSheetOpen(true); }}
             icon={<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M10 4v12M4 10h12" strokeLinecap="round" /></svg>}
           >
             New task
@@ -67,11 +67,7 @@ export default function DeadlinesView() {
                   task={task}
                   timezone={timezone}
                   color={subjectColor.get((task.subject || "").toLowerCase())}
-                  onDelete={async () => {
-                    if (!confirm(`Delete "${task.title}"?`)) return;
-                    await api(`/api/tasks/${encodeURIComponent(task.id)}`, { method: "DELETE" }).catch(() => {});
-                    await reload();
-                  }}
+                  onClick={() => { setEditing(task); setSheetOpen(true); }}
                 />
               ))}
             </ul>
@@ -79,46 +75,52 @@ export default function DeadlinesView() {
         ))}
       </div>
 
-      <NewTaskSheet open={showTaskSheet} onClose={() => setShowTaskSheet(false)} />
+      <NewTaskSheet
+        open={sheetOpen}
+        editing={editing}
+        onClose={() => { setSheetOpen(false); setEditing(null); }}
+      />
     </>
   );
 }
 
 function DeadlineRow({
-  task, timezone, color, onDelete,
+  task, timezone, color, onClick,
 }: {
   task: PlannerTask;
   timezone: string;
   color?: string;
-  onDelete: () => void;
+  onClick: () => void;
 }) {
   return (
-    <li
-      className={cn("group flex items-center gap-4 rounded-[12px] px-4 py-4 transition-colors")}
-      style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}
-    >
-      <span
-        aria-hidden="true"
-        className="h-10 w-1 shrink-0 rounded-full"
-        style={{ background: color || "var(--app-accent)" }}
-      />
-      <div className="min-w-0 flex-1">
-        <p className="text-[15px] font-medium tracking-[-0.005em]" style={{ color: "var(--app-text)" }}>
-          {task.title}
-        </p>
-        <p className="mt-1 text-[12.5px] font-mono" style={{ color: "var(--app-text-muted)" }}>
-          {task.subject ? `${task.subject} · ` : ""}
-          {formatDueSoon(task.dueAt, timezone)} · {formatDurationMinutes(task.remainingMinutes)}
-        </p>
-      </div>
+    <li>
       <button
         type="button"
-        onClick={onDelete}
-        aria-label={`Delete ${task.title}`}
-        className="grid h-8 w-8 place-items-center rounded-lg opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/5"
-        style={{ color: "var(--app-text-muted)" }}
+        onClick={onClick}
+        className={cn("group flex w-full items-center gap-4 rounded-[12px] px-4 py-4 text-left transition-colors hover:bg-black/[0.02]")}
+        style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}
       >
-        <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M4 6h12M8 6V4h4v2M6 6l1 10h6l1-10" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        <span
+          aria-hidden="true"
+          className="h-10 w-1 shrink-0 rounded-full"
+          style={{ background: color || "var(--app-accent)" }}
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-medium tracking-[-0.005em]" style={{ color: "var(--app-text)" }}>
+            {task.title}
+          </p>
+          <p className="mt-1 text-[12.5px] font-mono" style={{ color: "var(--app-text-muted)" }}>
+            {task.subject ? `${task.subject} · ` : ""}
+            {formatDueSoon(task.dueAt, timezone)} · {formatDurationMinutes(task.remainingMinutes)}
+          </p>
+        </div>
+        <span
+          aria-hidden="true"
+          className="text-[11px] opacity-0 transition-opacity group-hover:opacity-100"
+          style={{ color: "var(--app-text-muted)" }}
+        >
+          Edit →
+        </span>
       </button>
     </li>
   );

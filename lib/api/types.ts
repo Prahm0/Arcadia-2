@@ -14,7 +14,9 @@ export interface PlannerTask {
   taskType?: string;
   priority?: number;
   dueAt: string;
+  estimatedMinutes?: number;
   remainingMinutes: number;
+  notes?: string | null;
   status: "pending" | "complete" | "cancelled";
 }
 

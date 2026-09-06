@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { today } from "@/lib/demo-data";
 import { formatDuration } from "@/lib/schedule";
+import { useCardGlow } from "@/lib/hooks";
 import { cn } from "@/lib/cn";
 import Container from "./ui/Container";
 import FadeIn from "./ui/FadeIn";
@@ -11,29 +12,36 @@ import SectionLabel from "./ui/SectionLabel";
 
 export default function TodayDemo() {
   return (
-    <section id="today" aria-labelledby="today-heading" className="bg-white py-[120px] text-black lg:py-[160px]">
+    <section
+      id="today"
+      aria-labelledby="today-heading"
+      className="section-seam-light bg-dawn py-[120px] text-day-text lg:py-[160px]"
+    >
       <Container>
         <div className="grid grid-cols-12 items-center gap-y-16 lg:gap-x-6">
-          <div className="col-span-12 lg:col-span-5">
+          <div className="col-span-12 lg:order-2 lg:col-span-5 lg:col-start-8">
             <FadeIn>
-              <SectionLabel tone="light">Today</SectionLabel>
+              <SectionLabel tone="light" time="Tue 8 Sep · 7:40 am">
+                Today
+              </SectionLabel>
             </FadeIn>
             <RevealText
               id="today-heading"
               as="h2"
-              lines={["Know what", "matters today."]}
-              className="type-display mt-8 text-black"
+              lines={["Three things.", "That’s it."]}
+              accent="That’s it."
+              className="type-display mt-8 text-day-text"
               delay={0.1}
             />
             <FadeIn delay={0.25}>
-              <p className="type-body-lg mt-8 max-w-[520px] text-black/60">
-                Arcadia decides what deserves your attention so you don&rsquo;t have to
-                rebuild your day every morning.
+              <p className="type-body-lg mt-8 max-w-[460px] text-day-text/60">
+                Arcadia picks what actually needs you today and how long it&rsquo;ll take. No
+                rebuilding your day every morning.
               </p>
             </FadeIn>
           </div>
 
-          <div className="col-span-12 lg:col-span-6 lg:col-start-7">
+          <div className="col-span-12 lg:order-1 lg:col-span-6">
             <FadeIn delay={0.15} y={28} duration={0.9}>
               <TodayCard />
             </FadeIn>
@@ -47,23 +55,33 @@ export default function TodayDemo() {
 function TodayCard() {
   const [selected, setSelected] = useState(today.focus[0].id);
   const [done, setDone] = useState<Set<string>>(() => new Set());
+  const glow = useCardGlow();
 
   const remaining = today.focus.filter((f) => !done.has(f.id));
   const totalMinutes = remaining.reduce((sum, f) => sum + f.minutes, 0);
 
   return (
-    <div className="mx-auto w-full max-w-[560px] rounded-[16px] border border-ui-border bg-white shadow-[0_24px_60px_-30px_rgba(0,0,0,0.18)]">
-      <div className="flex items-center justify-between border-b border-ui-border px-5 py-4 sm:px-6">
-        <p className="text-[13px] font-medium text-ui-muted">{today.date}</p>
+    <div
+      {...glow}
+      className="card-glow mx-auto w-full max-w-[560px] overflow-hidden rounded-[16px] border border-day-border bg-white shadow-[0_30px_80px_-30px_rgba(60,40,20,0.22)]"
+    >
+      <div className="relative flex items-center justify-between border-b border-ui-border px-5 py-4 sm:px-6">
+        <p className="tabular text-[12px] font-medium text-ui-muted">{today.date}</p>
         <div className="flex items-center gap-3 text-[12px] text-ui-muted">
-          <span>Week {Math.round(today.weekProgress * 100)}%</span>
+          <span className="tabular">Week {Math.round(today.weekProgress * 100)}%</span>
           <span className="relative h-1 w-16 overflow-hidden rounded-full bg-paper-200" aria-hidden="true">
             <span className="absolute inset-y-0 left-0 rounded-full bg-ui-text" style={{ width: `${today.weekProgress * 100}%` }} />
           </span>
         </div>
       </div>
 
-      <div className="px-5 pt-6 sm:px-6">
+      <div className="relative px-5 pt-6 sm:px-6">
+        <span
+          aria-hidden="true"
+          className="tabular pointer-events-none absolute right-5 top-4 select-none text-[44px] leading-none text-ui-text/[0.05] sm:right-6 sm:text-[56px]"
+        >
+          07:40
+        </span>
         <h3 className="text-[26px] font-medium leading-none tracking-[-0.02em] text-ui-text sm:text-[30px]">
           {today.greeting}
         </h3>
@@ -72,7 +90,7 @@ function TodayCard() {
             ? "You’re done for today."
             : `${remaining.length} ${remaining.length === 1 ? "thing" : "things"} to focus on today.`}
           {remaining.length > 0 && (
-            <span className="tabular"> · {formatDuration(totalMinutes)}</span>
+            <span className="tabular text-[13px]"> · {formatDuration(totalMinutes)}</span>
           )}
         </p>
       </div>
@@ -114,8 +132,8 @@ function TodayCard() {
                   </span>
                 </span>
                 <span className="flex shrink-0 flex-col items-end gap-1">
-                  <span className="tabular text-[14px] text-ui-text">{formatDuration(item.minutes)}</span>
-                  <span className={cn("text-[11px]", item.due.startsWith("Test") ? "text-accent" : "text-ui-muted")}>
+                  <span className="tabular text-[13px] text-ui-text">{formatDuration(item.minutes)}</span>
+                  <span className={cn("tabular text-[11px]", item.due.startsWith("Test") ? "text-accent" : "text-ui-muted")}>
                     {item.due}
                   </span>
                 </span>
@@ -157,11 +175,11 @@ function TodayCard() {
       </ul>
 
       <div className="mt-4 border-t border-ui-border px-5 py-4 sm:px-6">
-        <p className="text-[12px] font-medium text-ui-muted">Later today</p>
+        <p className="type-mono-label font-medium text-ui-muted">Later today</p>
         <ul className="mt-2 flex flex-col gap-1.5">
           {today.later.map((l) => (
             <li key={l.title} className="flex items-center gap-3 text-[13px]">
-              <span className="tabular w-[64px] text-ui-muted">{l.time}</span>
+              <span className="tabular w-[64px] text-[12px] text-ui-muted">{l.time}</span>
               <span className="text-ui-text">{l.title}</span>
             </li>
           ))}

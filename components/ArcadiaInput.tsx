@@ -11,7 +11,7 @@ import Container from "./ui/Container";
 import FadeIn from "./ui/FadeIn";
 import RevealText from "./ui/RevealText";
 import SectionLabel from "./ui/SectionLabel";
-import { usePrefersReducedMotion } from "@/lib/hooks";
+import { useCardGlow, usePrefersReducedMotion } from "@/lib/hooks";
 
 type Step = "idle" | "typing" | "sent" | "thinking" | "answered";
 
@@ -19,8 +19,9 @@ const TYPE_MS = 28;
 
 export default function ArcadiaInput() {
   const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, amount: 0.5 });
+  const inView = useInView(ref, { once: true, amount: 0.4 });
   const reduced = usePrefersReducedMotion();
+  const glow = useCardGlow();
 
   const [step, setStep] = useState<Step>("idle");
   const [typed, setTyped] = useState("");
@@ -97,41 +98,70 @@ export default function ArcadiaInput() {
   };
 
   const answered = step === "answered";
+  const inFlight = step === "sent" || step === "thinking";
   const blocks = answered ? tellAfter : tellBefore;
+  const speaking = (step === "typing" || step === "idle") && typed.length > 0;
 
   return (
     <section
       id="students"
       aria-labelledby="tell-heading"
-      className="bg-white py-[120px] text-black lg:py-[160px]"
+      className="section-seam-light bg-noon py-[120px] text-day-text lg:py-[160px]"
     >
       <Container>
-        <div className="grid grid-cols-12 gap-x-6 gap-y-14">
-          <div className="col-span-12 lg:col-span-5">
+        <div className="grid grid-cols-12 gap-x-6 gap-y-10">
+          <div className="col-span-12 lg:col-span-7">
             <FadeIn>
-              <SectionLabel tone="light">Tell Arcadia</SectionLabel>
+              <SectionLabel tone="light" time="Tue 8 Sep · 3:52 pm">
+                Tell Arcadia
+              </SectionLabel>
             </FadeIn>
             <RevealText
               id="tell-heading"
               as="h2"
-              lines={["Plans change.", "Tell Arcadia once."]}
-              className="type-display mt-8 text-black"
+              lines={["Say it once.", "Arcadia sorts the rest."]}
+              accent="sorts the rest."
+              className="type-display mt-8 text-day-text"
               delay={0.1}
             />
+          </div>
+          <div className="col-span-12 lg:col-span-4 lg:col-start-9 lg:self-end">
             <FadeIn delay={0.25}>
-              <p className="type-body-lg mt-8 max-w-[480px] text-black/60">
-                Say what happened in plain words. Arcadia works out what it affects and
-                updates the plan around it.
+              <p className="type-body-lg max-w-[420px] text-day-text/60">
+                Plain words. No forms. It works out what the change touches and moves only
+                that.
               </p>
             </FadeIn>
+          </div>
+        </div>
+
+        <div ref={ref} className="mt-16 grid grid-cols-12 gap-x-6 gap-y-8 lg:mt-24">
+          {/* The student speaking: a serif quote that fills as they type. */}
+          <div className="col-span-12 lg:col-span-5">
+            <div className="flex min-h-[160px] flex-col justify-between lg:min-h-[280px]" aria-hidden="true">
+              <p className="font-serif text-[34px] italic leading-[1.05] tracking-[-0.01em] text-day-text sm:text-[44px] lg:text-[52px]">
+                <span className="text-day-text/30">“</span>
+                <span className={cn("transition-opacity duration-500", answered || inFlight ? "opacity-40" : "opacity-100")}>
+                  {typed || <span className="text-day-text/25">…</span>}
+                </span>
+                {speaking && <span className="animate-soft-pulse ml-0.5 inline-block h-[0.85em] w-[3px] translate-y-[0.1em] bg-accent" />}
+                {(answered || inFlight) && <span className="text-day-text/30">”</span>}
+              </p>
+              <p className="type-mono-label mt-6 text-day-muted">
+                {answered ? "Rearranged in one sentence." : inFlight ? "Arcadia is reading the week…" : "Example request, typed for you."}
+              </p>
+            </div>
           </div>
 
           <div className="col-span-12 lg:col-span-7">
             <FadeIn delay={0.15} y={28} duration={0.9} amount={0.2}>
-              <div ref={ref} className="rounded-[16px] border border-ui-border bg-white shadow-[0_24px_60px_-30px_rgba(0,0,0,0.18)]">
-                <div className="border-b border-ui-border p-4 sm:p-5">
+              <div
+                {...glow}
+                className="card-glow overflow-hidden rounded-[16px] border border-day-border bg-white shadow-[0_30px_80px_-30px_rgba(60,40,20,0.22)]"
+              >
+                <div className="relative border-b border-ui-border p-4 sm:p-5">
                   <AnimatePresence initial={false}>
-                    {(step === "sent" || step === "thinking" || answered) && (
+                    {(inFlight || answered) && (
                       <motion.div
                         key="exchange"
                         initial={{ opacity: 0, y: reduced ? 0 : 8 }}
@@ -159,7 +189,7 @@ export default function ArcadiaInput() {
                                 {tellArcadia.arcadia}
                               </motion.p>
                             ) : (
-                              <p className="text-[14px] text-ui-muted">Rearranging your week…</p>
+                              <p className="tabular text-[13px] text-ui-muted">Rearranging your week…</p>
                             )}
                           </div>
                         </div>
@@ -184,7 +214,7 @@ export default function ArcadiaInput() {
                       <input
                         id="tell-arcadia"
                         type="text"
-                        value={answered || step === "sent" || step === "thinking" ? "" : typed}
+                        value={answered || inFlight ? "" : typed}
                         readOnly
                         placeholder={answered ? "Tell Arcadia what changed…" : ""}
                         className="w-full bg-transparent text-[15px] leading-6 text-ui-text outline-none placeholder:text-ui-muted"
@@ -203,13 +233,13 @@ export default function ArcadiaInput() {
                     </button>
                   </form>
                   <div className="mt-2 flex items-center justify-between px-1">
-                    <p id="tell-example" className="text-[12px] text-ui-muted">
+                    <p id="tell-example" className="type-mono-label text-ui-muted">
                       Example request
                     </p>
                     <button
                       type="button"
                       onClick={reset}
-                      className="text-[12px] text-ui-muted transition-colors hover:text-ui-text"
+                      className="type-mono-label text-ui-muted transition-colors hover:text-ui-text"
                     >
                       Replay
                     </button>
@@ -226,7 +256,7 @@ export default function ArcadiaInput() {
                         <div key={day.key} className="p-4 sm:p-5">
                           <p className="flex items-baseline gap-2 text-[13px]">
                             <span className="font-medium text-ui-text">{day.label}</span>
-                            <span className="tabular text-ui-muted">{day.sub}</span>
+                            <span className="tabular text-[12px] text-ui-muted">{day.sub}</span>
                           </p>
                           <ul className="mt-3 flex min-h-[132px] flex-col gap-2">
                             <AnimatePresence initial={false}>
@@ -250,7 +280,7 @@ export default function ArcadiaInput() {
                                   <div className="flex items-center justify-between gap-2">
                                     <span className="truncate font-medium">{b.title}</span>
                                     {b.change && (
-                                      <span className="shrink-0 text-[11px] font-medium text-accent">
+                                      <span className="tabular shrink-0 text-[11px] font-medium text-accent">
                                         {CHANGE_LABELS[b.change]}
                                       </span>
                                     )}

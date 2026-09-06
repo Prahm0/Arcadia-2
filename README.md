@@ -3,9 +3,15 @@
 Marketing site for Arcadia, an AI study planner that builds a schedule around a
 student's real life and reorganises it when things change.
 
-Built with Next.js (App Router), React, TypeScript, Tailwind CSS v4 and Framer
-Motion. The star field and constellation are hand-rolled Canvas/SVG; no other
-runtime dependencies.
+Built with Next.js (App Router), React, TypeScript, Tailwind CSS v4, Framer
+Motion and Three.js (the star field). Type is Inter, with JetBrains Mono for
+anything that is a time or a label and Instrument Serif italic for one
+emphasised word per headline.
+
+The page follows one sample week (7–11 September) from top to bottom and the
+background moves through the hours of the day: night → dawn → noon → evening →
+dusk → night. Section surfaces are the `night-*`, `dusk`,
+`dawn`, `noon` and `afternoon` tokens in `app/globals.css`.
 
 ## Run it
 
@@ -23,22 +29,23 @@ dependency that fails on some Windows setups; nothing in the app needs it.
 
 ```
 app/
-  layout.tsx          fonts, metadata, viewport
-  page.tsx            section order
-  globals.css         design tokens, type scale, hero entrance keyframes
+  layout.tsx          fonts (Inter, JetBrains Mono, Instrument Serif), metadata
+  page.tsx            section order (one week, night to night)
+  globals.css         hour tokens, type scale, grain, marquee and hero keyframes
   api/waitlist/       waitlist route handler (the only server code)
   privacy/, terms/    early-access legal pages
 components/
-  Hero, HeroInterface, Starfield, Constellation
-  ProblemSection, ThinkingSection (+ ThinkingVisual), TodayDemo
-  ScheduleDemo, ScheduleEvent, ArcadiaInput, ConnectionsSection
-  MentorSection, BrandStatement, FinalCTA, Footer, Navbar
+  Hero, HeroInterface, LiveNow, Starfield, Constellation
+  ProblemSection (+ RealLifeMarquee), ThinkingSection (+ ThinkingVisual), TodayDemo
+  ArcadiaInput, ScheduleDemo, ScheduleEvent, ConnectionsSection
+  MentorSection, FinalCTA, Footer, Navbar
   EarlyAccessProvider, EarlyAccessDialog, WaitlistForm
   ui/  Button, SectionLabel, RevealText, FadeIn, Container, LazyMount
 lib/
   animation.ts        shared easing and durations
   schedule.ts         schedule model, sample week, the "training moved" change set
   demo-data.ts        Today, Tell Arcadia and AI Mentor content
+  real-life.ts        the interruptions in the Real life marquee
   stars.ts            deterministic star generation
   constellation.ts, connections.ts, thinking.ts   scroll-sequence geometry
   hooks.ts            media queries, reduced motion, scroll progress

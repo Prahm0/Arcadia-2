@@ -10,8 +10,8 @@ import Button from "./ui/Button";
 
 const links = [
   { label: "Product", href: "#today" },
-  { label: "How it works", href: "#how-it-works" },
   { label: "Students", href: "#students" },
+  { label: "How it works", href: "#how-it-works" },
   { label: "About", href: "#about" },
 ];
 
@@ -47,14 +47,14 @@ export default function Navbar() {
         className={cn(
           "transition-[background-color,border-color,backdrop-filter] duration-500 ease-[var(--ease-out-expo)]",
           scrolled || menuOpen
-            ? "border-b border-white/[0.08] bg-black/65 backdrop-blur-xl"
+            ? "border-b border-white/[0.08] bg-night-900/70 backdrop-blur-xl"
             : "border-b border-transparent bg-transparent",
         )}
       >
         <div className="mx-auto flex h-[72px] w-full max-w-[1440px] items-center justify-between px-5 sm:px-8 lg:h-20 lg:px-12 2xl:px-16">
           <Link
             href="#top"
-            className="text-[17px] font-medium tracking-[-0.02em] text-white"
+            className="font-serif text-[24px] italic leading-none tracking-[-0.01em] text-white"
             aria-label="Arcadia — back to top"
             onClick={() => setMenuOpen(false)}
           >
@@ -67,7 +67,7 @@ export default function Navbar() {
                 <li key={l.href}>
                   <a
                     href={l.href}
-                    className="text-[14px] text-white/65 transition-colors duration-200 hover:text-white"
+                    className="type-mono-label text-[13px] text-white/65 transition-colors duration-200 hover:text-white"
                   >
                     {l.label}
                   </a>
@@ -123,7 +123,7 @@ export default function Navbar() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3, ease: EASE_OUT }}
-            className="fixed inset-x-0 bottom-0 top-[72px] z-40 flex flex-col bg-black/95 backdrop-blur-xl lg:hidden"
+            className="fixed inset-x-0 bottom-0 top-[72px] z-40 flex flex-col bg-night-900/95 backdrop-blur-xl lg:hidden"
           >
             <ul className="flex flex-col px-5 pt-6 sm:px-8">
               {links.map((l, i) => (
@@ -136,9 +136,10 @@ export default function Navbar() {
                   <a
                     href={l.href}
                     onClick={() => setMenuOpen(false)}
-                    className="block border-b border-white/[0.08] py-5 text-[28px] font-medium tracking-[-0.02em] text-white"
+                    className="flex items-baseline justify-between border-b border-white/[0.08] py-5 text-[28px] font-medium tracking-[-0.02em] text-white"
                   >
                     {l.label}
+                    <span className="type-mono-label text-white/35">0{i + 1}</span>
                   </a>
                 </motion.li>
               ))}

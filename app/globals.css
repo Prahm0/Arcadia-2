@@ -11,6 +11,19 @@
   --color-paper-100: #f8f8f8;
   --color-paper-200: #eeeeee;
 
+  /* Hours of the day. The page moves through them from top to bottom. */
+  --color-night-900: #000000;
+  --color-night-800: #080c14;
+  --color-dusk: #10162a;
+  --color-dawn: #f6f1ea;
+  --color-noon: #fbfaf7;
+  --color-afternoon: #efe9e1;
+
+  /* Warm near-black for text on the paper surfaces. */
+  --color-day-text: #171512;
+  --color-day-muted: #6f6a63;
+  --color-day-border: #e4ddd3;
+
   --color-accent: #7c5cff;
   --color-accent-300: #9d87ff;
   --color-accent-200: #c6b8ff;
@@ -23,8 +36,15 @@
   --font-sans:
     var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono:
+    var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, Consolas,
+    "Liberation Mono", monospace;
+  --font-serif:
+    var(--font-instrument), "Iowan Old Style", "Palatino Linotype", Palatino,
+    Georgia, serif;
 
   --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out-quart: cubic-bezier(0.76, 0, 0.24, 1);
 
   --breakpoint-2xl: 90rem;
 }
@@ -42,13 +62,27 @@
   }
 
   body {
-    background: var(--color-black);
+    position: relative;
+    background: var(--color-night-900);
     color: var(--color-white);
     font-family: var(--font-sans);
     font-feature-settings: "cv11", "ss01", "ss03";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+  }
+
+  /* Film grain over everything: keeps the dark surfaces from reading as flat. */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    pointer-events: none;
+    opacity: 0.035;
+    mix-blend-mode: soft-light;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 180px 180px;
   }
 
   ::selection {
@@ -71,27 +105,27 @@
 
 @utility type-hero {
   font-size: clamp(40px, 11.3vw, 56px);
-  line-height: 0.96;
+  line-height: 0.98;
   letter-spacing: -0.04em;
   font-weight: 500;
   text-wrap: balance;
 
   @media (width >= 40rem) {
     font-size: clamp(72px, 8vw, 116px);
-    line-height: 0.94;
+    line-height: 0.96;
   }
 }
 
 @utility type-display {
   font-size: clamp(40px, 11vw, 48px);
-  line-height: 1;
+  line-height: 1.02;
   letter-spacing: -0.035em;
   font-weight: 500;
   text-wrap: balance;
 
   @media (width >= 40rem) {
     font-size: clamp(48px, 6vw, 88px);
-    line-height: 0.98;
+    line-height: 1;
   }
 }
 
@@ -125,15 +159,44 @@
 }
 
 @utility type-eyebrow {
-  font-size: 13px;
+  font-family: var(--font-mono);
+  font-size: 12px;
   line-height: 1;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.06em;
   font-weight: 500;
 }
 
+/* Mono for anything that is a time, a date, a count or a label. */
+@utility type-mono-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  font-weight: 400;
+}
+
 @utility tabular {
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+/* One emphasised word per headline, set in the serif italic. */
+@utility accent-serif {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1.08em;
+  letter-spacing: -0.01em;
+  line-height: 0.9;
+}
+
+/* Hairline between sections so surface changes read as deliberate. */
+@utility section-seam {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+@utility section-seam-light {
+  border-top: 1px solid rgba(23, 21, 18, 0.08);
 }
 
 /* Hero entrance runs in CSS so the first paint never waits for hydration. */
@@ -193,6 +256,61 @@
   animation-delay: var(--d, 0s);
 }
 
+/* Slow aurora behind the hero stars. */
+@keyframes aurora-drift {
+  0% {
+    transform: translate3d(-6%, -4%, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(5%, 3%, 0) rotate(8deg);
+  }
+  100% {
+    transform: translate3d(-6%, -4%, 0) rotate(0deg);
+  }
+}
+
+@utility aurora {
+  animation: aurora-drift 40s ease-in-out infinite;
+  will-change: transform;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+/* Marquee rows in the Real life section. */
+@keyframes marquee-left {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes marquee-right {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@utility marquee-left {
+  animation: marquee-left var(--marquee-duration, 60s) linear infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+@utility marquee-right {
+  animation: marquee-right var(--marquee-duration, 60s) linear infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
 @keyframes arcadia-ping {
   0% {
     transform: scale(0.6);
@@ -206,6 +324,45 @@
 
 @utility animate-ping-once {
   animation: arcadia-ping 1.6s var(--ease-out-expo) 1 both;
+}
+
+@keyframes soft-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@utility animate-soft-pulse {
+  animation: soft-pulse 2.4s ease-in-out infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+/* Pointer-tracked highlight on product cards. */
+@utility card-glow {
+  position: relative;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 1;
+    opacity: var(--glow, 0);
+    transition: opacity 0.5s var(--ease-out-expo);
+    background: radial-gradient(
+      260px circle at var(--mx, 50%) var(--my, 50%),
+      rgba(124, 92, 255, 0.09),
+      transparent 70%
+    );
+  }
 }
 
 /* Fragments that resolve into place, driven by a single --p custom property on the parent. */

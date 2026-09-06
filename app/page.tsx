@@ -1,5 +1,4 @@
 import ArcadiaInput from "@/components/ArcadiaInput";
-import BrandStatement from "@/components/BrandStatement";
 import ConnectionsSection from "@/components/ConnectionsSection";
 import EarlyAccessProvider from "@/components/EarlyAccessProvider";
 import FinalCTA from "@/components/FinalCTA";
@@ -13,6 +12,10 @@ import ThinkingSection from "@/components/ThinkingSection";
 import TodayDemo from "@/components/TodayDemo";
 import LazyMount from "@/components/ui/LazyMount";
 
+/**
+ * One week, top to bottom. The background follows the hours of the day:
+ * night → dawn → noon → evening lamp light → dusk → night.
+ */
 export default function Home() {
   return (
     <EarlyAccessProvider>
@@ -22,15 +25,14 @@ export default function Home() {
         <ProblemSection />
         <ThinkingSection />
         <TodayDemo />
-        <LazyMount minHeight="100svh" className="bg-black">
+        <ArcadiaInput />
+        <MentorSection />
+        <LazyMount minHeight="100svh" className="bg-dusk">
           <ScheduleDemo />
         </LazyMount>
-        <ArcadiaInput />
-        <LazyMount minHeight="340vh" className="bg-black">
+        <LazyMount minHeight="260vh" className="bg-dusk">
           <ConnectionsSection />
         </LazyMount>
-        <MentorSection />
-        <BrandStatement />
         <FinalCTA />
       </main>
       <Footer />

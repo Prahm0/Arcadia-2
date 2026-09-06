@@ -119,11 +119,11 @@ function Card({ staticBlocks }: { staticBlocks: ScheduleBlock[] }) {
       <div className="flex h-11 items-center justify-between border-b border-ui-border px-4">
         <div className="flex items-center gap-4">
           <span className="text-[13px] font-medium">Week 7</span>
-          <span className="text-[13px] text-ui-muted">7 – 11 September</span>
+          <span className="tabular text-[12px] text-ui-muted">7 – 11 Sep</span>
         </div>
-        <div className="flex items-center gap-2 text-[12px] text-ui-muted">
-          <span aria-hidden="true" className="size-1.5 rounded-full bg-accent" />
-          Up to date
+        <div className="tabular flex items-center gap-2 text-[11px] text-ui-muted">
+          <span aria-hidden="true" className="animate-soft-pulse size-1.5 rounded-full bg-accent" />
+          <span className="hidden sm:inline">Live ·</span> Up to date
         </div>
       </div>
 

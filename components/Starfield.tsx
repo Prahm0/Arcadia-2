@@ -15,8 +15,10 @@ interface StarfieldProps {
   parallax?: boolean;
   /** Bias stars towards the centre for non-hero uses. */
   concentrate?: boolean;
-  /** Global opacity multiplier. */
+  /** Global opacity multiplier, 0–1. */
   intensity?: number;
+  /** Scales star size and alpha above the default so the field reads instantly. */
+  brightness?: number;
   /** Proportion of peach and amber stars, from 0 to 1. */
   warmStarRatio?: number;
   /** Radians per second for the field's very slow drift cycle. */
@@ -96,6 +98,7 @@ export default function Starfield({
   parallax = false,
   concentrate = false,
   intensity = 1,
+  brightness = 1,
   warmStarRatio = 0.15,
   driftSpeed = 0.008,
 }: StarfieldProps) {
@@ -139,6 +142,7 @@ export default function Starfield({
       random,
       concentrate,
       intensity,
+      brightness,
       warmStarRatio,
     );
 
@@ -327,6 +331,7 @@ export default function Starfield({
       renderer.dispose();
     };
   }, [
+    brightness,
     concentrate,
     constellationCount,
     count,
@@ -344,7 +349,7 @@ export default function Starfield({
       ref={canvasRef}
       aria-hidden="true"
       className={cn(
-        "pointer-events-none absolute inset-0 block h-full w-full opacity-0 transition-opacity duration-[1400ms] ease-out",
+        "pointer-events-none absolute inset-0 block h-full w-full opacity-0 transition-opacity duration-[450ms] ease-out",
         className,
       )}
     />
@@ -357,6 +362,7 @@ function buildStarData(
   random: () => number,
   concentrate: boolean,
   intensity: number,
+  brightness: number,
   warmStarRatio: number,
 ) {
   const positions = new Float32Array(count * 3);
@@ -386,8 +392,8 @@ function buildStarData(
     colours[offset] = colour.r;
     colours[offset + 1] = colour.g;
     colours[offset + 2] = colour.b;
-    sizes[starIndex] = size;
-    alphas[starIndex] = alpha * clamp(intensity, 0, 1);
+    sizes[starIndex] = size * Math.max(0.1, brightness);
+    alphas[starIndex] = Math.min(1, alpha * clamp(intensity, 0, 1) * Math.max(0, brightness));
     phases[starIndex] = random() * Math.PI * 2;
     twinkleSpeeds[starIndex] = randomBetween(random, 0.28, 0.68);
   };

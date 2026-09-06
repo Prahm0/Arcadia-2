@@ -6,7 +6,7 @@ import {
   useScroll,
   type MotionValue,
 } from "framer-motion";
-import { useEffect, useState, type RefObject } from "react";
+import { useCallback, useEffect, useState, type PointerEvent, type RefObject } from "react";
 
 type ScrollOffset = NonNullable<Parameters<typeof useScroll>[0]>["offset"];
 
@@ -59,4 +59,32 @@ export function usePrefersReducedMotion(): boolean {
 
 export function useIsDesktop(): boolean {
   return useMediaQuery("(min-width: 1024px)");
+}
+
+/**
+ * Pointer-tracked highlight for product cards. Spread the returned handlers
+ * onto an element that carries the `card-glow` utility. Fine pointers only;
+ * touch and reduced motion get no glow.
+ */
+export function useCardGlow() {
+  const reduced = usePrefersReducedMotion();
+  const fine = useMediaQuery("(hover: hover) and (pointer: fine)");
+  const active = fine && !reduced;
+
+  const onPointerMove = useCallback(
+    (e: PointerEvent<HTMLElement>) => {
+      if (!active) return;
+      const rect = e.currentTarget.getBoundingClientRect();
+      e.currentTarget.style.setProperty("--mx", `${e.clientX - rect.left}px`);
+      e.currentTarget.style.setProperty("--my", `${e.clientY - rect.top}px`);
+      e.currentTarget.style.setProperty("--glow", "1");
+    },
+    [active],
+  );
+
+  const onPointerLeave = useCallback((e: PointerEvent<HTMLElement>) => {
+    e.currentTarget.style.setProperty("--glow", "0");
+  }, []);
+
+  return { onPointerMove, onPointerLeave };
 }

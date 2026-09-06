@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useMotionTemplate, useTransform, type MotionStyle, type MotionValue } from "framer-motion";
+import { easeInOut, easeOut, motion, useMotionTemplate, useTransform, type MotionStyle, type MotionValue } from "framer-motion";
 import {
   DAYS,
   DAY_LABELS,
@@ -9,6 +9,7 @@ import {
   type ScheduleBlock,
 } from "@/lib/schedule";
 import { GridEvent } from "./ScheduleEvent";
+import ArcadiaMark from "@/components/ui/ArcadiaMark";
 
 /**
  * Scatter offsets (vw, vh) for the fragments that resolve into the week.
@@ -76,7 +77,10 @@ function AnimatedFrame({ progress, staticBlocks, fragments }: FrameParts & { pro
   const cardFilter = useMotionTemplate`blur(${blur}px)`;
   const cardScale = useTransform(progress, [0.42, 0.85], [0.965, 1]);
   const cardY = useTransform(progress, [0.42, 0.85], [48, 0]);
-  const fragmentsOpacity = useTransform(progress, [0.05, 0.3], [0, 1]);
+  /* Fragments wait for the stars' word to finish, then drift in with the card. */
+  const fragmentsOpacity = useTransform(progress, [0.46, 0.72], [0, 1], { ease: easeInOut });
+  const fragmentsBlur = useTransform(progress, [0.46, 0.78], [10, 0], { ease: easeOut });
+  const fragmentsFilter = useMotionTemplate`blur(${fragmentsBlur}px)`;
   const resolve = useTransform(progress, [0.6, 0.96], [0, 1]);
 
   return (
@@ -90,7 +94,7 @@ function AnimatedFrame({ progress, staticBlocks, fragments }: FrameParts & { pro
       <motion.div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
-        style={{ opacity: fragmentsOpacity, y: cardY, scale: cardScale, "--p": resolve } as MotionStyle}
+        style={{ opacity: fragmentsOpacity, filter: fragmentsFilter, y: cardY, scale: cardScale, "--p": resolve } as MotionStyle}
       >
         <Fragments fragments={fragments} />
       </motion.div>
@@ -122,7 +126,7 @@ function Card({ staticBlocks }: { staticBlocks: ScheduleBlock[] }) {
           <span className="tabular text-[12px] text-ui-muted">7 – 11 Sep</span>
         </div>
         <div className="tabular flex items-center gap-2 text-[11px] text-ui-muted">
-          <span aria-hidden="true" className="animate-soft-pulse size-1.5 rounded-full bg-accent" />
+          <ArcadiaMark size={9} animate="twinkle" className="text-accent" />
           <span className="hidden sm:inline">Live ·</span> Up to date
         </div>
       </div>

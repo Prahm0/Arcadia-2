@@ -1,4 +1,5 @@
 import { cn } from "@/lib/cn";
+import ArcadiaMark from "@/components/ui/ArcadiaMark";
 
 interface SectionLabelProps {
   children?: React.ReactNode;
@@ -7,7 +8,7 @@ interface SectionLabelProps {
   /** A moment in the sample week, e.g. "Tue 8 Sep · 7:40 am". */
   time?: string;
   tone?: "dark" | "light";
-  /** Show the tiny Arcadia intelligence dot before the label. */
+  /** Show Arcadia's mark before the label. */
   dot?: boolean;
   className?: string;
 }
@@ -32,12 +33,7 @@ export default function SectionLabel({
         className,
       )}
     >
-      {dot && (
-        <span
-          aria-hidden="true"
-          className="inline-block size-1.5 rounded-full bg-accent shadow-[0_0_8px_rgba(124,92,255,0.6)]"
-        />
-      )}
+      {dot && <ArcadiaMark size={10} className={tone === "dark" ? "text-accent-200" : "text-accent"} />}
       {index && <span>{index}</span>}
       {index && (children || time) && <span aria-hidden="true">—</span>}
       {time && (

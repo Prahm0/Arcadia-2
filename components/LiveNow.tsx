@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
+import ArcadiaMark from "@/components/ui/ArcadiaMark";
 
 interface LiveNowProps {
   className?: string;
-  /** Show the pulsing accent dot before the time. */
+  /** Show Arcadia's twinkling mark before the time. */
   dot?: boolean;
 }
 
@@ -35,12 +36,7 @@ export default function LiveNow({ className, dot = true }: LiveNowProps) {
 
   return (
     <span className={cn("type-eyebrow inline-flex items-center gap-3", className)}>
-      {dot && (
-        <span
-          aria-hidden="true"
-          className="animate-soft-pulse size-1.5 rounded-full bg-accent shadow-[0_0_10px_rgba(124,92,255,0.7)]"
-        />
-      )}
+      {dot && <ArcadiaMark size={10} animate="twinkle" className="text-accent-200" />}
       <time suppressHydrationWarning dateTime={now ? new Date().toISOString() : undefined}>
         {now ?? "— — · —:—"}
       </time>

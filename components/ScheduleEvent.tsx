@@ -11,6 +11,7 @@ import {
   type ScheduleBlock,
 } from "@/lib/schedule";
 import { cn } from "@/lib/cn";
+import ArcadiaMark from "@/components/ui/ArcadiaMark";
 
 const categoryStyles: Record<Category, string> = {
   school: "bg-ui-surface text-ui-muted border-transparent",
@@ -59,7 +60,7 @@ export const GridEvent = forwardRef<HTMLDivElement, GridEventProps>(
           <div className="flex items-start justify-between gap-1">
             <span className="truncate font-medium">{block.title}</span>
             {block.category === "exam" && (
-              <span aria-hidden="true" className="mt-1 size-1.5 shrink-0 rounded-full bg-accent-300" />
+              <ArcadiaMark size={8} className="mt-1 text-accent" />
             )}
             {label && (
               <span className={cn("shrink-0 font-medium text-accent", dense ? "text-[9px]" : "text-[11px]")}>

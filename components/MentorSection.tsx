@@ -5,6 +5,7 @@ import { useState } from "react";
 import { EASE_OUT } from "@/lib/animation";
 import { mentorDefaultId, mentorExamples } from "@/lib/demo-data";
 import { cn } from "@/lib/cn";
+import ArcadiaMark from "@/components/ui/ArcadiaMark";
 import { ArcadiaIndicator } from "./ScheduleDemo";
 import Container from "./ui/Container";
 import FadeIn from "./ui/FadeIn";
@@ -73,10 +74,7 @@ export default function MentorSection() {
                           : "border-day-text/15 bg-white/60 text-day-text/70 hover:border-day-text/40 hover:text-day-text",
                       )}
                     >
-                      <span
-                        aria-hidden="true"
-                        className={cn("size-1.5 rounded-full", isActive ? "bg-accent-200" : "bg-day-text/20")}
-                      />
+                      <ArcadiaMark size={9} className={isActive ? "text-accent-200" : "text-day-text/25"} />
                       {m.prompt}
                     </button>
                   </li>

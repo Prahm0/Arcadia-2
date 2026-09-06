@@ -16,6 +16,7 @@ import {
   type ScheduleBlock,
 } from "@/lib/schedule";
 import { cn } from "@/lib/cn";
+import ArcadiaMark from "@/components/ui/ArcadiaMark";
 import { GridEvent, RowEvent } from "./ScheduleEvent";
 import Container from "./ui/Container";
 import FadeIn from "./ui/FadeIn";
@@ -168,7 +169,7 @@ function StatusLine({ showBanner, updated, reduced }: { showBanner: boolean; upd
             transition={{ duration: 0.45, ease: EASE_OUT }}
             className="flex items-center gap-2 text-[13px] text-ui-text"
           >
-            <span aria-hidden="true" className="size-1.5 rounded-full bg-ui-text" />
+            <span aria-hidden="true" className="size-1.5 shrink-0 border border-ui-text" />
             <span className="type-mono-label hidden text-ui-muted sm:inline">Calendar</span>
             <span className="hidden sm:inline">Basketball training moved to 5:30 PM.</span>
             <span className="tabular text-[12px] sm:hidden">Training → 5:30 pm</span>
@@ -192,14 +193,9 @@ function StatusLine({ showBanner, updated, reduced }: { showBanner: boolean; upd
   );
 }
 
-/** Tiny purple Arcadia intelligence indicator. */
+/** Arcadia's mark, sparking in: "Arcadia just did this". */
 export function ArcadiaIndicator({ className }: { className?: string }) {
-  return (
-    <span aria-hidden="true" className={cn("relative flex size-3 items-center justify-center", className)}>
-      <span className="animate-ping-once absolute inset-0 rounded-full bg-accent/50 motion-reduce:hidden" />
-      <span className="size-1.5 rounded-full bg-accent shadow-[0_0_8px_rgba(124,92,255,0.8)]" />
-    </span>
-  );
+  return <ArcadiaMark size={12} animate="spark" className={cn("text-accent", className)} />;
 }
 
 function WeekGrid({ blocks, changedIds, reduced }: { blocks: ScheduleBlock[]; changedIds: Set<string>; reduced: boolean }) {
@@ -351,7 +347,7 @@ function ChangeStrip({ applied, updated, reduced }: { applied: number; updated: 
               transition={{ duration: 0.5, ease: EASE_OUT }}
               className="flex items-center gap-2 text-[12px]"
             >
-              <span aria-hidden="true" className="size-1 rounded-full bg-accent" />
+              <ArcadiaMark size={8} className="text-accent" />
               <span className="text-ui-text">{c.label}</span>
               <span className="tabular text-[11px] text-ui-muted">{c.detail}</span>
             </motion.li>

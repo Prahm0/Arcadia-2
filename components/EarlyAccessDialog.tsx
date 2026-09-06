@@ -5,6 +5,7 @@ import { useEffect, useRef, type KeyboardEvent } from "react";
 import { EASE_OUT } from "@/lib/animation";
 import WaitlistForm from "./WaitlistForm";
 import { usePrefersReducedMotion } from "@/lib/hooks";
+import ArcadiaMark from "@/components/ui/ArcadiaMark";
 
 export type DialogIntent = "access" | "login";
 
@@ -97,7 +98,7 @@ export default function EarlyAccessDialog({ open, intent, onClose }: EarlyAccess
             <div className="flex items-start justify-between gap-6">
               <div>
                 <p className="type-eyebrow flex items-center gap-2 text-white/50">
-                  <span aria-hidden="true" className="size-1.5 rounded-full bg-accent" />
+                  <ArcadiaMark size={10} className="text-accent-200" />
                   Arcadia
                 </p>
                 <h2 id="early-access-title" className="mt-4 text-[26px] font-medium leading-[1.1] tracking-[-0.02em] text-white sm:text-[30px]">

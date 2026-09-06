@@ -1,11 +1,12 @@
 import { marqueeRows, type LifeEvent, type LifeKind } from "@/lib/real-life";
 import { cn } from "@/lib/cn";
+import ArcadiaMark from "@/components/ui/ArcadiaMark";
 
-const kindDot: Record<LifeKind, string> = {
-  sport: "bg-white/70",
-  school: "bg-accent-300 shadow-[0_0_8px_rgba(157,135,255,0.6)]",
-  family: "bg-[#ffc28a]",
-  life: "bg-white/30",
+const kindTone: Record<LifeKind, string> = {
+  sport: "text-white/70",
+  school: "text-accent-300",
+  family: "text-[#ffc28a]",
+  life: "text-white/30",
 };
 
 const kindLabel: Record<LifeKind, string> = {
@@ -35,7 +36,7 @@ export default function RealLifeMarquee({ className }: { className?: string }) {
       <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 px-[12%]" aria-label="Legend">
         {(Object.keys(kindLabel) as LifeKind[]).map((k) => (
           <li key={k} className="type-mono-label flex items-center gap-2 text-white/45">
-            <span aria-hidden="true" className={cn("size-1.5 rounded-full", kindDot[k])} />
+            <ArcadiaMark size={9} className={kindTone[k]} />
             {kindLabel[k]}
           </li>
         ))}
@@ -61,7 +62,7 @@ function Row({ items, reverse }: { items: LifeEvent[]; reverse: boolean }) {
             aria-hidden={i >= items.length || undefined}
             className="flex shrink-0 items-center gap-2.5 rounded-full border border-white/[0.09] bg-white/[0.03] px-4 py-2.5 font-mono text-[13px] text-white/80 backdrop-blur-sm"
           >
-            <span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full", kindDot[e.kind])} />
+            <ArcadiaMark size={9} className={kindTone[e.kind]} />
             {e.label}
           </li>
         ))}

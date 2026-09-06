@@ -54,6 +54,10 @@ export default function Hero() {
         >
           <Starfield
             parallax
+            interactive
+            progress={reduced ? undefined : scrollYProgress}
+            revealWord="ARCADIA"
+            revealRange={[0.1, 0.4]}
             count={3000}
             mobileCount={1800}
             constellationCount={9}

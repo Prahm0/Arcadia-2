@@ -7,6 +7,7 @@ export const EASE_CSS = "cubic-bezier(0.22, 1, 0.36, 1)";
 /** Shared durations in seconds. */
 export const DUR = {
   micro: 0.2,
+  snap: 0.45,
   entrance: 0.6,
   section: 0.9,
   cinematic: 1.6,

@@ -5,6 +5,7 @@ import { useId, useState, type FormEvent } from "react";
 import { isValidEmail, submitWaitlist } from "@/lib/waitlist";
 import { EASE_OUT } from "@/lib/animation";
 import { cn } from "@/lib/cn";
+import ArcadiaMark from "@/components/ui/ArcadiaMark";
 import { usePrefersReducedMotion } from "@/lib/hooks";
 
 type Status = "idle" | "submitting" | "success" | "error";
@@ -78,10 +79,7 @@ export default function WaitlistForm({
               dark ? "border-white/15 text-white" : "border-black/10 text-black",
             )}
           >
-            <span
-              aria-hidden="true"
-              className="size-2 shrink-0 rounded-full bg-accent shadow-[0_0_10px_rgba(124,92,255,0.7)]"
-            />
+            <ArcadiaMark size={12} animate="spark" className={dark ? "text-accent-200" : "text-accent"} />
             <p className="text-[15px]">
               You&rsquo;re on the list. We&rsquo;ll email{" "}
               <span className="font-medium">{email.trim()}</span> when your invite is ready.

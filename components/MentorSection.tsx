@@ -5,77 +5,92 @@ import { useState } from "react";
 import { EASE_OUT } from "@/lib/animation";
 import { mentorDefaultId, mentorExamples } from "@/lib/demo-data";
 import { cn } from "@/lib/cn";
+import ArcadiaMark from "@/components/ui/ArcadiaMark";
 import { ArcadiaIndicator } from "./ScheduleDemo";
 import Container from "./ui/Container";
 import FadeIn from "./ui/FadeIn";
 import RevealText from "./ui/RevealText";
 import SectionLabel from "./ui/SectionLabel";
-import { usePrefersReducedMotion } from "@/lib/hooks";
-
-const understands = ["time", "priorities", "deadlines", "workload", "real life"];
+import { useCardGlow, usePrefersReducedMotion } from "@/lib/hooks";
 
 export default function MentorSection() {
   const [activeId, setActiveId] = useState(mentorDefaultId);
   const reduced = usePrefersReducedMotion();
+  const glow = useCardGlow();
   const active = mentorExamples.find((m) => m.id === activeId) ?? mentorExamples[0];
 
   return (
-    <section id="mentor" aria-labelledby="mentor-heading" className="bg-white py-[120px] text-black lg:py-[160px]">
+    <section
+      id="mentor"
+      aria-labelledby="mentor-heading"
+      className="section-seam-light bg-afternoon py-[120px] text-day-text lg:py-[160px]"
+    >
       <Container>
-        <div className="grid grid-cols-12 gap-x-6">
-          <div className="col-span-12 lg:col-span-8">
+        <div className="grid grid-cols-12 gap-x-6 gap-y-10">
+          <div className="col-span-12 lg:col-span-6">
             <FadeIn>
-              <SectionLabel tone="light">AI Mentor</SectionLabel>
+              <SectionLabel tone="light" time="Tue 8 Sep · 9:10 pm">
+                AI Mentor
+              </SectionLabel>
             </FadeIn>
             <RevealText
               id="mentor-heading"
               as="h2"
-              lines={["More than a planner."]}
-              className="type-display mt-8 text-black"
+              lines={["Ask it why."]}
+              accent="why."
+              className="type-display mt-8 text-day-text"
               delay={0.1}
             />
+          </div>
+          <div className="col-span-12 lg:col-span-5 lg:col-start-8 lg:self-end">
             <FadeIn delay={0.2}>
-              <p className="type-title mt-6 text-black/45">Ask Arcadia what to do next.</p>
+              <p className="type-body-lg max-w-[440px] text-day-text/60">
+                Not a chatbot. A mentor that already knows your week, so every answer comes
+                with a reason.
+              </p>
             </FadeIn>
           </div>
         </div>
 
-        <div className="mt-16 grid grid-cols-12 gap-x-6 gap-y-10 lg:mt-24">
-          <div className="col-span-12 lg:col-span-5">
-            <FadeIn delay={0.1}>
-              <ul className="flex flex-col" aria-label="Example questions">
-                {mentorExamples.map((m) => {
-                  const isActive = m.id === activeId;
-                  return (
-                    <li key={m.id}>
-                      <button
-                        type="button"
-                        onClick={() => setActiveId(m.id)}
-                        aria-pressed={isActive}
-                        className={cn(
-                          "group flex w-full items-center gap-4 border-t border-black/[0.08] py-4 text-left transition-colors duration-200",
-                          isActive ? "text-black" : "text-black/45 hover:text-black",
-                        )}
-                      >
-                        <span
-                          aria-hidden="true"
-                          className={cn(
-                            "size-1.5 shrink-0 rounded-full transition-colors duration-200",
-                            isActive ? "bg-accent" : "bg-black/15 group-hover:bg-black/30",
-                          )}
-                        />
-                        <span className="text-[17px] leading-snug sm:text-[18px]">{m.prompt}</span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </FadeIn>
+        <FadeIn delay={0.1} className="mt-14 lg:mt-20">
+          <div
+            className="-mx-5 overflow-x-auto px-5 pb-2 [scrollbar-width:none] sm:-mx-8 sm:px-8 lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden"
+            role="group"
+            aria-label="Example questions"
+          >
+            <ul className="flex w-max gap-2 lg:w-auto lg:flex-wrap">
+              {mentorExamples.map((m) => {
+                const isActive = m.id === activeId;
+                return (
+                  <li key={m.id}>
+                    <button
+                      type="button"
+                      onClick={() => setActiveId(m.id)}
+                      aria-pressed={isActive}
+                      className={cn(
+                        "flex items-center gap-2.5 whitespace-nowrap rounded-full border px-4 py-2.5 font-mono text-[13px] transition-[background-color,color,border-color] duration-200",
+                        isActive
+                          ? "border-day-text bg-day-text text-white"
+                          : "border-day-text/15 bg-white/60 text-day-text/70 hover:border-day-text/40 hover:text-day-text",
+                      )}
+                    >
+                      <ArcadiaMark size={9} className={isActive ? "text-accent-200" : "text-day-text/25"} />
+                      {m.prompt}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
+        </FadeIn>
 
-          <div className="col-span-12 lg:col-span-6 lg:col-start-7">
+        <div className="mt-8 grid grid-cols-12 gap-x-6">
+          <div className="col-span-12 lg:col-span-8">
             <FadeIn delay={0.2} y={24}>
-              <div className="rounded-[16px] border border-ui-border bg-white p-5 shadow-[0_24px_60px_-30px_rgba(0,0,0,0.18)] sm:p-7">
+              <div
+                {...glow}
+                className="card-glow overflow-hidden rounded-[16px] border border-day-border bg-white p-5 shadow-[0_30px_80px_-30px_rgba(60,40,20,0.22)] sm:p-7"
+              >
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.div
                     key={active.id}
@@ -83,29 +98,30 @@ export default function MentorSection() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: reduced ? 0 : -6 }}
                     transition={{ duration: 0.4, ease: EASE_OUT }}
+                    className="relative"
                   >
-                    <p className="text-[14px] text-ui-muted">You asked</p>
-                    <p className="mt-1.5 text-[17px] font-medium text-ui-text">{active.prompt}</p>
+                    <p className="type-mono-label text-ui-muted">You asked</p>
+                    <p className="mt-1.5 font-serif text-[24px] italic leading-tight text-ui-text sm:text-[28px]">
+                      {active.prompt}
+                    </p>
 
-                    <div className="mt-6 flex items-start gap-3">
-                      <span className="mt-[7px]">
+                    <div className="mt-7 flex items-start gap-3">
+                      <span className="mt-[9px]">
                         <ArcadiaIndicator />
                       </span>
-                      <p className="text-[17px] leading-relaxed text-ui-text">{active.response}</p>
+                      <p className="text-[18px] leading-relaxed text-ui-text sm:text-[20px]">{active.response}</p>
                     </div>
 
-                    <div className="mt-6 border-t border-ui-border pt-4">
-                      <p className="text-[12px] font-medium text-ui-muted">Based on</p>
-                      <ul className="mt-2 flex flex-wrap gap-2">
-                        {active.basis.map((b) => (
-                          <li
-                            key={b}
-                            className="rounded-[6px] border border-ui-border px-2.5 py-1 text-[12px] text-ui-text"
-                          >
-                            {b}
-                          </li>
-                        ))}
-                      </ul>
+                    <div className="mt-7 flex flex-wrap items-center gap-2 border-t border-ui-border pt-4">
+                      <span className="type-mono-label mr-2 text-ui-muted">Based on</span>
+                      {active.basis.map((b) => (
+                        <span
+                          key={b}
+                          className="tabular rounded-[6px] border border-ui-border bg-ui-surface px-2.5 py-1 text-[12px] text-ui-text"
+                        >
+                          {b}
+                        </span>
+                      ))}
                     </div>
                   </motion.div>
                 </AnimatePresence>
@@ -114,20 +130,13 @@ export default function MentorSection() {
           </div>
         </div>
 
-        <FadeIn delay={0.1} className="mt-28 lg:mt-40">
-          <p className="type-eyebrow text-black/50">Arcadia understands</p>
-          <p className="type-title mt-6 flex flex-wrap items-baseline gap-x-4 gap-y-2 text-black">
-            {understands.map((word, i) => (
-              <span key={word} className="flex items-baseline gap-x-4">
-                {i > 0 && (
-                  <span aria-hidden="true" className="font-light text-black/25">
-                    +
-                  </span>
-                )}
-                <span>{word}</span>
-              </span>
-            ))}
-          </p>
+        <FadeIn delay={0.1} className="mt-24 lg:mt-36">
+          <RevealText
+            as="p"
+            lines={["It knows your week.", "So it can reason about it."]}
+            accent="reason"
+            className="type-title max-w-[700px] text-day-text"
+          />
         </FadeIn>
       </Container>
     </section>

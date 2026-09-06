@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useInView } from "framer-motion";
-import { createElement, useRef } from "react";
+import { createElement, useRef, type ReactNode } from "react";
 import { EASE_OUT, VIEWPORT_ONCE } from "@/lib/animation";
 import { cn } from "@/lib/cn";
 import { useIsMobile, usePrefersReducedMotion } from "@/lib/hooks";
@@ -9,6 +9,8 @@ import { useIsMobile, usePrefersReducedMotion } from "@/lib/hooks";
 interface RevealTextProps {
   /** Each entry renders as its own line with a masked rise. */
   lines: string[];
+  /** A substring of one line to set in the serif italic. */
+  accent?: string;
   as?: "h1" | "h2" | "h3" | "p" | "span";
   className?: string;
   delay?: number;
@@ -20,6 +22,20 @@ interface RevealTextProps {
   id?: string;
 }
 
+/** Wrap `accent` inside `line` with the serif italic span, if present. */
+export function withAccent(line: string, accent?: string): ReactNode {
+  if (!accent) return line;
+  const at = line.indexOf(accent);
+  if (at < 0) return line;
+  return (
+    <>
+      {line.slice(0, at)}
+      <em className="accent-serif not-italic">{accent}</em>
+      {line.slice(at + accent.length)}
+    </>
+  );
+}
+
 /**
  * Line-by-line masked text reveal. The wrapper is observed (the clipped
  * lines themselves never intersect the viewport before they animate).
@@ -27,6 +43,7 @@ interface RevealTextProps {
  */
 export default function RevealText({
   lines,
+  accent,
   as = "h2",
   className,
   delay = 0,
@@ -46,7 +63,7 @@ export default function RevealText({
   const shown = reduced ? { opacity: 1 } : { y: 0, opacity: 1 };
 
   const children = rendered.map((line, i) => (
-    <span key={i} className="block overflow-hidden pb-[0.06em] -mb-[0.06em]">
+    <span key={i} className="block overflow-hidden pb-[0.08em] -mb-[0.08em]">
       <motion.span
         className="block will-change-transform"
         initial={hidden}
@@ -57,7 +74,7 @@ export default function RevealText({
           ease: EASE_OUT,
         }}
       >
-        {line}
+        {withAccent(line, accent)}
       </motion.span>
     </span>
   ));

@@ -9,7 +9,7 @@ export default function FinalCTA() {
     <section
       id="early-access"
       aria-labelledby="cta-heading"
-      className="relative overflow-hidden bg-black pb-24 pt-[140px] text-white lg:pb-32 lg:pt-[200px]"
+      className="section-seam relative overflow-hidden bg-night-900 pb-20 pt-[140px] text-white lg:pb-28 lg:pt-[200px]"
     >
       <div className="absolute inset-0">
         <Starfield count={520} mobileCount={180} seed={41} concentrate />
@@ -19,34 +19,32 @@ export default function FinalCTA() {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(60% 50% at 50% 55%, rgba(124,92,255,0.11) 0%, rgba(124,92,255,0.03) 45%, rgba(0,0,0,0) 70%)",
+            "radial-gradient(60% 50% at 50% 55%, rgba(124,92,255,0.12) 0%, rgba(124,92,255,0.03) 45%, rgba(0,0,0,0) 70%)",
         }}
       />
 
       <Container className="relative">
-        <div className="mx-auto flex max-w-[760px] flex-col items-center text-center">
+        <span id="about" className="absolute -top-24" aria-hidden="true" />
+        <div className="mx-auto flex max-w-[860px] flex-col items-center text-center">
           <RevealText
             id="cta-heading"
             as="h2"
-            lines={["Make time work for you."]}
+            lines={["Stop planning your study.", "Start following the plan."]}
+            accent="following"
             className="type-display"
+            stagger={0.14}
           />
           <FadeIn delay={0.15}>
             <p className="type-body-lg mt-8 max-w-[560px] text-white/60">
-              Join the next generation of students using Arcadia to organise school around
-              their life.
+              Arcadia is opening to a first group of students. Put your name down and we’ll
+              email you when your invite is ready.
             </p>
           </FadeIn>
           <FadeIn delay={0.25} className="mt-10 w-full max-w-[520px]">
             <WaitlistForm tone="dark" />
-            <div className="mt-1 flex justify-center">
-              <a
-                href="#how-it-works"
-                className="inline-flex h-11 items-center px-3 text-[15px] text-white/70 transition-colors duration-200 hover:text-white"
-              >
-                Learn more
-              </a>
-            </div>
+            <p className="type-mono-label mt-2 text-center text-white/40">
+              Early access · opening soon · Australia first
+            </p>
           </FadeIn>
         </div>
 

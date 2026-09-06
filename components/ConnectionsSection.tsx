@@ -11,6 +11,7 @@ import {
   type ConnectionNode,
 } from "@/lib/connections";
 import { useIsMobile, usePrefersReducedMotion, useScrollProgress } from "@/lib/hooks";
+import { withAccent } from "./ui/RevealText";
 import Container from "./ui/Container";
 import SectionLabel from "./ui/SectionLabel";
 
@@ -22,6 +23,13 @@ const GRID = [0.68, 0.9] as const; // structure becomes a week
 const LINES_OUT = [0.66, 0.8] as const;
 const HEADLINE_A = [0.03, 0.14, 0.5, 0.6] as const;
 const HEADLINE_B = [0.6, 0.72] as const;
+/** Phase captions shown bottom-left, keyed by the progress at which each begins. */
+const CAPTIONS: Array<[number, string]> = [
+  [0, "scattered"],
+  [DRAW[0], "connected"],
+  [CLUSTER[0] + 0.1, "structured"],
+  [GRID[0], "your week"],
+];
 
 interface Layout {
   w: number;
@@ -72,16 +80,30 @@ export default function ConnectionsSection() {
   const headlineBY = useTransform(scrollYProgress, [...HEADLINE_B], [24, 0]);
   const gridOpacity = useTransform(scrollYProgress, [GRID[0] + 0.08, GRID[1]], [0, 1]);
   const noiseOpacity = useTransform(scrollYProgress, [...NOISE_OUT], [1, 0]);
+  const caption = useTransform(scrollYProgress, (p) => {
+    let label = CAPTIONS[0][1];
+    for (const [at, text] of CAPTIONS) if (p >= at) label = text;
+    return label;
+  });
+  const captionIndex = useTransform(scrollYProgress, (p) => {
+    let i = 0;
+    CAPTIONS.forEach(([at], idx) => {
+      if (p >= at) i = idx;
+    });
+    return `0${i + 1}`;
+  });
 
   if (reduced) {
     return (
-      <section id="connections" aria-labelledby="connections-heading" className="bg-black py-[120px] text-white lg:py-[160px]">
+      <section id="connections" aria-labelledby="connections-heading" className="section-seam bg-gradient-to-b from-dusk to-night-900 py-[120px] text-white lg:py-[160px]">
         <Container>
           <SectionLabel>Everything connects</SectionLabel>
           <h2 id="connections-heading" className="type-display mt-8 max-w-[900px]">
-            Everything affects everything.
+            {withAccent("Everything affects everything.", "everything.")}
           </h2>
-          <p className="type-display mt-6 max-w-[900px] text-white/50">Arcadia sees the whole picture.</p>
+          <p className="type-display mt-6 max-w-[900px] text-white/50">
+            {withAccent("Arcadia sees the whole week.", "whole week.")}
+          </p>
           <StaticPicture nodes={nodes} L={L} />
         </Container>
       </section>
@@ -89,8 +111,12 @@ export default function ConnectionsSection() {
   }
 
   return (
-    <section id="connections" aria-labelledby="connections-heading" className="bg-black text-white">
-      <div ref={ref} className="relative h-[340vh]">
+    <section
+      id="connections"
+      aria-labelledby="connections-heading"
+      className="section-seam bg-gradient-to-b from-dusk via-night-800 to-night-900 text-white"
+    >
+      <div ref={ref} className="relative h-[260vh]">
         <div className="sticky top-0 h-[100svh] overflow-hidden">
           <Container className="relative flex h-full flex-col pt-[100px] sm:pt-[120px]">
             <div className="relative z-10 h-[140px] sm:h-[160px]">
@@ -99,18 +125,25 @@ export default function ConnectionsSection() {
                 style={{ opacity: headlineAOpacity, y: headlineAY }}
                 className="type-display absolute inset-x-0 top-0 max-w-[900px]"
               >
-                Everything affects everything.
+                {withAccent("Everything affects everything.", "everything.")}
               </motion.h2>
               <motion.p
                 style={{ opacity: headlineBOpacity, y: headlineBY }}
                 className="type-display absolute inset-x-0 top-0 max-w-[900px]"
                 aria-hidden="true"
               >
-                Arcadia sees the whole picture.
+                {withAccent("Arcadia sees the whole week.", "whole week.")}
               </motion.p>
             </div>
 
             <div className="relative flex-1">
+              <p
+                aria-hidden="true"
+                className="type-mono-label pointer-events-none absolute bottom-6 left-0 z-10 flex items-center gap-3 text-white/45"
+              >
+                <motion.span className="text-accent-200">{captionIndex}</motion.span>
+                <motion.span>{caption}</motion.span>
+              </p>
               <svg
                 viewBox={`0 0 ${L.w} ${L.h}`}
                 className="absolute inset-0 h-full w-full"

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Mono, Inter } from "next/font/google";
+import { Inter, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({
@@ -8,16 +8,24 @@ const inter = Inter({
   display: "swap",
 });
 
-const mono = IBM_Plex_Mono({
+const mono = JetBrains_Mono({
   subsets: ["latin"],
   weight: ["400", "500"],
-  variable: "--font-mono",
+  variable: "--font-jetbrains",
   display: "swap",
 });
 
-const title = "Arcadia — Your life changes. Your plan should too.";
+const serif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+  variable: "--font-instrument",
+  display: "swap",
+});
+
+const title = "Arcadia — Your week just changed. Your plan already knows.";
 const description =
-  "Arcadia builds an intelligent study plan around your classes, deadlines and commitments — and reorganises it when life changes.";
+  "Arcadia builds a study plan around your classes, deadlines, training and the rest of your life — then quietly rebuilds it every time something moves.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://arcadia.study"),
@@ -57,8 +65,8 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${mono.variable} h-full`}>
-      <body className="min-h-full bg-black text-white">{children}</body>
+    <html lang="en" className={`${inter.variable} ${mono.variable} ${serif.variable} h-full`}>
+      <body className="min-h-full bg-night-900 text-white">{children}</body>
     </html>
   );
 }

@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "arcadia-web",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-09-06",
+  // global_fetch_strictly_public lets the proxy in app/api/[...path]/route.ts
+  // reach api.arcadiahq.app over the public internet from inside the Worker.
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "arcadia-web"
+    }
+  ],
+  "vars": {
+    "ARCADIA_BACKEND_ORIGIN": "https://api.arcadiahq.app"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

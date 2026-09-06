@@ -1,0 +1,36 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "arcadia-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-06",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+
+  // Non-secret runtime config. Secrets (OPENAI_API_KEY, RESEND_API_KEY,
+  // TOKEN_ENCRYPTION_KEY) are set with `wrangler secret put` and must never
+  // be committed here.
+  "vars": {
+    "APP_ORIGIN": "https://arcadiahq.app",
+    "MAIL_FROM": "Arcadia <hello@arcadiahq.app>",
+    "OPENAI_MODEL": "gpt-4o-mini"
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "arcadia",
+      // Replaced with the real id by `wrangler d1 create arcadia`.
+      "database_id": "PLACEHOLDER_D1_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  "r2_buckets": [
+    {
+      "binding": "UPLOADS",
+      "bucket_name": "arcadia-uploads"
+    }
+  ]
+}

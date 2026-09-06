@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import AuthShell from "@/components/app/AuthShell";
 import Field from "@/components/app/Field";
 import PrimaryButton from "@/components/app/PrimaryButton";
@@ -10,7 +10,7 @@ import { api } from "@/lib/api/client";
 
 type Notice = { tone: "info" | "error"; text: string } | null;
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const [email, setEmail] = useState("");
@@ -91,5 +91,17 @@ export default function LoginPage() {
         </PrimaryButton>
       </form>
     </AuthShell>
+  );
+}
+
+/**
+ * useSearchParams() opts the subtree into client-side rendering, so it needs a
+ * Suspense boundary or `next build` fails prerendering this route.
+ */
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }

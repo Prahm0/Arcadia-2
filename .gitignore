@@ -42,3 +42,7 @@ next-env.d.ts
 
 # local waitlist storage
 .data/
+
+# open-next / cloudflare build output
+/.open-next/
+.wrangler/

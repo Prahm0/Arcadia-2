@@ -82,8 +82,8 @@ export default function Hero() {
               className="hero-fade-up mt-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6"
               style={{ "--d": "0.65s" } as React.CSSProperties}
             >
-              <Button tone="dark" onClick={() => open("access")} className="sm:min-w-[172px]">
-                Get early access
+              <Button tone="dark" href="/register" className="sm:min-w-[172px]">
+                Get started
               </Button>
               <a
                 href="#how-it-works"

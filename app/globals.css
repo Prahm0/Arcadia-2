@@ -24,9 +24,47 @@
     var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     "Helvetica Neue", Helvetica, Arial, sans-serif;
 
+  --font-mono:
+    var(--font-mono), ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+
   --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
 
   --breakpoint-2xl: 90rem;
+
+  /* App shell tokens (light theme defaults). App pages opt in via [data-app-theme]. */
+  --app-bg: #f4f2ee;
+  --app-surface: #ffffff;
+  --app-surface-soft: #faf9f7;
+  --app-elev: #ffffff;
+  --app-border: #e6e4df;
+  --app-border-strong: #d5d1c9;
+  --app-text: #141414;
+  --app-text-soft: #4a4a48;
+  --app-text-muted: #78766f;
+  --app-text-faint: #a19f97;
+  --app-accent: #7c5cff;
+  --app-accent-soft: rgba(124, 92, 255, 0.12);
+  --app-accent-strong: #6a49f5;
+  --app-danger: #d64545;
+  --app-success: #2f9e5b;
+}
+
+/* Dark theme overrides — applied via [data-app-theme="dark"] on the app root */
+[data-app-theme="dark"] {
+  --app-bg: #0b0b0d;
+  --app-surface: #131317;
+  --app-surface-soft: #17171c;
+  --app-elev: #1a1a20;
+  --app-border: #26262d;
+  --app-border-strong: #34343d;
+  --app-text: #f4f3ef;
+  --app-text-soft: #cfcec9;
+  --app-text-muted: #8f8e88;
+  --app-text-faint: #5a5a56;
+  --app-accent: #9d87ff;
+  --app-accent-soft: rgba(157, 135, 255, 0.15);
+  --app-accent-strong: #7c5cff;
 }
 
 @layer base {

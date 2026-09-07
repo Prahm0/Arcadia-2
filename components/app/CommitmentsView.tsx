@@ -62,7 +62,16 @@ export default function CommitmentsView() {
     <>
       <PageHeader
         eyebrow="Commitments"
-        title={commitments.length === 0 ? "Add your fixed commitments." : `${commitments.length} recurring ${commitments.length === 1 ? "commitment" : "commitments"}`}
+        title={
+          commitments.length === 0 ? (
+            <>Add your <span className="accent-serif">fixed</span> commitments.</>
+          ) : (
+            <>
+              {commitments.length} recurring{" "}
+              <span className="accent-serif">{commitments.length === 1 ? "commitment" : "commitments"}</span>
+            </>
+          )
+        }
         meta="School hours, training, extracurriculars — Arcadia plans around them"
         action={
           <AppButton

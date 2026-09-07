@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
@@ -14,7 +15,9 @@ import {
 } from "@/lib/api/time";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
+import DailyCheckInCard from "./DailyCheckInCard";
 import NewTaskSheet from "./NewTaskSheet";
+import { useStreak } from "@/lib/app/useStreak";
 
 const CATEGORY_BAR: Record<string, string> = {
   study: "var(--app-accent)",
@@ -81,7 +84,11 @@ export default function TodayView() {
     <>
       <PageHeader
         eyebrow="Today"
-        title={`${greeting}, ${firstName}.`}
+        title={
+          <>
+            {greeting}, <span className="accent-serif">{firstName}</span>.
+          </>
+        }
         meta={formatFriendlyDate(now.toISOString(), timezone)}
         action={
           <AppButton
@@ -96,6 +103,7 @@ export default function TodayView() {
 
       <div className="mx-auto grid w-full max-w-[1160px] gap-8 px-6 py-8 sm:px-10 sm:py-10 lg:grid-cols-[minmax(0,1fr)_320px]">
         <section className="min-w-0">
+          <DailyCheckInCard />
           <TodayCard
             date={formatFriendlyDate(now.toISOString(), timezone)}
             weekProgress={weekProgress}
@@ -116,6 +124,7 @@ export default function TodayView() {
         <aside className="flex flex-col gap-6">
           <NextDeadlinesCard tasks={data.focusTasks} timezone={timezone} />
           <StatsCard analytics={data.analytics} />
+          <StreakCard />
         </aside>
       </div>
 
@@ -255,52 +264,74 @@ function FocusRow({
 }) {
   const isDone = event.outcome === "completed";
   const isMissed = event.outcome === "missed";
+  const isActionable = !isDone && !isMissed;
   const minutes = Math.round((Date.parse(event.endAt) - Date.parse(event.startAt)) / 60000);
   const startClock = formatClock(event.startAt, timezone);
+  const focusHref = `/app/focus?eventId=${encodeURIComponent(event.id)}`;
+
+  const rowContent = (
+    <>
+      <span
+        aria-hidden="true"
+        className="h-8 w-[3px] shrink-0 rounded-full transition-colors duration-200"
+        style={{
+          background: isDone || isMissed ? "var(--app-border)" : CATEGORY_BAR[event.category] ?? "var(--app-accent)",
+        }}
+      />
+      <span className="min-w-0 flex-1">
+        <span className="block text-[12px]" style={{ color: "var(--app-text-muted)" }}>
+          {event.subject || "Study"}
+        </span>
+        <span
+          className={cn(
+            "mt-0.5 block truncate text-[16px] font-medium transition-opacity",
+            (isDone || isMissed) && "line-through",
+          )}
+          style={{
+            color: "var(--app-text)",
+            opacity: isDone ? 0.4 : isMissed ? 0.35 : 1,
+          }}
+        >
+          {event.title}
+        </span>
+      </span>
+      <span className="flex shrink-0 flex-col items-end gap-1">
+        <span className="font-mono text-[13px]" style={{ color: "var(--app-text)" }}>
+          {formatDurationMinutes(minutes)}
+        </span>
+        <span className="text-[11px] font-mono" style={{ color: "var(--app-text-muted)" }}>
+          {startClock}
+        </span>
+      </span>
+      {isActionable ? (
+        <span
+          aria-hidden="true"
+          className="ml-2 hidden shrink-0 text-[11px] opacity-0 transition-opacity group-hover:opacity-100 sm:block"
+          style={{ color: "var(--app-accent-strong)" }}
+        >
+          Focus →
+        </span>
+      ) : null}
+    </>
+  );
 
   return (
     <li
-      className={cn(
-        "group flex items-center gap-1 rounded-[10px] pr-2 transition-colors duration-200",
-      )}
-      style={{
-        background: "transparent",
-      }}
+      className="group flex items-center gap-1 rounded-[10px] pr-2 transition-colors duration-200 hover:bg-[color:var(--app-surface-soft)]"
     >
-      <div className="group flex min-w-0 flex-1 items-center gap-4 rounded-[10px] px-3 py-3.5 text-left">
-        <span
-          aria-hidden="true"
-          className="h-8 w-[3px] shrink-0 rounded-full transition-colors duration-200"
-          style={{
-            background: isDone || isMissed ? "var(--app-border)" : CATEGORY_BAR[event.category] ?? "var(--app-accent)",
-          }}
-        />
-        <span className="min-w-0 flex-1">
-          <span className="block text-[12px]" style={{ color: "var(--app-text-muted)" }}>
-            {event.subject || "Study"}
-          </span>
-          <span
-            className={cn(
-              "mt-0.5 block truncate text-[16px] font-medium transition-opacity",
-              (isDone || isMissed) && "line-through",
-            )}
-            style={{
-              color: "var(--app-text)",
-              opacity: isDone ? 0.4 : isMissed ? 0.35 : 1,
-            }}
-          >
-            {event.title}
-          </span>
-        </span>
-        <span className="flex shrink-0 flex-col items-end gap-1">
-          <span className="font-mono text-[13px]" style={{ color: "var(--app-text)" }}>
-            {formatDurationMinutes(minutes)}
-          </span>
-          <span className="text-[11px] font-mono" style={{ color: "var(--app-text-muted)" }}>
-            {startClock}
-          </span>
-        </span>
-      </div>
+      {isActionable ? (
+        <Link
+          href={focusHref}
+          className="flex min-w-0 flex-1 items-center gap-4 rounded-[10px] px-3 py-3.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--app-accent)]"
+          aria-label={`Start focus on ${event.title}`}
+        >
+          {rowContent}
+        </Link>
+      ) : (
+        <div className="flex min-w-0 flex-1 items-center gap-4 rounded-[10px] px-3 py-3.5 text-left">
+          {rowContent}
+        </div>
+      )}
       <span className="flex shrink-0 items-center">
         {isMissed ? (
           <span className="mr-1 text-[11px] font-medium" style={{ color: "var(--app-text-muted)" }}>Missed</span>
@@ -374,7 +405,8 @@ function NextDeadlinesCard({ tasks, timezone }: { tasks: any[]; timezone: string
 }
 
 function StatsCard({ analytics }: { analytics: any }) {
-  const current = Number(analytics?.currentStreak ?? 0);
+  const streak = useStreak();
+  const current = streak.current;
   const week = Number(analytics?.weekMinutes ?? 0);
   const today = Number(analytics?.todayMinutes ?? 0);
   return (
@@ -385,6 +417,94 @@ function StatsCard({ analytics }: { analytics: any }) {
         <Stat label="Today" value={formatShort(today)} unit={today < 60 ? "min" : "hr"} />
         <Stat label="Week" value={formatShort(week)} unit={week < 60 ? "min" : "hr"} />
       </div>
+    </div>
+  );
+}
+
+function StreakCard() {
+  const streak = useStreak();
+
+  if (streak.current === 0 && !streak.lastPlannedDay) return null;
+
+  if (streak.current === 0 && streak.lastPlannedDay?.missReason) {
+    return (
+      <div
+        className="rounded-[14px] p-5"
+        style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}
+      >
+        <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Streak</p>
+        <p className="mt-2 text-[15px] leading-snug" style={{ color: "var(--app-text)" }}>
+          Reset — {streak.lastPlannedDay.missReason}.
+        </p>
+        <p className="mt-1.5 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
+          Hit 70% of planned study time in a day and it starts counting again.
+        </p>
+        {streak.longest > 0 ? (
+          <p className="mt-3 type-mono-label" style={{ color: "var(--app-text-muted)" }}>
+            Longest so far · {streak.longest} {streak.longest === 1 ? "day" : "days"}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
+  const progressPct =
+    streak.nextMilestone && streak.daysToNext
+      ? Math.min(1, streak.current / streak.nextMilestone)
+      : 1;
+
+  return (
+    <div
+      className="rounded-[14px] p-5"
+      style={{
+        background: "var(--app-surface)",
+        border: "1px solid var(--app-border)",
+      }}
+    >
+      <div className="flex items-center justify-between">
+        <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Streak</p>
+        {streak.hitMilestone ? (
+          <span
+            className="rounded-full px-2 py-0.5 text-[10.5px] font-medium uppercase tracking-[0.06em]"
+            style={{ background: "var(--app-accent)", color: "white" }}
+          >
+            {streak.hitMilestone}-day
+          </span>
+        ) : null}
+      </div>
+      <p className="mt-2 text-[26px] font-medium leading-none tabular-nums" style={{ color: "var(--app-text)" }}>
+        {streak.current} <span className="text-[13.5px] font-normal" style={{ color: "var(--app-text-muted)" }}>consistent {streak.current === 1 ? "day" : "days"}</span>
+      </p>
+      {streak.nextMilestone ? (
+        <>
+          <div
+            className="mt-4 h-1.5 w-full overflow-hidden rounded-full"
+            style={{ background: "var(--app-surface-soft)", border: "1px solid var(--app-border)" }}
+            aria-hidden="true"
+          >
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: `${progressPct * 100}%`,
+                background: "var(--app-accent)",
+                transition: "width 0.4s var(--ease-out-expo, ease-out)",
+              }}
+            />
+          </div>
+          <p className="mt-2 type-mono-label" style={{ color: "var(--app-text-muted)" }}>
+            {streak.daysToNext} more to {streak.nextMilestone}
+          </p>
+        </>
+      ) : (
+        <p className="mt-3 type-mono-label" style={{ color: "var(--app-text-muted)" }}>
+          Past every milestone · keep going
+        </p>
+      )}
+      {streak.longest > streak.current ? (
+        <p className="mt-2 text-[11.5px]" style={{ color: "var(--app-text-faint)" }}>
+          Longest {streak.longest} days
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -8,12 +8,21 @@ import { cn } from "@/lib/cn";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import NewTaskSheet from "./NewTaskSheet";
+import TaskDetailSheet from "./TaskDetailSheet";
 
 export default function DeadlinesView() {
   const { data } = useDashboardData();
   const timezone = data.profile?.timezone || "Australia/Sydney";
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<PlannerTask | null>(null);
+  const [detailTask, setDetailTask] = useState<PlannerTask | null>(null);
+
+  // Track the freshest copy of the open task so optimistic patches (add-time,
+  // notes, complete) flow into the sheet without waiting for reload.
+  const liveDetailTask = useMemo(() => {
+    if (!detailTask) return null;
+    return data.tasks.find((task) => task.id === detailTask.id) ?? null;
+  }, [data.tasks, detailTask]);
 
   const subjectColor = useMemo(() => {
     const map = new Map<string, string>();
@@ -31,7 +40,15 @@ export default function DeadlinesView() {
     <>
       <PageHeader
         eyebrow="Deadlines"
-        title={total === 0 ? "All caught up." : `${total} open ${total === 1 ? "task" : "tasks"}`}
+        title={
+          total === 0 ? (
+            <>All <span className="accent-serif">caught up</span>.</>
+          ) : (
+            <>
+              {total} open <span className="accent-serif">{total === 1 ? "task" : "tasks"}</span>
+            </>
+          )
+        }
         meta={total > 0 ? `${formatDurationMinutes(totalMinutes)} of work remaining across ${data.subjects.length} subjects` : undefined}
         action={
           <AppButton
@@ -67,7 +84,7 @@ export default function DeadlinesView() {
                   task={task}
                   timezone={timezone}
                   color={subjectColor.get((task.subject || "").toLowerCase())}
-                  onClick={() => { setEditing(task); setSheetOpen(true); }}
+                  onClick={() => setDetailTask(task)}
                 />
               ))}
             </ul>
@@ -75,6 +92,16 @@ export default function DeadlinesView() {
         ))}
       </div>
 
+      <TaskDetailSheet
+        task={liveDetailTask}
+        timezone={timezone}
+        onClose={() => setDetailTask(null)}
+        onEdit={(task) => {
+          setDetailTask(null);
+          setEditing(task);
+          setSheetOpen(true);
+        }}
+      />
       <NewTaskSheet
         open={sheetOpen}
         editing={editing}
@@ -119,7 +146,7 @@ function DeadlineRow({
           className="text-[11px] opacity-0 transition-opacity group-hover:opacity-100"
           style={{ color: "var(--app-text-muted)" }}
         >
-          Edit →
+          Open →
         </span>
       </button>
     </li>

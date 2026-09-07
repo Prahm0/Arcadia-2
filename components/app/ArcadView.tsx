@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 import { formatDueSoon, formatDurationMinutes } from "@/lib/api/time";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
+import { useStreak } from "@/lib/app/useStreak";
 
 interface Message {
   id: string;
@@ -208,7 +209,7 @@ export default function ArcadView() {
     <>
       <PageHeader
         eyebrow="Arcad"
-        title="Your planning partner."
+        title={<>Your <span className="accent-serif">planning</span> partner.</>}
         meta={activeConversationTitle}
         action={
           <AppButton
@@ -423,6 +424,7 @@ function ContextPanel({ data }: { data: DashboardResponse }) {
   const timezone = data.profile?.timezone || "Australia/Sydney";
   const pending = data.tasks.filter((t) => t.status === "pending");
   const totalMinutes = pending.reduce((s, t) => s + t.remainingMinutes, 0);
+  const streak = useStreak();
   return (
     <div className="rounded-[16px] p-6" style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}>
       <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>What Arcad knows</p>
@@ -463,7 +465,7 @@ function ContextPanel({ data }: { data: DashboardResponse }) {
         </ContextRow>
         <ContextRow label="This week">
           <div className="grid grid-cols-3 gap-3">
-            <Stat label="Streak" value={String(data.analytics?.currentStreak ?? 0)} />
+            <Stat label="Streak" value={String(streak.current)} />
             <Stat label="Today" value={`${data.analytics?.todayMinutes ?? 0} min`} />
             <Stat label="Week" value={`${data.analytics?.weekMinutes ?? 0} min`} />
           </div>
@@ -496,6 +498,7 @@ function ContextPanel({ data }: { data: DashboardResponse }) {
 }
 
 function MiniContext({ data }: { data: DashboardResponse }) {
+  const streak = useStreak();
   return (
     <div className="rounded-[14px] p-4" style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}>
       <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Context</p>
@@ -510,7 +513,7 @@ function MiniContext({ data }: { data: DashboardResponse }) {
         </li>
         <li className="flex justify-between">
           <span>Streak</span>
-          <span className="font-mono" style={{ color: "var(--app-text)" }}>{data.analytics?.currentStreak ?? 0}</span>
+          <span className="font-mono" style={{ color: "var(--app-text)" }}>{streak.current}</span>
         </li>
         <li className="flex justify-between">
           <span>Today</span>

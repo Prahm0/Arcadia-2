@@ -6,6 +6,7 @@ import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import type { DashboardResponse, PlannerEvent } from "@/lib/api/types";
 import { formatClock } from "@/lib/api/time";
+import { playCompletionTick } from "@/lib/app/completion";
 import AppButton from "./AppButton";
 
 interface EventDetailSheetProps {
@@ -55,6 +56,7 @@ export default function EventDetailSheet({ event, timezone, onClose }: EventDeta
     if (!event) return;
     setBusy(outcome === "completed" ? "complete" : "miss");
     setError(null);
+    if (outcome === "completed") playCompletionTick();
     const previousOutcome = event.outcome;
     // Optimistic update
     patch((prev: DashboardResponse) => ({

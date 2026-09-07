@@ -8,6 +8,9 @@ import { cn } from "@/lib/cn";
 import { useStreak } from "@/lib/app/useStreak";
 import { STREAK_MILESTONES } from "@/lib/app/streaks";
 import ConsistencyHeatmap from "./ConsistencyHeatmap";
+import EmptyState from "./EmptyState";
+import AppButton from "./AppButton";
+import Link from "next/link";
 
 interface DailyBucket {
   date: string;
@@ -63,6 +66,12 @@ export default function AnalyticsView() {
   const totalMinutes = analytics?.current.minutes ?? 0;
   const prevMinutes = analytics?.previous.minutes ?? 0;
   const delta = prevMinutes ? Math.round(((totalMinutes - prevMinutes) / prevMinutes) * 100) : null;
+  const isFirstTime =
+    !loading &&
+    analytics !== null &&
+    analytics.current.sessions === 0 &&
+    analytics.previous.sessions === 0 &&
+    streak.longest === 0;
 
   return (
     <>
@@ -95,6 +104,25 @@ export default function AnalyticsView() {
         }
       />
 
+      {isFirstTime ? (
+        <div className="mx-auto w-full max-w-[820px] px-6 py-8 sm:px-10">
+          <EmptyState
+            title={<>Nothing to <span className="accent-serif">measure</span> yet.</>}
+            body="Analytics fills up once you log study time. Mark a study block done or use the Focus timer for a session — you'll see minutes, subjects, and a 90-day heatmap start to grow."
+            action={
+              <>
+                <Link href="/app/focus">
+                  <AppButton variant="primary">Start a focus session</AppButton>
+                </Link>
+                <Link href="/app" className="text-[13px] font-medium underline underline-offset-4" style={{ color: "var(--app-text-muted)" }}>
+                  Go to Today
+                </Link>
+              </>
+            }
+          />
+        </div>
+      ) : (
+      <>
       <div className="mx-auto grid w-full max-w-[1140px] gap-6 px-6 py-8 sm:px-10 lg:grid-cols-3">
         <StatCard label="Focus time" value={formatMinutes(totalMinutes)} delta={delta} />
         <StatCard label="Sessions" value={String(analytics?.current.sessions ?? 0)} delta={
@@ -228,6 +256,8 @@ export default function AnalyticsView() {
           ) : null}
         </div>
       </div>
+      </>
+      )}
     </>
   );
 }

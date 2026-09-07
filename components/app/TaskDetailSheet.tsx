@@ -5,6 +5,7 @@ import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import type { DashboardResponse, PlannerTask } from "@/lib/api/types";
 import { formatDueSoon, formatDurationMinutes } from "@/lib/api/time";
+import { playCompletionTick } from "@/lib/app/completion";
 import AppButton from "./AppButton";
 
 interface TaskDetailSheetProps {
@@ -112,6 +113,7 @@ export default function TaskDetailSheet({ task, timezone, onClose, onEdit }: Tas
     // implying zero remaining if the backend flips a completion flag later.
     setBusy("complete");
     setError(null);
+    playCompletionTick();
     try {
       await api(`/api/tasks/${encodeURIComponent(task!.id)}`, {
         method: "PATCH",

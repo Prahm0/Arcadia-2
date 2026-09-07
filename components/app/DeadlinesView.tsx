@@ -7,6 +7,7 @@ import { dateKey, formatDurationMinutes, formatDueSoon } from "@/lib/api/time";
 import { cn } from "@/lib/cn";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
+import EmptyState, { ExampleRow } from "./EmptyState";
 import NewTaskSheet from "./NewTaskSheet";
 import TaskDetailSheet from "./TaskDetailSheet";
 
@@ -62,16 +63,38 @@ export default function DeadlinesView() {
       />
 
       <div className="mx-auto flex w-full max-w-[820px] flex-col gap-8 px-6 py-8 sm:px-10">
-        {total === 0 ? (
-          <div
-            className="rounded-[16px] p-10 text-center"
-            style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}
-          >
-            <p className="text-[16px] font-medium" style={{ color: "var(--app-text)" }}>Nothing pending.</p>
-            <p className="mt-2 text-[14px]" style={{ color: "var(--app-text-muted)" }}>
-              Add a task and Arcadia will schedule it around your commitments.
-            </p>
-          </div>
+        {total === 0 && data.tasks.length === 0 ? (
+          <EmptyState
+            title={<>Your <span className="accent-serif">first</span> deadline.</>}
+            body="Add a task with a due date and Arcadia carves it into study blocks that fit around your school day, training, and sleep."
+            example={
+              <>
+                <ExampleRow title="Chemistry lab report" meta="Chem · Due Fri · 90 min" />
+                <ExampleRow title="Complex numbers set" meta="Maths · Due next Wed · 60 min" bar="#38bdf8" />
+                <ExampleRow title="English essay draft" meta="English · Due 12 Sep · 120 min" bar="#f59e0b" />
+              </>
+            }
+            action={
+              <AppButton
+                variant="primary"
+                onClick={() => { setEditing(null); setSheetOpen(true); }}
+                icon={<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M10 4v12M4 10h12" strokeLinecap="round" /></svg>}
+              >
+                Add your first task
+              </AppButton>
+            }
+            hint="You can also just tell Arcad in chat — it'll add and schedule for you."
+          />
+        ) : total === 0 ? (
+          <EmptyState
+            title={<>All <span className="accent-serif">caught up</span>.</>}
+            body="Nothing open right now. Add the next thing whenever it appears — Arcadia will slot it in."
+            action={
+              <AppButton variant="secondary" onClick={() => { setEditing(null); setSheetOpen(true); }}>
+                Add a task
+              </AppButton>
+            }
+          />
         ) : null}
 
         {grouped.map((group) => (

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
-import type { PlannerTask } from "@/lib/api/types";
+import type { DashboardResponse, PlannerTask } from "@/lib/api/types";
 import AppButton from "./AppButton";
 
 interface NewTaskSheetProps {
@@ -23,7 +23,7 @@ const TASK_TYPES = [
 ];
 
 export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: initialDue }: NewTaskSheetProps) {
-  const { data, reload } = useDashboardData();
+  const { data, patch, reload } = useDashboardData();
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState(data.subjects[0]?.name ?? "");
   const [taskType, setTaskType] = useState("homework");
@@ -68,15 +68,43 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
     event.preventDefault();
     setLoading(true);
     setError(null);
+    const body = {
+      title,
+      subject,
+      taskType,
+      dueAt: new Date(`${dueDate}T23:59:00`).toISOString(),
+      estimatedMinutes: minutes,
+      priority: 2,
+    };
+    // Snapshot for rollback on edit.
+    const previousTask = isEditing && editing
+      ? data.tasks.find((task) => task.id === editing.id) ?? null
+      : null;
+    if (isEditing && editing) {
+      // Optimistic edit: reflect the new values immediately in the dashboard cache.
+      patch((prev: DashboardResponse) => ({
+        ...prev,
+        tasks: prev.tasks.map((task) =>
+          task.id === editing.id
+            ? {
+                ...task,
+                title: body.title,
+                subject: body.subject,
+                taskType: body.taskType,
+                dueAt: body.dueAt,
+                estimatedMinutes: body.estimatedMinutes,
+                // Only widen remaining if the estimate went up; the scheduler
+                // will recompute properly on reload().
+                remainingMinutes:
+                  body.estimatedMinutes > (task.estimatedMinutes ?? 0)
+                    ? task.remainingMinutes + (body.estimatedMinutes - (task.estimatedMinutes ?? 0))
+                    : task.remainingMinutes,
+              }
+            : task,
+        ),
+      }));
+    }
     try {
-      const body = {
-        title,
-        subject,
-        taskType,
-        dueAt: new Date(`${dueDate}T23:59:00`).toISOString(),
-        estimatedMinutes: minutes,
-        priority: 2,
-      };
       if (isEditing && editing) {
         await api(`/api/tasks/${encodeURIComponent(editing.id)}`, {
           method: "PATCH",
@@ -88,6 +116,14 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
       await reload();
       onClose();
     } catch (err) {
+      // Rollback the optimistic edit — create doesn't touch the cache
+      // pre-response, so there's nothing to undo for the create branch.
+      if (isEditing && editing && previousTask) {
+        patch((prev: DashboardResponse) => ({
+          ...prev,
+          tasks: prev.tasks.map((task) => (task.id === editing.id ? previousTask : task)),
+        }));
+      }
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setLoading(false);
@@ -99,11 +135,28 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
     if (!confirm(`Delete "${editing.title}"? This also removes its scheduled study blocks.`)) return;
     setDeleting(true);
     setError(null);
+    // Snapshot the task + its events for rollback.
+    const previousTask = data.tasks.find((task) => task.id === editing.id) ?? null;
+    const previousEvents = data.events.filter((event) => event.taskId === editing.id);
+    // Optimistic prune
+    patch((prev: DashboardResponse) => ({
+      ...prev,
+      tasks: prev.tasks.filter((task) => task.id !== editing.id),
+      events: prev.events.filter((event) => event.taskId !== editing.id),
+    }));
     try {
       await api(`/api/tasks/${encodeURIComponent(editing.id)}`, { method: "DELETE" });
       await reload();
       onClose();
     } catch (err) {
+      // Rollback
+      if (previousTask) {
+        patch((prev: DashboardResponse) => ({
+          ...prev,
+          tasks: [...prev.tasks, previousTask],
+          events: [...prev.events, ...previousEvents],
+        }));
+      }
       setError(err instanceof Error ? err.message : "Failed to delete.");
     } finally {
       setDeleting(false);

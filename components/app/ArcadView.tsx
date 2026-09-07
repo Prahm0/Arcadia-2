@@ -11,6 +11,7 @@ import AppButton from "./AppButton";
 import ArcadOrb from "./ArcadOrb";
 import MissedRecoveryCards from "./MissedRecoveryCards";
 import ProactiveArcadCards from "./ProactiveArcadCards";
+import ProposalPreview from "./ProposalPreview";
 import { useStreak } from "@/lib/app/useStreak";
 import { buildContextualStarters, buildGreeting, type Starter } from "@/lib/app/arcadStarters";
 
@@ -384,10 +385,23 @@ function ChatPanel({
             <div
               key={proposal.id}
               className="rounded-[14px] p-4"
-              style={{ background: "var(--app-accent-soft)", border: "1px solid var(--app-accent)" }}
+              style={{
+                background: "color-mix(in oklab, var(--app-accent) 8%, var(--app-surface))",
+                border: "1px solid color-mix(in oklab, var(--app-accent) 45%, var(--app-border))",
+              }}
             >
-              <p className="type-eyebrow" style={{ color: "var(--app-accent-strong)" }}>Proposal</p>
-              <p className="mt-2 text-[14.5px]" style={{ color: "var(--app-text)" }}>{proposal.summary}</p>
+              <div className="flex items-start gap-2.5">
+                <span className="mt-0.5">
+                  <ArcadOrb size={22} state="alert" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="type-eyebrow" style={{ color: "var(--app-accent-strong)" }}>Proposal from Arcad</p>
+                  <p className="mt-1.5 text-[14.5px] leading-snug" style={{ color: "var(--app-text)" }}>
+                    {proposal.summary}
+                  </p>
+                </div>
+              </div>
+              <ProposalPreview operations={proposal.operations} />
               <div className="mt-4 flex gap-2">
                 <AppButton variant="primary" onClick={() => onProposal(proposal.id, "apply")}>Apply</AppButton>
                 <AppButton variant="ghost" onClick={() => onProposal(proposal.id, "decline")}>Decline</AppButton>

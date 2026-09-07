@@ -8,6 +8,7 @@ import type { AuthUser } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { useTheme } from "@/lib/app/theme";
 import { useStreak } from "@/lib/app/useStreak";
+import { useSessionReminders } from "@/lib/app/useSessionReminders";
 import ArcadFloatingButton from "./ArcadFloatingButton";
 import PageMount from "./PageMount";
 
@@ -49,6 +50,7 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
   const router = useRouter();
   const { resolved, toggle } = useTheme();
   const streakSummary = useStreak();
+  useSessionReminders();
   const streak = streakSummary.current;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);

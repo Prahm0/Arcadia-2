@@ -5,6 +5,17 @@ import { api, saveCsrf } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { useTheme, type ThemeMode } from "@/lib/app/theme";
 import { isSoundEnabled, playCompletionTick, setSoundEnabled } from "@/lib/app/completion";
+import {
+  getLeadMinutes,
+  getPermissionState,
+  isReminderEnabled,
+  notificationsSupported,
+  requestPermission,
+  setLeadMinutes,
+  setReminderEnabled,
+  showNotification,
+  type NotificationPermissionState,
+} from "@/lib/app/notifications";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import { useRouter } from "next/navigation";
@@ -34,16 +45,48 @@ export default function SettingsView() {
 
   const [account, setAccount] = useState<AccountResponse["account"] | null>(null);
   const [soundOn, setSoundOn] = useState(true);
+  const [remindersOn, setRemindersOn] = useState(false);
+  const [permission, setPermission] = useState<NotificationPermissionState>("default");
+  const [leadMin, setLeadMin] = useState(10);
 
   useEffect(() => {
     api<AccountResponse>("/api/account").then((r) => setAccount(r.account)).catch(() => {});
     setSoundOn(isSoundEnabled());
+    setRemindersOn(isReminderEnabled());
+    setPermission(getPermissionState());
+    setLeadMin(getLeadMinutes());
   }, []);
 
   function toggleSound(next: boolean) {
     setSoundOn(next);
     setSoundEnabled(next);
     if (next) playCompletionTick();
+  }
+
+  async function toggleReminders(next: boolean) {
+    setRemindersOn(next);
+    setReminderEnabled(next);
+    if (next && permission === "default") {
+      const result = await requestPermission();
+      setPermission(result);
+    }
+  }
+
+  function updateLead(next: number) {
+    setLeadMin(next);
+    setLeadMinutes(next);
+  }
+
+  async function testReminder() {
+    let state = getPermissionState();
+    if (state === "default") state = await requestPermission();
+    setPermission(state);
+    if (state !== "granted") return;
+    showNotification({
+      title: "Test reminder",
+      body: "This is what a session reminder will look like.",
+      tag: "arcadia:test",
+    });
   }
 
   async function saveProfile(event: React.FormEvent<HTMLFormElement>) {
@@ -165,6 +208,84 @@ export default function SettingsView() {
               />
             </button>
           </div>
+        </Card>
+
+        <Card>
+          <SectionHeader label="Session reminders" />
+          {!notificationsSupported() ? (
+            <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
+              This browser doesn't support notifications. On iOS Safari, add the app to your Home Screen to unlock them.
+            </p>
+          ) : (
+            <>
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>
+                    Remind me before each study block
+                  </p>
+                  <p className="mt-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
+                    A quick browser notification while Arcadia is open in a tab. Push notifications while the app is closed are a follow-up.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={remindersOn}
+                  onClick={() => void toggleReminders(!remindersOn)}
+                  className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
+                  style={{
+                    background: remindersOn ? "var(--app-accent)" : "var(--app-border-strong)",
+                  }}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform"
+                    style={{ transform: remindersOn ? "translateX(22px)" : "translateX(2px)" }}
+                  />
+                </button>
+              </div>
+
+              {remindersOn ? (
+                <div className="mt-4">
+                  <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Lead time</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {[5, 10, 15, 30].map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => updateLead(option)}
+                        className="rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-colors"
+                        style={{
+                          background: leadMin === option ? "var(--app-accent-soft)" : "transparent",
+                          color: leadMin === option ? "var(--app-accent-strong)" : "var(--app-text-soft)",
+                          border: `1px solid ${leadMin === option ? "transparent" : "var(--app-border-strong)"}`,
+                        }}
+                      >
+                        {option} min before
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <span className="type-mono-label" style={{ color: "var(--app-text-muted)" }}>
+                  {permission === "granted"
+                    ? "Browser: allowed"
+                    : permission === "denied"
+                      ? "Browser: blocked — enable notifications in your browser settings for this site"
+                      : permission === "unsupported"
+                        ? "Browser: unsupported"
+                        : "Browser: not asked yet"}
+                </span>
+                {permission !== "denied" ? (
+                  <AppButton type="button" variant="secondary" onClick={testReminder}>
+                    Send a test
+                  </AppButton>
+                ) : null}
+              </div>
+            </>
+          )}
         </Card>
 
         <Card>

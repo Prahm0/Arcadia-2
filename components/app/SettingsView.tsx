@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api, saveCsrf } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { useTheme, type ThemeMode } from "@/lib/app/theme";
+import { isSoundEnabled, playCompletionTick, setSoundEnabled } from "@/lib/app/completion";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import { useRouter } from "next/navigation";
@@ -32,10 +33,18 @@ export default function SettingsView() {
   const [passwordNotice, setPasswordNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
 
   const [account, setAccount] = useState<AccountResponse["account"] | null>(null);
+  const [soundOn, setSoundOn] = useState(true);
 
   useEffect(() => {
     api<AccountResponse>("/api/account").then((r) => setAccount(r.account)).catch(() => {});
+    setSoundOn(isSoundEnabled());
   }, []);
+
+  function toggleSound(next: boolean) {
+    setSoundOn(next);
+    setSoundEnabled(next);
+    if (next) playCompletionTick();
+  }
 
   async function saveProfile(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -125,6 +134,36 @@ export default function SettingsView() {
                 {option}
               </button>
             ))}
+          </div>
+        </Card>
+
+        <Card>
+          <SectionHeader label="Feedback sounds" />
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>
+                Completion tick
+              </p>
+              <p className="mt-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
+                A quiet click when you mark a study block or task done. Off doesn't affect the visual burst.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={soundOn}
+              onClick={() => toggleSound(!soundOn)}
+              className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
+              style={{
+                background: soundOn ? "var(--app-accent)" : "var(--app-border-strong)",
+              }}
+            >
+              <span
+                aria-hidden="true"
+                className="inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform"
+                style={{ transform: soundOn ? "translateX(22px)" : "translateX(2px)" }}
+              />
+            </button>
           </div>
         </Card>
 

@@ -15,10 +15,12 @@ import {
 } from "@/lib/api/time";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
+import CompletionBurst from "./CompletionBurst";
 import DailyCheckInCard from "./DailyCheckInCard";
 import NewTaskSheet from "./NewTaskSheet";
 import SundayReviewInline from "./SundayReviewInline";
 import { useStreak } from "@/lib/app/useStreak";
+import { playCompletionTick } from "@/lib/app/completion";
 
 const CATEGORY_BAR: Record<string, string> = {
   study: "var(--app-accent)",
@@ -36,6 +38,7 @@ export default function TodayView() {
   const today = dateKey(now.toISOString(), timezone);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [showTaskSheet, setShowTaskSheet] = useState(false);
+  const [celebrateId, setCelebrateId] = useState<{ id: string; at: number } | null>(null);
 
   const todaysEvents = useMemo(
     () =>
@@ -60,6 +63,10 @@ export default function TodayView() {
 
   async function markOutcome(event: PlannerEvent, outcome: "completed" | "missed") {
     setBusyId(event.id);
+    if (outcome === "completed") {
+      setCelebrateId({ id: event.id, at: Date.now() });
+      playCompletionTick();
+    }
     try {
       await api(`/api/events/${encodeURIComponent(event.id)}/outcome`, {
         method: "POST",
@@ -115,6 +122,7 @@ export default function TodayView() {
             studyBlocks={studyBlocks}
             laterEvents={laterEvents}
             busyId={busyId}
+            celebrate={celebrateId}
             timezone={timezone}
             hasTasks={data.tasks.length > 0}
             onNewTask={() => setShowTaskSheet(true)}
@@ -144,6 +152,7 @@ interface TodayCardProps {
   studyBlocks: PlannerEvent[];
   laterEvents: PlannerEvent[];
   busyId: string | null;
+  celebrate: { id: string; at: number } | null;
   timezone: string;
   hasTasks: boolean;
   onNewTask: () => void;
@@ -154,7 +163,7 @@ interface TodayCardProps {
 function TodayCard(props: TodayCardProps) {
   const {
     date, weekProgress, totalMinutes, remainingCount, completedCount,
-    studyBlocks, laterEvents, busyId, timezone, hasTasks,
+    studyBlocks, laterEvents, busyId, celebrate, timezone, hasTasks,
     onNewTask, onComplete, onMiss,
   } = props;
 
@@ -226,6 +235,7 @@ function TodayCard(props: TodayCardProps) {
               event={event}
               timezone={timezone}
               busy={busyId === event.id}
+              celebrateTrigger={celebrate?.id === event.id ? celebrate.at : 0}
               onComplete={() => onComplete(event)}
               onMiss={() => onMiss(event)}
             />
@@ -256,11 +266,12 @@ function TodayCard(props: TodayCardProps) {
 }
 
 function FocusRow({
-  event, timezone, busy, onComplete, onMiss,
+  event, timezone, busy, celebrateTrigger, onComplete, onMiss,
 }: {
   event: PlannerEvent;
   timezone: string;
   busy: boolean;
+  celebrateTrigger: number;
   onComplete: () => void;
   onMiss: () => void;
 }) {
@@ -356,19 +367,21 @@ function FocusRow({
           aria-label={`Mark ${event.title} as done`}
           className="flex size-9 items-center justify-center rounded-lg transition-colors"
         >
-          <span
-            aria-hidden="true"
-            className="grid size-[18px] place-items-center rounded-[5px] transition-colors duration-200"
-            style={{
-              background: isDone ? "var(--app-text)" : "var(--app-surface)",
-              border: `1px solid ${isDone ? "var(--app-text)" : "var(--app-border-strong)"}`,
-              color: isDone ? "var(--app-bg)" : "transparent",
-            }}
-          >
-            <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-              <path d="M1 4l2.5 2.5L9 1" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </span>
+          <CompletionBurst trigger={celebrateTrigger}>
+            <span
+              aria-hidden="true"
+              className="grid size-[18px] place-items-center rounded-[5px] transition-colors duration-200"
+              style={{
+                background: isDone ? "var(--app-text)" : "var(--app-surface)",
+                border: `1px solid ${isDone ? "var(--app-text)" : "var(--app-border-strong)"}`,
+                color: isDone ? "var(--app-bg)" : "transparent",
+              }}
+            >
+              <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                <path d="M1 4l2.5 2.5L9 1" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+          </CompletionBurst>
         </button>
       </span>
     </li>

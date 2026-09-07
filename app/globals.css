@@ -467,6 +467,57 @@
   }
 }
 
+/* Task-completion celebration: a ≤400 ms constellation burst + spring-scale
+   on the completed control. Kept in vanilla CSS so any component can opt in
+   with a className, no motion library needed. */
+@keyframes arcadia-completion-spring {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.32); }
+  70% { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+
+@keyframes arcadia-completion-dot {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.4) rotate(0deg);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform:
+      rotate(var(--a, 0deg))
+      translate(18px, 0)
+      rotate(calc(-1 * var(--a, 0deg)))
+      scale(0.6)
+      rotate(45deg);
+  }
+}
+
+.arcadia-completion-spring {
+  animation: arcadia-completion-spring 380ms var(--ease-out-expo, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.arcadia-completion-dot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: var(--app-accent);
+  /* Four-point star (matches the landing page's mark), rendered with clip-path
+     so we don't need SVG per particle. */
+  clip-path: polygon(50% 0%, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0% 50%, 40% 40%);
+  animation: arcadia-completion-dot 400ms var(--ease-out-expo, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arcadia-completion-spring,
+  .arcadia-completion-dot {
+    animation: none;
+  }
+}
+
 /* Fragments that resolve into place, driven by a single --p custom property on the parent. */
 @utility resolve-fragment {
   transform: translate(

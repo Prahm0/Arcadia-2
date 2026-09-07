@@ -45,11 +45,32 @@ export interface PlannerProfile {
   bedtime?: string;
 }
 
+export interface SubjectFile {
+  id: string;
+  subjectId: string;
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+  textExcerpt?: string;
+  createdAt: string;
+}
+
+export interface SubjectContext {
+  subjectId: string;
+  subjectName: string;
+  color?: string | null;
+  notes: string;
+  includeInArcad: boolean;
+  updatedAt?: string | null;
+  files: SubjectFile[];
+}
+
 export interface DashboardResponse {
   user: AuthUser;
   profile: PlannerProfile | null;
   preferences: Record<string, unknown>;
   subjects: Array<{ id: string; name: string; colour?: string | null }>;
+  subjectContexts?: SubjectContext[];
   tasks: PlannerTask[];
   commitments: Array<Record<string, unknown>>;
   range: { start: string; end: string };

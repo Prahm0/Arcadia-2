@@ -10,6 +10,7 @@ import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import ArcadOrb from "./ArcadOrb";
 import MissedRecoveryCards from "./MissedRecoveryCards";
+import ProactiveArcadCards from "./ProactiveArcadCards";
 import { useStreak } from "@/lib/app/useStreak";
 import { buildContextualStarters, buildGreeting, type Starter } from "@/lib/app/arcadStarters";
 
@@ -276,6 +277,7 @@ export default function ArcadView() {
 
           {tab === "chat" && (
             <>
+              <ProactiveArcadCards compact />
               <MissedRecoveryCards />
               <ChatPanel
                 state={state}

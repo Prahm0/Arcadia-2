@@ -18,6 +18,7 @@ import AppButton from "./AppButton";
 import CompletionBurst from "./CompletionBurst";
 import DailyCheckInCard from "./DailyCheckInCard";
 import NewTaskSheet from "./NewTaskSheet";
+import ProactiveArcadCards from "./ProactiveArcadCards";
 import SundayReviewInline from "./SundayReviewInline";
 import { useStreak } from "@/lib/app/useStreak";
 import { playCompletionTick } from "@/lib/app/completion";
@@ -112,6 +113,7 @@ export default function TodayView() {
       <div className="mx-auto grid w-full max-w-[1160px] gap-8 px-6 py-8 sm:px-10 sm:py-10 lg:grid-cols-[minmax(0,1fr)_320px]">
         <section className="min-w-0">
           <SundayReviewInline />
+          <ProactiveArcadCards />
           <DailyCheckInCard />
           <TodayCard
             date={formatFriendlyDate(now.toISOString(), timezone)}

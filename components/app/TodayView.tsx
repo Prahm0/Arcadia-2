@@ -17,6 +17,7 @@ import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import DailyCheckInCard from "./DailyCheckInCard";
 import NewTaskSheet from "./NewTaskSheet";
+import SundayReviewInline from "./SundayReviewInline";
 import { useStreak } from "@/lib/app/useStreak";
 
 const CATEGORY_BAR: Record<string, string> = {
@@ -103,6 +104,7 @@ export default function TodayView() {
 
       <div className="mx-auto grid w-full max-w-[1160px] gap-8 px-6 py-8 sm:px-10 sm:py-10 lg:grid-cols-[minmax(0,1fr)_320px]">
         <section className="min-w-0">
+          <SundayReviewInline />
           <DailyCheckInCard />
           <TodayCard
             date={formatFriendlyDate(now.toISOString(), timezone)}

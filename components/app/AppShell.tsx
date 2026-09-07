@@ -39,6 +39,7 @@ const NAV: NavItem[] = [
   { label: "Focus", href: "/app/focus", icon: icon(<><circle cx="10" cy="10" r="7" /><circle cx="10" cy="10" r="3" /></>) },
   { label: "Analytics", href: "/app/analytics", icon: icon(<><path d="M4 15v-4M9 15V7M14 15v-6" strokeLinecap="round" /><path d="M2 17h16" strokeLinecap="round" /></>) },
   { label: "Review", href: "/app/review", icon: icon(<><path d="M4 5h12M4 10h8M4 15h12" strokeLinecap="round" /><circle cx="15" cy="10" r="1" fill="currentColor" /></>) },
+  { label: "Rooms", href: "/app/rooms", icon: icon(<><circle cx="6" cy="8" r="2" /><circle cx="14" cy="8" r="2" /><path d="M3 16c0-2 1.5-4 3-4M17 16c0-2-1.5-4-3-4M10 17v-1" strokeLinecap="round" /></>) },
   { label: "Arcad", href: "/app/arcad", icon: icon(<path d="M4 5h12v9H8l-4 3V5z" />) },
   { label: "Settings", href: "/app/settings", icon: icon(<><circle cx="10" cy="10" r="2.5" /><path d="M10 3v2M10 15v2M3 10h2M15 10h2M4.9 4.9l1.4 1.4M13.7 13.7l1.4 1.4M4.9 15.1l1.4-1.4M13.7 6.3l1.4-1.4" /></>) },
 ];

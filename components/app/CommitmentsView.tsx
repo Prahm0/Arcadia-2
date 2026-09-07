@@ -6,6 +6,7 @@ import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { cn } from "@/lib/cn";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
+import EmptyState, { ExampleRow } from "./EmptyState";
 
 interface Commitment {
   id: string;
@@ -92,12 +93,27 @@ export default function CommitmentsView() {
         ) : error ? (
           <p className="text-[13.5px]" style={{ color: "var(--app-danger)" }}>{error}</p>
         ) : commitments.length === 0 ? (
-          <div className="rounded-[16px] p-10 text-center" style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}>
-            <p className="text-[16px] font-medium" style={{ color: "var(--app-text)" }}>No commitments yet.</p>
-            <p className="mt-2 text-[14px]" style={{ color: "var(--app-text-muted)" }}>
-              Add your school day, training sessions, or other recurring things so Arcadia knows when you're busy.
-            </p>
-          </div>
+          <EmptyState
+            title={<>Where your <span className="accent-serif">week</span> already lives.</>}
+            body="Commitments are the fixed things — school hours, training, work shifts. Add them and Arcadia stops planning study on top of them."
+            example={
+              <>
+                <ExampleRow title="School" meta="Mon–Fri · 8:30am–3:15pm" bar="#38bdf8" />
+                <ExampleRow title="Training" meta="Tue, Thu · 6:00pm–7:30pm" bar="#34d399" />
+                <ExampleRow title="Music lesson" meta="Sat · 10:00am–11:00am" bar="#f59e0b" />
+              </>
+            }
+            action={
+              <AppButton
+                variant="primary"
+                onClick={() => { setEditing(null); setSheetOpen(true); }}
+                icon={<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M10 4v12M4 10h12" strokeLinecap="round" /></svg>}
+              >
+                Add your first commitment
+              </AppButton>
+            }
+            hint="You can add these once — they repeat every week automatically."
+          />
         ) : (
           Object.entries(grouped).map(([category, list]) => (
             <section key={category}>

@@ -8,6 +8,7 @@ import type { AuthUser } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { useTheme } from "@/lib/app/theme";
 import { useStreak } from "@/lib/app/useStreak";
+import ArcadFloatingButton from "./ArcadFloatingButton";
 import PageMount from "./PageMount";
 
 interface AppShellProps {
@@ -254,6 +255,7 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
           <PageMount>{children}</PageMount>
         </main>
       </div>
+      <ArcadFloatingButton />
     </div>
   );
 }

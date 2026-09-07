@@ -107,6 +107,29 @@ export default function ArcadView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Read a ?prompt=… handoff from the floating launchpad and auto-send once
+  // the initial chat load finishes. Consumed via the URL (not history state)
+  // so a shareable link works too. We strip it off history immediately so a
+  // refresh doesn't re-send.
+  const hasHandledPrompt = useRef(false);
+  useEffect(() => {
+    if (loading || hasHandledPrompt.current) return;
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const prompt = params.get("prompt");
+    if (!prompt) {
+      hasHandledPrompt.current = true;
+      return;
+    }
+    hasHandledPrompt.current = true;
+    // Strip the query so refresh doesn't repeat the send.
+    const url = new URL(window.location.href);
+    url.searchParams.delete("prompt");
+    window.history.replaceState({}, "", url.toString());
+    void send(prompt);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
+
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [state.messages, sending]);

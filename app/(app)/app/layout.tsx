@@ -57,12 +57,11 @@ function Gate({ children }: { children: ReactNode }) {
     );
   }
 
-  const streak = Number(state.data.analytics?.currentStreak ?? 0);
   const briefing = state.data.user.onboardingComplete ? state.data.briefing : null;
 
   return (
     <DashboardDataProvider data={state.data} reload={reload} patch={patch}>
-      <AppShell user={state.data.user} streak={streak} briefing={briefing}>
+      <AppShell user={state.data.user} briefing={briefing}>
         {children}
       </AppShell>
     </DashboardDataProvider>

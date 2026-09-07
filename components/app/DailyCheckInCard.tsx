@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
+import { useStreak } from "@/lib/app/useStreak";
 import type { PlannerEvent } from "@/lib/api/types";
 import { dateKey, formatDurationMinutes } from "@/lib/api/time";
 
@@ -17,6 +18,7 @@ const STORAGE_PREFIX = "arcadia:checkin:dismissed:";
  */
 export default function DailyCheckInCard() {
   const { data } = useDashboardData();
+  const streak = useStreak();
   const timezone = data.profile?.timezone || data.user.timezone || "Australia/Sydney";
   const [visible, setVisible] = useState(false);
 
@@ -60,8 +62,7 @@ export default function DailyCheckInCard() {
 
   if (!summary || !visible) return null;
 
-  const currentStreak = Number(data.analytics?.currentStreak ?? 0);
-  const streakLine = streakSentence(currentStreak, summary);
+  const streakLine = streakSentence(streak.current, summary);
 
   return (
     <div

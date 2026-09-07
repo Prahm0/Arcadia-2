@@ -7,11 +7,11 @@ import { api, saveCsrf } from "@/lib/api/client";
 import type { AuthUser } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { useTheme } from "@/lib/app/theme";
+import { useStreak } from "@/lib/app/useStreak";
 import PageMount from "./PageMount";
 
 interface AppShellProps {
   user: AuthUser | null;
-  streak?: number | null;
   briefing?: string | null;
   children: ReactNode;
 }
@@ -41,10 +41,12 @@ const NAV: NavItem[] = [
   { label: "Settings", href: "/app/settings", icon: icon(<><circle cx="10" cy="10" r="2.5" /><path d="M10 3v2M10 15v2M3 10h2M15 10h2M4.9 4.9l1.4 1.4M13.7 13.7l1.4 1.4M4.9 15.1l1.4-1.4M13.7 6.3l1.4-1.4" /></>) },
 ];
 
-export default function AppShell({ user, streak, briefing, children }: AppShellProps) {
+export default function AppShell({ user, briefing, children }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { resolved, toggle } = useTheme();
+  const streakSummary = useStreak();
+  const streak = streakSummary.current;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
@@ -138,7 +140,7 @@ export default function AppShell({ user, streak, briefing, children }: AppShellP
           </nav>
 
           <div className="mt-auto flex flex-col gap-2 px-3 pb-5">
-            {typeof streak === "number" && streak > 0 ? (
+            {streak > 0 ? (
               <div
                 className="mx-2 rounded-[10px] border p-3"
                 style={{
@@ -146,9 +148,44 @@ export default function AppShell({ user, streak, briefing, children }: AppShellP
                   background: "var(--app-accent-soft)",
                 }}
               >
-                <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Streak</p>
+                <div className="flex items-center justify-between">
+                  <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>
+                    Streak
+                  </p>
+                  {streakSummary.hitMilestone ? (
+                    <span
+                      className="rounded-full px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.06em]"
+                      style={{
+                        background: "var(--app-accent)",
+                        color: "white",
+                      }}
+                    >
+                      {streakSummary.hitMilestone}-day
+                    </span>
+                  ) : null}
+                </div>
                 <p className="mt-1 text-[22px] font-medium leading-none tabular-nums" style={{ color: "var(--app-text)" }}>
-                  {streak} <span className="text-[13px] font-normal" style={{ color: "var(--app-text-muted)" }}>days</span>
+                  {streak} <span className="text-[13px] font-normal" style={{ color: "var(--app-text-muted)" }}>consistent {streak === 1 ? "day" : "days"}</span>
+                </p>
+                {streakSummary.nextMilestone && streakSummary.daysToNext ? (
+                  <p className="mt-1.5 text-[11.5px]" style={{ color: "var(--app-text-muted)" }}>
+                    {streakSummary.daysToNext} more to {streakSummary.nextMilestone}
+                  </p>
+                ) : null}
+              </div>
+            ) : streakSummary.lastPlannedDay?.missReason ? (
+              <div
+                className="mx-2 rounded-[10px] border p-3"
+                style={{
+                  borderColor: "var(--app-border)",
+                  background: "var(--app-surface-soft)",
+                }}
+              >
+                <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>
+                  Streak reset
+                </p>
+                <p className="mt-1.5 text-[12.5px] leading-snug" style={{ color: "var(--app-text-soft)" }}>
+                  {streakSummary.lastPlannedDay.missReason} — 70% locks the day in.
                 </p>
               </div>
             ) : null}

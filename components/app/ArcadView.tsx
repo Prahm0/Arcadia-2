@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 import { formatDueSoon, formatDurationMinutes } from "@/lib/api/time";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
+import MissedRecoveryCards from "./MissedRecoveryCards";
 import { useStreak } from "@/lib/app/useStreak";
 
 interface Message {
@@ -249,16 +250,19 @@ export default function ArcadView() {
           </div>
 
           {tab === "chat" && (
-            <ChatPanel
-              state={state}
-              loading={loading}
-              sending={sending}
-              error={error}
-              suggestions={SUGGESTIONS}
-              onSend={send}
-              onProposal={respondToProposal}
-              listRef={listRef}
-            />
+            <>
+              <MissedRecoveryCards />
+              <ChatPanel
+                state={state}
+                loading={loading}
+                sending={sending}
+                error={error}
+                suggestions={SUGGESTIONS}
+                onSend={send}
+                onProposal={respondToProposal}
+                listRef={listRef}
+              />
+            </>
           )}
           {tab === "context" && <ContextPanel data={data} />}
           {tab === "history" && (

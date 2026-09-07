@@ -141,17 +141,25 @@ export function buildGreeting(
 
   let secondary: string;
   if (missedRecently > 0) {
-    secondary = `You've got ${missedRecently} missed session${missedRecently === 1 ? "" : "s"} to close out.`;
+    secondary =
+      missedRecently === 1
+        ? "One session slipped — want to fix it?"
+        : `${missedRecently} sessions slipped — let's clean them up.`;
   } else if (remaining > 0) {
-    secondary = `${remaining} thing${remaining === 1 ? "" : "s"} left on today's plan — I've got the whole picture.`;
+    secondary =
+      remaining === 1
+        ? "One thing still on your plan today."
+        : `${remaining} things still on your plan today.`;
   } else if (todaysStudy.length > 0) {
-    secondary = "Nothing left on today's plan. Want to look at the week?";
+    secondary = "Today's done. Want to look at the rest of the week?";
   } else if (data.tasks.length === 0) {
-    secondary = "No plan yet — tell me what's on for the week and I'll build one.";
+    secondary = "Nothing on the plan yet — tell me what's coming up.";
+  } else if (streak.current >= 3) {
+    secondary = `${streak.current} consistent days deep. What's next?`;
   } else if (streak.current > 0) {
-    secondary = `${streak.current} consistent day${streak.current === 1 ? "" : "s"} in — what would you like to talk about?`;
+    secondary = "Streak's alive — what's on your mind?";
   } else {
-    secondary = "Ready when you are. What's on your mind about the plan?";
+    secondary = "Ready when you are.";
   }
 
   return {

@@ -88,7 +88,7 @@ export default function ArcadView() {
         });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load chat.");
+      setError(err instanceof Error ? err.message : "Couldn't load the chat — try again in a moment?");
     } finally {
       setLoading(false);
     }
@@ -189,7 +189,7 @@ export default function ArcadView() {
               }));
               if (event.schedule || event.action) scheduleTouched = true;
             } else if (event.type === "error") {
-              setError(event.message || "Arcad couldn't respond.");
+              setError(event.message || "Something went sideways — try that again?");
             }
           } catch {
             /* skip malformed */
@@ -345,7 +345,7 @@ export default function ArcadView() {
                   }
                 }}
                 rows={1}
-                placeholder="Ask Arcad anything…"
+                placeholder="What's on your mind?"
                 className="min-h-[40px] max-h-[200px] flex-1 resize-none bg-transparent px-3 py-2 text-[14.5px] outline-none"
                 style={{ color: "var(--app-text)" }}
               />
@@ -418,7 +418,7 @@ function ChatPanel({
       >
         {loading ? (
           <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
-            Loading conversation…
+            One sec…
           </p>
         ) : state.messages.length === 0 ? (
           <ArcadHero greeting={greeting} starters={starters} onSend={onSend} />
@@ -441,7 +441,7 @@ function ChatPanel({
                   }}
                 >
                   <ThinkingDots />
-                  <span className="text-[13px]">Arcad is thinking…</span>
+                  <span className="text-[13px]">Thinking…</span>
                 </div>
               </li>
             ) : null}

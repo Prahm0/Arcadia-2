@@ -64,11 +64,11 @@ export function buildProactiveCards(
       id: `deadline-24h:${soonest.id}`,
       kind: "deadline-24h",
       tone: "warn",
-      eyebrow: "Deadline · soon",
+      eyebrow: "Deadline · close",
       title:
         hoursOut <= 6
-          ? `${soonest.title} is due in ${hoursOut} hr — ${soonest.remainingMinutes} min still to go.`
-          : `${soonest.title} is due tomorrow with ${soonest.remainingMinutes} min left. Want to squeeze in a session tonight?`,
+          ? `${soonest.title} — ${hoursOut} hr out, ${soonest.remainingMinutes} min still to do.`
+          : `${soonest.title} lands tomorrow with ${soonest.remainingMinutes} min left. Squeeze one in tonight?`,
       actions: [
         {
           label: "Plan the last session",
@@ -90,13 +90,15 @@ export function buildProactiveCards(
       id: `streak-milestone:${currentMilestone}`,
       kind: "streak-milestone",
       tone: "celebrate",
-      eyebrow: "Streak milestone",
+      eyebrow: "Milestone",
       title:
         currentMilestone === 30
-          ? "30 consistent days. That's a habit, not a streak."
-          : `${currentMilestone} consistent days in a row — this is starting to stick.`,
+          ? "30 days. That's a habit now, not a streak."
+          : currentMilestone === 7
+            ? "A full week. This one's stuck."
+            : "Three in a row — you've got a streak.",
       actions: [
-        { label: "See streak", href: "/app/analytics", variant: "primary" },
+        { label: "See it", href: "/app/analytics", variant: "primary" },
       ],
     });
   }
@@ -120,8 +122,8 @@ export function buildProactiveCards(
         id: `low-week:${weekKey}`,
         kind: "low-week",
         tone: "info",
-        eyebrow: "Weekly check-in",
-        title: `This week has been quiet — ${currentReview.totalDone} of ${currentReview.totalPlanned} planned min. Anything I can help shift?`,
+        eyebrow: "Check-in",
+        title: `Quiet week — ${currentReview.totalDone} of ${currentReview.totalPlanned} planned min. Want to shift anything?`,
         actions: [
           {
             label: "Talk it over",
@@ -137,10 +139,10 @@ export function buildProactiveCards(
         id: `low-week:${currentWindow.startKey}:sundayzero`,
         kind: "low-week",
         tone: "info",
-        eyebrow: "Weekly check-in",
-        title: "Zero focus time this week yet — one short session is enough to reset the pattern.",
+        eyebrow: "Check-in",
+        title: "Zero focus time so far. One short session is enough to reset it.",
         actions: [
-          { label: "Start focus", href: "/app/focus", variant: "primary" },
+          { label: "Start a session", href: "/app/focus", variant: "primary" },
         ],
       });
     }

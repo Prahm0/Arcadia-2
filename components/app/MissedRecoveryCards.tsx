@@ -150,18 +150,16 @@ export default function MissedRecoveryCards() {
                 </p>
                 {state.step === "ask" ? (
                   <p className="mt-1.5 text-[14.5px] leading-snug" style={{ color: "var(--app-text)" }}>
-                    You had <span className="font-medium">{subject}</span> — {event.title} at{" "}
-                    <span className="font-mono">{startClock}–{endClock}</span>.{" "}
-                    Did you get to it?
+                    <span className="font-medium">{subject}</span> at{" "}
+                    <span className="font-mono">{startClock}–{endClock}</span> — did you get to it?
                   </p>
                 ) : state.step === "why" ? (
                   <p className="mt-1.5 text-[14.5px] leading-snug" style={{ color: "var(--app-text)" }}>
-                    Noted — I marked it missed and the plan was re-checked.{" "}
-                    What got in the way? (optional)
+                    Marked missed. The plan's re-checked around it. What got in the way?
                   </p>
                 ) : (
                   <p className="mt-1.5 text-[14.5px] leading-snug" style={{ color: "var(--app-text)" }}>
-                    Nice — logged as done. That's on the streak.
+                    Locked in. That's on the streak.
                   </p>
                 )}
               </div>

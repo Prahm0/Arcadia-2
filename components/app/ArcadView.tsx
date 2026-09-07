@@ -8,8 +8,10 @@ import { cn } from "@/lib/cn";
 import { formatDueSoon, formatDurationMinutes } from "@/lib/api/time";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
+import ArcadOrb from "./ArcadOrb";
 import MissedRecoveryCards from "./MissedRecoveryCards";
 import { useStreak } from "@/lib/app/useStreak";
+import { buildContextualStarters, buildGreeting, type Starter } from "@/lib/app/arcadStarters";
 
 interface Message {
   id: string;
@@ -43,15 +45,12 @@ interface ChatState {
 
 type Tab = "chat" | "context" | "history";
 
-const SUGGESTIONS = [
-  "How much have I studied this week?",
-  "Add an English essay due Friday, 90 minutes",
-  "Move my chemistry session to tomorrow",
-  "I'm running out of time — what should I drop?",
-];
+// Starters are built from live plan data in buildContextualStarters —
+// this ArcadView doesn't ship any static prompt list.
 
 export default function ArcadView() {
   const { data, reload } = useDashboardData();
+  const streak = useStreak();
   const [state, setState] = useState<ChatState>({ conversationId: null, messages: [], proposals: [] });
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [message, setMessage] = useState("");
@@ -61,6 +60,9 @@ export default function ArcadView() {
   const [tab, setTab] = useState<Tab>("chat");
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const starters = useMemo(() => buildContextualStarters(data, streak), [data, streak]);
+  const greeting = useMemo(() => buildGreeting(data, streak), [data, streak]);
 
   const loadChat = useCallback(async (conversationId?: string) => {
     setLoading(true);
@@ -257,7 +259,8 @@ export default function ArcadView() {
                 loading={loading}
                 sending={sending}
                 error={error}
-                suggestions={SUGGESTIONS}
+                starters={starters}
+                greeting={greeting}
                 onSend={send}
                 onProposal={respondToProposal}
                 listRef={listRef}
@@ -275,6 +278,26 @@ export default function ArcadView() {
               }}
             />
           )}
+
+          {tab === "chat" && state.messages.length > 0 && !sending && starters.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5 self-start">
+              {starters.slice(0, 3).map((starter) => (
+                <button
+                  key={starter.label}
+                  type="button"
+                  onClick={() => send(starter.message)}
+                  className="rounded-full px-2.5 py-1 text-[11.5px] font-medium transition-colors"
+                  style={{
+                    background: "transparent",
+                    color: "var(--app-text-muted)",
+                    border: "1px solid var(--app-border)",
+                  }}
+                >
+                  {starter.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
 
           {tab === "chat" && (
             <form
@@ -316,13 +339,14 @@ export default function ArcadView() {
 }
 
 function ChatPanel({
-  state, loading, sending, error, suggestions, onSend, onProposal, listRef,
+  state, loading, sending, error, starters, greeting, onSend, onProposal, listRef,
 }: {
   state: ChatState;
   loading: boolean;
   sending: boolean;
   error: string | null;
-  suggestions: string[];
+  starters: Starter[];
+  greeting: { primary: string; secondary: string };
   onSend: (text: string) => void;
   onProposal: (id: string, action: "apply" | "decline") => void;
   listRef: React.RefObject<HTMLDivElement | null>;
@@ -354,36 +378,28 @@ function ChatPanel({
         style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}
       >
         {loading ? (
-          <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>Loading conversation…</p>
+          <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
+            Loading conversation…
+          </p>
         ) : state.messages.length === 0 ? (
-          <div className="flex flex-col items-start gap-4">
-            <p className="text-[14px]" style={{ color: "var(--app-text-muted)" }}>
-              Ask anything — Arcad has your subjects, schedule, and progress in mind.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {suggestions.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => onSend(s)}
-                  className="rounded-full px-3 py-1.5 text-[12.5px] transition-colors hover:bg-black/[0.03]"
-                  style={{ border: "1px solid var(--app-border)", color: "var(--app-text-soft)" }}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
+          <ArcadHero greeting={greeting} starters={starters} onSend={onSend} />
         ) : (
           <ul className="flex flex-col gap-4">
             {state.messages.map((msg) => (
               <MessageBubble key={msg.id} message={msg} />
             ))}
             {sending ? (
-              <li className="flex justify-start">
+              <li className="flex items-start gap-2.5">
+                <span className="mt-0.5 shrink-0">
+                  <ArcadOrb size={22} state="thinking" />
+                </span>
                 <div
                   className="flex items-center gap-2 rounded-[14px] px-4 py-2.5"
-                  style={{ background: "var(--app-surface-soft)", color: "var(--app-text-muted)", border: "1px solid var(--app-border)" }}
+                  style={{
+                    background: "var(--app-surface-soft)",
+                    color: "var(--app-text-muted)",
+                    border: "1px solid var(--app-border)",
+                  }}
                 >
                   <ThinkingDots />
                   <span className="text-[13px]">Arcad is thinking…</span>
@@ -406,21 +422,102 @@ function MessageBubble({ message }: { message: Message }) {
   const time = new Date(message.createdAt);
   const timeLabel = new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit", hour12: true }).format(time);
   return (
-    <li className={cn("flex flex-col", isUser ? "items-end" : "items-start")}>
-      <div
-        className="max-w-[80%] whitespace-pre-wrap rounded-[14px] px-4 py-2.5 text-[14.5px] leading-[1.5]"
-        style={
-          isUser
-            ? { background: "var(--app-text)", color: "var(--app-bg)" }
-            : { background: "var(--app-surface-soft)", color: "var(--app-text)", border: "1px solid var(--app-border)" }
-        }
-      >
-        {message.content}
+    <li className={cn("group flex gap-2.5", isUser ? "justify-end" : "justify-start")}>
+      {!isUser ? (
+        <span className="mt-0.5 shrink-0">
+          <ArcadOrb size={22} />
+        </span>
+      ) : null}
+      <div className={cn("flex max-w-[82%] flex-col", isUser ? "items-end" : "items-start")}>
+        <div
+          className="whitespace-pre-wrap rounded-[14px] px-4 py-2.5 text-[14.5px] leading-[1.5]"
+          style={
+            isUser
+              ? { background: "var(--app-text)", color: "var(--app-bg)" }
+              : {
+                  background: "var(--app-surface-soft)",
+                  color: "var(--app-text)",
+                  border: "1px solid var(--app-border)",
+                }
+          }
+        >
+          {message.content}
+        </div>
+        <span
+          className="mt-1 px-1 text-[10.5px] font-mono opacity-0 transition-opacity group-hover:opacity-100"
+          style={{ color: "var(--app-text-faint)" }}
+        >
+          {timeLabel}
+        </span>
       </div>
-      <span className="mt-1 px-1 text-[11px] font-mono" style={{ color: "var(--app-text-faint)" }}>
-        {isUser ? "You" : "Arcad"} · {timeLabel}
-      </span>
     </li>
+  );
+}
+
+/**
+ * The empty-state hero at the top of Arcad chat. Warmer than "Ask anything"
+ * — reads the live plan and speaks in first person, with starter chips built
+ * from real subjects, deadlines and streaks.
+ */
+function ArcadHero({
+  greeting,
+  starters,
+  onSend,
+}: {
+  greeting: { primary: string; secondary: string };
+  starters: Starter[];
+  onSend: (text: string) => void;
+}) {
+  return (
+    <div className="flex flex-col items-start gap-5">
+      <div className="flex items-start gap-4">
+        <ArcadOrb size={54} state="idle" />
+        <div className="min-w-0">
+          <p className="type-eyebrow" style={{ color: "var(--app-accent-strong)" }}>
+            Arcad
+          </p>
+          <p
+            className="mt-1 text-[22px] font-medium leading-[1.15] tracking-[-0.015em]"
+            style={{ color: "var(--app-text)" }}
+          >
+            {greeting.primary}
+          </p>
+          <p className="mt-1.5 text-[14.5px] leading-[1.5]" style={{ color: "var(--app-text-muted)" }}>
+            {greeting.secondary}
+          </p>
+        </div>
+      </div>
+      {starters.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {starters.map((starter) => {
+            const isAccent = starter.tone === "accent";
+            return (
+              <button
+                key={starter.label}
+                type="button"
+                onClick={() => onSend(starter.message)}
+                className="rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-colors"
+                style={
+                  isAccent
+                    ? {
+                        background: "var(--app-accent)",
+                        color: "white",
+                        border: "1px solid var(--app-accent)",
+                      }
+                    : {
+                        background: "transparent",
+                        color: "var(--app-text-soft)",
+                        border: "1px solid var(--app-border-strong)",
+                      }
+                }
+              >
+                {starter.label}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
   );
 }
 

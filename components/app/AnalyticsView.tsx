@@ -7,6 +7,7 @@ import PageHeader from "./PageHeader";
 import { cn } from "@/lib/cn";
 import { useStreak } from "@/lib/app/useStreak";
 import { STREAK_MILESTONES } from "@/lib/app/streaks";
+import ConsistencyHeatmap from "./ConsistencyHeatmap";
 
 interface DailyBucket {
   date: string;
@@ -144,6 +145,10 @@ export default function AnalyticsView() {
             </ul>
           )}
         </div>
+      </div>
+
+      <div className="mx-auto w-full max-w-[1140px] px-6 pb-6 sm:px-10">
+        <ConsistencyHeatmap />
       </div>
 
       <div className="mx-auto w-full max-w-[1140px] px-6 pb-16 sm:px-10">

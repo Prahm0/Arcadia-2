@@ -170,11 +170,12 @@ export default function ScheduleView() {
         }
       />
 
-      <div className="px-6 py-8 sm:px-10">
+      <div className="px-4 py-6 sm:px-10 sm:py-8">
         <div
-          className="overflow-hidden rounded-[16px]"
+          className="overflow-x-auto rounded-[16px]"
           style={{ border: "1px solid var(--app-border)", background: "var(--app-surface)" }}
         >
+          <div className="min-w-[760px]">
           <div
             className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 sm:px-6"
             style={{ borderBottom: "1px solid var(--app-border)" }}
@@ -183,7 +184,7 @@ export default function ScheduleView() {
               <span className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>{weekLabel.range}</span>
               <span className="text-[13px] font-mono" style={{ color: "var(--app-text-muted)" }}>{week[0].label} – {week[6].label}</span>
             </div>
-            <div className="flex items-center gap-2 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
+            <div className="hidden lg:flex items-center gap-2 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
               <span
                 aria-hidden="true"
                 className="size-1.5 rounded-full"
@@ -204,6 +205,7 @@ export default function ScheduleView() {
             onCreateAtDay={openNewTaskForDay}
             onReschedule={reschedule}
           />
+          </div>
         </div>
       </div>
 

@@ -10,6 +10,7 @@ import { useTheme } from "@/lib/app/theme";
 import { useStreak } from "@/lib/app/useStreak";
 import { useSessionReminders } from "@/lib/app/useSessionReminders";
 import ArcadFloatingButton from "./ArcadFloatingButton";
+import MobileBottomNav from "./MobileBottomNav";
 import PageMount from "./PageMount";
 
 interface AppShellProps {
@@ -53,7 +54,6 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
   const streakSummary = useStreak();
   useSessionReminders();
   const streak = streakSummary.current;
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
   async function signOut() {
@@ -73,30 +73,28 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
       className="min-h-svh"
       style={{ background: "var(--app-bg)", color: "var(--app-text)" }}
     >
-      {/* Mobile top bar */}
+      {/* Mobile top bar — brand + streak chip. Nav lives at the bottom now. */}
       <div className="lg:hidden sticky top-0 z-30 flex items-center justify-between border-b px-4 py-3 backdrop-blur-md"
         style={{ borderColor: "var(--app-border)", background: "color-mix(in oklab, var(--app-bg) 88%, transparent)" }}
       >
         <BrandMark />
-        <button
-          type="button"
-          onClick={() => setMobileOpen((v) => !v)}
-          className="grid h-9 w-9 place-items-center rounded-lg border transition-colors"
-          style={{ borderColor: "var(--app-border)" }}
-          aria-label="Toggle navigation"
-        >
-          <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5">
-            {mobileOpen ? <path d="M5 5l10 10M15 5L5 15" strokeLinecap="round" /> : <><path d="M3 6h14" /><path d="M3 10h14" /><path d="M3 14h14" /></>}
-          </svg>
-        </button>
+        {streak > 0 ? (
+          <div
+            className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-medium"
+            style={{ background: "var(--app-accent-soft)", color: "var(--app-accent-strong)" }}
+          >
+            <span aria-hidden="true">✦</span>
+            <span className="tabular-nums">{streak}</span>
+            <span>day{streak === 1 ? "" : "s"}</span>
+          </div>
+        ) : null}
       </div>
 
       <div className="mx-auto flex max-w-[1440px]">
-        {/* Sidebar */}
+        {/* Sidebar — desktop only. Mobile uses MobileBottomNav + MobileMoreSheet. */}
         <aside
           className={cn(
-            "lg:sticky lg:top-0 lg:flex lg:h-svh lg:w-[240px] lg:shrink-0 lg:flex-col",
-            mobileOpen ? "fixed inset-0 z-40 flex flex-col" : "hidden",
+            "hidden lg:sticky lg:top-0 lg:flex lg:h-svh lg:w-[240px] lg:shrink-0 lg:flex-col",
           )}
           style={{
             background: "var(--app-surface-soft)",
@@ -105,12 +103,6 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
         >
           <div className="hidden lg:block px-5 pt-6">
             <BrandMark />
-          </div>
-          <div className="lg:hidden flex items-center justify-between border-b px-4 py-3" style={{ borderColor: "var(--app-border)" }}>
-            <BrandMark />
-            <button onClick={() => setMobileOpen(false)} aria-label="Close" className="grid h-9 w-9 place-items-center rounded-lg border" style={{ borderColor: "var(--app-border)" }}>
-              <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M5 5l10 10M15 5L5 15" strokeLinecap="round" /></svg>
-            </button>
           </div>
 
           <nav className="mt-6 flex flex-col gap-0.5 px-3">
@@ -123,7 +115,6 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={() => setMobileOpen(false)}
                   className={cn(
                     "flex items-center gap-3 rounded-[10px] px-3 py-2 text-[14px] font-medium transition-colors",
                   )}
@@ -241,7 +232,9 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
           </div>
         </aside>
 
-        <main className="flex-1 min-w-0">
+        <main
+          className="flex-1 min-w-0 pb-[calc(env(safe-area-inset-bottom,0)+72px)] lg:pb-0"
+        >
           {briefing ? (
             <div
               className="border-b px-6 py-2.5 text-[13px] hidden lg:flex items-center gap-3"
@@ -260,6 +253,7 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
         </main>
       </div>
       <ArcadFloatingButton />
+      <MobileBottomNav />
     </div>
   );
 }

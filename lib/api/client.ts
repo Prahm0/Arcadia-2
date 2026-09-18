@@ -29,6 +29,32 @@ export function saveCsrf(token: string | null | undefined) {
   }
 }
 
+/**
+ * Broadcast a session-expiry event and redirect to /login. Debounced with a
+ * module-level flag so a page whose parallel fetches all 401 together only
+ * fires the redirect once. Preserves the current URL as ?next= so /login
+ * can send the student back where they were after signing in.
+ */
+let sessionExpiryFired = false;
+function onSessionExpired(): void {
+  if (typeof window === "undefined") return;
+  if (sessionExpiryFired) return;
+  // Don't loop if we're already on the login/register surface.
+  if (window.location.pathname.startsWith("/login") || window.location.pathname.startsWith("/register")) return;
+  sessionExpiryFired = true;
+  saveCsrf(null);
+  const next = window.location.pathname + window.location.search;
+  try {
+    window.dispatchEvent(new CustomEvent("arcadia:auth-expired"));
+  } catch {
+    /* ignore */
+  }
+  // Give the banner a heartbeat to render before we navigate away.
+  window.setTimeout(() => {
+    window.location.href = `/login?expired=1&next=${encodeURIComponent(next)}`;
+  }, 350);
+}
+
 export async function api<T = unknown>(
   path: string,
   init: RequestInit = {},
@@ -60,6 +86,9 @@ export async function api<T = unknown>(
       (data && typeof data === "object" && "error" in data && String((data as { error: unknown }).error)) ||
       response.statusText ||
       `Request failed (${response.status})`;
+    if (response.status === 401 && !path.startsWith("/api/auth/")) {
+      onSessionExpired();
+    }
     throw new ApiError(message, response.status, data);
   }
 

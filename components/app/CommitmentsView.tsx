@@ -91,7 +91,16 @@ export default function CommitmentsView() {
             <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>Loading…</p>
           </div>
         ) : error ? (
-          <p className="text-[13.5px]" style={{ color: "var(--app-danger)" }}>{error}</p>
+          <div
+            className="rounded-[14px] p-6 text-center"
+            style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}
+          >
+            <p className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>Couldn't load your commitments.</p>
+            <p className="mt-1.5 text-[13px]" style={{ color: "var(--app-text-muted)" }}>{error}</p>
+            <div className="mt-4 flex justify-center">
+              <AppButton variant="secondary" onClick={() => void load()}>Try again</AppButton>
+            </div>
+          </div>
         ) : commitments.length === 0 ? (
           <EmptyState
             title={<>Where your <span className="accent-serif">week</span> already lives.</>}

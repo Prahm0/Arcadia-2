@@ -12,6 +12,7 @@ import {
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import EmptyState from "./EmptyState";
+import NewTaskSheet from "./NewTaskSheet";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -19,6 +20,7 @@ export default function KnowledgeView() {
   const { data, patch, reload } = useDashboardData();
   const contexts = useMemo(() => data.subjectContexts ?? [], [data.subjectContexts]);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [addSheetOpen, setAddSheetOpen] = useState(false);
 
   return (
     <>
@@ -26,21 +28,32 @@ export default function KnowledgeView() {
         eyebrow="Knowledge"
         title={<>Feed Arcad your <span className="accent-serif">subjects</span>.</>}
         meta="Upload lecture PDFs and notes per subject. Arcad reads them when you ask about that subject."
+        action={
+          contexts.length > 0 ? (
+            <AppButton
+              variant="secondary"
+              onClick={() => setAddSheetOpen(true)}
+              icon={
+                <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path d="M10 4v12M4 10h12" strokeLinecap="round" />
+                </svg>
+              }
+            >
+              Add subject
+            </AppButton>
+          ) : null
+        }
       />
 
       <div className="mx-auto flex w-full max-w-[860px] flex-col gap-6 px-6 py-8 sm:px-10">
         {contexts.length === 0 ? (
           <EmptyState
             title={<>No <span className="accent-serif">subjects</span> yet.</>}
-            body="Add a subject on Deadlines (create a task with a new subject name, or use onboarding). Once a subject exists, it shows up here for you to add notes and upload files."
+            body="Add a task with a new subject name and Arcadia will remember it. From then on this page will hold your notes and uploads for that subject."
             action={
-              <a
-                href="/app/deadlines"
-                className="rounded-full px-3 py-1.5 text-[12.5px] font-medium"
-                style={{ background: "var(--app-accent)", color: "white" }}
-              >
-                Add a task
-              </a>
+              <AppButton variant="primary" onClick={() => setAddSheetOpen(true)}>
+                Add your first subject
+              </AppButton>
             }
           />
         ) : (
@@ -81,6 +94,7 @@ export default function KnowledgeView() {
           </ul>
         )}
       </div>
+      <NewTaskSheet open={addSheetOpen} onClose={() => setAddSheetOpen(false)} />
     </>
   );
 }

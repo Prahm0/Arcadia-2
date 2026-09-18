@@ -213,17 +213,27 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="Subject">
-              <select
+              <input
                 required
+                list="arcadia-subjects"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
+                placeholder={data.subjects.length === 0 ? "Type a subject" : "Pick or type a new one"}
+                autoComplete="off"
+                maxLength={80}
                 className="w-full rounded-[10px] px-3 py-2.5 text-[15px] outline-none"
                 style={{ background: "var(--app-surface-soft)", border: "1px solid var(--app-border)", color: "var(--app-text)" }}
-              >
+              />
+              <datalist id="arcadia-subjects">
                 {data.subjects.map((s) => (
-                  <option key={s.id} value={s.name}>{s.name}</option>
+                  <option key={s.id} value={s.name} />
                 ))}
-              </select>
+              </datalist>
+              {!data.subjects.some((s) => s.name.toLowerCase() === subject.trim().toLowerCase()) && subject.trim().length > 0 ? (
+                <p className="mt-1.5 text-[11.5px]" style={{ color: "var(--app-accent-strong)" }}>
+                  New subject — I'll add {subject.trim()} to your list.
+                </p>
+              ) : null}
             </Field>
             <Field label="Type">
               <select

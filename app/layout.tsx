@@ -1,8 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Instrument_Serif, JetBrains_Mono } from "next/font/google";
+import { DM_Sans, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
+// DM Sans replaces Inter as the primary sans — warmer letterforms, no
+// stylistic sets to fight, pairs better with the Instrument Serif italic
+// accents. The CSS var name stays `--font-inter` for backward compatibility
+// with the tokens already referencing it.
+const inter = DM_Sans({
   subsets: ["latin"],
   variable: "--font-inter",
   display: "swap",

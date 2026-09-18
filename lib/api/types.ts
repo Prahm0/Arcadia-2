@@ -45,6 +45,17 @@ export interface PlannerProfile {
   bedtime?: string;
 }
 
+export type CompanionForm = "orb" | "comet" | "nebula";
+export type CompanionPalette = "violet" | "aqua" | "coral" | "gold";
+export type CompanionAccessory = "none" | "ring" | "star" | "book" | "headphones";
+
+export interface CompanionProfile {
+  name: string;
+  form: CompanionForm;
+  palette: CompanionPalette;
+  accessory: CompanionAccessory;
+}
+
 export interface SubjectFile {
   id: string;
   subjectId: string;
@@ -85,10 +96,16 @@ export interface DashboardResponse {
     [key: string]: unknown;
   };
   companion: {
-    form?: string;
-    palette?: string;
-    accessory?: string;
-    mood?: string;
+    profile?: {
+      name?: string;
+      form?: CompanionForm;
+      palette?: CompanionPalette;
+      accessory?: CompanionAccessory;
+    } | null;
+    focusedMinutes?: number;
+    level?: number;
+    currentStreak?: number;
+    state?: "ready" | "recovering";
     [key: string]: unknown;
   } | null;
   csrfToken: string;

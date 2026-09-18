@@ -15,6 +15,7 @@ import {
 } from "@/lib/api/time";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
+import CompanionCard from "./CompanionCard";
 import CompletionBurst from "./CompletionBurst";
 import DailyCheckInCard from "./DailyCheckInCard";
 import NewTaskSheet from "./NewTaskSheet";
@@ -134,6 +135,7 @@ export default function TodayView() {
         </section>
 
         <aside className="flex flex-col gap-6">
+          <CompanionCard />
           <NextDeadlinesCard tasks={data.focusTasks} timezone={timezone} />
           <StatsCard analytics={data.analytics} />
           <StreakCard />

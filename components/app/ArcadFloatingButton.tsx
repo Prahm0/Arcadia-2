@@ -6,6 +6,7 @@ import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { useStreak } from "@/lib/app/useStreak";
 import { buildContextualStarters, buildGreeting } from "@/lib/app/arcadStarters";
 import ArcadOrb from "./ArcadOrb";
+import MicButton from "./MicButton";
 
 /**
  * Global Arcad presence: a small orb pinned bottom-right on every /app page
@@ -186,6 +187,7 @@ export default function ArcadFloatingButton() {
                 className="min-h-[36px] max-h-[140px] flex-1 resize-none bg-transparent px-2.5 py-1.5 text-[13.5px] outline-none"
                 style={{ color: "var(--app-text)" }}
               />
+              <MicButton value={composed} onChange={setComposed} compact />
               <button
                 type="submit"
                 disabled={!composed.trim()}

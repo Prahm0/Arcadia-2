@@ -5,6 +5,7 @@ import { useEffect, type ReactNode } from "react";
 import AppShell from "@/components/app/AppShell";
 import { DashboardDataProvider, useDashboard } from "@/lib/app/DashboardProvider";
 import { ThemeProvider } from "@/lib/app/theme";
+import { useDashboardAutoRefresh } from "@/lib/app/useDashboardAutoRefresh";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
@@ -17,6 +18,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 function Gate({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { state, reload, patch } = useDashboard();
+  useDashboardAutoRefresh(reload);
 
   useEffect(() => {
     if (state.status === "unauthenticated") router.replace("/login");

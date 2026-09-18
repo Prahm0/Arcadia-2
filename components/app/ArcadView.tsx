@@ -9,11 +9,13 @@ import { formatDueSoon, formatDurationMinutes } from "@/lib/api/time";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import ArcadOrb from "./ArcadOrb";
+import MicButton from "./MicButton";
 import MissedRecoveryCards from "./MissedRecoveryCards";
 import ProactiveArcadCards from "./ProactiveArcadCards";
 import ProposalPreview from "./ProposalPreview";
 import { useStreak } from "@/lib/app/useStreak";
 import { buildContextualStarters, buildGreeting, type Starter } from "@/lib/app/arcadStarters";
+import { requestDashboardRefresh } from "@/lib/app/useDashboardAutoRefresh";
 
 interface Message {
   id: string;
@@ -196,7 +198,12 @@ export default function ArcadView() {
           }
         }
       }
-      if (scheduleTouched) await reload();
+      if (scheduleTouched) {
+        await reload();
+        // Broadcast so a Schedule/Today tab open in another /app view picks up
+        // the new plan without waiting on window focus.
+        requestDashboardRefresh();
+      }
       void loadConversations();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -210,6 +217,7 @@ export default function ArcadView() {
       await api(`/api/proposals/${encodeURIComponent(id)}/${action}`, { method: "POST" });
       setState((prev) => ({ ...prev, proposals: prev.proposals.filter((p) => p.id !== id) }));
       await reload();
+      if (action === "apply") requestDashboardRefresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed.");
     }
@@ -349,6 +357,7 @@ export default function ArcadView() {
                 className="min-h-[40px] max-h-[200px] flex-1 resize-none bg-transparent px-3 py-2 text-[14.5px] outline-none"
                 style={{ color: "var(--app-text)" }}
               />
+              <MicButton value={message} onChange={setMessage} targetRef={inputRef} />
               <AppButton type="submit" variant="primary" loading={sending} disabled={!message.trim()}>
                 Send
               </AppButton>

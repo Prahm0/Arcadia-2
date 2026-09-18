@@ -6,6 +6,7 @@ import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { useStreak } from "@/lib/app/useStreak";
 import { buildContextualStarters, buildGreeting } from "@/lib/app/arcadStarters";
 import ArcadOrb from "./ArcadOrb";
+import MicButton from "./MicButton";
 
 /**
  * Global Arcad presence: a small orb pinned bottom-right on every /app page
@@ -59,7 +60,7 @@ export default function ArcadFloatingButton() {
         onClick={() => setOpen((v) => !v)}
         aria-label="Ask Arcad"
         aria-expanded={open}
-        className="group fixed bottom-6 right-6 z-40 flex items-center gap-2.5 rounded-full py-1.5 pl-1.5 pr-3 shadow-[0_16px_40px_-14px_rgba(0,0,0,0.35)] transition-transform hover:scale-[1.02]"
+        className="group fixed bottom-[calc(env(safe-area-inset-bottom,0)+88px)] right-4 z-40 lg:bottom-6 lg:right-6 flex items-center gap-2.5 rounded-full py-1.5 pl-1.5 pr-3 shadow-[0_16px_40px_-14px_rgba(0,0,0,0.35)] transition-transform hover:scale-[1.02]"
         style={{
           background: "var(--app-surface)",
           border: "1px solid var(--app-border-strong)",
@@ -93,7 +94,7 @@ export default function ArcadFloatingButton() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="arcad-quick-title"
-            className="fixed bottom-6 right-6 z-40 w-[min(400px,calc(100vw-2.5rem))] rounded-[18px] p-5 shadow-[0_40px_120px_-40px_rgba(0,0,0,0.45)]"
+            className="fixed bottom-[calc(env(safe-area-inset-bottom,0)+88px)] right-4 z-40 lg:bottom-6 lg:right-6 w-[min(400px,calc(100vw-2.5rem))] rounded-[18px] p-5 shadow-[0_40px_120px_-40px_rgba(0,0,0,0.45)]"
             style={{
               background: "var(--app-surface)",
               border: "1px solid var(--app-border)",
@@ -186,6 +187,7 @@ export default function ArcadFloatingButton() {
                 className="min-h-[36px] max-h-[140px] flex-1 resize-none bg-transparent px-2.5 py-1.5 text-[13.5px] outline-none"
                 style={{ color: "var(--app-text)" }}
               />
+              <MicButton value={composed} onChange={setComposed} compact />
               <button
                 type="submit"
                 disabled={!composed.trim()}

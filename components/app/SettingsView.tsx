@@ -1,10 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, saveCsrf } from "@/lib/api/client";
+import { api, ApiError, saveCsrf } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { useTheme, type ThemeMode } from "@/lib/app/theme";
 import { isSoundEnabled, playCompletionTick, setSoundEnabled } from "@/lib/app/completion";
+import {
+  getLeadMinutes,
+  getPermissionState,
+  isReminderEnabled,
+  notificationsSupported,
+  requestPermission,
+  setLeadMinutes,
+  setReminderEnabled,
+  showNotification,
+  type NotificationPermissionState,
+} from "@/lib/app/notifications";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import { useRouter } from "next/navigation";
@@ -21,7 +32,7 @@ interface AccountResponse {
 
 export default function SettingsView() {
   const router = useRouter();
-  const { data, reload } = useDashboardData();
+  const { data, patch, reload } = useDashboardData();
   const { mode, setMode } = useTheme();
   const [name, setName] = useState(data.user.name);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -34,16 +45,117 @@ export default function SettingsView() {
 
   const [account, setAccount] = useState<AccountResponse["account"] | null>(null);
   const [soundOn, setSoundOn] = useState(true);
+  const [remindersOn, setRemindersOn] = useState(false);
+  const [permission, setPermission] = useState<NotificationPermissionState>("default");
+  const [leadMin, setLeadMin] = useState(10);
 
   useEffect(() => {
     api<AccountResponse>("/api/account").then((r) => setAccount(r.account)).catch(() => {});
     setSoundOn(isSoundEnabled());
+    setRemindersOn(isReminderEnabled());
+    setPermission(getPermissionState());
+    setLeadMin(getLeadMinutes());
   }, []);
 
   function toggleSound(next: boolean) {
     setSoundOn(next);
     setSoundEnabled(next);
     if (next) playCompletionTick();
+  }
+
+  async function toggleReminders(next: boolean) {
+    setRemindersOn(next);
+    setReminderEnabled(next);
+    if (next && permission === "default") {
+      const result = await requestPermission();
+      setPermission(result);
+    }
+  }
+
+  function updateLead(next: number) {
+    setLeadMin(next);
+    setLeadMinutes(next);
+  }
+
+  const google = data.google ?? { connected: false, lastSyncAt: null };
+  const [googleBusy, setGoogleBusy] = useState<"sync" | "disconnect" | null>(null);
+  const [googleNotice, setGoogleNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
+
+  // When the OAuth callback redirects back to "/", it appends ?google=connected
+  // or ?google=denied. Surface that once, then strip the param.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const flag = params.get("google");
+    if (!flag) return;
+    if (flag === "connected") {
+      setGoogleNotice({ tone: "info", text: "Google Calendar connected. Fixed events will appear on Schedule after the first sync." });
+      void reload();
+    } else if (flag === "denied") {
+      setGoogleNotice({ tone: "error", text: "Google didn't grant access. You can try again anytime." });
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.delete("google");
+    window.history.replaceState({}, "", url.toString());
+  }, [reload]);
+
+  function connectGoogle() {
+    if (typeof window === "undefined") return;
+    // /api/google/connect issues a redirect, so navigate the whole tab there.
+    window.location.href = "/api/google/connect";
+  }
+
+  async function syncGoogle() {
+    setGoogleBusy("sync");
+    setGoogleNotice(null);
+    try {
+      const response = await api<{ ok: boolean; lastSyncAt?: string }>("/api/google/sync", { method: "POST" });
+      // Optimistic reflect
+      patch((prev) => ({
+        ...prev,
+        google: { connected: true, lastSyncAt: response.lastSyncAt || new Date().toISOString() },
+      }));
+      await reload();
+      setGoogleNotice({ tone: "info", text: "Synced." });
+    } catch (err) {
+      setGoogleNotice({
+        tone: "error",
+        text: err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Sync failed.",
+      });
+    } finally {
+      setGoogleBusy(null);
+    }
+  }
+
+  async function disconnectGoogle() {
+    if (!confirm("Disconnect Google Calendar? Imported events will be removed from Schedule.")) return;
+    setGoogleBusy("disconnect");
+    setGoogleNotice(null);
+    try {
+      await api("/api/google/connection", { method: "DELETE" });
+      patch((prev) => ({ ...prev, google: { connected: false, lastSyncAt: null } }));
+      await reload();
+      setGoogleNotice({ tone: "info", text: "Google Calendar disconnected." });
+    } catch (err) {
+      setGoogleNotice({
+        tone: "error",
+        text: err instanceof Error ? err.message : "Couldn't disconnect.",
+      });
+    } finally {
+      setGoogleBusy(null);
+    }
+  }
+
+  async function testReminder() {
+    let state = getPermissionState();
+    if (state === "default") state = await requestPermission();
+    setPermission(state);
+    if (state !== "granted") return;
+    showNotification({
+      title: "Test reminder",
+      body: "This is what a session reminder will look like.",
+      tag: "arcadia:test",
+    });
   }
 
   async function saveProfile(event: React.FormEvent<HTMLFormElement>) {
@@ -138,6 +250,65 @@ export default function SettingsView() {
         </Card>
 
         <Card>
+          <SectionHeader label="Google Calendar" />
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span
+                  aria-hidden="true"
+                  className="size-2 rounded-full"
+                  style={{ background: google.connected ? "var(--app-success)" : "var(--app-text-faint)" }}
+                />
+                <p className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>
+                  {google.connected ? "Connected" : "Not connected"}
+                </p>
+              </div>
+              <p className="mt-1.5 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
+                {google.connected
+                  ? google.lastSyncAt
+                    ? `Last sync ${relativeTime(google.lastSyncAt)}. Imported events show as fixed on Schedule; study blocks Arcadia creates are written to a dedicated Arcadia calendar.`
+                    : "Just connected. First sync is running in the background — refresh in a minute."
+                  : "Import school, work, and personal events so Arcadia plans study around them. Arcadia writes generated study blocks to its own Arcadia calendar; nothing else is changed."}
+              </p>
+            </div>
+            <div className="flex flex-shrink-0 items-center gap-2">
+              {google.connected ? (
+                <>
+                  <AppButton
+                    type="button"
+                    variant="secondary"
+                    onClick={syncGoogle}
+                    loading={googleBusy === "sync"}
+                  >
+                    Sync now
+                  </AppButton>
+                  <AppButton
+                    type="button"
+                    variant="ghost"
+                    onClick={disconnectGoogle}
+                    loading={googleBusy === "disconnect"}
+                  >
+                    Disconnect
+                  </AppButton>
+                </>
+              ) : (
+                <AppButton type="button" variant="primary" onClick={connectGoogle}>
+                  Connect Google Calendar
+                </AppButton>
+              )}
+            </div>
+          </div>
+          {googleNotice ? (
+            <p
+              className="mt-3 text-[13px]"
+              style={{ color: googleNotice.tone === "error" ? "var(--app-danger)" : "var(--app-success)" }}
+            >
+              {googleNotice.text}
+            </p>
+          ) : null}
+        </Card>
+
+        <Card>
           <SectionHeader label="Feedback sounds" />
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
@@ -165,6 +336,84 @@ export default function SettingsView() {
               />
             </button>
           </div>
+        </Card>
+
+        <Card>
+          <SectionHeader label="Session reminders" />
+          {!notificationsSupported() ? (
+            <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
+              This browser doesn't support notifications. On iOS Safari, add the app to your Home Screen to unlock them.
+            </p>
+          ) : (
+            <>
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>
+                    Remind me before each study block
+                  </p>
+                  <p className="mt-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
+                    A quick browser notification while Arcadia is open in a tab. Push notifications while the app is closed are a follow-up.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={remindersOn}
+                  onClick={() => void toggleReminders(!remindersOn)}
+                  className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
+                  style={{
+                    background: remindersOn ? "var(--app-accent)" : "var(--app-border-strong)",
+                  }}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform"
+                    style={{ transform: remindersOn ? "translateX(22px)" : "translateX(2px)" }}
+                  />
+                </button>
+              </div>
+
+              {remindersOn ? (
+                <div className="mt-4">
+                  <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Lead time</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {[5, 10, 15, 30].map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => updateLead(option)}
+                        className="rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-colors"
+                        style={{
+                          background: leadMin === option ? "var(--app-accent-soft)" : "transparent",
+                          color: leadMin === option ? "var(--app-accent-strong)" : "var(--app-text-soft)",
+                          border: `1px solid ${leadMin === option ? "transparent" : "var(--app-border-strong)"}`,
+                        }}
+                      >
+                        {option} min before
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <span className="type-mono-label" style={{ color: "var(--app-text-muted)" }}>
+                  {permission === "granted"
+                    ? "Browser: allowed"
+                    : permission === "denied"
+                      ? "Browser: blocked — enable notifications in your browser settings for this site"
+                      : permission === "unsupported"
+                        ? "Browser: unsupported"
+                        : "Browser: not asked yet"}
+                </span>
+                {permission !== "denied" ? (
+                  <AppButton type="button" variant="secondary" onClick={testReminder}>
+                    Send a test
+                  </AppButton>
+                ) : null}
+              </div>
+            </>
+          )}
         </Card>
 
         <Card>
@@ -268,4 +517,15 @@ function Notice({ notice }: { notice: { tone: "info" | "error"; text: string } |
       {notice.text}
     </span>
   );
+}
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - Date.parse(iso);
+  const min = Math.round(diff / 60000);
+  if (min < 1) return "just now";
+  if (min < 60) return `${min} min ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr} hr ago`;
+  const day = Math.round(hr / 24);
+  return `${day} day${day === 1 ? "" : "s"} ago`;
 }

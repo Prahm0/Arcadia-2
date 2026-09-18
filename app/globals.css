@@ -467,6 +467,22 @@
   }
 }
 
+/* Mic pulse — small breath while the mic is listening. Matches the
+   completion tick's cadence but constrained to the icon inside the button. */
+@keyframes arcadia-mic-breath {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.14); opacity: 0.75; }
+}
+
+.arcadia-mic-pulse {
+  display: inline-flex;
+  animation: arcadia-mic-breath 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arcadia-mic-pulse { animation: none; }
+}
+
 /* Arcad orb — three breathing rhythms shared by the hero, message bubble
    bullet, and status indicator. Reduced motion cancels the pulse. */
 @keyframes arcadia-orb-breath {

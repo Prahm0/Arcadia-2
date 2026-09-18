@@ -5,6 +5,7 @@ import { useEffect, type ReactNode } from "react";
 import AppShell from "@/components/app/AppShell";
 import { DashboardDataProvider, useDashboard } from "@/lib/app/DashboardProvider";
 import { ThemeProvider } from "@/lib/app/theme";
+import { useDashboardAutoRefresh } from "@/lib/app/useDashboardAutoRefresh";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
@@ -17,6 +18,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 function Gate({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { state, reload, patch } = useDashboard();
+  useDashboardAutoRefresh(reload);
 
   useEffect(() => {
     if (state.status === "unauthenticated") router.replace("/login");
@@ -45,11 +47,16 @@ function Gate({ children }: { children: ReactNode }) {
         className="flex min-h-svh flex-col items-center justify-center gap-4 px-6 text-center"
         style={{ background: "var(--app-bg)", color: "var(--app-text)" }}
       >
-        <p className="text-[16px]">{state.error}</p>
+        <p className="text-[20px] font-medium tracking-[-0.015em]">
+          Couldn't <span className="accent-serif">reach</span> the server.
+        </p>
+        <p className="max-w-[380px] text-[14px]" style={{ color: "var(--app-text-muted)" }}>
+          {state.error}
+        </p>
         <button
           onClick={reload}
-          className="rounded-full border px-4 py-2 text-[13px] font-medium"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-text)" }}
+          className="rounded-full px-4 py-2 text-[13px] font-medium"
+          style={{ background: "var(--app-accent)", color: "white" }}
         >
           Try again
         </button>

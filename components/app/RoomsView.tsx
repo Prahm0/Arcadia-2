@@ -150,7 +150,17 @@ export default function RoomsView() {
         </div>
 
         {error ? (
-          <p className="text-[13px]" style={{ color: "var(--app-danger)" }}>{error}</p>
+          <div
+            className="flex flex-wrap items-center justify-between gap-3 rounded-[12px] px-4 py-3"
+            style={{
+              background: "var(--app-surface)",
+              border: "1px solid var(--app-border)",
+              color: "var(--app-text-soft)",
+            }}
+          >
+            <span className="text-[13px]" style={{ color: "var(--app-danger)" }}>{error}</span>
+            <AppButton variant="secondary" onClick={() => void load()}>Try again</AppButton>
+          </div>
         ) : null}
 
         <div>

@@ -28,7 +28,9 @@ function LoginForm() {
     ? { tone: "info", text: "Email confirmed — sign in to continue." }
     : params.get("email") === "changed"
       ? { tone: "info", text: "Email updated. Sign in with your new address." }
-      : null;
+      : params.get("expired") === "1"
+        ? { tone: "info", text: "Your session expired. Sign back in and you'll land right where you left off." }
+        : null;
   const [notice, setNotice] = useState<Notice>(initialNotice);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -40,7 +42,10 @@ function LoginForm() {
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
-      router.push("/app");
+      const next = params.get("next");
+      // Only follow `next` if it's a same-origin path — never an external URL.
+      const safe = next && next.startsWith("/") && !next.startsWith("//") ? next : "/app";
+      router.push(safe);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Something went wrong.";
       setNotice({ tone: "error", text: message });

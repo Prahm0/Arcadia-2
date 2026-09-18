@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import type { PlannerEvent } from "@/lib/api/types";
@@ -15,6 +15,7 @@ import {
 } from "@/lib/api/time";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
+import CompanionCard from "./CompanionCard";
 import CompletionBurst from "./CompletionBurst";
 import DailyCheckInCard from "./DailyCheckInCard";
 import NewTaskSheet from "./NewTaskSheet";
@@ -40,6 +41,24 @@ export default function TodayView() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [showTaskSheet, setShowTaskSheet] = useState(false);
   const [celebrateId, setCelebrateId] = useState<{ id: string; at: number } | null>(null);
+
+  // Handoff from the mobile bottom nav's +Add slot: ?new=1 auto-opens the
+  // New Task sheet, then strips the query so a refresh doesn't repeat.
+  const handledNewParam = useRef(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (handledNewParam.current) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("new") === "1") {
+      handledNewParam.current = true;
+      setShowTaskSheet(true);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("new");
+      window.history.replaceState({}, "", url.toString());
+    } else {
+      handledNewParam.current = true;
+    }
+  }, []);
 
   const todaysEvents = useMemo(
     () =>
@@ -134,6 +153,7 @@ export default function TodayView() {
         </section>
 
         <aside className="flex flex-col gap-6">
+          <CompanionCard />
           <NextDeadlinesCard tasks={data.focusTasks} timezone={timezone} />
           <StatsCard analytics={data.analytics} />
           <StreakCard />
@@ -367,12 +387,12 @@ function FocusRow({
           onClick={onComplete}
           disabled={busy || isDone || isMissed}
           aria-label={`Mark ${event.title} as done`}
-          className="flex size-9 items-center justify-center rounded-lg transition-colors"
+          className="flex size-11 items-center justify-center rounded-lg transition-colors sm:size-9"
         >
           <CompletionBurst trigger={celebrateTrigger}>
             <span
               aria-hidden="true"
-              className="grid size-[18px] place-items-center rounded-[5px] transition-colors duration-200"
+              className="grid size-[22px] place-items-center rounded-[5px] transition-colors duration-200 sm:size-[18px]"
               style={{
                 background: isDone ? "var(--app-text)" : "var(--app-surface)",
                 border: `1px solid ${isDone ? "var(--app-text)" : "var(--app-border-strong)"}`,

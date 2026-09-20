@@ -7,13 +7,23 @@ import { dateKey, formatDurationMinutes, formatDueSoon } from "@/lib/api/time";
 import { cn } from "@/lib/cn";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
+import EmptyState, { ExampleRow } from "./EmptyState";
 import NewTaskSheet from "./NewTaskSheet";
+import TaskDetailSheet from "./TaskDetailSheet";
 
 export default function DeadlinesView() {
   const { data } = useDashboardData();
   const timezone = data.profile?.timezone || "Australia/Sydney";
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<PlannerTask | null>(null);
+  const [detailTask, setDetailTask] = useState<PlannerTask | null>(null);
+
+  // Track the freshest copy of the open task so optimistic patches (add-time,
+  // notes, complete) flow into the sheet without waiting for reload.
+  const liveDetailTask = useMemo(() => {
+    if (!detailTask) return null;
+    return data.tasks.find((task) => task.id === detailTask.id) ?? null;
+  }, [data.tasks, detailTask]);
 
   const subjectColor = useMemo(() => {
     const map = new Map<string, string>();
@@ -31,7 +41,15 @@ export default function DeadlinesView() {
     <>
       <PageHeader
         eyebrow="Deadlines"
-        title={total === 0 ? "All caught up." : `${total} open ${total === 1 ? "task" : "tasks"}`}
+        title={
+          total === 0 ? (
+            <>All <span className="accent-serif">caught up</span>.</>
+          ) : (
+            <>
+              {total} open <span className="accent-serif">{total === 1 ? "task" : "tasks"}</span>
+            </>
+          )
+        }
         meta={total > 0 ? `${formatDurationMinutes(totalMinutes)} of work remaining across ${data.subjects.length} subjects` : undefined}
         action={
           <AppButton
@@ -45,16 +63,38 @@ export default function DeadlinesView() {
       />
 
       <div className="mx-auto flex w-full max-w-[820px] flex-col gap-8 px-6 py-8 sm:px-10">
-        {total === 0 ? (
-          <div
-            className="rounded-[16px] p-10 text-center"
-            style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}
-          >
-            <p className="text-[16px] font-medium" style={{ color: "var(--app-text)" }}>Nothing pending.</p>
-            <p className="mt-2 text-[14px]" style={{ color: "var(--app-text-muted)" }}>
-              Add a task and Arcadia will schedule it around your commitments.
-            </p>
-          </div>
+        {total === 0 && data.tasks.length === 0 ? (
+          <EmptyState
+            title={<>Your <span className="accent-serif">first</span> deadline.</>}
+            body="Add a task with a due date and Arcadia carves it into study blocks that fit around your school day, training, and sleep."
+            example={
+              <>
+                <ExampleRow title="Chemistry lab report" meta="Chem · Due Fri · 90 min" />
+                <ExampleRow title="Complex numbers set" meta="Maths · Due next Wed · 60 min" bar="#38bdf8" />
+                <ExampleRow title="English essay draft" meta="English · Due 12 Sep · 120 min" bar="#f59e0b" />
+              </>
+            }
+            action={
+              <AppButton
+                variant="primary"
+                onClick={() => { setEditing(null); setSheetOpen(true); }}
+                icon={<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M10 4v12M4 10h12" strokeLinecap="round" /></svg>}
+              >
+                Add your first task
+              </AppButton>
+            }
+            hint="You can also just tell Arcad in chat — it'll add and schedule for you."
+          />
+        ) : total === 0 ? (
+          <EmptyState
+            title={<>All <span className="accent-serif">caught up</span>.</>}
+            body="Nothing open right now. Add the next thing whenever it appears — Arcadia will slot it in."
+            action={
+              <AppButton variant="secondary" onClick={() => { setEditing(null); setSheetOpen(true); }}>
+                Add a task
+              </AppButton>
+            }
+          />
         ) : null}
 
         {grouped.map((group) => (
@@ -67,7 +107,7 @@ export default function DeadlinesView() {
                   task={task}
                   timezone={timezone}
                   color={subjectColor.get((task.subject || "").toLowerCase())}
-                  onClick={() => { setEditing(task); setSheetOpen(true); }}
+                  onClick={() => setDetailTask(task)}
                 />
               ))}
             </ul>
@@ -75,6 +115,16 @@ export default function DeadlinesView() {
         ))}
       </div>
 
+      <TaskDetailSheet
+        task={liveDetailTask}
+        timezone={timezone}
+        onClose={() => setDetailTask(null)}
+        onEdit={(task) => {
+          setDetailTask(null);
+          setEditing(task);
+          setSheetOpen(true);
+        }}
+      />
       <NewTaskSheet
         open={sheetOpen}
         editing={editing}
@@ -119,7 +169,7 @@ function DeadlineRow({
           className="text-[11px] opacity-0 transition-opacity group-hover:opacity-100"
           style={{ color: "var(--app-text-muted)" }}
         >
-          Edit →
+          Open →
         </span>
       </button>
     </li>

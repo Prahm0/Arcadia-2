@@ -14,7 +14,9 @@ export interface PlannerTask {
   taskType?: string;
   priority?: number;
   dueAt: string;
+  estimatedMinutes?: number;
   remainingMinutes: number;
+  notes?: string | null;
   status: "pending" | "complete" | "cancelled";
 }
 
@@ -43,11 +45,43 @@ export interface PlannerProfile {
   bedtime?: string;
 }
 
+export type CompanionForm = "orb" | "comet" | "nebula";
+export type CompanionPalette = "violet" | "aqua" | "coral" | "gold";
+export type CompanionAccessory = "none" | "ring" | "star" | "book" | "headphones";
+
+export interface CompanionProfile {
+  name: string;
+  form: CompanionForm;
+  palette: CompanionPalette;
+  accessory: CompanionAccessory;
+}
+
+export interface SubjectFile {
+  id: string;
+  subjectId: string;
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+  textExcerpt?: string;
+  createdAt: string;
+}
+
+export interface SubjectContext {
+  subjectId: string;
+  subjectName: string;
+  color?: string | null;
+  notes: string;
+  includeInArcad: boolean;
+  updatedAt?: string | null;
+  files: SubjectFile[];
+}
+
 export interface DashboardResponse {
   user: AuthUser;
   profile: PlannerProfile | null;
   preferences: Record<string, unknown>;
   subjects: Array<{ id: string; name: string; colour?: string | null }>;
+  subjectContexts?: SubjectContext[];
   tasks: PlannerTask[];
   commitments: Array<Record<string, unknown>>;
   range: { start: string; end: string };
@@ -62,10 +96,16 @@ export interface DashboardResponse {
     [key: string]: unknown;
   };
   companion: {
-    form?: string;
-    palette?: string;
-    accessory?: string;
-    mood?: string;
+    profile?: {
+      name?: string;
+      form?: CompanionForm;
+      palette?: CompanionPalette;
+      accessory?: CompanionAccessory;
+    } | null;
+    focusedMinutes?: number;
+    level?: number;
+    currentStreak?: number;
+    state?: "ready" | "recovering";
     [key: string]: unknown;
   } | null;
   csrfToken: string;

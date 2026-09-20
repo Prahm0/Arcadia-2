@@ -3,13 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
-import type { PlannerTask } from "@/lib/api/types";
+import type { DashboardResponse, PlannerTask } from "@/lib/api/types";
 import AppButton from "./AppButton";
 
 interface NewTaskSheetProps {
   open: boolean;
   onClose: () => void;
   editing?: PlannerTask | null;
+  /** YYYY-MM-DD to pre-fill the Due field when creating a task (ignored when editing). */
+  defaultDueDate?: string | null;
 }
 
 const TASK_TYPES = [
@@ -20,8 +22,8 @@ const TASK_TYPES = [
   { value: "project", label: "Project" },
 ];
 
-export default function NewTaskSheet({ open, onClose, editing }: NewTaskSheetProps) {
-  const { data, reload } = useDashboardData();
+export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: initialDue }: NewTaskSheetProps) {
+  const { data, patch, reload } = useDashboardData();
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState(data.subjects[0]?.name ?? "");
   const [taskType, setTaskType] = useState("homework");
@@ -46,12 +48,12 @@ export default function NewTaskSheet({ open, onClose, editing }: NewTaskSheetPro
         setTitle("");
         setSubject(data.subjects[0]?.name || "");
         setTaskType("homework");
-        setDueDate(defaultDueDate());
+        setDueDate(initialDue || defaultDueDate());
         setMinutes(60);
       }
       setTimeout(() => titleRef.current?.focus(), 40);
     }
-  }, [open, editing, data.subjects]);
+  }, [open, editing, data.subjects, initialDue]);
 
   useEffect(() => {
     if (!open) return;
@@ -66,15 +68,43 @@ export default function NewTaskSheet({ open, onClose, editing }: NewTaskSheetPro
     event.preventDefault();
     setLoading(true);
     setError(null);
+    const body = {
+      title,
+      subject,
+      taskType,
+      dueAt: new Date(`${dueDate}T23:59:00`).toISOString(),
+      estimatedMinutes: minutes,
+      priority: 2,
+    };
+    // Snapshot for rollback on edit.
+    const previousTask = isEditing && editing
+      ? data.tasks.find((task) => task.id === editing.id) ?? null
+      : null;
+    if (isEditing && editing) {
+      // Optimistic edit: reflect the new values immediately in the dashboard cache.
+      patch((prev: DashboardResponse) => ({
+        ...prev,
+        tasks: prev.tasks.map((task) =>
+          task.id === editing.id
+            ? {
+                ...task,
+                title: body.title,
+                subject: body.subject,
+                taskType: body.taskType,
+                dueAt: body.dueAt,
+                estimatedMinutes: body.estimatedMinutes,
+                // Only widen remaining if the estimate went up; the scheduler
+                // will recompute properly on reload().
+                remainingMinutes:
+                  body.estimatedMinutes > (task.estimatedMinutes ?? 0)
+                    ? task.remainingMinutes + (body.estimatedMinutes - (task.estimatedMinutes ?? 0))
+                    : task.remainingMinutes,
+              }
+            : task,
+        ),
+      }));
+    }
     try {
-      const body = {
-        title,
-        subject,
-        taskType,
-        dueAt: new Date(`${dueDate}T23:59:00`).toISOString(),
-        estimatedMinutes: minutes,
-        priority: 2,
-      };
       if (isEditing && editing) {
         await api(`/api/tasks/${encodeURIComponent(editing.id)}`, {
           method: "PATCH",
@@ -86,6 +116,14 @@ export default function NewTaskSheet({ open, onClose, editing }: NewTaskSheetPro
       await reload();
       onClose();
     } catch (err) {
+      // Rollback the optimistic edit — create doesn't touch the cache
+      // pre-response, so there's nothing to undo for the create branch.
+      if (isEditing && editing && previousTask) {
+        patch((prev: DashboardResponse) => ({
+          ...prev,
+          tasks: prev.tasks.map((task) => (task.id === editing.id ? previousTask : task)),
+        }));
+      }
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setLoading(false);
@@ -97,11 +135,28 @@ export default function NewTaskSheet({ open, onClose, editing }: NewTaskSheetPro
     if (!confirm(`Delete "${editing.title}"? This also removes its scheduled study blocks.`)) return;
     setDeleting(true);
     setError(null);
+    // Snapshot the task + its events for rollback.
+    const previousTask = data.tasks.find((task) => task.id === editing.id) ?? null;
+    const previousEvents = data.events.filter((event) => event.taskId === editing.id);
+    // Optimistic prune
+    patch((prev: DashboardResponse) => ({
+      ...prev,
+      tasks: prev.tasks.filter((task) => task.id !== editing.id),
+      events: prev.events.filter((event) => event.taskId !== editing.id),
+    }));
     try {
       await api(`/api/tasks/${encodeURIComponent(editing.id)}`, { method: "DELETE" });
       await reload();
       onClose();
     } catch (err) {
+      // Rollback
+      if (previousTask) {
+        patch((prev: DashboardResponse) => ({
+          ...prev,
+          tasks: [...prev.tasks, previousTask],
+          events: [...prev.events, ...previousEvents],
+        }));
+      }
       setError(err instanceof Error ? err.message : "Failed to delete.");
     } finally {
       setDeleting(false);
@@ -158,17 +213,27 @@ export default function NewTaskSheet({ open, onClose, editing }: NewTaskSheetPro
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="Subject">
-              <select
+              <input
                 required
+                list="arcadia-subjects"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
+                placeholder={data.subjects.length === 0 ? "Type a subject" : "Pick or type a new one"}
+                autoComplete="off"
+                maxLength={80}
                 className="w-full rounded-[10px] px-3 py-2.5 text-[15px] outline-none"
                 style={{ background: "var(--app-surface-soft)", border: "1px solid var(--app-border)", color: "var(--app-text)" }}
-              >
+              />
+              <datalist id="arcadia-subjects">
                 {data.subjects.map((s) => (
-                  <option key={s.id} value={s.name}>{s.name}</option>
+                  <option key={s.id} value={s.name} />
                 ))}
-              </select>
+              </datalist>
+              {!data.subjects.some((s) => s.name.toLowerCase() === subject.trim().toLowerCase()) && subject.trim().length > 0 ? (
+                <p className="mt-1.5 text-[11.5px]" style={{ color: "var(--app-accent-strong)" }}>
+                  New subject — I'll add {subject.trim()} to your list.
+                </p>
+              ) : null}
             </Field>
             <Field label="Type">
               <select

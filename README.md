@@ -68,6 +68,21 @@ The old `WAITLIST_WEBHOOK_URL` and local `.data/waitlist.jsonl` handler are no
 longer used. Existing local waitlist records are left in place and are not
 migrated automatically.
 
+## Sentry (error monitoring)
+
+Server + browser errors are wired to Sentry via `instrumentation.ts` and
+`instrumentation-client.ts` at the repo root. Everything stays inert until
+DSNs are set — see `.env.example` for the full list:
+
+- `SENTRY_DSN` + `NEXT_PUBLIC_SENTRY_DSN` — same value in most setups.
+- `SENTRY_ENVIRONMENT` — label (`production`, `staging`, …).
+- `SENTRY_TEST_TOKEN` — shared secret that unlocks
+  `GET /api/sentry-test?token=…` for firing a real error into the dashboard.
+
+Source-map upload is intentionally left off. To turn it on, add
+`SENTRY_AUTH_TOKEN` (plus `SENTRY_ORG` and `SENTRY_PROJECT`) to the build
+env and let `withSentryConfig` pick them up.
+
 ## Notes
 
 - Scroll-linked sections copy Framer's scroll progress into a plain motion

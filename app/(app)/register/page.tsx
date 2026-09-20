@@ -10,7 +10,7 @@ import { api } from "@/lib/api/client";
 
 interface RegisterResponse {
   message: string;
-  verificationUrl?: string;
+  verificationToken?: string;
 }
 
 export default function RegisterPage() {
@@ -47,8 +47,8 @@ export default function RegisterPage() {
         body: JSON.stringify({ name, email, password }),
       });
       setResult(response);
-      if (response.verificationUrl) {
-        void verifyWithToken(response.verificationUrl);
+      if (response.verificationToken) {
+        void verifyWithToken(response.verificationToken);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -73,7 +73,7 @@ export default function RegisterPage() {
     >
       {result ? (
         <div className="space-y-4 rounded-[12px] border border-white/12 bg-white/[0.04] p-5">
-          {result.verificationUrl ? (
+          {result.verificationToken ? (
             <div className="flex items-center gap-3">
               <span
                 aria-hidden="true"

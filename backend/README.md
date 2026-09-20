@@ -49,7 +49,7 @@ means it requires a session.
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| POST | `/api/auth/register` | Returns `verificationUrl` when no mail provider is set |
+| POST | `/api/auth/register` | Returns `verificationToken` when no mail provider is set |
 | GET | `/api/auth/verify?token=` | Confirms the address |
 | POST | `/api/auth/login` | Sets the cookie, returns `csrfToken` |
 | POST | `/api/auth/logout` | |

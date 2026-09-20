@@ -66,11 +66,11 @@ auth.post("/register", async (c) => {
   const sent = await sendEmail(c.env, { to: email, ...verificationEmail(link) });
 
   // With no mail provider configured the register page finishes the flow
-  // itself using verificationUrl, which keeps local dev usable.
+  // itself using verificationToken, which keeps local dev usable.
   return c.json(
     sent
       ? { message: "Check your email to confirm your account." }
-      : { message: "Account created.", verificationUrl: verificationToken },
+      : { message: "Account created.", verificationToken },
   );
 });
 

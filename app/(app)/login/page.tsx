@@ -48,7 +48,7 @@ function LoginForm() {
   }
 
   // Spins up a throwaway account, auto-verifies it via the dev-mode
-  // `verificationUrl` the backend returns, then signs in — all in one
+  // `verificationToken` the backend returns, then signs in — all in one
   // click, no email required. Meant for demos and quick check-outs;
   // there's no cleanup, so guest rows accumulate in the DB.
   async function continueAsGuest() {
@@ -60,18 +60,15 @@ function LoginForm() {
       const guestPassword = `guest-${suffix}-${Math.random().toString(36).slice(2, 10)}`;
       const guestName = `Guest ${suffix.slice(0, 4).toUpperCase()}`;
 
-      const register = await api<{ verificationUrl?: string }>(
+      const register = await api<{ verificationToken?: string }>(
         "/api/auth/register",
         {
           method: "POST",
           body: JSON.stringify({ name: guestName, email: guestEmail, password: guestPassword }),
         },
       );
-      if (register.verificationUrl) {
-        const token = new URL(register.verificationUrl).searchParams.get("token");
-        if (token) {
-          await api(`/api/auth/verify?token=${encodeURIComponent(token)}`);
-        }
+      if (register.verificationToken) {
+        await api(`/api/auth/verify?token=${encodeURIComponent(register.verificationToken)}`);
       }
       await api("/api/auth/login", {
         method: "POST",

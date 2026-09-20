@@ -11,7 +11,7 @@ interface SendArgs {
  * Sends through Resend. Returns false (without throwing) when RESEND_API_KEY
  * is unset, so a dev environment without mail still works: the caller falls
  * back to returning the verification link in the response, which is exactly
- * what the register page already handles via `verificationUrl`.
+ * what the register page already handles via `verificationToken`.
  */
 export async function sendEmail(env: Env, args: SendArgs): Promise<boolean> {
   if (!env.RESEND_API_KEY) return false;

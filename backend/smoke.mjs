@@ -49,13 +49,13 @@ const registered = await call("/api/auth/register", {
   method: "POST",
   body: { name: "Smoke Test", email, password },
 });
-if (!registered.verificationUrl) {
+if (!registered.verificationToken) {
   console.log("FAIL  expected a verification token back with no mail provider");
   failures += 1;
 }
 
 await call("/api/auth/login", { method: "POST", body: { email, password }, expect: 403 });
-await call(`/api/auth/verify?token=${encodeURIComponent(registered.verificationUrl)}`);
+await call(`/api/auth/verify?token=${encodeURIComponent(registered.verificationToken)}`);
 await call("/api/auth/login", { method: "POST", body: { email, password: "wrong" }, expect: 401 });
 await call("/api/auth/login", { method: "POST", body: { email, password } });
 
@@ -216,7 +216,7 @@ console.log("--- isolation ---");
     method: "POST",
     body: { name: "Other", email: otherEmail, password },
   });
-  await call(`/api/auth/verify?token=${encodeURIComponent(other.verificationUrl)}`);
+  await call(`/api/auth/verify?token=${encodeURIComponent(other.verificationToken)}`);
   await call("/api/auth/login", { method: "POST", body: { email: otherEmail, password } });
   await call(`/api/tasks/${encodeURIComponent(task.id)}`, { method: "DELETE", expect: 404 });
   cookie = savedCookie;

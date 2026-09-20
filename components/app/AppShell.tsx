@@ -181,7 +181,7 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
                 <details
                   key={`${group.key}-${groupActive ? "active" : "idle"}`}
                   className="group"
-                  defaultOpen={groupActive}
+                  open={groupActive}
                 >
                   <summary
                     className="clay-hover flex cursor-pointer list-none items-center gap-3 rounded-clay-sm px-3 py-2.5 text-[14px] font-semibold [&::-webkit-details-marker]:hidden"

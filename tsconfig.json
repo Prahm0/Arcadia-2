@@ -30,5 +30,7 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  // backend/ is a separate Cloudflare Worker package with its own tsconfig
+  // and @cloudflare/workers-types; type-check it with `npm run typecheck` there.
+  "exclude": ["node_modules", "backend"]
 }

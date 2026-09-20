@@ -16,6 +16,7 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [guestLoading, setGuestLoading] = useState(false);
   const initialNotice: Notice = params.get("verified")
     ? { tone: "info", text: "Email confirmed — sign in to continue." }
     : params.get("email") === "changed"
@@ -43,6 +44,45 @@ function LoginForm() {
       setNotice({ tone: "error", text: message });
     } finally {
       setLoading(false);
+    }
+  }
+
+  // Spins up a throwaway account, auto-verifies it via the dev-mode
+  // `verificationUrl` the backend returns, then signs in — all in one
+  // click, no email required. Meant for demos and quick check-outs;
+  // there's no cleanup, so guest rows accumulate in the DB.
+  async function continueAsGuest() {
+    setGuestLoading(true);
+    setNotice(null);
+    try {
+      const suffix = Math.random().toString(36).slice(2, 10);
+      const guestEmail = `guest-${suffix}@arcadia.local`;
+      const guestPassword = `guest-${suffix}-${Math.random().toString(36).slice(2, 10)}`;
+      const guestName = `Guest ${suffix.slice(0, 4).toUpperCase()}`;
+
+      const register = await api<{ verificationUrl?: string }>(
+        "/api/auth/register",
+        {
+          method: "POST",
+          body: JSON.stringify({ name: guestName, email: guestEmail, password: guestPassword }),
+        },
+      );
+      if (register.verificationUrl) {
+        const token = new URL(register.verificationUrl).searchParams.get("token");
+        if (token) {
+          await api(`/api/auth/verify?token=${encodeURIComponent(token)}`);
+        }
+      }
+      await api("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email: guestEmail, password: guestPassword }),
+      });
+      router.push("/app");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Something went wrong.";
+      setNotice({ tone: "error", text: message });
+    } finally {
+      setGuestLoading(false);
     }
   }
 
@@ -94,6 +134,22 @@ function LoginForm() {
         <PrimaryButton type="submit" loading={loading}>
           Sign in
         </PrimaryButton>
+        <div className="flex items-center gap-3 text-[11.5px] uppercase tracking-[0.16em] text-white/40">
+          <span className="h-px flex-1 bg-white/12" />
+          or
+          <span className="h-px flex-1 bg-white/12" />
+        </div>
+        <button
+          type="button"
+          onClick={continueAsGuest}
+          disabled={guestLoading || loading}
+          className="w-full rounded-[12px] border border-white/15 bg-white/[0.03] px-4 py-3 text-[14.5px] text-white/85 transition hover:border-white/25 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {guestLoading ? "Setting up a guest account…" : "Continue as guest"}
+        </button>
+        <p className="text-center text-[12px] text-white/45">
+          Skips sign-up with a throwaway account — nothing saves after you close the tab.
+        </p>
       </form>
     </AuthShell>
   );

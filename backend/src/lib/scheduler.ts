@@ -110,8 +110,12 @@ export async function rebuildSchedule(
       ),
     );
 
+  // Every source we re-materialise below has to be listed here, or the old
+  // rows survive and pile up on top of the fresh ones (e.g. "sleep sleep
+  // sleep sleep sleep" showing on Today after a few dashboard loads).
+  const REMATERIALISED = new Set(["auto", "sleep", "commitment"]);
   const keep = existing.filter(
-    (event) => event.pinned || event.source !== "auto" || event.outcome !== "planned",
+    (event) => event.pinned || event.outcome !== "planned" || !REMATERIALISED.has(event.source),
   );
   const disposable = existing.filter((event) => !keep.includes(event));
 

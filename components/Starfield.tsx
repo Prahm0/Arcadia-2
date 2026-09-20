@@ -30,6 +30,12 @@ interface StarfieldProps {
   revealWord?: string;
   /** Range of `progress` over which the field turns to the reveal angle. */
   revealRange?: [number, number];
+  /**
+   * "assemble" (default) scatters the word and draws it together as `progress`
+   * grows. "disperse" starts with the word already formed and breaks it apart,
+   * letter by letter, as `progress` grows.
+   */
+  revealMode?: "assemble" | "disperse";
   /** Per-star cursor push. Ignored for touch and reduced motion. */
   interactive?: boolean;
 }
@@ -53,13 +59,35 @@ const STAR_COLOURS = [
 const REVEAL_TILT_X = 0.873;
 const REVEAL_TILT_Y = 0.524;
 const BG_WEIGHT = 0.22;
-const WORD_DEPTH = 1.1;
+const WORD_DEPTH = 1.5;
 const BG_DEPTH = 0.35;
-const WORD_STARS = 640;
-const WORD_STARS_MOBILE = 360;
+const WORD_STARS = 1400;
+const WORD_STARS_MOBILE = 480;
 const WORD_CENTRE_Y = 0.05;
-/* Word stars converge to this size (× brightness) so the letters read crisply. */
-const WORD_STAR_SIZE = 2.1;
+/* Word stars converge to this size (× brightness) so the letters read crisply.
+   Tuned down alongside the density bump: at the old size a 1400-star word reads
+   as solid strokes rather than as stars. */
+const WORD_STAR_SIZE = 1.75;
+
+/* Dispersal: the word crumbles as a staggered wave rather than one rigid turn. */
+/* Share of the transition spent handing off from the first star to the last. */
+const STAGGER_SPAN = 0.55;
+/* Quantised tilt matrices reused each frame, so every star can turn on its own clock. */
+const ROT_STEPS = 96;
+/* How far a star drifts off the letter it belonged to, in square units. */
+const SCATTER_SPREAD = 0.34;
+/* Word stars land on their footprint plus their scatter offset, so recruits are
+   drawn from that whole area. Taking them from the footprint alone would leave
+   the rim denser than the middle once the word has come apart. Must stay below
+   SCATTER_SPREAD: module consts initialise top down. */
+const RECRUIT_MARGIN = SCATTER_SPREAD * 1.35;
+/* Radians of curl on that drift, so the letters unwind instead of exploding. */
+const SCATTER_SWIRL = 1.15;
+/* Extra alpha at the midpoint of a star's break-away, for a brief catch of light.
+   Aggregate flare scales with the word's star count, so this drops as density rises. */
+const FLARE_ALPHA = 0.3;
+/* Word brightness ramp on mount, so a pre-formed word arrives instead of popping. */
+const INTRO_SECONDS = 0.9;
 
 /* Cursor push spring, in square units (1 = half the viewport height). */
 const CURSOR_RADIUS = 0.24;
@@ -141,6 +169,7 @@ export default function Starfield({
   progress,
   revealWord,
   revealRange,
+  revealMode = "assemble",
   interactive = false,
 }: StarfieldProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -148,6 +177,7 @@ export default function Starfield({
   const scrollRef = useRef(0);
   const revealStart = revealRange?.[0] ?? 0.1;
   const revealEnd = revealRange?.[1] ?? 0.4;
+  const disperse = revealMode === "disperse";
 
   useEffect(() => {
     if (!progress) return;
@@ -231,6 +261,18 @@ export default function Starfield({
       let activeCount = 0;
       let wordCount = 0;
 
+      /* Dispersal: each word star lets go on its own clock and drifts its own way. */
+      const staggered = disperse && wantWord;
+      const stagger = staggered ? new Float32Array(n) : null;
+      const scatterX = staggered ? new Float32Array(n) : null;
+      const scatterY = staggered ? new Float32Array(n) : null;
+      const wordPhase = staggered ? new Float32Array(n) : null;
+      /* One tilt matrix per quantised step, rebuilt per frame and shared by index. */
+      const rotLut = staggered ? new Float32Array(ROT_STEPS * 9) : null;
+      const rotViews = rotLut
+        ? Array.from({ length: ROT_STEPS }, (_, k) => rotLut.subarray(k * 9, k * 9 + 9))
+        : null;
+
       const restBg = new Float32Array(9);
       rotationXY(REVEAL_TILT_X * BG_WEIGHT, REVEAL_TILT_Y * BG_WEIGHT, restBg);
       for (let i = 0; i < n; i += 1) {
@@ -258,8 +300,9 @@ export default function Starfield({
           const limitX = FIELD_OVERSCAN * aspect;
           const limitY = FIELD_OVERSCAN;
 
-          /* Rest-state footprint of the smeared word, so the stars we replace
-             already live there and the field's density does not change. */
+          /* Rest-state footprint of the smeared word, widened by the scatter
+             reach, so the stars we replace already live where these ones end up
+             and the field's density does not change when the word comes apart. */
           let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
           const tmp = new Float32Array(3);
           for (let j = 0; j < pointCount; j += 1) {
@@ -269,8 +312,10 @@ export default function Starfield({
               minY = Math.min(minY, tmp[1]); maxY = Math.max(maxY, tmp[1]);
             }
           }
-          minX = Math.max(minX, -limitX); maxX = Math.min(maxX, limitX);
-          minY = Math.max(minY, -limitY); maxY = Math.min(maxY, limitY);
+          minX = Math.max(minX - RECRUIT_MARGIN, -limitX);
+          maxX = Math.min(maxX + RECRUIT_MARGIN, limitX);
+          minY = Math.max(minY - RECRUIT_MARGIN, -limitY);
+          maxY = Math.min(maxY + RECRUIT_MARGIN, limitY);
 
           const eligible: number[] = [];
           for (let i = firstBackground; i < n; i += 1) {
@@ -304,6 +349,16 @@ export default function Starfield({
             positions[o + 1] = tmp[1];
             positions[o + 2] = clamp(tmp[2] * 0.02, -0.06, 0.06);
             isWord[i] = 1;
+            if (stagger && scatterX && scatterY) {
+              /* Sweep left to right across the word, with enough jitter that the
+                 wave reads as stars letting go rather than a wipe. */
+              const sweep = clamp((wx / halfWidth + 1) / 2, 0, 1);
+              stagger[i] = clamp(sweep * 0.68 + random() * 0.32, 0, 1);
+              const angle = random() * Math.PI * 2;
+              const reach = SCATTER_SPREAD * (0.35 + random());
+              scatterX[i] = Math.cos(angle) * reach;
+              scatterY[i] = Math.sin(angle) * reach * 0.72;
+            }
             const colour = STAR_COLOURS[random() < 0.6 ? 0 : 1];
             data.colours[o] = colour.r;
             data.colours[o + 1] = colour.g;
@@ -338,7 +393,9 @@ export default function Starfield({
         depthTest: false,
         blending: THREE.AdditiveBlending,
       });
-      field.add(new THREE.Points(starGeometry, starMaterial));
+      const starPoints = new THREE.Points(starGeometry, starMaterial);
+      starPoints.frustumCulled = false;
+      field.add(starPoints);
 
       const segmentCount = data.constellations.reduce((total, c) => total + c.edges.length, 0);
       const linePositions = new Float32Array(segmentCount * 6);
@@ -355,7 +412,9 @@ export default function Starfield({
         depthTest: false,
         blending: THREE.AdditiveBlending,
       });
-      field.add(new THREE.LineSegments(lineGeometry, lineMaterial));
+      const constellationLines = new THREE.LineSegments(lineGeometry, lineMaterial);
+      constellationLines.frustumCulled = false;
+      field.add(constellationLines);
 
       const shootingGeometry = new THREE.BufferGeometry();
       shootingGeometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(6), 3));
@@ -368,6 +427,7 @@ export default function Starfield({
         blending: THREE.AdditiveBlending,
       });
       const shootingStar = new THREE.Line(shootingGeometry, shootingMaterial);
+      shootingStar.frustumCulled = false;
       shootingStar.visible = false;
       scene.add(shootingStar);
 
@@ -442,19 +502,47 @@ export default function Starfield({
         shootingMaterial.opacity = 0.42 * Math.sin(Math.PI * progressValue);
       };
 
+      /* Refill the quantised tilt table so each word star can turn on its own clock. */
+      const rebuildRotLut = (limit: number) => {
+        if (!rotViews) return;
+        for (let k = 0; k < ROT_STEPS; k += 1) {
+          const t = (k / (ROT_STEPS - 1)) * limit;
+          rotationXY(REVEAL_TILT_X * t, REVEAL_TILT_Y * t, rotViews[k]);
+        }
+      };
+
       /* Re-project every star's home for the current reveal angle. */
       const rebuildHomes = () => {
         const s = 1 - reveal;
         rotationXY(REVEAL_TILT_X * s, REVEAL_TILT_Y * s, matWord);
         rotationXY(REVEAL_TILT_X * BG_WEIGHT * s, REVEAL_TILT_Y * BG_WEIGHT * s, matBg);
+        /* The whole table spans 0 to the current global tilt, so the busiest part
+           of the wave always gets the full ROT_STEPS of resolution. */
+        if (staggered) rebuildRotLut(s);
+        const span = Math.max(1e-3, 1 - STAGGER_SPAN);
         for (let i = 0; i < n; i += 1) {
           const o = i * 3;
-          const m = isWord[i] ? matWord : matBg;
           const bx = home[o];
           const by = home[o + 1];
           const bz = home[o + 2];
-          const hx = m[0] * bx + m[1] * by + m[2] * bz;
-          const hy = m[3] * bx + m[4] * by + m[5] * bz;
+          let m = isWord[i] ? matWord : matBg;
+          let ox = 0;
+          let oy = 0;
+          if (staggered && isWord[i] && stagger && scatterX && scatterY && wordPhase && rotViews) {
+            /* How far this particular star is through its own break-away, 0 to 1. */
+            const d = smoothstep(clamp((s - stagger[i] * STAGGER_SPAN) / span, 0, 1));
+            wordPhase[i] = d;
+            m = rotViews[Math.min(ROT_STEPS - 1, (d * (ROT_STEPS - 1) + 0.5) | 0)];
+            const swirl = SCATTER_SWIRL * d;
+            const c = Math.cos(swirl);
+            const sn = Math.sin(swirl);
+            const sx = scatterX[i];
+            const sy = scatterY[i];
+            ox = (sx * c - sy * sn) * d;
+            oy = (sx * sn + sy * c) * d;
+          }
+          const hx = m[0] * bx + m[1] * by + m[2] * bz + ox;
+          const hy = m[3] * bx + m[4] * by + m[5] * bz + oy;
           const hz = m[6] * bx + m[7] * by + m[8] * bz;
           homeX[i] = hx;
           homeY[i] = hy;
@@ -469,8 +557,17 @@ export default function Starfield({
         if (!wordCount) return;
         for (let i = 0; i < n; i += 1) {
           if (!isWord[i]) continue;
-          alphas[i] = baseAlpha[i] + (0.95 - baseAlpha[i]) * emphasis;
-          sizes[i] = baseSize[i] + (wordStarSize - baseSize[i]) * emphasis;
+          let e = emphasis;
+          let flare = 0;
+          if (staggered && wordPhase) {
+            /* A star keeps its letter-star treatment until it lets go, and catches
+               the light once on the way out. */
+            const d = wordPhase[i];
+            e = emphasis * (1 - d);
+            flare = FLARE_ALPHA * emphasis * 4 * d * (1 - d);
+          }
+          alphas[i] = Math.min(1, baseAlpha[i] + (0.95 - baseAlpha[i]) * e + flare);
+          sizes[i] = baseSize[i] + (wordStarSize - baseSize[i]) * e;
         }
         alphaAttribute.needsUpdate = true;
         sizeAttribute.needsUpdate = true;
@@ -535,10 +632,17 @@ export default function Starfield({
         }
       };
 
-      const updateField = (dt: number, now: number) => {
+      const updateField = (dt: number, now: number, elapsed: number) => {
         const p = scrollRef.current;
-        const revealTarget = smoothstep(clamp((p - revealStart) / (revealEnd - revealStart), 0, 1));
-        const emphasisTarget = emphasisCurve(p);
+        /* Unclamped above 1 so the brightness tail can outlast the turn itself. */
+        const spanT = Math.max(1e-6, revealEnd - revealStart);
+        const t = Math.max(0, (p - revealStart) / spanT);
+        const turn = smoothstep(Math.min(1, t));
+        /* Dispersing runs the same turn backwards: flat and readable at rest. */
+        const revealTarget = disperse ? 1 - turn : turn;
+        /* Word stars brighten in over the first moment so a pre-formed word arrives. */
+        const intro = disperse ? smoothstep(elapsed / INTRO_SECONDS) : 1;
+        const emphasisTarget = (disperse ? disperseEmphasisCurve(t) : emphasisCurve(p)) * intro;
         let first = false;
         if (reveal < 0) {
           reveal = revealTarget;
@@ -578,9 +682,10 @@ export default function Starfield({
           cursor.hasPrev = false;
         }
 
-        if (emphasisDirty) applyEmphasis();
-        if (!(revealDirty || hot || activeCount)) return;
+        /* Homes first: staggered emphasis reads the per-star phase it writes. */
         if (revealDirty) rebuildHomes();
+        if (emphasisDirty || (staggered && revealDirty)) applyEmphasis();
+        if (!(revealDirty || hot || activeCount)) return;
         if (hot) proximityPass(dt);
         if (activeCount) springPass(dt);
         positionAttribute.needsUpdate = true;
@@ -599,7 +704,7 @@ export default function Starfield({
           field.position.x = pointer.x + Math.sin(elapsed * driftSpeed) * 0.022;
           field.position.y = pointer.y + Math.cos(elapsed * driftSpeed * 0.73) * 0.014;
           updateShootingStar(elapsed);
-          updateField(dt, performance.now());
+          updateField(dt, performance.now(), elapsed);
         }
         renderer.render(scene, camera);
         raf = requestAnimationFrame(render);
@@ -712,6 +817,7 @@ export default function Starfield({
     mobileCount,
     parallax,
     reduced,
+    disperse,
     revealEnd,
     revealStart,
     revealWord,
@@ -999,6 +1105,19 @@ function emphasisCurve(p: number) {
   if (p < 0.55) return 1;
   if (p < 0.8) return 1 - 0.65 * smoothstep((p - 0.55) / 0.25);
   return 0.35;
+}
+
+/**
+ * Word brightness while the word comes apart, as a function of how far through
+ * the reveal range the scroll is: 0 at revealStart, 1 at revealEnd, and beyond
+ * 1 after it. Keyed to the range rather than raw progress so retiming the hero
+ * cannot silently mistime the brightness. Holds at full while the per-star wave
+ * does the fading, then trails to a faint memory of the letters.
+ */
+function disperseEmphasisCurve(t: number) {
+  if (t < 0.55) return 1;
+  if (t < 1.15) return 1 - 0.75 * smoothstep((t - 0.55) / 0.6);
+  return 0.25;
 }
 
 function smoothstep(t: number) {

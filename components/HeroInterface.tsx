@@ -72,16 +72,19 @@ interface FrameParts {
 }
 
 function AnimatedFrame({ progress, staticBlocks, fragments }: FrameParts & { progress: MotionValue<number> }) {
-  const cardOpacity = useTransform(progress, [0.42, 0.68], [0, 1]);
-  const blur = useTransform(progress, [0.42, 0.75], [14, 0]);
+  /* The hero copy now arrives after the stars scatter and clears by 0.71, so the
+     card waits until then. It settles by 0.94, leaving a beat on the finished
+     week before the section unpins. */
+  const cardOpacity = useTransform(progress, [0.68, 0.82], [0, 1]);
+  const blur = useTransform(progress, [0.68, 0.88], [14, 0]);
   const cardFilter = useMotionTemplate`blur(${blur}px)`;
-  const cardScale = useTransform(progress, [0.42, 0.85], [0.965, 1]);
-  const cardY = useTransform(progress, [0.42, 0.85], [48, 0]);
-  /* Fragments wait for the stars' word to finish, then drift in with the card. */
-  const fragmentsOpacity = useTransform(progress, [0.46, 0.72], [0, 1], { ease: easeInOut });
-  const fragmentsBlur = useTransform(progress, [0.46, 0.78], [10, 0], { ease: easeOut });
+  const cardScale = useTransform(progress, [0.68, 0.94], [0.965, 1]);
+  const cardY = useTransform(progress, [0.68, 0.94], [48, 0]);
+  /* Fragments follow the card in, then resolve into the grid. */
+  const fragmentsOpacity = useTransform(progress, [0.71, 0.86], [0, 1], { ease: easeInOut });
+  const fragmentsBlur = useTransform(progress, [0.71, 0.90], [10, 0], { ease: easeOut });
   const fragmentsFilter = useMotionTemplate`blur(${fragmentsBlur}px)`;
-  const resolve = useTransform(progress, [0.6, 0.96], [0, 1]);
+  const resolve = useTransform(progress, [0.76, 0.94], [0, 1]);
 
   return (
     <>

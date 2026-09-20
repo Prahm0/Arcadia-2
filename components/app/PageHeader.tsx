@@ -20,7 +20,7 @@ const reveal = (delayMs: number): CSSProperties =>
 export default function PageHeader({ eyebrow, title, meta, action }: PageHeaderProps) {
   return (
     <header
-      className="flex flex-wrap items-end justify-between gap-4 border-b px-6 py-6 sm:px-10 sm:py-8"
+      className="flex flex-wrap items-end justify-between gap-4 border-b py-6 pl-6 pr-16 sm:py-8 sm:pl-10 sm:pr-24"
       style={{ borderColor: "var(--app-border)" }}
     >
       <div className="min-w-0">

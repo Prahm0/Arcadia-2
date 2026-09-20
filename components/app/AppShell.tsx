@@ -11,6 +11,7 @@ import { useStreak } from "@/lib/app/useStreak";
 import { useSessionReminders } from "@/lib/app/useSessionReminders";
 import ArcadFloatingButton from "./ArcadFloatingButton";
 import MobileBottomNav from "./MobileBottomNav";
+import NotificationCentre from "./NotificationCentre";
 import PageMount from "./PageMount";
 
 interface AppShellProps {
@@ -25,6 +26,13 @@ interface NavItem {
   icon: ReactNode;
 }
 
+interface NavGroup {
+  key: string;
+  label: string;
+  icon: ReactNode;
+  items: NavItem[];
+}
+
 function icon(path: ReactNode) {
   return (
     <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -33,18 +41,50 @@ function icon(path: ReactNode) {
   );
 }
 
-const NAV: NavItem[] = [
-  { label: "Today", href: "/app", icon: icon(<path d="M4 6h12M4 10h12M4 14h8" />) },
-  { label: "Schedule", href: "/app/schedule", icon: icon(<><rect x="3" y="4" width="14" height="13" rx="2" /><path d="M3 8h14M7 2v4M13 2v4" /></>) },
-  { label: "Deadlines", href: "/app/deadlines", icon: icon(<><circle cx="10" cy="10" r="7" /><path d="M10 6v4l3 2" /></>) },
-  { label: "Commitments", href: "/app/commitments", icon: icon(<><path d="M3 9h14M10 3v14M3 6a3 3 0 013-3h8a3 3 0 013 3v8a3 3 0 01-3 3H6a3 3 0 01-3-3V6z" /></>) },
-  { label: "Focus", href: "/app/focus", icon: icon(<><circle cx="10" cy="10" r="7" /><circle cx="10" cy="10" r="3" /></>) },
-  { label: "Analytics", href: "/app/analytics", icon: icon(<><path d="M4 15v-4M9 15V7M14 15v-6" strokeLinecap="round" /><path d="M2 17h16" strokeLinecap="round" /></>) },
-  { label: "Review", href: "/app/review", icon: icon(<><path d="M4 5h12M4 10h8M4 15h12" strokeLinecap="round" /><circle cx="15" cy="10" r="1" fill="currentColor" /></>) },
-  { label: "Rooms", href: "/app/rooms", icon: icon(<><circle cx="6" cy="8" r="2" /><circle cx="14" cy="8" r="2" /><path d="M3 16c0-2 1.5-4 3-4M17 16c0-2-1.5-4-3-4M10 17v-1" strokeLinecap="round" /></>) },
-  { label: "Knowledge", href: "/app/knowledge", icon: icon(<><path d="M5 4h9l2 2v10H5z" strokeLinejoin="round" /><path d="M14 4v3h3M8 10h5M8 13h5" strokeLinecap="round" /></>) },
-  { label: "Arcad", href: "/app/arcad", icon: icon(<path d="M4 5h12v9H8l-4 3V5z" />) },
-  { label: "Settings", href: "/app/settings", icon: icon(<><circle cx="10" cy="10" r="2.5" /><path d="M10 3v2M10 15v2M3 10h2M15 10h2M4.9 4.9l1.4 1.4M13.7 13.7l1.4 1.4M4.9 15.1l1.4-1.4M13.7 6.3l1.4-1.4" /></>) },
+const TODAY: NavItem = {
+  label: "Today",
+  href: "/app",
+  icon: icon(<path d="M4 6h12M4 10h12M4 14h8" />),
+};
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    key: "arcad",
+    label: "Arcad",
+    icon: icon(<path d="M4 5h12v9H8l-4 3V5z" />),
+    items: [
+      { label: "Chat", href: "/app/arcad", icon: icon(<path d="M4 5h12v9H8l-4 3V5z" />) },
+      { label: "Knowledge", href: "/app/knowledge", icon: icon(<><path d="M5 4h9l2 2v10H5z" strokeLinejoin="round" /><path d="M14 4v3h3M8 10h5M8 13h5" /></>) },
+    ],
+  },
+  {
+    key: "plan",
+    label: "Plan",
+    icon: icon(<><rect x="3" y="4" width="14" height="13" rx="2" /><path d="M3 8h14M7 2v4M13 2v4" /></>),
+    items: [
+      { label: "Schedule", href: "/app/schedule", icon: icon(<><rect x="3" y="4" width="14" height="13" rx="2" /><path d="M3 8h14M7 2v4M13 2v4" /></>) },
+      { label: "Deadlines", href: "/app/deadlines", icon: icon(<><circle cx="10" cy="10" r="7" /><path d="M10 6v4l3 2" /></>) },
+      { label: "Commitments", href: "/app/commitments", icon: icon(<><path d="M3 9h14M10 3v14M3 6a3 3 0 013-3h8a3 3 0 013 3v8a3 3 0 01-3 3H6a3 3 0 01-3-3V6z" /></>) },
+    ],
+  },
+  {
+    key: "study",
+    label: "Study",
+    icon: icon(<><circle cx="10" cy="10" r="7" /><circle cx="10" cy="10" r="3" /></>),
+    items: [
+      { label: "Focus", href: "/app/focus", icon: icon(<><circle cx="10" cy="10" r="7" /><circle cx="10" cy="10" r="3" /></>) },
+      { label: "Rooms", href: "/app/rooms", icon: icon(<><circle cx="6" cy="8" r="2" /><circle cx="14" cy="8" r="2" /><path d="M3 16c0-2 1.5-4 3-4M17 16c0-2-1.5-4-3-4M10 17v-1" /></>) },
+    ],
+  },
+  {
+    key: "progress",
+    label: "Progress",
+    icon: icon(<><path d="M4 15v-4M9 15V7M14 15v-6" /><path d="M2 17h16" /></>),
+    items: [
+      { label: "Analytics", href: "/app/analytics", icon: icon(<><path d="M4 15v-4M9 15V7M14 15v-6" /><path d="M2 17h16" /></>) },
+      { label: "Weekly review", href: "/app/review", icon: icon(<><path d="M4 5h12M4 10h8M4 15h12" /><circle cx="15" cy="10" r="1" fill="currentColor" /></>) },
+    ],
+  },
 ];
 
 export default function AppShell({ user, briefing, children }: AppShellProps) {
@@ -77,7 +117,7 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
       {/* Solid, not frosted: glass and clay are competing materials, and the
           translucent bar muddied everything that scrolled under it. */}
       <div
-        className="lg:hidden sticky top-0 z-30 flex items-center justify-between px-4 py-3"
+        className="lg:hidden sticky top-0 z-30 flex items-center justify-between py-3 pl-4 pr-14"
         style={{ background: "var(--app-elev)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
       >
         <BrandMark />
@@ -92,6 +132,7 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
           </div>
         ) : null}
       </div>
+      <NotificationCentre briefing={briefing} />
 
       <div className="mx-auto flex max-w-[1440px]">
         {/* Sidebar — desktop only. Mobile uses MobileBottomNav + MobileMoreSheet. */}
@@ -108,39 +149,109 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
             <BrandMark />
           </div>
 
-          <nav className="mt-6 flex flex-col gap-0.5 px-3">
-            {NAV.map((item) => {
-              const active =
-                item.href === "/app"
-                  ? pathname === "/app"
-                  : pathname.startsWith(item.href);
+          <nav className="mt-6 flex flex-col gap-1 px-3">
+            <Link
+              href={TODAY.href}
+              className={cn(
+                "flex items-center gap-3 rounded-clay-sm px-3 py-2.5 text-[14px] font-semibold transition-colors",
+                pathname !== TODAY.href && "clay-hover",
+              )}
+              style={{
+                color: pathname === TODAY.href ? "var(--app-accent-strong)" : "var(--app-text-soft)",
+                background: pathname === TODAY.href
+                  ? "color-mix(in oklab, var(--app-accent) 12%, var(--app-surface))"
+                  : "transparent",
+                boxShadow: pathname === TODAY.href ? "var(--clay-shadow), var(--clay-rim)" : "none",
+              }}
+            >
+              <span
+                aria-hidden="true"
+                style={{ color: pathname === TODAY.href ? "var(--app-accent)" : "var(--app-text-muted)" }}
+              >
+                {TODAY.icon}
+              </span>
+              {TODAY.label}
+            </Link>
+
+            {NAV_GROUPS.map((group) => {
+              const groupActive = group.items.some((item) =>
+                item.href === "/app" ? pathname === "/app" : pathname.startsWith(item.href),
+              );
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-3 rounded-clay-sm px-3 py-2 text-[14px] font-medium transition-colors",
-                    !active && "clay-hover",
-                  )}
-                  style={{
-                    // The active item is a raised clay pill tinted with the
-                    // accent, so the earthy tone has a permanent home in the
-                    // chrome rather than only appearing on a stray icon.
-                    color: active ? "var(--app-accent-strong)" : "var(--app-text-soft)",
-                    background: active
-                      ? "color-mix(in oklab, var(--app-accent) 12%, var(--app-surface))"
-                      : "transparent",
-                    boxShadow: active ? "var(--clay-shadow), var(--clay-rim)" : "none",
-                  }}
+                <details
+                  key={`${group.key}-${groupActive ? "active" : "idle"}`}
+                  className="group"
+                  defaultOpen={groupActive}
                 >
-                  <span
-                    aria-hidden="true"
-                    style={{ color: active ? "var(--app-accent)" : "var(--app-text-muted)" }}
+                  <summary
+                    className="clay-hover flex cursor-pointer list-none items-center gap-3 rounded-clay-sm px-3 py-2.5 text-[14px] font-semibold [&::-webkit-details-marker]:hidden"
+                    style={{
+                      color: groupActive ? "var(--app-text)" : "var(--app-text-soft)",
+                      background: groupActive ? "color-mix(in oklab, var(--app-text) 4%, transparent)" : "transparent",
+                    }}
                   >
-                    {item.icon}
-                  </span>
-                  {item.label}
-                </Link>
+                    <span
+                      aria-hidden="true"
+                      style={{ color: groupActive ? "var(--app-accent)" : "var(--app-text-muted)" }}
+                    >
+                      {group.icon}
+                    </span>
+                    <span className="flex-1">{group.label}</span>
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 20 20"
+                      width="13"
+                      height="13"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="transition-transform group-open:rotate-90"
+                      style={{ color: "var(--app-text-faint)" }}
+                    >
+                      <path d="M7 4l6 6-6 6" />
+                    </svg>
+                  </summary>
+
+                  <div
+                    className="ml-5 mt-1 flex flex-col gap-0.5 border-l pl-2"
+                    style={{ borderColor: "var(--app-border)" }}
+                  >
+                    {group.items.map((item) => {
+                      const active =
+                        item.href === "/app"
+                          ? pathname === "/app"
+                          : pathname.startsWith(item.href);
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className={cn(
+                            "flex items-center gap-2.5 rounded-clay-sm px-3 py-2 text-[13px] font-medium transition-colors",
+                            !active && "clay-hover",
+                          )}
+                          style={{
+                            color: active ? "var(--app-accent-strong)" : "var(--app-text-muted)",
+                            background: active
+                              ? "color-mix(in oklab, var(--app-accent) 12%, var(--app-surface))"
+                              : "transparent",
+                            boxShadow: active ? "var(--clay-shadow), var(--clay-rim)" : "none",
+                          }}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className="[&>svg]:h-[14px] [&>svg]:w-[14px]"
+                            style={{ color: active ? "var(--app-accent)" : "var(--app-text-faint)" }}
+                          >
+                            {item.icon}
+                          </span>
+                          {item.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </details>
               );
             })}
           </nav>
@@ -195,6 +306,50 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
                 </p>
               </div>
             ) : null}
+            <Link
+              href="/app/settings"
+              aria-label="Upgrade plan"
+              className="group mx-2 flex items-center justify-between rounded-clay-sm border px-3 py-2.5 transition-[transform,box-shadow,background-color] hover:-translate-y-0.5"
+              style={{
+                borderColor: "color-mix(in oklab, var(--app-accent) 48%, var(--app-border))",
+                background: "color-mix(in oklab, var(--app-accent) 18%, var(--app-surface))",
+                boxShadow: "var(--clay-shadow), var(--clay-rim)",
+                color: "var(--app-accent-strong)",
+              }}
+            >
+              <span className="flex min-w-0 items-center gap-2.5">
+                <span
+                  aria-hidden="true"
+                  className="grid h-7 w-7 shrink-0 place-items-center rounded-clay-xs"
+                  style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}
+                >
+                  <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10 2.5l1.15 4.15L15.5 8l-4.35 1.35L10 13.5 8.85 9.35 4.5 8l4.35-1.35L10 2.5z" />
+                    <path d="M15.5 13l.55 1.95L18 15.5l-1.95.55L15.5 18l-.55-1.95L13 15.5l1.95-.55L15.5 13z" />
+                  </svg>
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-semibold leading-tight">Upgrade plan</span>
+                  <span className="mt-0.5 block truncate text-[10.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>
+                    Unlock all features
+                  </span>
+                </span>
+              </span>
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 20 20"
+                width="14"
+                height="14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="shrink-0 transition-transform group-hover:translate-x-0.5"
+              >
+                <path d="M7 4l6 6-6 6" />
+              </svg>
+            </Link>
             <button
               onClick={toggle}
               className="mx-2 flex items-center justify-between rounded-clay-sm border px-3 py-2 text-[13px] transition-colors"
@@ -213,20 +368,26 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
             </button>
             {user ? (
               <div
-                className="mx-2 flex items-center gap-3 rounded-clay-sm px-3 py-2"
+                className="mx-2 flex items-center gap-2 rounded-clay-sm px-1 py-1"
                 style={{ borderTop: "1px solid var(--app-border)" }}
               >
-                <div
-                  aria-hidden="true"
-                  className="grid h-8 w-8 place-items-center rounded-full text-[12.5px] font-medium"
-                  style={{ background: "var(--app-accent-soft)", color: "var(--app-accent-strong)" }}
+                <Link
+                  href="/app/settings"
+                  aria-label={`Open settings for ${user.name}`}
+                  className="clay-hover flex min-w-0 flex-1 items-center gap-3 rounded-clay-sm px-2 py-1"
                 >
-                  {user.name.slice(0, 1).toUpperCase()}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13.5px] font-medium" style={{ color: "var(--app-text)" }}>{user.name}</p>
-                  <p className="truncate text-[11.5px]" style={{ color: "var(--app-text-muted)" }}>{user.email}</p>
-                </div>
+                  <div
+                    aria-hidden="true"
+                    className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[12.5px] font-medium"
+                    style={{ background: "var(--app-accent-soft)", color: "var(--app-accent-strong)" }}
+                  >
+                    {user.name.slice(0, 1).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13.5px] font-medium" style={{ color: "var(--app-text)" }}>{user.name}</p>
+                    <p className="truncate text-[11.5px]" style={{ color: "var(--app-text-muted)" }}>Profile & settings</p>
+                  </div>
+                </Link>
                 <button
                   onClick={signOut}
                   disabled={signingOut}

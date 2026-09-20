@@ -23,19 +23,19 @@ export default function ReviewView() {
         meta="Planned vs done, one win, one adjustment, streak status."
         action={
           <div
-            className="inline-flex rounded-[10px] p-1"
-            style={{ background: "var(--app-surface-soft)", border: "1px solid var(--app-border)" }}
+            className="inline-flex rounded-clay-sm p-1"
+            style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)" }}
           >
             {(["previous", "current"] as Which[]).map((option) => (
               <button
                 key={option}
                 type="button"
                 onClick={() => setWhich(option)}
-                className="rounded-[8px] px-3.5 py-1.5 text-[13px] font-medium capitalize"
+                className="rounded-clay-xs px-3.5 py-1.5 text-[13px] font-medium capitalize"
                 style={{
                   background: which === option ? "var(--app-surface)" : "transparent",
                   color: which === option ? "var(--app-text)" : "var(--app-text-muted)",
-                  boxShadow: which === option ? "0 1px 3px rgba(0,0,0,0.05)" : "none",
+                  boxShadow: which === option ? "var(--clay-shadow), var(--clay-rim)" : "none",
                 }}
               >
                 {option === "previous" ? "Last week" : "This week"}

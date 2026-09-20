@@ -124,10 +124,9 @@ export default function CompanionSheet({ open, onClose, initial }: CompanionShee
         role="dialog"
         aria-modal="true"
         aria-labelledby="companion-sheet-title"
-        className="relative w-full max-w-[520px] rounded-t-[16px] p-6 shadow-[0_40px_120px_-40px_rgba(0,0,0,0.35)] sm:rounded-[16px]"
+        className="relative w-full max-w-[520px] rounded-t-clay-lg p-6 sm:rounded-clay"
         style={{
-          background: "var(--app-surface)",
-          border: "1px solid var(--app-border)",
+          background: "var(--app-elev)", boxShadow: "var(--clay-shadow-sheet), var(--clay-rim)",
           color: "var(--app-text)",
         }}
       >
@@ -142,7 +141,7 @@ export default function CompanionSheet({ open, onClose, initial }: CompanionShee
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="grid h-8 w-8 place-items-center rounded-lg transition-colors hover:bg-black/5"
+            className="grid h-8 w-8 place-items-center rounded-clay-sm transition-colors clay-hover"
             style={{ color: "var(--app-text-muted)" }}
           >
             <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -153,8 +152,8 @@ export default function CompanionSheet({ open, onClose, initial }: CompanionShee
 
         {/* Live preview */}
         <div
-          className="mt-5 flex items-center gap-4 rounded-[12px] p-4"
-          style={{ background: "var(--app-surface-soft)", border: "1px solid var(--app-border)" }}
+          className="mt-5 flex items-center gap-4 rounded-clay-sm p-4"
+          style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)" }}
         >
           <Companion
             form={profile.form}
@@ -186,10 +185,9 @@ export default function CompanionSheet({ open, onClose, initial }: CompanionShee
               maxLength={40}
               onChange={(e) => setProfile((prev) => ({ ...prev, name: e.target.value }))}
               placeholder="Star"
-              className="w-full rounded-[10px] px-3 py-2.5 text-[15px] outline-none"
+              className="w-full rounded-clay-sm px-3 py-2.5 text-[15px] outline-none"
               style={{
-                background: "var(--app-surface-soft)",
-                border: "1px solid var(--app-border)",
+                background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)",
                 color: "var(--app-text)",
               }}
             />
@@ -205,10 +203,10 @@ export default function CompanionSheet({ open, onClose, initial }: CompanionShee
                 key={option.key}
                 type="button"
                 onClick={() => setProfile((prev) => ({ ...prev, form: option.key }))}
-                className="rounded-[10px] px-3 py-2.5 text-[13.5px] font-medium capitalize transition-colors"
+                className="rounded-clay-sm px-3 py-2.5 text-[13.5px] font-medium capitalize transition-colors"
                 style={{
-                  background: profile.form === option.key ? "var(--app-accent-soft)" : "transparent",
-                  color: profile.form === option.key ? "var(--app-accent-strong)" : "var(--app-text-soft)",
+                  background: profile.form === option.key ? "var(--app-arcad-soft)" : "transparent",
+                  color: profile.form === option.key ? "var(--app-arcad-strong)" : "var(--app-text-soft)",
                   border: "1px solid var(--app-border)",
                 }}
               >
@@ -229,8 +227,8 @@ export default function CompanionSheet({ open, onClose, initial }: CompanionShee
                 onClick={() => setProfile((prev) => ({ ...prev, palette: option.key }))}
                 className="flex items-center gap-2 rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-colors"
                 style={{
-                  background: profile.palette === option.key ? "var(--app-accent-soft)" : "transparent",
-                  color: profile.palette === option.key ? "var(--app-accent-strong)" : "var(--app-text-soft)",
+                  background: profile.palette === option.key ? "var(--app-arcad-soft)" : "transparent",
+                  color: profile.palette === option.key ? "var(--app-arcad-strong)" : "var(--app-text-soft)",
                   border: "1px solid var(--app-border)",
                 }}
                 aria-pressed={profile.palette === option.key}
@@ -257,8 +255,8 @@ export default function CompanionSheet({ open, onClose, initial }: CompanionShee
                 onClick={() => setProfile((prev) => ({ ...prev, accessory: option.key }))}
                 className="rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-colors"
                 style={{
-                  background: profile.accessory === option.key ? "var(--app-accent-soft)" : "transparent",
-                  color: profile.accessory === option.key ? "var(--app-accent-strong)" : "var(--app-text-soft)",
+                  background: profile.accessory === option.key ? "var(--app-arcad-soft)" : "transparent",
+                  color: profile.accessory === option.key ? "var(--app-arcad-strong)" : "var(--app-text-soft)",
                   border: "1px solid var(--app-border)",
                 }}
               >

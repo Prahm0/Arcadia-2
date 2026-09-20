@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Sans, Instrument_Serif, JetBrains_Mono } from "next/font/google";
+import { Courier_Prime, DM_Sans, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 // DM Sans replaces Inter as the primary sans — warmer letterforms, no
@@ -24,6 +24,18 @@ const serif = Instrument_Serif({
   weight: "400",
   style: ["normal", "italic"],
   variable: "--font-instrument",
+  display: "swap",
+});
+
+// The product (dashboard, auth, legal) is typewriter-set throughout. It stays a
+// fourth family rather than replacing the three above, because the landing page
+// still needs DM Sans / JetBrains Mono / Instrument Serif. globals.css swaps it
+// in under `html[data-app-theme]`. Courier Prime ships only 400 and 700.
+const typewriter = Courier_Prime({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  style: ["normal", "italic"],
+  variable: "--font-courier",
   display: "swap",
 });
 
@@ -69,8 +81,21 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${mono.variable} ${serif.variable} h-full`}>
-      <body className="min-h-full bg-night-900 text-white">{children}</body>
+    // suppressHydrationWarning: the pre-paint script in app/(app)/layout.tsx
+    // stamps data-app-theme and color-scheme onto <html> before React hydrates,
+    // so the client tree legitimately differs from the server one here. It
+    // suppresses this element's attributes only, not the tree below.
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${inter.variable} ${mono.variable} ${serif.variable} ${typewriter.variable} h-full`}
+    >
+      {/* The night background and white text are already set on `body` in
+          globals.css @layer base. Repeating them as utilities here put them in
+          @layer utilities, which outranks every layered rule — including the
+          product's own `html[data-app-theme] body` override, so the app shell
+          was sitting on a black body in both themes. */}
+      <body className="min-h-full">{children}</body>
     </html>
   );
 }

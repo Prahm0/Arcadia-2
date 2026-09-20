@@ -32,7 +32,7 @@ export default function ArcadOrb({ state = "idle", size = 40, className }: Arcad
           position: "absolute",
           inset: 0,
           borderRadius: "50%",
-          background: `radial-gradient(circle at 50% 50%, color-mix(in oklab, var(--app-accent) 55%, transparent) 0%, transparent 68%)`,
+          background: `radial-gradient(circle at 50% 50%, color-mix(in oklab, var(--app-arcad) 55%, transparent) 0%, transparent 68%)`,
           filter: "blur(1px)",
           opacity: ringOpacity,
         }}
@@ -43,8 +43,8 @@ export default function ArcadOrb({ state = "idle", size = 40, className }: Arcad
           position: "absolute",
           inset: "22%",
           borderRadius: "50%",
-          background: "color-mix(in oklab, var(--app-accent) 18%, var(--app-surface))",
-          border: "1px solid color-mix(in oklab, var(--app-accent) 40%, var(--app-border))",
+          background: "color-mix(in oklab, var(--app-arcad) 18%, var(--app-surface))",
+          border: "1px solid color-mix(in oklab, var(--app-arcad) 40%, var(--app-border))",
         }}
       />
       {/* Four-point star matching the landing page's mark. */}
@@ -58,7 +58,7 @@ export default function ArcadOrb({ state = "idle", size = 40, className }: Arcad
       >
         <path
           d="M12 2 L13.6 10.4 L22 12 L13.6 13.6 L12 22 L10.4 13.6 L2 12 L10.4 10.4 Z"
-          fill="var(--app-accent)"
+          fill="var(--app-arcad)"
         />
       </svg>
     </span>

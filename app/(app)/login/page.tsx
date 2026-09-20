@@ -91,7 +91,11 @@ function LoginForm() {
       footer={
         <>
           New to Arcadia?{" "}
-          <Link href="/register" className="text-white underline decoration-white/40 underline-offset-4 hover:decoration-white">
+          <Link
+            href="/register"
+            className="underline underline-offset-4"
+            style={{ color: "var(--app-text)" }}
+          >
             Create an account
           </Link>
         </>
@@ -119,11 +123,10 @@ function LoginForm() {
         {notice ? (
           <div
             role="alert"
-            className={
-              notice.tone === "error"
-                ? "rounded-[10px] border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-[13.5px] text-rose-100"
-                : "rounded-[10px] border border-white/12 bg-white/[0.04] px-4 py-3 text-[13.5px] text-white/75"
-            }
+            className="clay-well rounded-clay-sm px-4 py-3 text-[13.5px]"
+            style={{
+              color: notice.tone === "error" ? "var(--app-danger)" : "var(--app-text-soft)",
+            }}
           >
             {notice.text}
           </div>
@@ -131,20 +134,28 @@ function LoginForm() {
         <PrimaryButton type="submit" loading={loading}>
           Sign in
         </PrimaryButton>
-        <div className="flex items-center gap-3 text-[11.5px] uppercase tracking-[0.16em] text-white/40">
-          <span className="h-px flex-1 bg-white/12" />
+        <div
+          className="flex items-center gap-3 text-[11.5px] uppercase tracking-[0.16em]"
+          style={{ color: "var(--app-text-faint)" }}
+        >
+          <span className="h-px flex-1" style={{ background: "var(--app-border)" }} />
           or
-          <span className="h-px flex-1 bg-white/12" />
+          <span className="h-px flex-1" style={{ background: "var(--app-border)" }} />
         </div>
         <button
           type="button"
           onClick={continueAsGuest}
           disabled={guestLoading || loading}
-          className="w-full rounded-[12px] border border-white/15 bg-white/[0.03] px-4 py-3 text-[14.5px] text-white/85 transition hover:border-white/25 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-60"
+          className="clay-pressable w-full rounded-clay-sm px-4 py-3 text-[14.5px] disabled:cursor-not-allowed disabled:opacity-60"
+          style={{
+            background: "var(--app-surface)",
+            color: "var(--app-text)",
+            boxShadow: "var(--clay-shadow), var(--clay-rim)",
+          }}
         >
           {guestLoading ? "Setting up a guest account…" : "Continue as guest"}
         </button>
-        <p className="text-center text-[12px] text-white/45">
+        <p className="text-center text-[12px]" style={{ color: "var(--app-text-faint)" }}>
           Skips sign-up with a throwaway account — nothing saves after you close the tab.
         </p>
       </form>

@@ -60,10 +60,9 @@ export default function MobileMoreSheet({ open, onClose }: MobileMoreSheetProps)
         role="dialog"
         aria-modal="true"
         aria-label="More"
-        className="relative w-full rounded-t-[18px] p-5 pb-8 shadow-[0_-16px_60px_-24px_rgba(0,0,0,0.35)]"
+        className="relative w-full rounded-t-clay-lg p-5 pb-8"
         style={{
-          background: "var(--app-surface)",
-          border: "1px solid var(--app-border)",
+          background: "var(--app-elev)", boxShadow: "var(--clay-shadow-sheet), var(--clay-rim)",
           borderBottom: "none",
           paddingBottom: "calc(env(safe-area-inset-bottom, 0) + 24px)",
         }}
@@ -78,7 +77,7 @@ export default function MobileMoreSheet({ open, onClose }: MobileMoreSheetProps)
                 <Link
                   href={item.href}
                   onClick={onClose}
-                  className="flex items-center gap-3 rounded-[12px] px-4 py-3.5 text-[14.5px] font-medium"
+                  className="flex items-center gap-3 rounded-clay-sm px-4 py-3.5 text-[14.5px] font-medium"
                   style={{
                     color: active ? "var(--app-text)" : "var(--app-text-soft)",
                     background: active ? "var(--app-surface-soft)" : "transparent",

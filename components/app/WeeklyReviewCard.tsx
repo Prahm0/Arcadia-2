@@ -45,7 +45,7 @@ export default function WeeklyReviewCard({
   if (!review.hasData) {
     return (
       <div
-        className="rounded-[14px] p-5"
+        className="rounded-clay p-5"
         style={{
           background: inline ? "var(--app-surface-soft)" : "var(--app-surface)",
           border: "1px solid var(--app-border)",
@@ -69,7 +69,7 @@ export default function WeeklyReviewCard({
 
   return (
     <div
-      className="rounded-[14px] p-5"
+      className="rounded-clay p-5"
       style={{
         background: inline ? "var(--app-surface-soft)" : "var(--app-surface)",
         border: "1px solid var(--app-border)",
@@ -88,7 +88,7 @@ export default function WeeklyReviewCard({
       <div className="mt-3">
         <div
           className="h-1.5 w-full overflow-hidden rounded-full"
-          style={{ background: "var(--app-surface-soft)", border: "1px solid var(--app-border)" }}
+          style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)" }}
           aria-hidden="true"
         >
           <div
@@ -205,8 +205,8 @@ function LabeledLine({
         : "var(--app-accent)";
   return (
     <div
-      className="rounded-[10px] p-3"
-      style={{ background: "var(--app-surface-soft)", border: "1px solid var(--app-border)" }}
+      className="rounded-clay-sm p-3"
+      style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)" }}
     >
       <div className="flex items-center gap-1.5">
         <span aria-hidden="true" className="size-1.5 rounded-full" style={{ background: dotColor }} />

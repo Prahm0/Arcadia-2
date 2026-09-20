@@ -78,8 +78,8 @@ function OperationChip({
 
   return (
     <div
-      className="rounded-[10px] p-3"
-      style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}
+      className="rounded-clay-sm p-3"
+      style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
     >
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-[13px] font-medium" style={{ color: "var(--app-text)" }}>
@@ -159,8 +159,8 @@ function MiniDayChart({
     <div className="min-w-0">
       <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>{label}</p>
       <div
-        className="relative mt-1.5 h-[64px] w-full overflow-hidden rounded-[6px]"
-        style={{ background: "var(--app-surface-soft)", border: "1px solid var(--app-border)" }}
+        className="relative mt-1.5 h-[64px] w-full overflow-hidden rounded-clay-xs"
+        style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)" }}
         aria-hidden="true"
       >
         {/* Hour ticks */}
@@ -183,12 +183,12 @@ function MiniDayChart({
             height: `${Math.max(6, (endFrac - startFrac) * 100)}%`,
             background:
               highlightTone === "accent"
-                ? "var(--app-accent)"
-                : "color-mix(in oklab, var(--app-accent) 12%, var(--app-surface-soft))",
+                ? "var(--app-arcad)"
+                : "color-mix(in oklab, var(--app-arcad) 12%, var(--app-surface-soft))",
             border:
               highlightTone === "ghost"
                 ? "1px dashed var(--app-border-strong)"
-                : "1px solid var(--app-accent-strong)",
+                : "1px solid var(--app-arcad-strong)",
             opacity: highlightTone === "ghost" ? 0.85 : 1,
             transition: "top 0.25s var(--ease-out-expo, ease-out)",
           }}
@@ -206,7 +206,7 @@ function BeforeEmpty({ label }: { label: string }) {
     <div className="min-w-0">
       <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>{label}</p>
       <div
-        className="mt-1.5 grid h-[64px] w-full place-items-center rounded-[6px] text-[11px] font-mono"
+        className="mt-1.5 grid h-[64px] w-full place-items-center rounded-clay-xs text-[11px] font-mono"
         style={{
           background: "var(--app-surface-soft)",
           border: "1px dashed var(--app-border-strong)",

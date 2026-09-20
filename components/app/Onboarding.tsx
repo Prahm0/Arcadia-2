@@ -4,14 +4,13 @@ import { useMemo, useState } from "react";
 import { api } from "@/lib/api/client";
 import AppButton from "@/components/app/AppButton";
 import { cn } from "@/lib/cn";
+import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
 
 interface OnboardingProps {
   defaultName: string;
   defaultTimezone: string;
   onComplete: () => void;
 }
-
-const SUBJECT_COLORS = ["#7c5cff", "#38bdf8", "#34d399", "#f59e0b", "#f472b6", "#fb7185"];
 
 const SUBJECT_SUGGESTIONS = [
   "Mathematical Methods",
@@ -254,10 +253,9 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
                 }}
                 maxLength={60}
                 placeholder="Add another…"
-                className="flex-1 rounded-[10px] px-3 py-2.5 text-[14.5px] outline-none"
+                className="flex-1 rounded-clay-sm px-3 py-2.5 text-[14.5px] outline-none"
                 style={{
-                  background: "var(--app-surface-soft)",
-                  border: "1px solid var(--app-border)",
+                  background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)",
                   color: "var(--app-text)",
                 }}
               />
@@ -412,10 +410,9 @@ function FormInput({
       value={value}
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full rounded-[10px] px-3 py-2.5 text-[15px] outline-none disabled:opacity-60"
+      className="w-full rounded-clay-sm px-3 py-2.5 text-[15px] outline-none disabled:opacity-60"
       style={{
-        background: "var(--app-surface-soft)",
-        border: "1px solid var(--app-border)",
+        background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)",
         color: "var(--app-text)",
       }}
     />

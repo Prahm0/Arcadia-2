@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import EmptyState, { ExampleRow } from "./EmptyState";
+import { categoryColor } from "@/lib/app/categoryColors";
 
 interface Commitment {
   id: string;
@@ -22,10 +23,10 @@ interface Commitment {
 }
 
 const CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
-  school: { label: "School", color: "#38bdf8" },
-  sport: { label: "Training", color: "#34d399" },
-  extracurricular: { label: "Extra", color: "#f59e0b" },
-  other: { label: "Other", color: "#a19f97" },
+  school: { label: "School", color: categoryColor("school") },
+  sport: { label: "Training", color: categoryColor("sport") },
+  extracurricular: { label: "Extra", color: categoryColor("extracurricular") },
+  other: { label: "Other", color: categoryColor("other") },
 };
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -87,13 +88,13 @@ export default function CommitmentsView() {
 
       <div className="mx-auto flex w-full max-w-[820px] flex-col gap-6 px-6 py-8 sm:px-10">
         {loading ? (
-          <div className="rounded-[14px] p-10 text-center" style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}>
+          <div className="rounded-clay p-10 text-center" style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}>
             <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>Loading…</p>
           </div>
         ) : error ? (
           <div
-            className="rounded-[14px] p-6 text-center"
-            style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}
+            className="rounded-clay p-6 text-center"
+            style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
           >
             <p className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>Couldn't load your commitments.</p>
             <p className="mt-1.5 text-[13px]" style={{ color: "var(--app-text-muted)" }}>{error}</p>
@@ -107,9 +108,13 @@ export default function CommitmentsView() {
             body="Commitments are the fixed things — school hours, training, work shifts. Add them and Arcadia stops planning study on top of them."
             example={
               <>
-                <ExampleRow title="School" meta="Mon–Fri · 8:30am–3:15pm" bar="#38bdf8" />
-                <ExampleRow title="Training" meta="Tue, Thu · 6:00pm–7:30pm" bar="#34d399" />
-                <ExampleRow title="Music lesson" meta="Sat · 10:00am–11:00am" bar="#f59e0b" />
+                <ExampleRow title="School" meta="Mon–Fri · 8:30am–3:15pm" bar={categoryColor("school")} />
+                <ExampleRow title="Training" meta="Tue, Thu · 6:00pm–7:30pm" bar={categoryColor("sport")} />
+                <ExampleRow
+                  title="Music lesson"
+                  meta="Sat · 10:00am–11:00am"
+                  bar={categoryColor("extracurricular")}
+                />
               </>
             }
             action={
@@ -166,8 +171,8 @@ function CommitmentRow({ commitment, onClick }: { commitment: Commitment; onClic
       <button
         type="button"
         onClick={onClick}
-        className={cn("group flex w-full items-center gap-4 rounded-[12px] px-4 py-4 text-left transition-colors hover:bg-black/[0.02]")}
-        style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}
+        className={cn("group flex w-full items-center gap-4 rounded-clay-sm px-4 py-4 text-left transition-colors clay-hover")}
+        style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
       >
         <span aria-hidden="true" className="h-10 w-1 shrink-0 rounded-full" style={{ background: color }} />
         <div className="min-w-0 flex-1">
@@ -291,8 +296,8 @@ function CommitmentSheet({
       <div
         role="dialog"
         aria-modal="true"
-        className="relative w-full max-w-[520px] rounded-t-[16px] p-6 shadow-[0_40px_120px_-40px_rgba(0,0,0,0.35)] sm:rounded-[16px]"
-        style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)", color: "var(--app-text)" }}
+        className="relative w-full max-w-[520px] rounded-t-clay-lg p-6 sm:rounded-clay"
+        style={{ background: "var(--app-elev)", boxShadow: "var(--clay-shadow-sheet), var(--clay-rim)", color: "var(--app-text)" }}
       >
         <div className="flex items-start justify-between">
           <div>
@@ -301,7 +306,7 @@ function CommitmentSheet({
               {editing ? editing.title : "New commitment"}
             </h2>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" className="grid h-8 w-8 place-items-center rounded-lg" style={{ color: "var(--app-text-muted)" }}>
+          <button type="button" onClick={onClose} aria-label="Close" className="grid h-8 w-8 place-items-center rounded-clay-sm" style={{ color: "var(--app-text-muted)" }}>
             <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M5 5l10 10M15 5L5 15" strokeLinecap="round" /></svg>
           </button>
         </div>
@@ -313,8 +318,8 @@ function CommitmentSheet({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Basketball training"
-              className="w-full rounded-[10px] px-3 py-2.5 text-[15px] outline-none"
-              style={{ background: "var(--app-surface-soft)", border: "1px solid var(--app-border)", color: "var(--app-text)" }}
+              className="w-full rounded-clay-sm px-3 py-2.5 text-[15px] outline-none"
+              style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)", color: "var(--app-text)" }}
             />
           </Field>
 
@@ -323,8 +328,8 @@ function CommitmentSheet({
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as Commitment["category"])}
-                className="w-full rounded-[10px] px-3 py-2.5 text-[15px] outline-none"
-                style={{ background: "var(--app-surface-soft)", border: "1px solid var(--app-border)", color: "var(--app-text)" }}
+                className="w-full rounded-clay-sm px-3 py-2.5 text-[15px] outline-none"
+                style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)", color: "var(--app-text)" }}
               >
                 {Object.entries(CATEGORY_LABELS).map(([value, { label }]) => (
                   <option key={value} value={value}>{label}</option>
@@ -335,8 +340,8 @@ function CommitmentSheet({
               <select
                 value={recurrence}
                 onChange={(e) => setRecurrence(e.target.value as Commitment["recurrence"])}
-                className="w-full rounded-[10px] px-3 py-2.5 text-[15px] outline-none"
-                style={{ background: "var(--app-surface-soft)", border: "1px solid var(--app-border)", color: "var(--app-text)" }}
+                className="w-full rounded-clay-sm px-3 py-2.5 text-[15px] outline-none"
+                style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)", color: "var(--app-text)" }}
               >
                 <option value="weekly">Weekly</option>
                 <option value="weekdays">Weekdays (Mon–Fri)</option>
@@ -353,7 +358,7 @@ function CommitmentSheet({
                     key={day}
                     type="button"
                     onClick={() => setWeekday(index)}
-                    className={cn("flex-1 rounded-[8px] py-2 text-[13px] font-medium transition-colors")}
+                    className={cn("flex-1 rounded-clay-xs py-2 text-[13px] font-medium transition-colors")}
                     style={{
                       background: weekday === index ? "var(--app-accent-soft)" : "var(--app-surface-soft)",
                       color: weekday === index ? "var(--app-accent-strong)" : "var(--app-text-soft)",
@@ -374,8 +379,8 @@ function CommitmentSheet({
                 type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className="w-full rounded-[10px] px-3 py-2.5 text-[15px] outline-none"
-                style={{ background: "var(--app-surface-soft)", border: "1px solid var(--app-border)", color: "var(--app-text)" }}
+                className="w-full rounded-clay-sm px-3 py-2.5 text-[15px] outline-none"
+                style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)", color: "var(--app-text)" }}
               />
             </Field>
             <Field label="End">
@@ -384,8 +389,8 @@ function CommitmentSheet({
                 type="time"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
-                className="w-full rounded-[10px] px-3 py-2.5 text-[15px] outline-none"
-                style={{ background: "var(--app-surface-soft)", border: "1px solid var(--app-border)", color: "var(--app-text)" }}
+                className="w-full rounded-clay-sm px-3 py-2.5 text-[15px] outline-none"
+                style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)", color: "var(--app-text)" }}
               />
             </Field>
           </div>

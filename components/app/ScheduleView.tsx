@@ -10,6 +10,7 @@ import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import NewTaskSheet from "./NewTaskSheet";
 import EventDetailSheet from "./EventDetailSheet";
+import { categoryBlock, type CategoryBlockStyle } from "@/lib/app/categoryColors";
 
 const DAY_MS = 86_400_000;
 const HOUR_START = 7;
@@ -18,38 +19,15 @@ const HOUR_SPAN = HOUR_END - HOUR_START;
 const HOUR_MARKS = [7, 9, 11, 13, 15, 17, 19, 21, 23];
 const SNAP_MINUTES = 15;
 
-const CATEGORY_STYLE: Record<string, { bg: string; text: string; border: string }> = {
-  study: {
-    bg: "var(--app-surface)",
-    text: "var(--app-text)",
-    border: "var(--app-border-strong)",
-  },
-  school: {
-    bg: "var(--app-surface-soft)",
-    text: "var(--app-text-muted)",
-    border: "var(--app-border)",
-  },
-  sport: {
-    bg: "#171717",
-    text: "#fafafa",
-    border: "#171717",
-  },
-  extracurricular: {
-    bg: "#fef3c7",
-    text: "#78350f",
-    border: "#fcd34d",
-  },
-  sleep: {
-    bg: "transparent",
-    text: "var(--app-text-muted)",
-    border: "var(--app-border)",
-  },
-  other: {
-    bg: "var(--app-surface-soft)",
-    text: "var(--app-text-soft)",
-    border: "var(--app-border)",
-  },
-};
+// Every block is now mixed from the one shared category hue. `sport` used to
+// be hardcoded near-black on white and `extracurricular` a fixed amber pair,
+// neither of which responded to the theme at all.
+const CATEGORY_STYLE: Record<string, CategoryBlockStyle> = Object.fromEntries(
+  ["study", "school", "sport", "extracurricular", "sleep", "other"].map((c) => [
+    c,
+    categoryBlock(c),
+  ]),
+);
 
 export default function ScheduleView() {
   const { data, patch, reload } = useDashboardData();
@@ -140,7 +118,7 @@ export default function ScheduleView() {
         meta={weekLabel.subtitle}
         action={
           <div className="flex items-center gap-2">
-            <div className="flex items-center rounded-[10px]" style={{ border: "1px solid var(--app-border)", background: "var(--app-surface)" }}>
+            <div className="flex items-center rounded-clay-sm" style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}>
               <IconButton label="Previous week" onClick={() => setWeekOffset((v) => v - 1)}>
                 <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M12 5l-5 5 5 5" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </IconButton>
@@ -172,8 +150,8 @@ export default function ScheduleView() {
 
       <div className="px-4 py-6 sm:px-10 sm:py-8">
         <div
-          className="overflow-x-auto rounded-[16px]"
-          style={{ border: "1px solid var(--app-border)", background: "var(--app-surface)" }}
+          className="overflow-x-auto rounded-clay"
+          style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
         >
           <div className="min-w-[760px]">
           <div
@@ -480,11 +458,11 @@ function WeekGrid({
                     onSelectEvent(event);
                   }}
                   className={cn(
-                    "block h-full w-full overflow-hidden rounded-[8px] px-2.5 py-1.5 text-left leading-tight transition-shadow duration-150",
+                    "block h-full w-full overflow-hidden rounded-clay-xs px-2.5 py-1.5 text-left leading-tight transition-shadow duration-150",
                     isCompleted && "opacity-55",
                     isMissed && "opacity-40",
                     draggable && "cursor-grab",
-                    isBeingDragged && "cursor-grabbing shadow-[0_16px_40px_-12px_rgba(0,0,0,0.35)]",
+                    isBeingDragged && "cursor-grabbing clay-raised",
                   )}
                   style={{
                     background: styles.bg,

@@ -84,17 +84,17 @@ export default function AnalyticsView() {
         }
         meta={analytics ? `${formatMinutes(totalMinutes)} of focused study` : undefined}
         action={
-          <div className="inline-flex rounded-[10px] p-1" style={{ background: "var(--app-surface-soft)", border: "1px solid var(--app-border)" }}>
+          <div className="inline-flex rounded-clay-sm p-1" style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)" }}>
             {(["week", "month"] as Period[]).map((p) => (
               <button
                 key={p}
                 type="button"
                 onClick={() => setPeriod(p)}
-                className="rounded-[8px] px-3.5 py-1.5 text-[13px] font-medium capitalize"
+                className="rounded-clay-xs px-3.5 py-1.5 text-[13px] font-medium capitalize"
                 style={{
                   background: period === p ? "var(--app-surface)" : "transparent",
                   color: period === p ? "var(--app-text)" : "var(--app-text-muted)",
-                  boxShadow: period === p ? "0 1px 3px rgba(0,0,0,0.05)" : "none",
+                  boxShadow: period === p ? "var(--clay-shadow), var(--clay-rim)" : "none",
                 }}
               >
                 {p}
@@ -132,7 +132,7 @@ export default function AnalyticsView() {
       </div>
 
       <div className="mx-auto grid w-full max-w-[1140px] gap-6 px-6 pb-8 sm:px-10 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <div className="rounded-[16px] p-6" style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}>
+        <div className="rounded-clay p-6" style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}>
           <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Daily focus</p>
           <p className="mt-2 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
             Minutes of focused study each day this {period}.
@@ -148,7 +148,7 @@ export default function AnalyticsView() {
           </div>
         </div>
 
-        <div className="rounded-[16px] p-6" style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}>
+        <div className="rounded-clay p-6" style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}>
           <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>By subject</p>
           {!analytics || analytics.subjects.length === 0 ? (
             <p className="mt-4 text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
@@ -180,7 +180,7 @@ export default function AnalyticsView() {
       </div>
 
       <div className="mx-auto w-full max-w-[1140px] px-6 pb-16 sm:px-10">
-        <div className="rounded-[16px] p-6" style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}>
+        <div className="rounded-clay p-6" style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}>
           <div className="flex items-baseline justify-between">
             <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Streaks</p>
             <p className="type-mono-label" style={{ color: "var(--app-text-muted)" }}>
@@ -244,10 +244,9 @@ export default function AnalyticsView() {
           </div>
 
           {streak.current === 0 && streak.lastPlannedDay?.missReason ? (
-            <p className="mt-4 rounded-[10px] px-3 py-2.5 text-[13px]"
+            <p className="mt-4 rounded-clay-sm px-3 py-2.5 text-[13px]"
               style={{
-                background: "var(--app-surface-soft)",
-                border: "1px solid var(--app-border)",
+                background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)",
                 color: "var(--app-text-soft)",
               }}
             >
@@ -266,7 +265,7 @@ function StatCard({ label, value, unit, delta }: { label: string; value: string;
   const isUp = typeof delta === "number" && delta > 0;
   const isDown = typeof delta === "number" && delta < 0;
   return (
-    <div className="rounded-[14px] p-5" style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}>
+    <div className="rounded-clay p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}>
       <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>{label}</p>
       <div className="mt-3 flex items-baseline gap-2">
         <p className="text-[32px] font-mono font-medium leading-none" style={{ color: "var(--app-text)" }}>{value}</p>

@@ -4,15 +4,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import AppShell from "@/components/app/AppShell";
 import { DashboardDataProvider, useDashboard } from "@/lib/app/DashboardProvider";
-import { ThemeProvider } from "@/lib/app/theme";
 import { useDashboardAutoRefresh } from "@/lib/app/useDashboardAutoRefresh";
 
+// ThemeProvider is mounted one level up in app/(app)/layout.tsx so the auth
+// and legal pages share the dashboard's theme.
 export default function AppLayout({ children }: { children: ReactNode }) {
-  return (
-    <ThemeProvider>
-      <Gate>{children}</Gate>
-    </ThemeProvider>
-  );
+  return <Gate>{children}</Gate>;
 }
 
 function Gate({ children }: { children: ReactNode }) {
@@ -56,7 +53,7 @@ function Gate({ children }: { children: ReactNode }) {
         <button
           onClick={reload}
           className="rounded-full px-4 py-2 text-[13px] font-medium"
-          style={{ background: "var(--app-accent)", color: "white" }}
+          style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}
         >
           Try again
         </button>

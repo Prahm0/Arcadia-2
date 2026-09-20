@@ -63,8 +63,8 @@ export default function ConsistencyHeatmap() {
 
   return (
     <div
-      className="rounded-[16px] p-6"
-      style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}
+      className="rounded-clay p-6"
+      style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>

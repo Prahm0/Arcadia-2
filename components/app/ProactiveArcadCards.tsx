@@ -72,7 +72,7 @@ export default function ProactiveArcadCards({ limit = 2, compact = false }: Proa
       {visible.map((card) => (
         <div
           key={card.id}
-          className="rounded-[14px] p-4"
+          className="rounded-clay p-4"
           style={{
             background: cardBg(card.tone),
             border: `1px solid ${cardBorder(card.tone)}`,
@@ -146,7 +146,7 @@ function cardBg(tone: ProactiveTone): string {
     case "celebrate":
       return "color-mix(in oklab, var(--app-success) 12%, var(--app-surface))";
     case "warn":
-      return "color-mix(in oklab, var(--app-accent) 12%, var(--app-surface))";
+      return "color-mix(in oklab, var(--app-arcad) 12%, var(--app-surface))";
     case "info":
     default:
       return "var(--app-surface)";
@@ -158,7 +158,7 @@ function cardBorder(tone: ProactiveTone): string {
     case "celebrate":
       return "color-mix(in oklab, var(--app-success) 40%, var(--app-border))";
     case "warn":
-      return "color-mix(in oklab, var(--app-accent) 35%, var(--app-border))";
+      return "color-mix(in oklab, var(--app-arcad) 35%, var(--app-border))";
     case "info":
     default:
       return "var(--app-border)";
@@ -170,7 +170,7 @@ function eyebrowColor(tone: ProactiveTone): string {
     case "celebrate":
       return "var(--app-success)";
     case "warn":
-      return "var(--app-accent-strong)";
+      return "var(--app-arcad-strong)";
     case "info":
     default:
       return "var(--app-text-muted)";
@@ -179,7 +179,7 @@ function eyebrowColor(tone: ProactiveTone): string {
 
 function actionStyle(variant: "primary" | "ghost" | undefined): React.CSSProperties {
   if (variant === "primary") {
-    return { background: "var(--app-accent)", color: "white", border: "1px solid var(--app-accent)" };
+    return { background: "var(--app-arcad)", color: "var(--app-arcad-on)", border: "1px solid var(--app-arcad)" };
   }
   return {
     background: "transparent",

@@ -10,6 +10,7 @@ import AppButton from "./AppButton";
 import EmptyState, { ExampleRow } from "./EmptyState";
 import NewTaskSheet from "./NewTaskSheet";
 import TaskDetailSheet from "./TaskDetailSheet";
+import { categoryColor } from "@/lib/app/categoryColors";
 
 export default function DeadlinesView() {
   const { data } = useDashboardData();
@@ -70,8 +71,8 @@ export default function DeadlinesView() {
             example={
               <>
                 <ExampleRow title="Chemistry lab report" meta="Chem · Due Fri · 90 min" />
-                <ExampleRow title="Complex numbers set" meta="Maths · Due next Wed · 60 min" bar="#38bdf8" />
-                <ExampleRow title="English essay draft" meta="English · Due 12 Sep · 120 min" bar="#f59e0b" />
+                <ExampleRow title="Complex numbers set" meta="Maths · Due next Wed · 60 min" bar={categoryColor("school")} />
+                <ExampleRow title="English essay draft" meta="English · Due 12 Sep · 120 min" bar={categoryColor("extracurricular")} />
               </>
             }
             action={
@@ -147,8 +148,8 @@ function DeadlineRow({
       <button
         type="button"
         onClick={onClick}
-        className={cn("group flex w-full items-center gap-4 rounded-[12px] px-4 py-4 text-left transition-colors hover:bg-black/[0.02]")}
-        style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}
+        className={cn("group flex w-full items-center gap-4 rounded-clay-sm px-4 py-4 text-left transition-colors clay-hover")}
+        style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
       >
         <span
           aria-hidden="true"

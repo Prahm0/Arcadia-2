@@ -88,12 +88,12 @@ export default function MobileBottomNav() {
     <>
       <nav
         aria-label="Mobile navigation"
-        className="lg:hidden fixed inset-x-0 bottom-0 z-40 border-t"
+        className="lg:hidden fixed inset-x-0 bottom-0 z-40"
         style={{
-          background: "color-mix(in oklab, var(--app-bg) 92%, transparent)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-          borderColor: "var(--app-border)",
+          // A solid clay plate. The frosted version smeared whatever scrolled
+          // beneath it, which fights the soft surfaces everywhere else.
+          background: "var(--app-elev)",
+          boxShadow: "var(--clay-shadow-sheet), var(--clay-rim)",
           paddingBottom: "env(safe-area-inset-bottom, 0)",
         }}
       >

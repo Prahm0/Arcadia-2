@@ -66,7 +66,7 @@ export default function DailyCheckInCard() {
 
   return (
     <div
-      className="hero-fade-up mb-6 flex flex-wrap items-start gap-4 rounded-[14px] px-5 py-4"
+      className="hero-fade-up mb-6 flex flex-wrap items-start gap-4 rounded-clay px-5 py-4"
       style={{
         background: "var(--app-accent-soft)",
         border: "1px solid color-mix(in oklab, var(--app-accent) 25%, var(--app-border))",
@@ -76,7 +76,7 @@ export default function DailyCheckInCard() {
       <span
         aria-hidden="true"
         className="mt-1 grid size-6 shrink-0 place-items-center rounded-full"
-        style={{ background: "var(--app-accent)", color: "white" }}
+        style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}
       >
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
           <path d="M6 1v3M6 8v3M1 6h3M8 6h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -101,7 +101,7 @@ export default function DailyCheckInCard() {
           <Link
             href="/app/arcad"
             className="rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-colors"
-            style={{ background: "var(--app-accent)", color: "white" }}
+            style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}
             onClick={dismiss}
           >
             Talk to Arcad

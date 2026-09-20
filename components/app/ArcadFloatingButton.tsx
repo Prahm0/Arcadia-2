@@ -60,7 +60,7 @@ export default function ArcadFloatingButton() {
         onClick={() => setOpen((v) => !v)}
         aria-label="Ask Arcad"
         aria-expanded={open}
-        className="group fixed bottom-[calc(env(safe-area-inset-bottom,0)+88px)] right-4 z-40 lg:bottom-6 lg:right-6 flex items-center gap-2.5 rounded-full py-1.5 pl-1.5 pr-3 shadow-[0_16px_40px_-14px_rgba(0,0,0,0.35)] transition-transform hover:scale-[1.02]"
+        className="group fixed bottom-[calc(env(safe-area-inset-bottom,0)+88px)] right-4 z-40 lg:bottom-6 lg:right-6 flex items-center gap-2.5 rounded-full py-1.5 pl-1.5 pr-3 clay-raised clay-pressable transition-transform hover:scale-[1.02]"
         style={{
           background: "var(--app-surface)",
           border: "1px solid var(--app-border-strong)",
@@ -73,7 +73,7 @@ export default function ArcadFloatingButton() {
             <span
               aria-hidden="true"
               className="absolute -right-0.5 -top-0.5 grid size-3 place-items-center rounded-full"
-              style={{ background: "var(--app-accent)", boxShadow: "0 0 0 2px var(--app-surface)" }}
+              style={{ background: "var(--app-arcad)", boxShadow: "0 0 0 2px var(--app-surface)" }}
             />
           ) : null}
         </span>
@@ -94,10 +94,9 @@ export default function ArcadFloatingButton() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="arcad-quick-title"
-            className="fixed bottom-[calc(env(safe-area-inset-bottom,0)+88px)] right-4 z-40 lg:bottom-6 lg:right-6 w-[min(400px,calc(100vw-2.5rem))] rounded-[18px] p-5 shadow-[0_40px_120px_-40px_rgba(0,0,0,0.45)]"
+            className="fixed bottom-[calc(env(safe-area-inset-bottom,0)+88px)] right-4 z-40 lg:bottom-6 lg:right-6 w-[min(400px,calc(100vw-2.5rem))] rounded-clay-lg p-5 clay-raised"
             style={{
-              background: "var(--app-surface)",
-              border: "1px solid var(--app-border)",
+              background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)",
               color: "var(--app-text)",
             }}
           >
@@ -105,7 +104,7 @@ export default function ArcadFloatingButton() {
               <div className="flex items-start gap-3 min-w-0">
                 <ArcadOrb size={40} state={hasUnhandled ? "alert" : "idle"} />
                 <div className="min-w-0">
-                  <p className="type-eyebrow" style={{ color: "var(--app-accent-strong)" }}>
+                  <p className="type-eyebrow" style={{ color: "var(--app-arcad-strong)" }}>
                     Arcad
                   </p>
                   <p
@@ -124,7 +123,7 @@ export default function ArcadFloatingButton() {
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Close"
-                className="grid size-8 shrink-0 place-items-center rounded-lg transition-colors hover:bg-black/5"
+                className="grid size-8 shrink-0 place-items-center rounded-clay-sm transition-colors clay-hover"
                 style={{ color: "var(--app-text-muted)" }}
               >
                 <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -146,9 +145,9 @@ export default function ArcadFloatingButton() {
                       style={
                         isAccent
                           ? {
-                              background: "var(--app-accent)",
-                              color: "white",
-                              border: "1px solid var(--app-accent)",
+                              background: "var(--app-arcad)",
+                              color: "var(--app-arcad-on)",
+                              border: "1px solid var(--app-arcad)",
                             }
                           : {
                               background: "transparent",
@@ -169,8 +168,8 @@ export default function ArcadFloatingButton() {
                 e.preventDefault();
                 handoff(composed);
               }}
-              className="mt-4 flex items-end gap-2 rounded-[12px] p-1.5"
-              style={{ background: "var(--app-surface-soft)", border: "1px solid var(--app-border)" }}
+              className="mt-4 flex items-end gap-2 rounded-clay-sm p-1.5"
+              style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)" }}
             >
               <textarea
                 value={composed}
@@ -191,8 +190,8 @@ export default function ArcadFloatingButton() {
               <button
                 type="submit"
                 disabled={!composed.trim()}
-                className="rounded-lg px-3 py-1.5 text-[12.5px] font-medium transition-colors disabled:opacity-50"
-                style={{ background: "var(--app-accent)", color: "white" }}
+                className="rounded-clay-sm px-3 py-1.5 text-[12.5px] font-medium transition-colors disabled:opacity-50"
+                style={{ background: "var(--app-arcad)", color: "var(--app-arcad-on)" }}
               >
                 Send
               </button>

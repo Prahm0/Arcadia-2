@@ -59,7 +59,7 @@ export default function AppErrorBoundary({
             type="button"
             onClick={reset}
             className="rounded-full px-4 py-2 text-[13px] font-medium"
-            style={{ background: "var(--app-accent)", color: "white" }}
+            style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}
           >
             Try again
           </button>

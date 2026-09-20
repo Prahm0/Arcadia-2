@@ -197,8 +197,8 @@ function SubjectRow({
 
   return (
     <li
-      className="rounded-[14px]"
-      style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}
+      className="rounded-clay"
+      style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
     >
       <button
         type="button"
@@ -254,10 +254,9 @@ function SubjectRow({
               }}
               rows={4}
               placeholder="Anything you'd want a tutor to know before helping — key topics, textbook, teacher's style."
-              className="mt-2 w-full resize-y rounded-[10px] px-3 py-2.5 text-[13.5px] outline-none"
+              className="mt-2 w-full resize-y rounded-clay-sm px-3 py-2.5 text-[13.5px] outline-none"
               style={{
-                background: "var(--app-surface-soft)",
-                border: "1px solid var(--app-border)",
+                background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)",
                 color: "var(--app-text)",
                 minHeight: 96,
               }}
@@ -280,12 +279,12 @@ function SubjectRow({
               role="switch"
               aria-checked={context.includeInArcad}
               onClick={() => void toggleInclude(!context.includeInArcad)}
-              className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
-              style={{ background: context.includeInArcad ? "var(--app-accent)" : "var(--app-border-strong)" }}
+              className="clay-well-bare relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
+              style={{ background: context.includeInArcad ? "var(--app-accent)" : "var(--app-surface-soft)" }}
             >
               <span
                 aria-hidden="true"
-                className="inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform"
+                className="inline-block h-5 w-5 rounded-full clay-raised transition-transform"
                 style={{ transform: context.includeInArcad ? "translateX(22px)" : "translateX(2px)" }}
               />
             </button>
@@ -326,8 +325,8 @@ function SubjectRow({
                 {context.files.map((file) => (
                   <li
                     key={file.id}
-                    className="flex items-center gap-3 rounded-[10px] px-3 py-2.5"
-                    style={{ background: "var(--app-surface-soft)", border: "1px solid var(--app-border)" }}
+                    className="flex items-center gap-3 rounded-clay-sm px-3 py-2.5"
+                    style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)" }}
                   >
                     <FileGlyph />
                     <div className="min-w-0 flex-1">
@@ -374,7 +373,7 @@ function FileGlyph() {
   return (
     <span
       aria-hidden="true"
-      className="grid size-8 shrink-0 place-items-center rounded-md"
+      className="grid size-8 shrink-0 place-items-center rounded-clay-xs"
       style={{ background: "var(--app-accent-soft)", color: "var(--app-accent-strong)" }}
     >
       <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">

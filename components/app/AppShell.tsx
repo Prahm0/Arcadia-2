@@ -74,8 +74,11 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
       style={{ background: "var(--app-bg)", color: "var(--app-text)" }}
     >
       {/* Mobile top bar — brand + streak chip. Nav lives at the bottom now. */}
-      <div className="lg:hidden sticky top-0 z-30 flex items-center justify-between border-b px-4 py-3 backdrop-blur-md"
-        style={{ borderColor: "var(--app-border)", background: "color-mix(in oklab, var(--app-bg) 88%, transparent)" }}
+      {/* Solid, not frosted: glass and clay are competing materials, and the
+          translucent bar muddied everything that scrolled under it. */}
+      <div
+        className="lg:hidden sticky top-0 z-30 flex items-center justify-between px-4 py-3"
+        style={{ background: "var(--app-elev)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
       >
         <BrandMark />
         {streak > 0 ? (
@@ -116,12 +119,18 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-3 rounded-[10px] px-3 py-2 text-[14px] font-medium transition-colors",
+                    "flex items-center gap-3 rounded-clay-sm px-3 py-2 text-[14px] font-medium transition-colors",
+                    !active && "clay-hover",
                   )}
                   style={{
-                    color: active ? "var(--app-text)" : "var(--app-text-soft)",
-                    background: active ? "var(--app-surface)" : "transparent",
-                    boxShadow: active ? "inset 0 0 0 1px var(--app-border)" : "none",
+                    // The active item is a raised clay pill tinted with the
+                    // accent, so the earthy tone has a permanent home in the
+                    // chrome rather than only appearing on a stray icon.
+                    color: active ? "var(--app-accent-strong)" : "var(--app-text-soft)",
+                    background: active
+                      ? "color-mix(in oklab, var(--app-accent) 12%, var(--app-surface))"
+                      : "transparent",
+                    boxShadow: active ? "var(--clay-shadow), var(--clay-rim)" : "none",
                   }}
                 >
                   <span
@@ -139,7 +148,7 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
           <div className="mt-auto flex flex-col gap-2 px-3 pb-5">
             {streak > 0 ? (
               <div
-                className="mx-2 rounded-[10px] border p-3"
+                className="mx-2 rounded-clay-sm border p-3"
                 style={{
                   borderColor: "var(--app-border)",
                   background: "var(--app-accent-soft)",
@@ -154,7 +163,7 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
                       className="rounded-full px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.06em]"
                       style={{
                         background: "var(--app-accent)",
-                        color: "white",
+                        color: "var(--app-accent-on)",
                       }}
                     >
                       {streakSummary.hitMilestone}-day
@@ -172,7 +181,7 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
               </div>
             ) : streakSummary.lastPlannedDay?.missReason ? (
               <div
-                className="mx-2 rounded-[10px] border p-3"
+                className="mx-2 rounded-clay-sm border p-3"
                 style={{
                   borderColor: "var(--app-border)",
                   background: "var(--app-surface-soft)",
@@ -188,7 +197,7 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
             ) : null}
             <button
               onClick={toggle}
-              className="mx-2 flex items-center justify-between rounded-[10px] border px-3 py-2 text-[13px] transition-colors"
+              className="mx-2 flex items-center justify-between rounded-clay-sm border px-3 py-2 text-[13px] transition-colors"
               style={{ borderColor: "var(--app-border)", color: "var(--app-text-soft)" }}
               aria-label="Toggle theme"
             >
@@ -204,7 +213,7 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
             </button>
             {user ? (
               <div
-                className="mx-2 flex items-center gap-3 rounded-[10px] px-3 py-2"
+                className="mx-2 flex items-center gap-3 rounded-clay-sm px-3 py-2"
                 style={{ borderTop: "1px solid var(--app-border)" }}
               >
                 <div
@@ -222,7 +231,7 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
                   onClick={signOut}
                   disabled={signingOut}
                   aria-label="Sign out"
-                  className="grid h-8 w-8 place-items-center rounded-lg transition-colors hover:bg-black/5 disabled:opacity-50"
+                  className="grid h-8 w-8 place-items-center rounded-clay-sm transition-colors clay-hover disabled:opacity-50"
                   style={{ color: "var(--app-text-muted)" }}
                 >
                   <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M8 4H5a2 2 0 00-2 2v8a2 2 0 002 2h3M12 6l4 4-4 4M16 10H8" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -235,17 +244,19 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
         <main
           className="flex-1 min-w-0 pb-[calc(env(safe-area-inset-bottom,0)+72px)] lg:pb-0"
         >
+          {/* Arcad's own voice, so the strip carries Arcad's purple rather
+              than the terracotta the rest of the UI uses. */}
           {briefing ? (
             <div
               className="border-b px-6 py-2.5 text-[13px] hidden lg:flex items-center gap-3"
-              style={{ borderColor: "var(--app-border)", background: "var(--app-accent-soft)", color: "var(--app-text-soft)" }}
+              style={{ borderColor: "var(--app-border)", background: "var(--app-arcad-soft)", color: "var(--app-text-soft)" }}
             >
               <span
                 aria-hidden="true"
                 className="inline-block h-1.5 w-1.5 rounded-full"
-                style={{ background: "var(--app-accent)" }}
+                style={{ background: "var(--app-arcad)" }}
               />
-              <span className="font-medium" style={{ color: "var(--app-accent-strong)" }}>Arcad</span>
+              <span className="font-medium" style={{ color: "var(--app-arcad-strong)" }}>Arcad</span>
               <span>{briefing}</span>
             </div>
           ) : null}
@@ -263,7 +274,7 @@ function BrandMark() {
     <Link href="/app" className="flex items-center gap-2 text-[15px] font-medium tracking-[-0.01em]">
       <span
         aria-hidden="true"
-        className="grid h-7 w-7 place-items-center rounded-md"
+        className="grid h-7 w-7 place-items-center rounded-clay-xs"
         style={{ background: "var(--app-accent-soft)", color: "var(--app-accent-strong)" }}
       >
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.7">

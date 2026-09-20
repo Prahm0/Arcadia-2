@@ -31,7 +31,7 @@ export default function AppHeader({ user, streak }: AppHeaderProps) {
     <header className="sticky top-0 z-30 border-b border-white/8 bg-black/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between px-5 sm:px-8 lg:px-12">
         <Link href="/app" className="flex items-center gap-2 text-[15px] font-medium tracking-[-0.01em] text-white">
-          <span aria-hidden="true" className="grid h-7 w-7 place-items-center rounded-md bg-white/[0.06] text-white/85">
+          <span aria-hidden="true" className="grid h-7 w-7 place-items-center rounded-clay-xs bg-white/[0.06] text-white/85">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6">
               <path d="M12 3l8 18H4L12 3z" strokeLinejoin="round" />
             </svg>

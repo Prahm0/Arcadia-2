@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import type { DashboardResponse, PlannerEvent } from "@/lib/api/types";
@@ -18,6 +18,17 @@ const PRESETS = [
 ];
 
 type Phase = "focus" | "break" | "idle";
+type AsideTab = "session" | "recents";
+
+interface StudySession {
+  id: string;
+  type: string;
+  seconds: number;
+  subject: string | null;
+  goal: string | null;
+  distractions: number;
+  endedAt: string;
+}
 
 export default function FocusView() {
   return (
@@ -67,8 +78,31 @@ function FocusViewInner() {
   );
   const [goal, setGoal] = useState(linkedEvent?.title ?? "");
   const [distractions, setDistractions] = useState(0);
+  const [tab, setTab] = useState<AsideTab>("session");
+  const [recents, setRecents] = useState<StudySession[] | null>(null);
+  const [recentsError, setRecentsError] = useState(false);
   const intervalRef = useRef<number | null>(null);
   const preset = PRESETS[presetIndex];
+
+  const loadRecents = useCallback(async () => {
+    try {
+      const res = await api<{ sessions: StudySession[] }>("/api/study-sessions");
+      // The endpoint returns the last 30 days unordered; newest first is what
+      // a "recents" list means.
+      setRecents(
+        [...(res.sessions ?? [])].sort(
+          (a, b) => Date.parse(b.endedAt) - Date.parse(a.endedAt),
+        ),
+      );
+      setRecentsError(false);
+    } catch {
+      setRecentsError(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadRecents();
+  }, [loadRecents]);
 
   // If the ?eventId= arrives after mount (rare but possible with client-side nav),
   // sync the visible fields once — do not clobber values the user already edited.
@@ -156,6 +190,9 @@ function FocusViewInner() {
     } catch {
       /* ignore */
     }
+
+    // A session that just finished should be at the top of Recents already.
+    void loadRecents();
   }
 
   function start() {
@@ -250,8 +287,8 @@ function FocusViewInner() {
 
       <div className="mx-auto grid w-full max-w-[960px] gap-8 px-6 py-10 sm:px-10 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div
-          className="flex flex-col items-center rounded-[20px] px-6 py-12"
-          style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}
+          className="flex flex-col items-center rounded-clay-lg px-6 py-12"
+          style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
         >
           <div className="relative aspect-square w-full max-w-[320px]">
             <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
@@ -267,10 +304,22 @@ function FocusViewInner() {
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>
+              <span
+                className={cn("type-eyebrow", running && "app-breathe")}
+                style={{ color: running ? "var(--app-accent)" : "var(--app-text-muted)" }}
+              >
                 {phase === "break" ? "Break" : phase === "focus" ? "Focus" : "Ready"}
               </span>
-              <span className="mt-3 text-[64px] font-medium tabular-nums tracking-[-0.03em]" style={{ color: "var(--app-text)" }}>
+              {/* Keyed on the minute so the digits give one beat per minute
+                  elapsed — enough to read as live without being a distraction. */}
+              <span
+                key={Math.floor(remaining / 60)}
+                className={cn(
+                  "mt-3 text-[64px] font-medium tabular-nums tracking-[-0.03em]",
+                  running && "app-tick",
+                )}
+                style={{ color: "var(--app-text)" }}
+              >
                 {formatClock(remaining)}
               </span>
               <span className="mt-1 text-[12px]" style={{ color: "var(--app-text-muted)" }}>
@@ -295,10 +344,14 @@ function FocusViewInner() {
             <button
               type="button"
               onClick={() => setDistractions((d) => d + 1)}
-              className="mt-6 rounded-full px-4 py-2 text-[12.5px] font-medium transition-colors"
+              className="clay-pressable mt-6 rounded-full px-4 py-2 text-[12.5px] font-medium"
               style={{ border: "1px dashed var(--app-border-strong)", color: "var(--app-text-muted)" }}
             >
-              Distraction · {distractions}
+              Distraction ·{" "}
+              {/* Keyed so each tap visibly registers on the count itself. */}
+              <span key={distractions} className="app-pop tabular inline-block">
+                {distractions}
+              </span>
             </button>
           ) : null}
 
@@ -314,7 +367,41 @@ function FocusViewInner() {
         </div>
 
         <aside className="flex flex-col gap-6">
-          <div className="rounded-[14px] p-5" style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}>
+          {/* The timer stays put; only the panel beside it swaps. */}
+          <div
+            role="tablist"
+            aria-label="Focus panel"
+            className="clay-well-bare grid grid-cols-2 gap-1 rounded-clay-sm p-1"
+            style={{ background: "var(--app-surface-soft)" }}
+          >
+            {(["session", "recents"] as AsideTab[]).map((t) => (
+              <button
+                key={t}
+                type="button"
+                role="tab"
+                aria-selected={tab === t}
+                onClick={() => setTab(t)}
+                className="rounded-clay-xs px-3 py-1.5 text-[12.5px] font-medium capitalize transition-all duration-200 ease-[var(--ease-out-expo)]"
+                style={{
+                  background: tab === t ? "var(--app-surface)" : "transparent",
+                  color: tab === t ? "var(--app-text)" : "var(--app-text-muted)",
+                  boxShadow: tab === t ? "var(--clay-shadow), var(--clay-rim)" : "none",
+                }}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+
+          {tab === "recents" ? (
+            <RecentSessions
+              sessions={recents}
+              failed={recentsError}
+              timezone={timezone}
+            />
+          ) : (
+            <div className="app-enter flex flex-col gap-6">
+          <div className="rounded-clay p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}>
             <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Preset</p>
             <div className="mt-3 flex flex-col gap-1.5">
               {PRESETS.map((p, i) => (
@@ -327,7 +414,11 @@ function FocusViewInner() {
                     setRemaining(p.focus);
                     setRunning(false);
                   }}
-                  className={cn("flex items-center justify-between rounded-[10px] px-3 py-2.5 text-[13.5px] font-medium transition-colors")}
+                  className={cn(
+                    "flex items-center justify-between rounded-clay-sm px-3 py-2.5 text-[13.5px] font-medium",
+                    "transition-all duration-200 ease-[var(--ease-out-expo)]",
+                    i === presetIndex ? "clay-well-bare" : "clay-hover",
+                  )}
                   style={{
                     background: i === presetIndex ? "var(--app-accent-soft)" : "transparent",
                     color: i === presetIndex ? "var(--app-accent-strong)" : "var(--app-text-soft)",
@@ -342,7 +433,7 @@ function FocusViewInner() {
             </div>
           </div>
 
-          <div className="rounded-[14px] p-5" style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}>
+          <div className="rounded-clay p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}>
             <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Working on</p>
             <div className="mt-3 flex flex-col gap-3">
               <label className="block">
@@ -350,8 +441,8 @@ function FocusViewInner() {
                 <select
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
-                  className="w-full rounded-[10px] px-3 py-2 text-[14px] outline-none"
-                  style={{ background: "var(--app-surface-soft)", border: "1px solid var(--app-border)", color: "var(--app-text)" }}
+                  className="w-full rounded-clay-sm px-3 py-2 text-[14px] outline-none"
+                  style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)", color: "var(--app-text)" }}
                 >
                   {data.subjects.map((s) => (
                     <option key={s.id} value={s.name}>{s.name}</option>
@@ -366,16 +457,163 @@ function FocusViewInner() {
                   value={goal}
                   onChange={(e) => setGoal(e.target.value)}
                   placeholder="e.g. Finish complex numbers set"
-                  className="w-full rounded-[10px] px-3 py-2 text-[14px] outline-none"
-                  style={{ background: "var(--app-surface-soft)", border: "1px solid var(--app-border)", color: "var(--app-text)" }}
+                  className="w-full rounded-clay-sm px-3 py-2 text-[14px] outline-none"
+                  style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)", color: "var(--app-text)" }}
                 />
               </label>
             </div>
           </div>
+            </div>
+          )}
         </aside>
       </div>
     </>
   );
+}
+
+/**
+ * The last month of logged focus and break sessions, newest first, grouped by
+ * day. Reads GET /api/study-sessions, which already scopes itself to 30 days.
+ */
+function RecentSessions({
+  sessions,
+  failed,
+  timezone,
+}: {
+  sessions: StudySession[] | null;
+  failed: boolean;
+  timezone: string;
+}) {
+  const groups = useMemo(() => {
+    if (!sessions) return [];
+    const byDay = new Map<string, StudySession[]>();
+    for (const s of sessions) {
+      const key = dayLabel(s.endedAt, timezone);
+      const bucket = byDay.get(key);
+      if (bucket) bucket.push(s);
+      else byDay.set(key, [s]);
+    }
+    return [...byDay.entries()];
+  }, [sessions, timezone]);
+
+  const totalSeconds = useMemo(
+    () =>
+      (sessions ?? [])
+        .filter((s) => s.type === "focus")
+        .reduce((sum, s) => sum + s.seconds, 0),
+    [sessions],
+  );
+
+  return (
+    <div
+      className="app-enter rounded-clay p-5"
+      style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
+    >
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>
+          Recent sessions
+        </p>
+        {sessions && sessions.length > 0 ? (
+          <span className="tabular text-[12px]" style={{ color: "var(--app-accent)" }}>
+            {formatDuration(totalSeconds)}
+          </span>
+        ) : null}
+      </div>
+
+      {failed ? (
+        <p className="mt-3 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
+          Couldn&rsquo;t load your history.
+        </p>
+      ) : sessions === null ? (
+        <div className="mt-4 flex flex-col gap-2" aria-hidden="true">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="app-enter h-11 rounded-clay-sm"
+              style={{ background: "var(--app-surface-soft)", "--d": `${i * 70}ms` } as React.CSSProperties}
+            />
+          ))}
+        </div>
+      ) : sessions.length === 0 ? (
+        <p className="mt-3 text-[13px] leading-[1.5]" style={{ color: "var(--app-text-muted)" }}>
+          Nothing logged yet. Finish a block and it lands here.
+        </p>
+      ) : (
+        <div className="mt-4 flex max-h-[420px] flex-col gap-4 overflow-y-auto pr-1">
+          {groups.map(([day, rows], groupIndex) => (
+            <div key={day}>
+              <p className="type-mono-label" style={{ color: "var(--app-text-faint)" }}>
+                {day}
+              </p>
+              <ul className="mt-2 flex flex-col gap-1.5">
+                {rows.map((s, i) => (
+                  <li
+                    key={s.id}
+                    className="app-enter clay-hover flex items-center gap-3 rounded-clay-sm px-3 py-2"
+                    style={{ "--d": `${(groupIndex * 3 + i) * 45}ms` } as React.CSSProperties}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="h-7 w-[3px] shrink-0 rounded-full"
+                      style={{
+                        background: s.type === "break" ? "var(--app-success)" : "var(--app-accent)",
+                      }}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span
+                        className="block truncate text-[13px] font-medium"
+                        style={{ color: "var(--app-text)" }}
+                      >
+                        {s.goal || s.subject || (s.type === "break" ? "Break" : "Focus")}
+                      </span>
+                      <span
+                        className="block truncate text-[11.5px]"
+                        style={{ color: "var(--app-text-muted)" }}
+                      >
+                        {s.subject ? `${s.subject} · ` : ""}
+                        {formatWallClock(s.endedAt, timezone)}
+                        {s.distractions > 0
+                          ? ` · ${s.distractions} distraction${s.distractions === 1 ? "" : "s"}`
+                          : ""}
+                      </span>
+                    </span>
+                    <span
+                      className="tabular shrink-0 text-[12px]"
+                      style={{ color: "var(--app-text-soft)" }}
+                    >
+                      {formatDuration(s.seconds)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Seconds in, shortest readable unit out — a skipped block is seconds long,
+ *  not "0m". */
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${Math.max(1, Math.round(seconds))}s`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+function dayLabel(iso: string, timezone: string): string {
+  const fmt = (d: Date) =>
+    new Intl.DateTimeFormat("en-AU", { timeZone: timezone, dateStyle: "medium" }).format(d);
+  const when = new Date(iso);
+  const today = new Date();
+  const yesterday = new Date(today.getTime() - 86_400_000);
+  if (fmt(when) === fmt(today)) return "Today";
+  if (fmt(when) === fmt(yesterday)) return "Yesterday";
+  return fmt(when);
 }
 
 function formatClock(seconds: number): string {

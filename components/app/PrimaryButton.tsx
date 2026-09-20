@@ -18,18 +18,26 @@ export default function PrimaryButton({
       {...rest}
       disabled={disabled || loading}
       className={cn(
-        "relative flex h-12 w-full items-center justify-center gap-2 rounded-[10px]",
-        "bg-white text-[15px] font-medium text-black",
-        "transition-[background-color,transform,opacity] duration-200 ease-[var(--ease-out-expo)]",
-        "hover:-translate-y-px hover:bg-[#ebebeb] active:translate-y-0",
+        "clay-pressable relative flex h-12 w-full items-center justify-center gap-2",
+        "rounded-clay-sm text-[15px] font-medium",
         "disabled:pointer-events-none disabled:opacity-60",
         className,
       )}
+      style={{
+        // Matches AppButton's primary: inverted rather than accent-filled.
+        background: "var(--app-text)",
+        color: "var(--app-bg)",
+        boxShadow: "var(--clay-shadow), var(--clay-rim)",
+      }}
     >
       {loading ? (
         <span
           aria-hidden="true"
-          className="h-4 w-4 animate-spin rounded-full border-2 border-black/30 border-t-black"
+          className="h-4 w-4 animate-spin rounded-full border-2"
+          style={{
+            borderColor: "color-mix(in oklab, var(--app-bg) 40%, transparent)",
+            borderTopColor: "var(--app-bg)",
+          }}
         />
       ) : null}
       {children}

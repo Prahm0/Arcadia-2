@@ -182,10 +182,9 @@ export default function TaskDetailSheet({ task, timezone, onClose, onEdit }: Tas
         role="dialog"
         aria-modal="true"
         aria-labelledby="task-detail-title"
-        className="relative w-full max-w-[560px] rounded-t-[16px] p-6 shadow-[0_40px_120px_-40px_rgba(0,0,0,0.35)] sm:rounded-[16px]"
+        className="relative w-full max-w-[560px] rounded-t-clay-lg p-6 sm:rounded-clay"
         style={{
-          background: "var(--app-surface)",
-          border: "1px solid var(--app-border)",
+          background: "var(--app-elev)", boxShadow: "var(--clay-shadow-sheet), var(--clay-rim)",
           color: "var(--app-text)",
         }}
       >
@@ -219,7 +218,7 @@ export default function TaskDetailSheet({ task, timezone, onClose, onEdit }: Tas
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors hover:bg-black/5"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-clay-sm transition-colors clay-hover"
             style={{ color: "var(--app-text-muted)" }}
           >
             <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -246,7 +245,7 @@ export default function TaskDetailSheet({ task, timezone, onClose, onEdit }: Tas
           </div>
           <div
             className="mt-2 h-1.5 w-full overflow-hidden rounded-full"
-            style={{ background: "var(--app-surface-soft)", border: "1px solid var(--app-border)" }}
+            style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)" }}
             aria-hidden="true"
           >
             <div
@@ -320,10 +319,9 @@ export default function TaskDetailSheet({ task, timezone, onClose, onEdit }: Tas
             }}
             rows={3}
             placeholder="Anything to remember about this task — links, page numbers, why it matters."
-            className="mt-2 w-full resize-y rounded-[10px] px-3 py-2.5 text-[13.5px] outline-none"
+            className="mt-2 w-full resize-y rounded-clay-sm px-3 py-2.5 text-[13.5px] outline-none"
             style={{
-              background: "var(--app-surface-soft)",
-              border: "1px solid var(--app-border)",
+              background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)",
               color: "var(--app-text)",
               minHeight: 72,
             }}

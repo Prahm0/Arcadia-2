@@ -65,32 +65,46 @@ export default function RegisterPage() {
       footer={
         <>
           Already have an account?{" "}
-          <Link href="/login" className="text-white underline decoration-white/40 underline-offset-4 hover:decoration-white">
+          <Link
+            href="/login"
+            className="underline underline-offset-4"
+            style={{ color: "var(--app-text)" }}
+          >
             Sign in
           </Link>
         </>
       }
     >
       {result ? (
-        <div className="space-y-4 rounded-[12px] border border-white/12 bg-white/[0.04] p-5">
+        <div className="clay-well space-y-4 rounded-clay-sm p-5">
           {result.verificationToken ? (
             <div className="flex items-center gap-3">
               <span
                 aria-hidden="true"
-                className="h-4 w-4 animate-spin rounded-full border-2 border-white/25 border-t-accent-300"
+                className="h-4 w-4 animate-spin rounded-full border-2"
+                style={{
+                  borderColor: "var(--app-border-strong)",
+                  borderTopColor: "var(--app-accent)",
+                }}
               />
-              <p className="text-[15px] text-white">
+              <p className="text-[15px]" style={{ color: "var(--app-text)" }}>
                 {verifying ? "Verifying your email…" : "Preparing your account…"}
               </p>
             </div>
           ) : (
             <>
-              <p className="text-[15px] text-white">Check your email to verify.</p>
-              <p className="text-[13.5px] text-white/60">{result.message}</p>
+              <p className="text-[15px]" style={{ color: "var(--app-text)" }}>
+                Check your email to verify.
+              </p>
+              <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
+                {result.message}
+              </p>
             </>
           )}
           {error ? (
-            <p className="text-[13px] text-rose-200">{error}</p>
+            <p className="text-[13px]" style={{ color: "var(--app-danger)" }}>
+              {error}
+            </p>
           ) : null}
         </div>
       ) : (
@@ -125,7 +139,11 @@ export default function RegisterPage() {
             hint="At least 10 characters."
           />
           {error ? (
-            <div role="alert" className="rounded-[10px] border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-[13.5px] text-rose-100">
+            <div
+              role="alert"
+              className="clay-well rounded-clay-sm px-4 py-3 text-[13.5px]"
+              style={{ color: "var(--app-danger)" }}
+            >
               {error}
             </div>
           ) : null}

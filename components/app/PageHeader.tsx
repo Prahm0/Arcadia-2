@@ -26,7 +26,7 @@ export default function PageHeader({ eyebrow, title, meta, action }: PageHeaderP
       <div className="min-w-0">
         <p
           className="type-eyebrow hero-fade-up"
-          style={{ color: "var(--app-text-muted)", ...reveal(0) }}
+          style={{ color: "var(--app-accent)", ...reveal(0) }}
         >
           {eyebrow}
         </p>

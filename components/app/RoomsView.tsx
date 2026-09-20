@@ -84,8 +84,8 @@ export default function RoomsView() {
         <div className="grid gap-4 sm:grid-cols-2">
           <form
             onSubmit={submitCreate}
-            className="rounded-[14px] p-5"
-            style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}
+            className="rounded-clay p-5"
+            style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
           >
             <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Create a room</p>
             <label className="mt-3 block">
@@ -99,10 +99,9 @@ export default function RoomsView() {
                 value={createName}
                 onChange={(e) => setCreateName(e.target.value)}
                 placeholder="e.g. Study Fri night"
-                className="w-full rounded-[10px] px-3 py-2.5 text-[14.5px] outline-none"
+                className="w-full rounded-clay-sm px-3 py-2.5 text-[14.5px] outline-none"
                 style={{
-                  background: "var(--app-surface-soft)",
-                  border: "1px solid var(--app-border)",
+                  background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)",
                   color: "var(--app-text)",
                 }}
               />
@@ -116,8 +115,8 @@ export default function RoomsView() {
 
           <form
             onSubmit={submitJoin}
-            className="rounded-[14px] p-5"
-            style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}
+            className="rounded-clay p-5"
+            style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
           >
             <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Join with a code</p>
             <label className="mt-3 block">
@@ -131,10 +130,9 @@ export default function RoomsView() {
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                 placeholder="ABC234"
-                className="w-full rounded-[10px] px-3 py-2.5 text-[15px] font-mono tracking-widest outline-none"
+                className="w-full rounded-clay-sm px-3 py-2.5 text-[15px] font-mono tracking-widest outline-none"
                 style={{
-                  background: "var(--app-surface-soft)",
-                  border: "1px solid var(--app-border)",
+                  background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)",
                   color: "var(--app-text)",
                 }}
                 autoCapitalize="characters"
@@ -151,10 +149,9 @@ export default function RoomsView() {
 
         {error ? (
           <div
-            className="flex flex-wrap items-center justify-between gap-3 rounded-[12px] px-4 py-3"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-clay-sm px-4 py-3"
             style={{
-              background: "var(--app-surface)",
-              border: "1px solid var(--app-border)",
+              background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)",
               color: "var(--app-text-soft)",
             }}
           >
@@ -188,8 +185,8 @@ export default function RoomsView() {
                 <li key={room.id}>
                   <Link
                     href={`/app/rooms/${room.code}`}
-                    className="group flex items-center gap-4 rounded-[12px] px-4 py-4 transition-colors hover:bg-black/[0.02]"
-                    style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}
+                    className="group flex items-center gap-4 rounded-clay-sm px-4 py-4 transition-colors clay-hover"
+                    style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-[15px] font-medium tracking-[-0.005em]" style={{ color: "var(--app-text)" }}>

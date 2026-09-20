@@ -236,7 +236,7 @@ export default function SettingsView() {
                 key={option}
                 type="button"
                 onClick={() => setMode(option)}
-                className="rounded-[10px] px-3 py-2.5 text-[13.5px] font-medium capitalize transition-colors"
+                className="rounded-clay-sm px-3 py-2.5 text-[13.5px] font-medium capitalize transition-colors"
                 style={{
                   background: mode === option ? "var(--app-accent-soft)" : "transparent",
                   color: mode === option ? "var(--app-accent-strong)" : "var(--app-text-soft)",
@@ -324,14 +324,14 @@ export default function SettingsView() {
               role="switch"
               aria-checked={soundOn}
               onClick={() => toggleSound(!soundOn)}
-              className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
+              className="clay-well-bare relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
               style={{
-                background: soundOn ? "var(--app-accent)" : "var(--app-border-strong)",
+                background: soundOn ? "var(--app-accent)" : "var(--app-surface-soft)",
               }}
             >
               <span
                 aria-hidden="true"
-                className="inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform"
+                className="inline-block h-5 w-5 transform rounded-full clay-raised transition-transform"
                 style={{ transform: soundOn ? "translateX(22px)" : "translateX(2px)" }}
               />
             </button>
@@ -360,14 +360,14 @@ export default function SettingsView() {
                   role="switch"
                   aria-checked={remindersOn}
                   onClick={() => void toggleReminders(!remindersOn)}
-                  className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
+                  className="clay-well-bare relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
                   style={{
-                    background: remindersOn ? "var(--app-accent)" : "var(--app-border-strong)",
+                    background: remindersOn ? "var(--app-accent)" : "var(--app-surface-soft)",
                   }}
                 >
                   <span
                     aria-hidden="true"
-                    className="inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform"
+                    className="inline-block h-5 w-5 transform rounded-full clay-raised transition-transform"
                     style={{ transform: remindersOn ? "translateX(22px)" : "translateX(2px)" }}
                   />
                 </button>
@@ -450,8 +450,8 @@ export default function SettingsView() {
 function Card({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="rounded-[16px] p-6"
-      style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}
+      className="rounded-clay p-6"
+      style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
     >
       {children}
     </div>
@@ -493,10 +493,9 @@ function Input({
       disabled={disabled}
       autoComplete={autoComplete}
       minLength={minLength}
-      className="w-full rounded-[10px] px-3 py-2.5 text-[14.5px] outline-none disabled:opacity-60"
+      className="w-full rounded-clay-sm px-3 py-2.5 text-[14.5px] outline-none disabled:opacity-60"
       style={{
-        background: "var(--app-surface-soft)",
-        border: "1px solid var(--app-border)",
+        background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)",
         color: "var(--app-text)",
       }}
     />

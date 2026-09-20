@@ -10,20 +10,29 @@ export default function Field({ label, hint, className, id, ...rest }: FieldProp
   const inputId = id ?? `field-${rest.name ?? label.toLowerCase().replace(/\s+/g, "-")}`;
   return (
     <label htmlFor={inputId} className="block">
-      <span className="text-[13px] font-medium tracking-[-0.005em] text-white/70">{label}</span>
+      <span
+        className="text-[13px] font-medium tracking-[-0.005em]"
+        style={{ color: "var(--app-text-muted)" }}
+      >
+        {label}
+      </span>
       <input
         id={inputId}
         {...rest}
         className={cn(
-          "mt-2 w-full rounded-[10px] border border-white/12 bg-white/[0.04] px-4 py-3 text-[15px] text-white",
-          "placeholder:text-white/35 outline-none",
-          "transition-[background-color,border-color] duration-200 ease-[var(--ease-out-expo)]",
-          "focus:border-accent-300 focus:bg-white/[0.06]",
+          "clay-well mt-2 w-full rounded-clay-sm px-4 py-3 text-[15px] outline-none",
+          "transition-shadow duration-200 ease-[var(--ease-out-expo)]",
+          "focus:shadow-[var(--clay-well),0_0_0_3px_var(--app-accent-soft)]",
           "disabled:cursor-not-allowed disabled:opacity-60",
           className,
         )}
+        style={{ color: "var(--app-text)" }}
       />
-      {hint ? <span className="mt-2 block text-[12.5px] text-white/45">{hint}</span> : null}
+      {hint ? (
+        <span className="mt-2 block text-[12.5px]" style={{ color: "var(--app-text-faint)" }}>
+          {hint}
+        </span>
+      ) : null}
     </label>
   );
 }

@@ -41,7 +41,10 @@ function apply(theme: Theme) {
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [mode, setModeState] = useState<ThemeMode>(() => readStored());
-  const [systemPref, setSystemPref] = useState<Theme>("light");
+  // Resolved eagerly, not in the effect below: starting at "light" and
+  // correcting afterwards repaints the whole shell one frame in, which defeats
+  // the pre-paint script in app/(app)/layout.tsx.
+  const [systemPref, setSystemPref] = useState<Theme>(systemTheme);
 
   useEffect(() => {
     setSystemPref(systemTheme());
@@ -59,6 +62,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     apply(resolved);
   }, [resolved]);
+
+  // data-app-theme lives on <html>, which outlives this provider. Without an
+  // explicit cleanup, routing from a product page back to the marketing page
+  // leaves the app palette and the typewriter font applied to the landing.
+  // Declared after the effect above so a StrictMode remount re-applies first.
+  useEffect(
+    () => () => {
+      document.documentElement.removeAttribute("data-app-theme");
+      document.documentElement.style.colorScheme = "";
+    },
+    [],
+  );
 
   const setMode = useCallback((next: ThemeMode) => {
     setModeState(next);

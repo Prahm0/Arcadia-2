@@ -28,10 +28,9 @@ interface EmptyStateProps {
 export default function EmptyState({ icon, title, body, example, action, hint }: EmptyStateProps) {
   return (
     <div
-      className="rounded-[16px] p-8 sm:p-10"
+      className="rounded-clay p-8 sm:p-10"
       style={{
-        background: "var(--app-surface)",
-        border: "1px solid var(--app-border)",
+        background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)",
       }}
     >
       <div className="mx-auto flex max-w-[440px] flex-col items-center text-center">
@@ -55,7 +54,7 @@ export default function EmptyState({ icon, title, body, example, action, hint }:
         {example ? (
           <div
             aria-hidden="true"
-            className="mt-6 w-full rounded-[12px] p-4"
+            className="mt-6 w-full rounded-clay-sm p-4"
             style={{
               background: "var(--app-surface-soft)",
               border: "1px dashed var(--app-border-strong)",

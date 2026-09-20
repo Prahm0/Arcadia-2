@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
+import { CATEGORY_COLOR } from "@/lib/app/categoryColors";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import type { PlannerEvent } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
@@ -24,14 +25,7 @@ import SundayReviewInline from "./SundayReviewInline";
 import { useStreak } from "@/lib/app/useStreak";
 import { playCompletionTick } from "@/lib/app/completion";
 
-const CATEGORY_BAR: Record<string, string> = {
-  study: "var(--app-accent)",
-  school: "#38bdf8",
-  sport: "#34d399",
-  extracurricular: "#f59e0b",
-  sleep: "var(--app-text-faint)",
-  other: "var(--app-text-muted)",
-};
+const CATEGORY_BAR = CATEGORY_COLOR;
 
 export default function TodayView() {
   const { data, patch } = useDashboardData();
@@ -191,8 +185,8 @@ function TodayCard(props: TodayCardProps) {
 
   return (
     <div
-      className="w-full rounded-[16px] shadow-[0_20px_60px_-30px_rgba(0,0,0,0.18)]"
-      style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}
+      className="w-full rounded-clay clay-card"
+      style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
     >
       <div
         className="flex items-center justify-between px-5 py-4 sm:px-6"
@@ -210,7 +204,7 @@ function TodayCard(props: TodayCardProps) {
           >
             <span
               className="absolute inset-y-0 left-0 rounded-full"
-              style={{ width: `${weekProgress * 100}%`, background: "var(--app-text)" }}
+              style={{ width: `${weekProgress * 100}%`, background: "var(--app-accent)" }}
             />
           </span>
         </div>
@@ -352,18 +346,18 @@ function FocusRow({
 
   return (
     <li
-      className="group flex items-center gap-1 rounded-[10px] pr-2 transition-colors duration-200 hover:bg-[color:var(--app-surface-soft)]"
+      className="group flex items-center gap-1 rounded-clay-sm pr-2 transition-colors duration-200 hover:bg-[color:var(--app-surface-soft)]"
     >
       {isActionable ? (
         <Link
           href={focusHref}
-          className="flex min-w-0 flex-1 items-center gap-4 rounded-[10px] px-3 py-3.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--app-accent)]"
+          className="flex min-w-0 flex-1 items-center gap-4 rounded-clay-sm px-3 py-3.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--app-accent)]"
           aria-label={`Start focus on ${event.title}`}
         >
           {rowContent}
         </Link>
       ) : (
-        <div className="flex min-w-0 flex-1 items-center gap-4 rounded-[10px] px-3 py-3.5 text-left">
+        <div className="flex min-w-0 flex-1 items-center gap-4 rounded-clay-sm px-3 py-3.5 text-left">
           {rowContent}
         </div>
       )}
@@ -387,7 +381,7 @@ function FocusRow({
           onClick={onComplete}
           disabled={busy || isDone || isMissed}
           aria-label={`Mark ${event.title} as done`}
-          className="flex size-11 items-center justify-center rounded-lg transition-colors sm:size-9"
+          className="flex size-11 items-center justify-center rounded-clay-sm transition-colors sm:size-9"
         >
           <CompletionBurst trigger={celebrateTrigger}>
             <span
@@ -413,7 +407,7 @@ function FocusRow({
 function NextDeadlinesCard({ tasks, timezone }: { tasks: any[]; timezone: string }) {
   if (!tasks?.length) {
     return (
-      <div className="rounded-[14px] p-5" style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}>
+      <div className="rounded-clay p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}>
         <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Next deadlines</p>
         <p className="mt-3 text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
           Nothing due yet.
@@ -422,7 +416,7 @@ function NextDeadlinesCard({ tasks, timezone }: { tasks: any[]; timezone: string
     );
   }
   return (
-    <div className="rounded-[14px] p-5" style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}>
+    <div className="rounded-clay p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}>
       <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Next deadlines</p>
       <ul className="mt-3 flex flex-col gap-3.5">
         {tasks.slice(0, 4).map((task) => (
@@ -447,7 +441,7 @@ function StatsCard({ analytics }: { analytics: any }) {
   const week = Number(analytics?.weekMinutes ?? 0);
   const today = Number(analytics?.todayMinutes ?? 0);
   return (
-    <div className="rounded-[14px] p-5" style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}>
+    <div className="rounded-clay p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}>
       <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Progress</p>
       <div className="mt-4 grid grid-cols-3 gap-4">
         <Stat label="Streak" value={String(current)} unit={current === 1 ? "day" : "days"} />
@@ -466,8 +460,8 @@ function StreakCard() {
   if (streak.current === 0 && streak.lastPlannedDay?.missReason) {
     return (
       <div
-        className="rounded-[14px] p-5"
-        style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}
+        className="rounded-clay p-5"
+        style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
       >
         <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Streak</p>
         <p className="mt-2 text-[15px] leading-snug" style={{ color: "var(--app-text)" }}>
@@ -492,10 +486,9 @@ function StreakCard() {
 
   return (
     <div
-      className="rounded-[14px] p-5"
+      className="rounded-clay p-5"
       style={{
-        background: "var(--app-surface)",
-        border: "1px solid var(--app-border)",
+        background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)",
       }}
     >
       <div className="flex items-center justify-between">
@@ -503,7 +496,7 @@ function StreakCard() {
         {streak.hitMilestone ? (
           <span
             className="rounded-full px-2 py-0.5 text-[10.5px] font-medium uppercase tracking-[0.06em]"
-            style={{ background: "var(--app-accent)", color: "white" }}
+            style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}
           >
             {streak.hitMilestone}-day
           </span>
@@ -516,7 +509,7 @@ function StreakCard() {
         <>
           <div
             className="mt-4 h-1.5 w-full overflow-hidden rounded-full"
-            style={{ background: "var(--app-surface-soft)", border: "1px solid var(--app-border)" }}
+            style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)" }}
             aria-hidden="true"
           >
             <div

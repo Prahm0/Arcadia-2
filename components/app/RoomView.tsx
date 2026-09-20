@@ -158,8 +158,8 @@ export default function RoomView({ code }: RoomViewProps) {
       <div className="mx-auto flex w-full max-w-[860px] flex-col gap-6 px-6 py-8 sm:px-10">
         {error ? (
           <div
-            className="rounded-[12px] p-4 text-[13px]"
-            style={{ background: "var(--app-surface-soft)", border: "1px solid var(--app-border)", color: "var(--app-danger)" }}
+            className="rounded-clay-sm p-4 text-[13px]"
+            style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)", color: "var(--app-danger)" }}
           >
             {error}
           </div>
@@ -167,8 +167,8 @@ export default function RoomView({ code }: RoomViewProps) {
 
         {/* Your own status */}
         <div
-          className="rounded-[14px] p-5"
-          style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}
+          className="rounded-clay p-5"
+          style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
         >
           <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Your status</p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -226,10 +226,9 @@ export default function RoomView({ code }: RoomViewProps) {
               }
               placeholder="What are you on?"
               maxLength={80}
-              className="ml-1 flex-1 rounded-[10px] px-3 py-1.5 text-[13px] outline-none"
+              className="ml-1 flex-1 rounded-clay-sm px-3 py-1.5 text-[13px] outline-none"
               style={{
-                background: "var(--app-surface-soft)",
-                border: "1px solid var(--app-border)",
+                background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)",
                 color: "var(--app-text)",
               }}
             />
@@ -241,8 +240,8 @@ export default function RoomView({ code }: RoomViewProps) {
 
         {/* Members */}
         <div
-          className="rounded-[14px] p-2"
-          style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}
+          className="rounded-clay p-2"
+          style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
         >
           {loading ? (
             <p className="p-4 text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>Loading…</p>
@@ -291,7 +290,7 @@ function MemberRow({ member, isYou }: { member: StudyRoomMember; isYou: boolean 
 
   return (
     <li
-      className="flex items-center gap-4 rounded-[10px] px-3 py-3.5"
+      className="flex items-center gap-4 rounded-clay-sm px-3 py-3.5"
       style={{ borderBottom: "1px solid var(--app-border)" }}
     >
       <ArcadOrb size={22} state={member.activity === "focus" && !away ? "thinking" : "idle"} />

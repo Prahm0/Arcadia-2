@@ -22,15 +22,15 @@
       "binding": "DB",
       "database_name": "arcadia",
       // Replaced with the real id by `wrangler d1 create arcadia`.
-      "database_id": "PLACEHOLDER_D1_DATABASE_ID",
+      "database_id": "35051c9c-7dda-42df-8bcf-4b751e321979",
       "migrations_dir": "migrations"
     }
   ],
 
-  "r2_buckets": [
-    {
-      "binding": "UPLOADS",
-      "bucket_name": "arcadia-uploads"
-    }
-  ]
+  // R2 temporarily disabled — needs a payment method on the account first.
+  // To re-enable: add a card in the R2 dashboard, run
+  //   npx wrangler r2 bucket create arcadia-uploads
+  // then un-comment this block and re-deploy. File uploads (Knowledge tab)
+  // return an error until then; everything else works.
+  "r2_buckets": []
 }

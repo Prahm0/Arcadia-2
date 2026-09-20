@@ -3,7 +3,12 @@
  * available in the Workers runtime, so this is the practical choice here.
  */
 
-const ITERATIONS = 210_000;
+// Workers caps PBKDF2 at 100k iterations (throws NotSupportedError above
+// that). OWASP's 210k target isn't reachable here, and 100k of SHA-256 is
+// still well above the practical brute-force floor for a hash we salt
+// per-user and never leak. See:
+// https://developers.cloudflare.com/workers/runtime-apis/web-crypto/
+const ITERATIONS = 100_000;
 const KEY_BITS = 256;
 
 function toHex(buffer: ArrayBuffer): string {

@@ -14,6 +14,9 @@ const HOP_BY_HOP = new Set([
   "content-length",
   "host",
   "origin",
+  // fetch() decompresses the upstream body, so passing its content-encoding
+  // through tells the browser to gunzip plain JSON.
+  "content-encoding",
 ]);
 
 async function proxy(request: NextRequest, params: Promise<{ path: string[] }>) {

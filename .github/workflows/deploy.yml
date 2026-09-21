@@ -1,0 +1,70 @@
+# Builds the Next.js app with OpenNext and deploys the Worker to Cloudflare
+# on every push to `main`. Manual runs are supported via workflow_dispatch
+# in the Actions tab (useful for retrying a flaky deploy without an empty
+# commit).
+#
+# Required repo secrets:
+#   CLOUDFLARE_API_TOKEN       — token from Cloudflare with the
+#                                "Edit Cloudflare Workers" template, scoped
+#                                to the arcadia account + arcadiahq.app zone.
+#   NEXT_PUBLIC_SENTRY_DSN     — browser Sentry DSN (baked into the client
+#                                bundle at build time).
+#   SENTRY_DSN                 — server-side Sentry DSN (runtime var; also
+#                                baked in for parity so instrumentation.ts
+#                                sees it during SSR).
+#
+# The Worker runtime already has its own copies of SENTRY_DSN /
+# SENTRY_ENVIRONMENT set via `wrangler secret put`; those don't come from
+# CI. This workflow only needs them at build time so the client bundle can
+# embed the browser DSN.
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  # If a second push lands while a deploy is in-flight, cancel the first —
+  # the second push includes the first's changes anyway.
+  group: deploy-main
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build & deploy to Cloudflare
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js + OpenNext bundle
+        env:
+          NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          NEXT_PUBLIC_SENTRY_ENVIRONMENT: production
+          SENTRY_ENVIRONMENT: production
+          NODE_ENV: production
+        run: npm run build
+
+      # The build step produced .open-next/worker.js. Wrangler reads
+      # wrangler.jsonc (main: .open-next/worker.js) and uploads it directly,
+      # which is faster than `opennextjs-cloudflare deploy` (that command
+      # rebuilds internally before uploading).
+      - name: Deploy Worker to Cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler deploy

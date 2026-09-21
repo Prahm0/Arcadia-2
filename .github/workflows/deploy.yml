@@ -1,7 +1,10 @@
-# Builds the Next.js app with OpenNext and deploys the Worker to Cloudflare
-# on every push to `main`. Manual runs are supported via workflow_dispatch
-# in the Actions tab (useful for retrying a flaky deploy without an empty
-# commit).
+# Builds the Next.js app with OpenNext and deploys BOTH Workers to Cloudflare
+# on every push to `main`. Frontend (arcadia-web) and backend (arcadia-api)
+# get their own jobs so a change to only one still deploys only the one
+# that changed, and a change to both fans out in parallel.
+#
+# Manual runs are supported via workflow_dispatch in the Actions tab (useful
+# for retrying a flaky deploy without an empty commit).
 #
 # Required repo secrets:
 #   CLOUDFLARE_API_TOKEN       — token from Cloudflare with the
@@ -13,10 +16,13 @@
 #                                baked in for parity so instrumentation.ts
 #                                sees it during SSR).
 #
-# The Worker runtime already has its own copies of SENTRY_DSN /
-# SENTRY_ENVIRONMENT set via `wrangler secret put`; those don't come from
-# CI. This workflow only needs them at build time so the client bundle can
-# embed the browser DSN.
+# The Worker runtimes already have their own copies of runtime secrets set
+# via `wrangler secret put`; those don't come from CI. This workflow only
+# needs the DSNs at build time so the client bundle can embed the browser
+# DSN.
+#
+# Database migrations (D1) are NOT run by this workflow. Apply them manually:
+#   cd backend && npm run db:migrate:remote
 
 name: Deploy
 
@@ -26,14 +32,15 @@ on:
   workflow_dispatch:
 
 concurrency:
-  # If a second push lands while a deploy is in-flight, cancel the first —
-  # the second push includes the first's changes anyway.
+  # A second push mid-deploy cancels the first — the newer push already
+  # includes the older changes.
   group: deploy-main
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    name: Build & deploy to Cloudflare
+  # ────────────── Frontend Worker (arcadia-web) ──────────────
+  frontend:
+    name: Build & deploy arcadia-web
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -42,16 +49,34 @@ jobs:
       - name: Check out repo
         uses: actions/checkout@v4
 
+      - name: Detect frontend changes
+        id: filter
+        # Skip when no root-level (i.e. frontend) source changed and this
+        # was a normal push. Manual runs (workflow_dispatch) always run.
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -Ev '^backend/' | grep -q '.' ; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Set up Node.js
+        if: steps.filter.outputs.run == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: "npm"
 
       - name: Install dependencies
+        if: steps.filter.outputs.run == 'true'
         run: npm ci
 
       - name: Build Next.js + OpenNext bundle
+        if: steps.filter.outputs.run == 'true'
         env:
           NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
@@ -60,11 +85,52 @@ jobs:
           NODE_ENV: production
         run: npm run build
 
-      # The build step produced .open-next/worker.js. Wrangler reads
-      # wrangler.jsonc (main: .open-next/worker.js) and uploads it directly,
-      # which is faster than `opennextjs-cloudflare deploy` (that command
-      # rebuilds internally before uploading).
       - name: Deploy Worker to Cloudflare
+        if: steps.filter.outputs.run == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler deploy
+
+  # ────────────── Backend Worker (arcadia-api) ──────────────
+  backend:
+    name: Build & deploy arcadia-api
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Detect backend changes
+        id: filter
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q '^backend/' ; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Node.js
+        if: steps.filter.outputs.run == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        if: steps.filter.outputs.run == 'true'
+        working-directory: backend
+        run: npm ci
+
+      - name: Deploy Worker to Cloudflare
+        if: steps.filter.outputs.run == 'true'
+        working-directory: backend
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: npx wrangler deploy

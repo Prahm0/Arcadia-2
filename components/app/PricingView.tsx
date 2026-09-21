@@ -2,18 +2,20 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api/client";
+import { useDashboardData } from "@/lib/app/DashboardProvider";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 
+type TierKey = "free" | "pro" | "max";
+type Interval = "month" | "year";
+
 interface Tier {
-  key: "free" | "pro" | "max";
+  key: TierKey;
   name: string;
   headline: string;
-  priceWeekly: number | null;
   priceMonthly: number | null;
-  billingNote: string;
+  priceYearly: number | null;
   features: string[];
-  cta: string;
   highlighted?: boolean;
   badge?: string;
 }
@@ -23,29 +25,26 @@ const TIERS: Tier[] = [
     key: "free",
     name: "Free",
     headline: "The scaffold. Get organised, on your own.",
-    priceWeekly: null,
     priceMonthly: null,
-    billingNote: "Forever free.",
+    priceYearly: null,
     features: [
       "Auto-scheduled daily plan",
       "Task list + deadlines",
       "Focus timer (Classic 25/5)",
-      "Try Arcad — 2 messages / day",
+      "Arcad — 2 messages / day",
       "Today's focus minutes",
       "Weekly review — text summary",
     ],
-    cta: "Current plan",
   },
   {
     key: "pro",
     name: "Pro",
     headline: "Arcad unlocked. Calendar synced. Notes indexed.",
-    priceWeekly: 3.99,
     priceMonthly: 15.99,
-    billingNote: "Billed monthly. Cancel anytime.",
+    priceYearly: 149.0,
     features: [
       "Everything in Free",
-      "Arcad chat — unlimited, with your context",
+      "Arcad — 20 messages / day",
       "Google / Apple / Canvas calendar sync",
       "Upload PDFs & notes — Arcad answers from them",
       "Study rooms (unlimited) with shared timers",
@@ -53,7 +52,6 @@ const TIERS: Tier[] = [
       "Custom focus presets",
       "Deeper weekly review with insights",
     ],
-    cta: "Start Pro",
     highlighted: true,
     badge: "Most popular",
   },
@@ -61,11 +59,11 @@ const TIERS: Tier[] = [
     key: "max",
     name: "Max",
     headline: "Voice tutor. Exam prep. Real humans when you're stuck.",
-    priceWeekly: 9.99,
     priceMonthly: 39.99,
-    billingNote: "Billed monthly. Cancel anytime.",
+    priceYearly: 379.0,
     features: [
       "Everything in Pro",
+      "Arcad — 100 messages / day",
       "Voice Arcad — talk while you study, hands-free",
       "Arcad tutor mode — step-by-step problem walkthroughs",
       "Exam-style practice + essay feedback",
@@ -73,41 +71,62 @@ const TIERS: Tier[] = [
       "Priority AI — the smartest model, first in the queue",
       "Study group leader mode — invite up to 10",
     ],
-    cta: "Go Max",
   },
 ];
 
 export default function PricingView() {
-  const [notifyTier, setNotifyTier] = useState<Tier["key"] | null>(null);
-  const [notifyStatus, setNotifyStatus] = useState<
-    { tone: "info" | "error"; text: string } | null
-  >(null);
-  const [notifyLoading, setNotifyLoading] = useState(false);
+  const { data } = useDashboardData();
+  const currentTier: TierKey = data?.user?.tier ?? "free";
+  const hasSubscription = Boolean(data?.user?.hasSubscription);
 
-  async function joinWaitlist(tier: Tier["key"]) {
-    setNotifyLoading(true);
-    setNotifyStatus(null);
+  const [interval, setInterval] = useState<Interval>("month");
+  const [busyTier, setBusyTier] = useState<TierKey | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function startCheckout(plan: "pro" | "max") {
+    setBusyTier(plan);
+    setError(null);
     try {
-      // Backend hasn't shipped the paid-tier waitlist endpoint yet — this
-      // hits /api/waitlist which already exists for the landing signup. If
-      // it 404s, we still tell the user they're on the list; a later PR
-      // wires the real persistence path.
-      await api("/api/waitlist", {
+      const response = await api<{ url: string }>("/api/billing/checkout", {
         method: "POST",
-        body: JSON.stringify({ tier, source: "app-pricing" }),
-      }).catch(() => {});
-      setNotifyStatus({
-        tone: "info",
-        text: "You're on the list — we'll email you the moment payments open.",
+        body: JSON.stringify({ plan, interval }),
       });
-      setNotifyTier(tier);
+      if (response?.url) {
+        window.location.href = response.url;
+        return;
+      }
+      throw new Error("Checkout URL missing.");
     } catch (err) {
-      setNotifyStatus({
-        tone: "error",
-        text: err instanceof Error ? err.message : "Something went wrong.",
+      console.warn("[pricing] checkout failed", err);
+      setError(
+        err instanceof Error && err.message
+          ? err.message
+          : "Couldn't reach Stripe. Try again in a moment.",
+      );
+      setBusyTier(null);
+    }
+  }
+
+  async function openPortal() {
+    setBusyTier("free"); // placeholder — reuses the loading spinner slot
+    setError(null);
+    try {
+      const response = await api<{ url: string }>("/api/billing/portal", {
+        method: "POST",
       });
-    } finally {
-      setNotifyLoading(false);
+      if (response?.url) {
+        window.location.href = response.url;
+        return;
+      }
+      throw new Error("Portal URL missing.");
+    } catch (err) {
+      console.warn("[pricing] portal failed", err);
+      setError(
+        err instanceof Error && err.message
+          ? err.message
+          : "Couldn't open the billing portal.",
+      );
+      setBusyTier(null);
     }
   }
 
@@ -120,42 +139,41 @@ export default function PricingView() {
             Pick your <span className="accent-serif">Arcadia</span>.
           </>
         }
-        meta="Payments open on public launch — join the waitlist to lock in Pro or Max at launch pricing."
+        meta="Prices in AUD, billed via Stripe. Cancel anytime from Settings."
       />
 
       <div className="mx-auto flex w-full max-w-[1080px] flex-col gap-6 px-6 py-8 sm:px-10">
+        <IntervalToggle value={interval} onChange={setInterval} />
+
         <div className="grid gap-4 md:grid-cols-3">
           {TIERS.map((tier) => (
             <TierCard
               key={tier.key}
               tier={tier}
-              loading={notifyLoading && notifyTier === tier.key}
-              done={notifyTier === tier.key && notifyStatus?.tone === "info"}
-              onSelect={() => {
+              interval={interval}
+              currentTier={currentTier}
+              hasSubscription={hasSubscription}
+              loading={busyTier === tier.key}
+              onUpgrade={() => {
                 if (tier.key === "free") return;
-                void joinWaitlist(tier.key);
+                void startCheckout(tier.key);
               }}
+              onManage={openPortal}
             />
           ))}
         </div>
 
-        {notifyStatus ? (
+        {error ? (
           <div
             role="alert"
             className="rounded-md px-4 py-3 text-[13.5px]"
             style={{
-              background:
-                notifyStatus.tone === "error"
-                  ? "color-mix(in oklab, var(--app-danger) 12%, var(--app-surface))"
-                  : "var(--app-accent-soft)",
-              color:
-                notifyStatus.tone === "error"
-                  ? "var(--app-danger)"
-                  : "var(--app-accent-strong)",
+              background: "color-mix(in oklab, var(--app-danger) 12%, var(--app-surface))",
+              color: "var(--app-danger)",
               boxShadow: "var(--elev-1)",
             }}
           >
-            {notifyStatus.text}
+            {error}
           </div>
         ) : null}
 
@@ -165,18 +183,71 @@ export default function PricingView() {
   );
 }
 
+function IntervalToggle({
+  value,
+  onChange,
+}: {
+  value: Interval;
+  onChange: (v: Interval) => void;
+}) {
+  return (
+    <div className="mx-auto flex items-center gap-1 rounded-full p-1"
+      style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
+      <IntervalButton active={value === "month"} onClick={() => onChange("month")}>
+        Monthly
+      </IntervalButton>
+      <IntervalButton active={value === "year"} onClick={() => onChange("year")}>
+        Yearly · save ~22%
+      </IntervalButton>
+    </div>
+  );
+}
+
+function IntervalButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors"
+      style={{
+        background: active ? "var(--app-accent)" : "transparent",
+        color: active ? "var(--app-accent-on)" : "var(--app-text-muted)",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 function TierCard({
   tier,
+  interval,
+  currentTier,
+  hasSubscription,
   loading,
-  done,
-  onSelect,
+  onUpgrade,
+  onManage,
 }: {
   tier: Tier;
+  interval: Interval;
+  currentTier: TierKey;
+  hasSubscription: boolean;
   loading: boolean;
-  done: boolean;
-  onSelect: () => void;
+  onUpgrade: () => void;
+  onManage: () => void;
 }) {
   const isFree = tier.key === "free";
+  const isCurrent = tier.key === currentTier;
+  const priceForInterval = interval === "month" ? tier.priceMonthly : tier.priceYearly;
+
   return (
     <div
       className="relative flex flex-col gap-5 rounded-lg p-6"
@@ -184,9 +255,7 @@ function TierCard({
         background: tier.highlighted
           ? "color-mix(in oklab, var(--app-accent) 12%, var(--app-surface))"
           : "var(--app-surface)",
-        boxShadow: tier.highlighted
-          ? "var(--elev-2)"
-          : "var(--elev-1)",
+        boxShadow: tier.highlighted ? "var(--elev-2)" : "var(--elev-1)",
         border: tier.highlighted
           ? "1px solid color-mix(in oklab, var(--app-accent) 45%, transparent)"
           : "1px solid transparent",
@@ -195,10 +264,7 @@ function TierCard({
       {tier.badge ? (
         <div
           className="absolute -top-3 right-6 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]"
-          style={{
-            background: "var(--app-accent)",
-            color: "var(--app-accent-on)",
-          }}
+          style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}
         >
           {tier.badge}
         </div>
@@ -217,7 +283,7 @@ function TierCard({
       </div>
 
       <div>
-        {tier.priceWeekly === null ? (
+        {priceForInterval === null ? (
           <div className="flex items-baseline gap-1.5">
             <span className="text-[36px] font-semibold" style={{ color: "var(--app-text)" }}>
               $0
@@ -230,20 +296,19 @@ function TierCard({
           <div>
             <div className="flex items-baseline gap-1.5">
               <span className="text-[36px] font-semibold" style={{ color: "var(--app-text)" }}>
-                ${tier.priceWeekly}
+                ${priceForInterval.toFixed(2)}
               </span>
               <span className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
-                / week
+                / {interval === "month" ? "mo" : "yr"} AUD
               </span>
             </div>
-            <p className="mt-1 text-[12px]" style={{ color: "var(--app-text-faint)" }}>
-              Billed monthly — ${tier.priceMonthly?.toFixed(2)}/mo
-            </p>
+            {interval === "year" && tier.priceMonthly ? (
+              <p className="mt-1 text-[12px]" style={{ color: "var(--app-text-faint)" }}>
+                ~${(tier.priceYearly! / 12).toFixed(2)}/mo — save ${((tier.priceMonthly * 12) - tier.priceYearly!).toFixed(0)}/yr
+              </p>
+            ) : null}
           </div>
         )}
-        <p className="mt-2 text-[12px]" style={{ color: "var(--app-text-muted)" }}>
-          {tier.billingNote}
-        </p>
       </div>
 
       <ul className="flex flex-col gap-2.5">
@@ -271,21 +336,31 @@ function TierCard({
       </ul>
 
       <div className="mt-auto pt-2">
-        {isFree ? (
+        {isCurrent && !isFree ? (
+          <AppButton variant="secondary" onClick={onManage} loading={loading}>
+            Manage subscription
+          </AppButton>
+        ) : isCurrent ? (
           <AppButton variant="ghost" disabled>
-            {tier.cta}
+            Current plan
           </AppButton>
-        ) : done ? (
-          <AppButton variant="secondary" disabled>
-            On the waitlist
-          </AppButton>
+        ) : isFree ? (
+          hasSubscription ? (
+            <AppButton variant="ghost" onClick={onManage} loading={loading}>
+              Downgrade
+            </AppButton>
+          ) : (
+            <AppButton variant="ghost" disabled>
+              Free plan
+            </AppButton>
+          )
         ) : (
           <AppButton
             variant={tier.highlighted ? "primary" : "secondary"}
-            onClick={onSelect}
+            onClick={onUpgrade}
             loading={loading}
           >
-            Notify me when {tier.name} opens
+            {hasSubscription ? `Switch to ${tier.name}` : `Start ${tier.name}`}
           </AppButton>
         )}
       </div>
@@ -297,20 +372,20 @@ function Faq() {
   return (
     <div className="mt-4 grid gap-4 md:grid-cols-2">
       <FaqItem
-        q="When do paid plans open?"
-        a="We're finishing payment plumbing before public launch. Join the waitlist and you'll be first in — and lock in launch pricing for the first year."
+        q="Can I cancel any time?"
+        a="Yes. Manage from Settings or the Stripe portal whenever you like. You keep access until the end of your current billing period."
       />
       <FaqItem
-        q="Can I cancel any time?"
-        a="Yes. Cancel from Settings whenever you like. You keep access until the end of your current billing month."
+        q="What if I hit the daily message cap?"
+        a="Arcad tells you and shows when it resets (midnight UTC). Upgrade to Pro or Max any time to lift the cap."
       />
       <FaqItem
         q="What happens to my data on Free?"
-        a="Everything stays. You just lose access to Pro features (unlimited Arcad, calendar sync, uploads). Nothing gets deleted."
+        a="Everything stays. You lose access to Pro features (higher message cap, calendar sync, uploads). Nothing gets deleted."
       />
       <FaqItem
         q="Student discount?"
-        a="Arcadia is already built for students. Prices are set to sit under the cost of a coffee — no separate student tier."
+        a="Arcadia is already built for students. Prices are set to sit under the cost of a coffee per week — no separate student tier."
       />
     </div>
   );
@@ -320,10 +395,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
   return (
     <div
       className="rounded-md p-5"
-      style={{
-        background: "var(--app-surface)",
-        boxShadow: "var(--elev-1)",
-      }}
+      style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
     >
       <p className="text-[14px] font-semibold" style={{ color: "var(--app-text)" }}>
         {q}

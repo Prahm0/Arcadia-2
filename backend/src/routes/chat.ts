@@ -4,6 +4,7 @@ import { db, schema } from "../db";
 import { newId } from "../lib/ids";
 import { complete, type ChatMessage } from "../lib/openai";
 import { replan } from "../lib/replan";
+import { DAILY_MESSAGE_CAP, isValidTier, tryConsumeMessage } from "../lib/tiers";
 import { DAY, iso, parseClock } from "../lib/time";
 import type { Env, Variables } from "../types";
 
@@ -87,6 +88,32 @@ chat.post("/", async (c) => {
   if (text.length > 4000) return c.json({ error: "That message is too long." }, 422);
 
   const database = db(c.env.DB);
+
+  // Look up the sender's tier and consume a message from today's quota.
+  // We do this before writing the user message so a rejected send leaves
+  // no half-persisted turn in the conversation.
+  const [userRow] = await database
+    .select({ tier: schema.users.tier })
+    .from(schema.users)
+    .where(eq(schema.users.id, userId))
+    .limit(1);
+  const tier = isValidTier(userRow?.tier) ? userRow.tier : "free";
+  const cap = await tryConsumeMessage(database, userId, tier);
+  if (!cap.allowed) {
+    return c.json(
+      {
+        error:
+          tier === "free"
+            ? `You've used your ${DAILY_MESSAGE_CAP.free} free messages for today. Upgrade to Pro for ${DAILY_MESSAGE_CAP.pro}/day.`
+            : `You've hit today's cap of ${cap.cap} Arcad messages. Resets at midnight UTC.`,
+        code: "message_cap_reached",
+        tier,
+        cap: cap.cap,
+        used: cap.used,
+      },
+      429,
+    );
+  }
 
   let conversation:
     | typeof schema.conversations.$inferSelect

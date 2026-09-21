@@ -48,6 +48,12 @@ jobs:
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
+        with:
+          # We need the previous main tip (`github.event.before`) reachable
+          # so `git diff` can see what changed in this push. The default
+          # fetch-depth of 1 leaves that commit unfetched, which made the
+          # diff come back empty and silently skipped build+deploy.
+          fetch-depth: 0
 
       - name: Detect frontend changes
         id: filter
@@ -101,6 +107,8 @@ jobs:
     steps:
       - name: Check out repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Detect backend changes
         id: filter

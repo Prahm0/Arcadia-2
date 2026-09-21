@@ -283,9 +283,9 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
                 }}
                 maxLength={60}
                 placeholder="Add another…"
-                className="flex-1 rounded-clay-sm px-3 py-2.5 text-[14.5px] outline-none"
+                className="flex-1 rounded-md px-3 py-2.5 text-[14.5px] outline-none"
                 style={{
-                  background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)",
+                  background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)",
                   color: "var(--app-text)",
                 }}
               />
@@ -440,9 +440,9 @@ function FormInput({
       value={value}
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full rounded-clay-sm px-3 py-2.5 text-[15px] outline-none disabled:opacity-60"
+      className="w-full rounded-md px-3 py-2.5 text-[15px] outline-none disabled:opacity-60"
       style={{
-        background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)",
+        background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)",
         color: "var(--app-text)",
       }}
     />

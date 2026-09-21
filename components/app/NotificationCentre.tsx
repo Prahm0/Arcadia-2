@@ -61,7 +61,7 @@ export default function NotificationCentre({ briefing }: NotificationCentreProps
         aria-expanded={open}
         aria-controls="notification-centre"
         onClick={mounted ? closeCentre : openCentre}
-        className="clay-hover fixed right-3 top-[calc(env(safe-area-inset-top,0px)+0.5rem)] z-40 grid h-10 w-10 place-items-center rounded-full border-0 bg-transparent p-0 transition-colors lg:right-6 lg:top-5"
+        className="ui-hover fixed right-2 top-[calc(env(safe-area-inset-top,0px)+0.25rem)] z-40 grid h-10 w-10 place-items-center rounded-md border-0 bg-transparent p-0 transition-colors lg:right-2 lg:top-1 lg:h-8 lg:w-8"
         style={{ color: "var(--app-text-soft)" }}
       >
         <span className="relative grid place-items-center">
@@ -111,11 +111,11 @@ export default function NotificationCentre({ briefing }: NotificationCentreProps
             role="dialog"
             aria-modal="true"
             aria-labelledby="notification-centre-title"
-            className="absolute bottom-2 right-2 top-2 flex w-[min(390px,calc(100vw-16px))] flex-col overflow-hidden rounded-[28px]"
+            className="absolute bottom-2 right-2 top-2 flex w-[min(390px,calc(100vw-16px))] flex-col overflow-hidden rounded-xl"
             style={{
               background: "var(--app-elev)",
               color: "var(--app-text)",
-              boxShadow: "-20px 0 55px -30px rgba(24, 20, 16, 0.55), var(--clay-rim)",
+              boxShadow: "var(--elev-3)",
               transform: open ? "translateX(0)" : "translateX(calc(100% + 16px))",
               opacity: open ? 1 : 0.92,
               transition: "transform 280ms var(--ease-out-expo), opacity 220ms ease",
@@ -138,7 +138,7 @@ export default function NotificationCentre({ briefing }: NotificationCentreProps
                 autoFocus
                 onClick={closeCentre}
                 aria-label="Close notifications"
-                className="clay-hover grid h-9 w-9 place-items-center rounded-full border-0 bg-transparent"
+                className="ui-hover grid h-9 w-9 place-items-center rounded-full border-0 bg-transparent"
                 style={{ color: "var(--app-text-muted)" }}
               >
                 <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">

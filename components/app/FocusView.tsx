@@ -359,15 +359,10 @@ function FocusViewInner() {
   return (
     <>
       <PageHeader
-        eyebrow="Focus"
-        title={
-          phase === "break" ? (
-            <>Take a <span className="accent-serif">breather</span>.</>
-          ) : (
-            <><span className="accent-serif">Lock</span> in.</>
-          )
-        }
-        meta={`${todayMinutes} min of focused study today`}
+        eyebrow="Study"
+        title="Focus"
+        meta={`${phase === "break" ? "On a break · " : ""}${todayMinutes} min focused today`}
+        tour="focus"
       />
 
       {linkedEvent ? (
@@ -405,8 +400,8 @@ function FocusViewInner() {
 
       <div className="mx-auto grid w-full max-w-[960px] gap-8 px-6 py-10 sm:px-10 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div
-          className="flex flex-col items-center rounded-clay-lg px-6 py-12"
-          style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
+          className="flex flex-col items-center rounded-lg px-6 py-12"
+          style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
         >
           <div className="relative aspect-square w-full max-w-[320px]">
             <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
@@ -462,7 +457,7 @@ function FocusViewInner() {
             <button
               type="button"
               onClick={() => setDistractions((d) => d + 1)}
-              className="clay-pressable mt-6 rounded-full px-4 py-2 text-[12.5px] font-medium"
+              className="ui-pressable mt-6 rounded-full px-4 py-2 text-[12.5px] font-medium"
               style={{ border: "1px dashed var(--app-border-strong)", color: "var(--app-text-muted)" }}
             >
               Distraction ·{" "}
@@ -489,7 +484,7 @@ function FocusViewInner() {
           <div
             role="tablist"
             aria-label="Focus panel"
-            className="clay-well-bare grid grid-cols-2 gap-1 rounded-clay-sm p-1"
+            className="inset-ring grid grid-cols-2 gap-1 rounded-md p-1"
             style={{ background: "var(--app-surface-soft)" }}
           >
             {(["session", "recents"] as AsideTab[]).map((t) => (
@@ -499,11 +494,11 @@ function FocusViewInner() {
                 role="tab"
                 aria-selected={tab === t}
                 onClick={() => setTab(t)}
-                className="rounded-clay-xs px-3 py-1.5 text-[12.5px] font-medium capitalize transition-all duration-200 ease-[var(--ease-out-expo)]"
+                className="rounded-sm px-3 py-1.5 text-[12.5px] font-medium capitalize transition-all duration-200 ease-[var(--ease-out-expo)]"
                 style={{
                   background: tab === t ? "var(--app-surface)" : "transparent",
                   color: tab === t ? "var(--app-text)" : "var(--app-text-muted)",
-                  boxShadow: tab === t ? "var(--clay-shadow), var(--clay-rim)" : "none",
+                  boxShadow: tab === t ? "var(--elev-1)" : "none",
                 }}
               >
                 {t}
@@ -519,7 +514,7 @@ function FocusViewInner() {
             />
           ) : (
             <div className="app-enter flex flex-col gap-6">
-          <div className="rounded-clay p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}>
+          <div className="rounded-lg p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
             <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Preset</p>
             <div className="mt-3 flex flex-col gap-1.5">
               {PRESETS.map((p, i) => (
@@ -533,9 +528,9 @@ function FocusViewInner() {
                     setRunning(false);
                   }}
                   className={cn(
-                    "flex items-center justify-between rounded-clay-sm px-3 py-2.5 text-[13.5px] font-medium",
+                    "flex items-center justify-between rounded-md px-3 py-2.5 text-[13.5px] font-medium",
                     "transition-all duration-200 ease-[var(--ease-out-expo)]",
-                    i === presetIndex ? "clay-well-bare" : "clay-hover",
+                    i === presetIndex ? "inset-ring" : "ui-hover",
                   )}
                   style={{
                     background: i === presetIndex ? "var(--app-accent-soft)" : "transparent",
@@ -566,8 +561,8 @@ function FocusViewInner() {
                       writeCustomPreset(next);
                       if (phase === "idle") setRemaining(next.focusMin * 60);
                     }}
-                    className="w-full rounded-clay-sm px-2 py-1.5 text-[13.5px] outline-none"
-                    style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)", color: "var(--app-text)" }}
+                    className="w-full rounded-md px-2 py-1.5 text-[13.5px] outline-none"
+                    style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
                   />
                 </label>
                 <label className="flex-1">
@@ -584,15 +579,15 @@ function FocusViewInner() {
                       setCustomPreset(next);
                       writeCustomPreset(next);
                     }}
-                    className="w-full rounded-clay-sm px-2 py-1.5 text-[13.5px] outline-none"
-                    style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)", color: "var(--app-text)" }}
+                    className="w-full rounded-md px-2 py-1.5 text-[13.5px] outline-none"
+                    style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
                   />
                 </label>
               </div>
             ) : null}
           </div>
 
-          <div className="rounded-clay p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}>
+          <div className="rounded-lg p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
             <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Working on</p>
             <div className="mt-3 flex flex-col gap-3">
               <label className="block">
@@ -600,8 +595,8 @@ function FocusViewInner() {
                 <select
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
-                  className="w-full rounded-clay-sm px-3 py-2 text-[14px] outline-none"
-                  style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)", color: "var(--app-text)" }}
+                  className="w-full rounded-md px-3 py-2 text-[14px] outline-none"
+                  style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
                 >
                   {data.subjects.map((s) => (
                     <option key={s.id} value={s.name}>{s.name}</option>
@@ -616,8 +611,8 @@ function FocusViewInner() {
                   value={goal}
                   onChange={(e) => setGoal(e.target.value)}
                   placeholder="e.g. Finish complex numbers set"
-                  className="w-full rounded-clay-sm px-3 py-2 text-[14px] outline-none"
-                  style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)", color: "var(--app-text)" }}
+                  className="w-full rounded-md px-3 py-2 text-[14px] outline-none"
+                  style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
                 />
               </label>
             </div>
@@ -665,8 +660,8 @@ function RecentSessions({
 
   return (
     <div
-      className="app-enter rounded-clay p-5"
-      style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
+      className="app-enter rounded-lg p-5"
+      style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
     >
       <div className="flex items-baseline justify-between gap-3">
         <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>
@@ -688,7 +683,7 @@ function RecentSessions({
           {[0, 1, 2].map((i) => (
             <div
               key={i}
-              className="app-enter h-11 rounded-clay-sm"
+              className="app-enter h-11 rounded-md"
               style={{ background: "var(--app-surface-soft)", "--d": `${i * 70}ms` } as React.CSSProperties}
             />
           ))}
@@ -708,7 +703,7 @@ function RecentSessions({
                 {rows.map((s, i) => (
                   <li
                     key={s.id}
-                    className="app-enter clay-hover flex items-center gap-3 rounded-clay-sm px-3 py-2"
+                    className="app-enter ui-hover flex items-center gap-3 rounded-md px-3 py-2"
                     style={{ "--d": `${(groupIndex * 3 + i) * 45}ms` } as React.CSSProperties}
                   >
                     <span

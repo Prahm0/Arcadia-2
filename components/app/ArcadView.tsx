@@ -245,8 +245,9 @@ export default function ArcadView() {
     <>
       <PageHeader
         eyebrow="Arcad"
-        title={<>Your <span className="accent-serif">planning</span> partner.</>}
+        title="Chat"
         meta={activeConversationTitle}
+        tour="arcad"
         action={
           <AppButton
             variant="secondary"
@@ -261,8 +262,8 @@ export default function ArcadView() {
       <div className="mx-auto grid w-full max-w-[1140px] gap-6 px-6 py-8 sm:px-10 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="flex min-w-0 flex-col gap-4">
           <div
-            className="inline-flex self-start rounded-clay-sm p-1"
-            style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)" }}
+            className="inline-flex self-start rounded-md p-1"
+            style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)" }}
             role="tablist"
           >
             {(["chat", "context", "history"] as Tab[]).map((t) => (
@@ -272,11 +273,11 @@ export default function ArcadView() {
                 role="tab"
                 aria-selected={tab === t}
                 onClick={() => setTab(t)}
-                className="rounded-clay-xs px-3.5 py-1.5 text-[13px] font-medium capitalize transition-colors"
+                className="rounded-sm px-3.5 py-1.5 text-[13px] font-medium capitalize transition-colors"
                 style={{
                   background: tab === t ? "var(--app-surface)" : "transparent",
                   color: tab === t ? "var(--app-text)" : "var(--app-text-muted)",
-                  boxShadow: tab === t ? "var(--clay-shadow), var(--clay-rim)" : "none",
+                  boxShadow: tab === t ? "var(--elev-1)" : "none",
                 }}
               >
                 {t}
@@ -339,8 +340,8 @@ export default function ArcadView() {
                 e.preventDefault();
                 send(message);
               }}
-              className="flex items-end gap-2 rounded-clay p-2"
-              style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
+              className="flex items-end gap-2 rounded-lg p-2"
+              style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
             >
               <textarea
                 ref={inputRef}
@@ -393,7 +394,7 @@ function ChatPanel({
           {state.proposals.map((proposal) => (
             <div
               key={proposal.id}
-              className="rounded-clay p-4"
+              className="rounded-lg p-4"
               style={{
                 background: "color-mix(in oklab, var(--app-arcad) 8%, var(--app-surface))",
                 border: "1px solid color-mix(in oklab, var(--app-arcad) 45%, var(--app-border))",
@@ -422,8 +423,8 @@ function ChatPanel({
 
       <div
         ref={listRef}
-        className="max-h-[58vh] min-h-[360px] overflow-y-auto rounded-clay p-5 sm:p-6"
-        style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
+        className="max-h-[58vh] min-h-[360px] overflow-y-auto rounded-lg p-5 sm:p-6"
+        style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
       >
         {loading ? (
           <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
@@ -442,7 +443,7 @@ function ChatPanel({
                   <ArcadOrb size={22} state="thinking" />
                 </span>
                 <div
-                  className="flex items-center gap-2 rounded-clay px-4 py-2.5"
+                  className="flex items-center gap-2 rounded-lg px-4 py-2.5"
                   style={{
                     background: "var(--app-surface-soft)",
                     color: "var(--app-text-muted)",
@@ -478,7 +479,7 @@ function MessageBubble({ message }: { message: Message }) {
       ) : null}
       <div className={cn("flex max-w-[82%] flex-col", isUser ? "items-end" : "items-start")}>
         <div
-          className="whitespace-pre-wrap rounded-clay px-4 py-2.5 text-[14.5px] leading-[1.5]"
+          className="whitespace-pre-wrap rounded-lg px-4 py-2.5 text-[14.5px] leading-[1.5]"
           style={
             isUser
               ? { background: "var(--app-text)", color: "var(--app-bg)" }
@@ -575,7 +576,7 @@ function ContextPanel({ data }: { data: DashboardResponse }) {
   const totalMinutes = pending.reduce((s, t) => s + t.remainingMinutes, 0);
   const streak = useStreak();
   return (
-    <div className="rounded-clay p-6" style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}>
+    <div className="rounded-lg p-6" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
       <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>What Arcad knows</p>
       <p className="mt-2 text-[14px]" style={{ color: "var(--app-text-muted)" }}>
         Every message is sent with this context so Arcad can plan around your real life — nothing generic.
@@ -649,7 +650,7 @@ function ContextPanel({ data }: { data: DashboardResponse }) {
 function MiniContext({ data }: { data: DashboardResponse }) {
   const streak = useStreak();
   return (
-    <div className="rounded-clay p-4" style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}>
+    <div className="rounded-lg p-4" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
       <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Context</p>
       <ul className="mt-3 flex flex-col gap-2 text-[12.5px]" style={{ color: "var(--app-text-soft)" }}>
         <li className="flex justify-between">
@@ -700,13 +701,13 @@ function HistoryPanel({
 }) {
   if (!conversations.length) {
     return (
-      <div className="rounded-clay p-10 text-center" style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}>
+      <div className="rounded-lg p-10 text-center" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
         <p className="text-[14.5px]" style={{ color: "var(--app-text-muted)" }}>No past conversations yet.</p>
       </div>
     );
   }
   return (
-    <div className="rounded-clay overflow-hidden" style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}>
+    <div className="rounded-lg overflow-hidden" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
       <ul className="divide-y" style={{ borderColor: "var(--app-border)" }}>
         {conversations.map((conv) => {
           const active = conv.id === activeId;
@@ -715,7 +716,7 @@ function HistoryPanel({
               <button
                 type="button"
                 onClick={() => onSelect(conv.id)}
-                className="flex w-full items-center justify-between px-5 py-3.5 text-left transition-colors clay-hover"
+                className="flex w-full items-center justify-between px-5 py-3.5 text-left transition-colors ui-hover"
                 style={{ background: active ? "var(--app-arcad-soft)" : "transparent" }}
               >
                 <div className="min-w-0 flex-1">

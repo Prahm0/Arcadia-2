@@ -73,17 +73,18 @@ export default function RoomsView() {
   return (
     <>
       <PageHeader
-        eyebrow="Rooms"
-        title={<>Focus with your <span className="accent-serif">people</span>.</>}
-        meta="Share a code. See who's studying, what they're on, and how long they've gone today."
+        eyebrow="Study"
+        title="Rooms"
+        meta={loading ? undefined : `${rooms.length} ${rooms.length === 1 ? "room" : "rooms"}`}
+        tour="rooms"
       />
 
       <div className="mx-auto flex w-full max-w-[860px] flex-col gap-6 px-6 py-8 sm:px-10">
         <div className="grid gap-4 sm:grid-cols-2">
           <form
             onSubmit={submitCreate}
-            className="rounded-clay p-5"
-            style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
+            className="rounded-lg p-5"
+            style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
           >
             <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Create a room</p>
             <label className="mt-3 block">
@@ -97,9 +98,9 @@ export default function RoomsView() {
                 value={createName}
                 onChange={(e) => setCreateName(e.target.value)}
                 placeholder="e.g. Study Fri night"
-                className="w-full rounded-clay-sm px-3 py-2.5 text-[14.5px] outline-none"
+                className="w-full rounded-md px-3 py-2.5 text-[14.5px] outline-none"
                 style={{
-                  background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)",
+                  background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)",
                   color: "var(--app-text)",
                 }}
               />
@@ -113,8 +114,8 @@ export default function RoomsView() {
 
           <form
             onSubmit={submitJoin}
-            className="rounded-clay p-5"
-            style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
+            className="rounded-lg p-5"
+            style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
           >
             <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Join with a code</p>
             <label className="mt-3 block">
@@ -128,9 +129,9 @@ export default function RoomsView() {
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                 placeholder="ABC234"
-                className="w-full rounded-clay-sm px-3 py-2.5 text-[15px] font-mono tracking-widest outline-none"
+                className="w-full rounded-md px-3 py-2.5 text-[15px] font-mono tracking-widest outline-none"
                 style={{
-                  background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)",
+                  background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)",
                   color: "var(--app-text)",
                 }}
                 autoCapitalize="characters"
@@ -147,9 +148,9 @@ export default function RoomsView() {
 
         {error ? (
           <div
-            className="flex flex-wrap items-center justify-between gap-3 rounded-clay-sm px-4 py-3"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-md px-4 py-3"
             style={{
-              background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)",
+              background: "var(--app-surface)", boxShadow: "var(--elev-1)",
               color: "var(--app-text-soft)",
             }}
           >
@@ -183,8 +184,8 @@ export default function RoomsView() {
                 <li key={room.id}>
                   <Link
                     href={`/app/rooms/${room.code}`}
-                    className="group flex items-center gap-4 rounded-clay-sm px-4 py-4 transition-colors clay-hover"
-                    style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
+                    className="group flex items-center gap-4 rounded-md px-4 py-4 transition-colors ui-hover"
+                    style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-[15px] font-medium tracking-[-0.005em]" style={{ color: "var(--app-text)" }}>

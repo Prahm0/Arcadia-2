@@ -2,7 +2,7 @@
  * One earthy vocabulary for event categories.
  *
  * Four views each carried their own copy of the same sky/emerald/amber trio
- * (`#38bdf8` / `#34d399` / `#f59e0b`), which read as neon against the clay
+ * (`#38bdf8` / `#34d399` / `#f59e0b`), which read as neon against the warm
  * surfaces. They share this module now.
  *
  * The category hues are CSS variables, not hexes, because no single mid-tone

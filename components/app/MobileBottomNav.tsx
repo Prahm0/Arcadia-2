@@ -90,10 +90,10 @@ export default function MobileBottomNav() {
         aria-label="Mobile navigation"
         className="lg:hidden fixed inset-x-0 bottom-0 z-40"
         style={{
-          // A solid clay plate. The frosted version smeared whatever scrolled
-          // beneath it, which fights the soft surfaces everywhere else.
+          // Solid, with a hairline on top. The frosted version smeared whatever
+          // scrolled beneath it.
           background: "var(--app-elev)",
-          boxShadow: "var(--clay-shadow-sheet), var(--clay-rim)",
+          boxShadow: "0 -1px 0 var(--app-border)",
           paddingBottom: "env(safe-area-inset-bottom, 0)",
         }}
       >

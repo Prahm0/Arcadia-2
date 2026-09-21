@@ -2,18 +2,21 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { api, saveCsrf } from "@/lib/api/client";
 import type { AuthUser } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
-import { useTheme } from "@/lib/app/theme";
 import { useStreak } from "@/lib/app/useStreak";
 import { useSessionReminders } from "@/lib/app/useSessionReminders";
+import { useAppShortcuts } from "@/lib/app/useAppShortcuts";
 import ArcadFloatingButton from "./ArcadFloatingButton";
 import GuestBanner from "./GuestBanner";
+import MenuBar from "./MenuBar";
 import MobileBottomNav from "./MobileBottomNav";
+import NewTaskSheet from "./NewTaskSheet";
 import NotificationCentre from "./NotificationCentre";
 import PageMount from "./PageMount";
+import ShortcutsDialog from "./ShortcutsDialog";
 import Logo from "@/components/ui/Logo";
 import { isGuestEmail } from "@/lib/auth/guest";
 
@@ -93,11 +96,29 @@ const NAV_GROUPS: NavGroup[] = [
 export default function AppShell({ user, briefing, children }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { resolved, toggle } = useTheme();
   const streakSummary = useStreak();
   useSessionReminders();
   const streak = streakSummary.current;
   const [signingOut, setSigningOut] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(readSidebarPref);
+  const [newTaskOpen, setNewTaskOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarOpen((open) => {
+      writeSidebarPref(!open);
+      return !open;
+    });
+  }, []);
+  const openNewTask = useCallback(() => setNewTaskOpen(true), []);
+  const openShortcuts = useCallback(() => setShortcutsOpen(true), []);
+  const closeShortcuts = useCallback(() => setShortcutsOpen(false), []);
+
+  useAppShortcuts({
+    onNewTask: openNewTask,
+    onShowShortcuts: openShortcuts,
+    onToggleSidebar: toggleSidebar,
+  });
 
   async function signOut() {
     setSigningOut(true);
@@ -116,17 +137,23 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
       className="min-h-svh"
       style={{ background: "var(--app-bg)", color: "var(--app-text)" }}
     >
-      {/* Mobile top bar — brand + streak chip. Nav lives at the bottom now. */}
-      {/* Solid, not frosted: glass and clay are competing materials, and the
-          translucent bar muddied everything that scrolled under it. */}
+      <MenuBar
+        sidebarOpen={sidebarOpen}
+        onToggleSidebar={toggleSidebar}
+        onNewTask={openNewTask}
+        onShowShortcuts={openShortcuts}
+        onSignOut={() => void signOut()}
+      />
+
+      {/* Mobile top bar — brand + streak chip. Nav lives at the bottom. */}
       <div
-        className="lg:hidden sticky top-0 z-30 flex items-center justify-between py-3 pl-4 pr-14"
-        style={{ background: "var(--app-elev)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
+        className="lg:hidden sticky top-0 z-30 flex h-12 items-center justify-between border-b pl-4 pr-14"
+        style={{ background: "var(--app-surface)", borderColor: "var(--app-border)" }}
       >
         <BrandMark />
         {streak > 0 ? (
           <div
-            className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-medium"
+            className="flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[12px] font-medium"
             style={{ background: "var(--app-accent-soft)", color: "var(--app-accent-strong)" }}
           >
             <span aria-hidden="true">✦</span>
@@ -137,34 +164,29 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
       </div>
       <NotificationCentre briefing={briefing} />
 
-      <div className="mx-auto flex max-w-[1440px]">
+      <div className="flex">
         {/* Sidebar — desktop only. Mobile uses MobileBottomNav + MobileMoreSheet. */}
         <aside
           className={cn(
-            "hidden lg:sticky lg:top-0 lg:flex lg:h-svh lg:w-[240px] lg:shrink-0 lg:flex-col",
+            "hidden lg:sticky lg:top-10 lg:h-[calc(100svh-2.5rem)] lg:w-[232px] lg:shrink-0 lg:flex-col lg:overflow-y-auto",
+            sidebarOpen ? "lg:flex" : "lg:hidden",
           )}
           style={{
             background: "var(--app-surface-soft)",
             borderRight: "1px solid var(--app-border)",
           }}
         >
-          <div className="hidden lg:block px-5 pt-6">
-            <BrandMark />
-          </div>
-
-          <nav className="mt-6 flex flex-col gap-1 px-3">
+          <nav className="flex flex-col gap-0.5 px-2 pt-3" aria-label="Primary">
             <Link
               href={TODAY.href}
+              aria-current={pathname === TODAY.href ? "page" : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-clay-sm px-3 py-2.5 text-[14px] font-semibold transition-colors",
-                pathname !== TODAY.href && "clay-hover",
+                "flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13.5px] font-medium",
+                pathname !== TODAY.href && "ui-hover",
               )}
               style={{
-                color: pathname === TODAY.href ? "var(--app-accent-strong)" : "var(--app-text-soft)",
-                background: pathname === TODAY.href
-                  ? "color-mix(in oklab, var(--app-accent) 12%, var(--app-surface))"
-                  : "transparent",
-                boxShadow: pathname === TODAY.href ? "var(--clay-shadow), var(--clay-rim)" : "none",
+                color: pathname === TODAY.href ? "var(--app-text)" : "var(--app-text-soft)",
+                background: pathname === TODAY.href ? ACTIVE_BG : "transparent",
               }}
             >
               <span
@@ -187,11 +209,8 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
                   open={groupActive}
                 >
                   <summary
-                    className="clay-hover flex cursor-pointer list-none items-center gap-3 rounded-clay-sm px-3 py-2.5 text-[14px] font-semibold [&::-webkit-details-marker]:hidden"
-                    style={{
-                      color: groupActive ? "var(--app-text)" : "var(--app-text-soft)",
-                      background: groupActive ? "color-mix(in oklab, var(--app-text) 4%, transparent)" : "transparent",
-                    }}
+                    className="ui-hover flex h-8 cursor-pointer list-none items-center gap-2.5 rounded-md px-2.5 text-[13.5px] font-medium [&::-webkit-details-marker]:hidden"
+                    style={{ color: groupActive ? "var(--app-text)" : "var(--app-text-soft)" }}
                   >
                     <span
                       aria-hidden="true"
@@ -218,7 +237,7 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
                   </summary>
 
                   <div
-                    className="ml-5 mt-1 flex flex-col gap-0.5 border-l pl-2"
+                    className="mb-1 ml-[18px] mt-0.5 flex flex-col gap-0.5 border-l pl-2"
                     style={{ borderColor: "var(--app-border)" }}
                   >
                     {group.items.map((item) => {
@@ -230,16 +249,15 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
                         <Link
                           key={item.href}
                           href={item.href}
+                          aria-current={active ? "page" : undefined}
                           className={cn(
-                            "flex items-center gap-2.5 rounded-clay-sm px-3 py-2 text-[13px] font-medium transition-colors",
-                            !active && "clay-hover",
+                            "flex h-7 items-center gap-2 rounded-md px-2.5 text-[13px]",
+                            !active && "ui-hover",
                           )}
                           style={{
-                            color: active ? "var(--app-accent-strong)" : "var(--app-text-muted)",
-                            background: active
-                              ? "color-mix(in oklab, var(--app-accent) 12%, var(--app-surface))"
-                              : "transparent",
-                            boxShadow: active ? "var(--clay-shadow), var(--clay-rim)" : "none",
+                            color: active ? "var(--app-text)" : "var(--app-text-muted)",
+                            background: active ? ACTIVE_BG : "transparent",
+                            fontWeight: active ? 500 : 400,
                           }}
                         >
                           <span
@@ -259,14 +277,11 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
             })}
           </nav>
 
-          <div className="mt-auto flex flex-col gap-2 px-3 pb-5">
+          <div className="mt-auto flex flex-col gap-2 px-2 pb-3 pt-4">
             {streak > 0 ? (
               <div
-                className="mx-2 rounded-clay-sm border p-3"
-                style={{
-                  borderColor: "var(--app-border)",
-                  background: "var(--app-accent-soft)",
-                }}
+                className="rounded-md p-3"
+                style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
               >
                 <div className="flex items-center justify-between">
                   <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>
@@ -274,7 +289,7 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
                   </p>
                   {streakSummary.hitMilestone ? (
                     <span
-                      className="rounded-full px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.06em]"
+                      className="rounded px-1.5 py-0.5 text-[10.5px] font-medium"
                       style={{
                         background: "var(--app-accent)",
                         color: "var(--app-accent-on)",
@@ -284,7 +299,7 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
                     </span>
                   ) : null}
                 </div>
-                <p className="mt-1 text-[22px] font-medium leading-none tabular-nums" style={{ color: "var(--app-text)" }}>
+                <p className="mt-1.5 text-[18px] font-semibold leading-none tabular-nums" style={{ color: "var(--app-text)" }}>
                   {streak} <span className="text-[13px] font-normal" style={{ color: "var(--app-text-muted)" }}>consistent {streak === 1 ? "day" : "days"}</span>
                 </p>
                 {streakSummary.nextMilestone && streakSummary.daysToNext ? (
@@ -295,11 +310,8 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
               </div>
             ) : streakSummary.lastPlannedDay?.missReason ? (
               <div
-                className="mx-2 rounded-clay-sm border p-3"
-                style={{
-                  borderColor: "var(--app-border)",
-                  background: "var(--app-surface-soft)",
-                }}
+                className="rounded-md p-3"
+                style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
               >
                 <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>
                   Streak reset
@@ -312,18 +324,17 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
             <Link
               href="/app/pricing"
               aria-label="Upgrade plan"
-              className="group mx-2 flex items-center justify-between rounded-clay-sm border px-3 py-2.5 transition-[transform,box-shadow,background-color] hover:-translate-y-0.5"
+              className="group flex items-center justify-between rounded-md px-2.5 py-2 ui-pressable"
               style={{
-                borderColor: "color-mix(in oklab, var(--app-accent) 48%, var(--app-border))",
-                background: "color-mix(in oklab, var(--app-accent) 18%, var(--app-surface))",
-                boxShadow: "var(--clay-shadow), var(--clay-rim)",
-                color: "var(--app-accent-strong)",
+                background: "var(--app-surface)",
+                boxShadow: "var(--elev-1)",
+                color: "var(--app-text)",
               }}
             >
               <span className="flex min-w-0 items-center gap-2.5">
                 <span
                   aria-hidden="true"
-                  className="grid h-7 w-7 shrink-0 place-items-center rounded-clay-xs"
+                  className="grid h-6 w-6 shrink-0 place-items-center rounded-md"
                   style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}
                 >
                   <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -332,8 +343,8 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
                   </svg>
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-[13px] font-semibold leading-tight">Upgrade plan</span>
-                  <span className="mt-0.5 block truncate text-[10.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>
+                  <span className="block text-[13px] font-medium leading-tight">Upgrade plan</span>
+                  <span className="mt-0.5 block truncate text-[11.5px]" style={{ color: "var(--app-text-muted)" }}>
                     Unlock all features
                   </span>
                 </span>
@@ -348,54 +359,39 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
                 strokeWidth="1.6"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="shrink-0 transition-transform group-hover:translate-x-0.5"
+                className="shrink-0"
+                style={{ color: "var(--app-text-faint)" }}
               >
                 <path d="M7 4l6 6-6 6" />
               </svg>
             </Link>
-            <button
-              onClick={toggle}
-              className="mx-2 flex items-center justify-between rounded-clay-sm border px-3 py-2 text-[13px] transition-colors"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-text-soft)" }}
-              aria-label="Toggle theme"
-            >
-              <span className="flex items-center gap-2">
-                {resolved === "dark" ? (
-                  <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M15 11a5 5 0 01-6-6 6 6 0 106 6z" /></svg>
-                ) : (
-                  <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="10" cy="10" r="3.5" /><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.5 4.5l1.5 1.5M14 14l1.5 1.5M4.5 15.5L6 14M14 6l1.5-1.5" strokeLinecap="round" /></svg>
-                )}
-                {resolved === "dark" ? "Dark" : "Light"}
-              </span>
-              <span style={{ color: "var(--app-text-muted)" }}>Switch</span>
-            </button>
             {user ? (
               <div
-                className="mx-2 flex items-center gap-2 rounded-clay-sm px-1 py-1"
-                style={{ borderTop: "1px solid var(--app-border)" }}
+                className="mt-1 flex items-center gap-1 border-t pt-2"
+                style={{ borderColor: "var(--app-border)" }}
               >
                 <Link
                   href="/app/settings"
                   aria-label={`Open settings for ${user.name}`}
-                  className="clay-hover flex min-w-0 flex-1 items-center gap-3 rounded-clay-sm px-2 py-1"
+                  className="ui-hover flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-1.5 py-1"
                 >
                   <div
                     aria-hidden="true"
-                    className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[12.5px] font-medium"
+                    className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[12px] font-semibold"
                     style={{ background: "var(--app-accent-soft)", color: "var(--app-accent-strong)" }}
                   >
                     {user.name.slice(0, 1).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13.5px] font-medium" style={{ color: "var(--app-text)" }}>{user.name}</p>
-                    <p className="truncate text-[11.5px]" style={{ color: "var(--app-text-muted)" }}>Profile & settings</p>
+                    <p className="truncate text-[13px] font-medium" style={{ color: "var(--app-text)" }}>{user.name}</p>
+                    <p className="truncate text-[11.5px]" style={{ color: "var(--app-text-muted)" }}>{isGuestEmail(user.email) ? "Guest account" : user.email}</p>
                   </div>
                 </Link>
                 <button
                   onClick={signOut}
                   disabled={signingOut}
                   aria-label="Sign out"
-                  className="grid h-8 w-8 place-items-center rounded-clay-sm transition-colors clay-hover disabled:opacity-50"
+                  className="grid h-8 w-8 place-items-center rounded-md transition-colors ui-hover disabled:opacity-50"
                   style={{ color: "var(--app-text-muted)" }}
                 >
                   <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M8 4H5a2 2 0 00-2 2v8a2 2 0 002 2h3M12 6l4 4-4 4M16 10H8" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -425,30 +421,50 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
             </div>
           ) : null}
           {isGuestEmail(user?.email) ? (
-            <div className="px-6 pt-4 sm:px-10">
-              <GuestBanner />
-            </div>
+            <GuestBanner />
           ) : null}
           <PageMount>{children}</PageMount>
         </main>
       </div>
       <ArcadFloatingButton />
       <MobileBottomNav />
+      <NewTaskSheet open={newTaskOpen} onClose={() => setNewTaskOpen(false)} />
+      <ShortcutsDialog open={shortcutsOpen} onClose={closeShortcuts} />
     </div>
   );
 }
 
+/** Selected nav row: a neutral tint, so the accent stays for icons and actions. */
+const ACTIVE_BG = "color-mix(in oklab, var(--app-text) 8%, transparent)";
+
+const SIDEBAR_KEY = "arcadia:sidebar";
+
+function readSidebarPref(): boolean {
+  try {
+    return window.localStorage.getItem(SIDEBAR_KEY) !== "hidden";
+  } catch {
+    return true;
+  }
+}
+
+function writeSidebarPref(open: boolean) {
+  try {
+    window.localStorage.setItem(SIDEBAR_KEY, open ? "shown" : "hidden");
+  } catch {
+    /* ignore */
+  }
+}
+
 function BrandMark() {
   return (
-    <Link href="/app" className="flex items-center gap-2 text-[15px] font-medium tracking-[-0.01em]">
+    <Link href="/app" aria-label="Arcadia — go to Today" title="Arcadia" className="grid h-8 w-8 place-items-center rounded-md">
       <span
         aria-hidden="true"
-        className="grid h-7 w-7 place-items-center rounded-clay-xs"
-        style={{ background: "var(--app-accent-soft)", color: "var(--app-accent-strong)" }}
+        className="grid h-6 w-6 place-items-center rounded-md"
+        style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}
       >
-        <Logo size={14} />
+        <Logo size={12} />
       </span>
-      <span style={{ color: "var(--app-text)" }}>Arcadia</span>
     </Link>
   );
 }

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Courier_Prime, DM_Sans, Instrument_Serif, JetBrains_Mono } from "next/font/google";
+import { DM_Sans, Inter, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 // DM Sans replaces Inter as the primary sans — warmer letterforms, no
@@ -27,15 +27,12 @@ const serif = Instrument_Serif({
   display: "swap",
 });
 
-// The product (dashboard, auth, legal) is typewriter-set throughout. It stays a
-// fourth family rather than replacing the three above, because the landing page
-// still needs DM Sans / JetBrains Mono / Instrument Serif. globals.css swaps it
-// in under `html[data-app-theme]`. Courier Prime ships only 400 and 700.
-const typewriter = Courier_Prime({
+// The product (dashboard, auth, legal) is set in Inter: a working UI face with
+// tabular figures and a full weight range, where the landing keeps DM Sans for
+// its warmer display type. globals.css swaps it in under `html[data-app-theme]`.
+const ui = Inter({
   subsets: ["latin"],
-  weight: ["400", "700"],
-  style: ["normal", "italic"],
-  variable: "--font-courier",
+  variable: "--font-ui",
   display: "swap",
 });
 
@@ -88,7 +85,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${inter.variable} ${mono.variable} ${serif.variable} ${typewriter.variable} h-full`}
+      className={`${inter.variable} ${mono.variable} ${serif.variable} ${ui.variable} h-full`}
     >
       {/* The night background and white text are already set on `body` in
           globals.css @layer base. Repeating them as utilities here put them in

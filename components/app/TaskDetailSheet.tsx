@@ -182,9 +182,9 @@ export default function TaskDetailSheet({ task, timezone, onClose, onEdit }: Tas
         role="dialog"
         aria-modal="true"
         aria-labelledby="task-detail-title"
-        className="relative w-full max-w-[560px] rounded-t-clay-lg p-6 sm:rounded-clay"
+        className="relative w-full max-w-[560px] rounded-t-xl p-6 sm:rounded-lg"
         style={{
-          background: "var(--app-elev)", boxShadow: "var(--clay-shadow-sheet), var(--clay-rim)",
+          background: "var(--app-elev)", boxShadow: "var(--elev-3)",
           color: "var(--app-text)",
         }}
       >
@@ -218,7 +218,7 @@ export default function TaskDetailSheet({ task, timezone, onClose, onEdit }: Tas
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-clay-sm transition-colors clay-hover"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-md transition-colors ui-hover"
             style={{ color: "var(--app-text-muted)" }}
           >
             <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -245,7 +245,7 @@ export default function TaskDetailSheet({ task, timezone, onClose, onEdit }: Tas
           </div>
           <div
             className="mt-2 h-1.5 w-full overflow-hidden rounded-full"
-            style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)" }}
+            style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)" }}
             aria-hidden="true"
           >
             <div
@@ -319,9 +319,9 @@ export default function TaskDetailSheet({ task, timezone, onClose, onEdit }: Tas
             }}
             rows={3}
             placeholder="Anything to remember about this task — links, page numbers, why it matters."
-            className="mt-2 w-full resize-y rounded-clay-sm px-3 py-2.5 text-[13.5px] outline-none"
+            className="mt-2 w-full resize-y rounded-md px-3 py-2.5 text-[13.5px] outline-none"
             style={{
-              background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)",
+              background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)",
               color: "var(--app-text)",
               minHeight: 72,
             }}

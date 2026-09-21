@@ -5,7 +5,7 @@ import { ThemeProvider } from "@/lib/app/theme";
  * Every product surface lives under this route group: the dashboard, the auth
  * screens and the legal pages. Mounting ThemeProvider here is what stamps
  * `data-app-theme` onto <html>, and that attribute is the single selector the
- * app palette, the typewriter type and the clay tokens hang off in globals.css.
+ * app palette, type and elevation tokens hang off in globals.css.
  *
  * The marketing page (app/page.tsx) sits outside this group and never gets the
  * attribute, so it keeps the landing design language untouched.

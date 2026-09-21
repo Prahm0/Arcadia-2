@@ -26,8 +26,8 @@ export default function CompanionCard() {
       <button
         type="button"
         onClick={() => setSheetOpen(true)}
-        className="w-full rounded-clay p-5 text-left transition-colors clay-hover"
-        style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
+        className="w-full rounded-lg p-5 text-left transition-colors ui-hover"
+        style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
       >
         <div className="flex items-center gap-4">
           <Companion

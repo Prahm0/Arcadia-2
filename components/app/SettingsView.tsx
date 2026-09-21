@@ -316,7 +316,7 @@ export default function SettingsView() {
     <>
       <PageHeader
         eyebrow="Settings"
-        title={<><span className="accent-serif">Account</span> & preferences</>}
+        title="Account & preferences"
         meta={
           account
             ? isGuest
@@ -329,10 +329,10 @@ export default function SettingsView() {
       {isGuest ? (
         <div className="mx-auto w-full max-w-[720px] px-6 pt-6 sm:px-10">
           <div
-            className="rounded-clay p-5"
+            className="rounded-lg p-5"
             style={{
               background: "var(--app-accent-soft)",
-              boxShadow: "var(--clay-shadow), var(--clay-rim)",
+              boxShadow: "var(--elev-1)",
             }}
           >
             <p className="text-[14px] font-medium" style={{ color: "var(--app-accent-strong)" }}>
@@ -380,7 +380,7 @@ export default function SettingsView() {
                 key={option}
                 type="button"
                 onClick={() => setMode(option)}
-                className="rounded-clay-sm px-3 py-2.5 text-[13.5px] font-medium capitalize transition-colors"
+                className="rounded-md px-3 py-2.5 text-[13.5px] font-medium capitalize transition-colors"
                 style={{
                   background: mode === option ? "var(--app-accent-soft)" : "transparent",
                   color: mode === option ? "var(--app-accent-strong)" : "var(--app-text-soft)",
@@ -401,7 +401,7 @@ export default function SettingsView() {
                 key={option.label}
                 type="button"
                 onClick={() => toggleTimeFormat(option.v)}
-                className="flex flex-col items-start rounded-clay-sm px-3 py-2.5 text-left transition-colors"
+                className="flex flex-col items-start rounded-md px-3 py-2.5 text-left transition-colors"
                 style={{
                   background: use24h === option.v ? "var(--app-accent-soft)" : "transparent",
                   color: use24h === option.v ? "var(--app-accent-strong)" : "var(--app-text-soft)",
@@ -492,10 +492,10 @@ export default function SettingsView() {
                 value={newFeedUrl}
                 onChange={(event) => setNewFeedUrl(event.target.value)}
                 placeholder="https://p01-calendars.icloud.com/…/calendar.ics"
-                className="flex-1 rounded-clay-sm px-3 py-2.5 text-[13.5px] outline-none"
+                className="flex-1 rounded-md px-3 py-2.5 text-[13.5px] outline-none"
                 style={{
                   background: "var(--app-surface-soft)",
-                  boxShadow: "var(--clay-well)",
+                  boxShadow: "var(--elev-inset)",
                   color: "var(--app-text)",
                 }}
                 disabled={addingFeed}
@@ -506,10 +506,10 @@ export default function SettingsView() {
                 onChange={(event) => setNewFeedName(event.target.value)}
                 placeholder="Label (optional)"
                 maxLength={60}
-                className="rounded-clay-sm px-3 py-2.5 text-[13.5px] outline-none sm:w-[180px]"
+                className="rounded-md px-3 py-2.5 text-[13.5px] outline-none sm:w-[180px]"
                 style={{
                   background: "var(--app-surface-soft)",
-                  boxShadow: "var(--clay-well)",
+                  boxShadow: "var(--elev-inset)",
                   color: "var(--app-text)",
                 }}
                 disabled={addingFeed}
@@ -536,10 +536,10 @@ export default function SettingsView() {
               {calendarFeeds.map((feed) => (
                 <li
                   key={feed.id}
-                  className="flex flex-wrap items-center gap-3 rounded-clay-sm px-3.5 py-3"
+                  className="flex flex-wrap items-center gap-3 rounded-md px-3.5 py-3"
                   style={{
                     background: "var(--app-surface-soft)",
-                    boxShadow: "var(--clay-well)",
+                    boxShadow: "var(--elev-inset)",
                   }}
                 >
                   <span
@@ -608,14 +608,14 @@ export default function SettingsView() {
               role="switch"
               aria-checked={soundOn}
               onClick={() => toggleSound(!soundOn)}
-              className="clay-well-bare relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
+              className="inset-ring relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
               style={{
                 background: soundOn ? "var(--app-accent)" : "var(--app-surface-soft)",
               }}
             >
               <span
                 aria-hidden="true"
-                className="inline-block h-5 w-5 transform rounded-full clay-raised transition-transform"
+                className="inline-block h-5 w-5 transform rounded-full surface-raised transition-transform"
                 style={{ transform: soundOn ? "translateX(22px)" : "translateX(2px)" }}
               />
             </button>
@@ -644,14 +644,14 @@ export default function SettingsView() {
                   role="switch"
                   aria-checked={remindersOn}
                   onClick={() => void toggleReminders(!remindersOn)}
-                  className="clay-well-bare relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
+                  className="inset-ring relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
                   style={{
                     background: remindersOn ? "var(--app-accent)" : "var(--app-surface-soft)",
                   }}
                 >
                   <span
                     aria-hidden="true"
-                    className="inline-block h-5 w-5 transform rounded-full clay-raised transition-transform"
+                    className="inline-block h-5 w-5 transform rounded-full surface-raised transition-transform"
                     style={{ transform: remindersOn ? "translateX(22px)" : "translateX(2px)" }}
                   />
                 </button>
@@ -736,8 +736,8 @@ export default function SettingsView() {
 function Card({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="rounded-clay p-6"
-      style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
+      className="rounded-lg p-6"
+      style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
     >
       {children}
     </div>
@@ -779,9 +779,9 @@ function Input({
       disabled={disabled}
       autoComplete={autoComplete}
       minLength={minLength}
-      className="w-full rounded-clay-sm px-3 py-2.5 text-[14.5px] outline-none disabled:opacity-60"
+      className="w-full rounded-md px-3 py-2.5 text-[14.5px] outline-none disabled:opacity-60"
       style={{
-        background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)",
+        background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)",
         color: "var(--app-text)",
       }}
     />

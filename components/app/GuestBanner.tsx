@@ -38,32 +38,35 @@ export default function GuestBanner() {
   return (
     <div
       role="status"
-      className="mx-auto mb-4 flex w-full max-w-[720px] items-start gap-3 rounded-clay px-4 py-3 sm:px-5"
+      className="flex min-h-9 items-center gap-3 border-b px-6 py-1.5 text-[13px] sm:px-10"
       style={{
-        background: "var(--app-accent-soft)",
-        boxShadow: "var(--clay-shadow), var(--clay-rim)",
+        background: "color-mix(in oklab, var(--app-accent) 7%, var(--app-surface))",
+        borderColor: "var(--app-border)",
+        color: "var(--app-text-soft)",
       }}
     >
-      <div className="min-w-0 flex-1">
-        <p className="text-[13.5px] font-medium" style={{ color: "var(--app-accent-strong)" }}>
-          You're browsing as a guest.
-        </p>
-        <p className="mt-0.5 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
-          Nothing you do here is saved after you close the tab.{" "}
-          <Link href="/register" className="underline underline-offset-2">
-            Create an account to save your progress
-          </Link>
-          .
-        </p>
-      </div>
+      <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: "var(--app-accent)" }} />
+      <p className="min-w-0 flex-1 truncate">
+        <span className="font-medium" style={{ color: "var(--app-text)" }}>Guest account.</span>{" "}
+        Nothing you do here is saved after you close the tab.
+      </p>
+      <Link
+        href="/register"
+        className="shrink-0 rounded-md px-2 py-1 text-[12.5px] font-medium ui-hover"
+        style={{ color: "var(--app-accent-strong)" }}
+      >
+        Create account
+      </Link>
       <button
         type="button"
         onClick={dismiss}
         aria-label="Dismiss guest reminder"
-        className="rounded-clay-xs px-2 py-1 text-[12px]"
+        className="grid h-6 w-6 shrink-0 place-items-center rounded-md ui-hover"
         style={{ color: "var(--app-text-muted)" }}
       >
-        ✕
+        <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+          <path d="M4 4l8 8M12 4l-8 8" />
+        </svg>
       </button>
     </div>
   );

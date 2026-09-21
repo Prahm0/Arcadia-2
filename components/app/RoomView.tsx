@@ -143,7 +143,7 @@ export default function RoomView({ code }: RoomViewProps) {
   if (notFound) {
     return (
       <>
-        <PageHeader eyebrow="Room" title={<>No room with that <span className="accent-serif">code</span>.</>} />
+        <PageHeader eyebrow="Rooms" title="No room with that code" />
         <div className="mx-auto w-full max-w-[860px] px-6 py-8 sm:px-10">
           <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
             It may have been closed when the last person left. Double-check the code, or start a new room.
@@ -159,8 +159,9 @@ export default function RoomView({ code }: RoomViewProps) {
   return (
     <>
       <PageHeader
-        eyebrow="Room"
-        title={dash ? <span className="accent-serif">{dash.room.name}</span> : <>Loading…</>}
+        eyebrow="Rooms"
+        title={dash ? dash.room.name : "Loading…"}
+        tour="rooms"
         meta={
           dash?.isMember
             ? `${studyingNow} studying now · ${formatDuration(roomToday)} together today · code ${dash.room.code}`
@@ -186,8 +187,8 @@ export default function RoomView({ code }: RoomViewProps) {
       <div className="mx-auto flex w-full max-w-[860px] flex-col gap-6 px-6 py-8 sm:px-10">
         {actionError ? (
           <div
-            className="rounded-clay-sm p-4 text-[13px]"
-            style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)", color: "var(--app-danger)" }}
+            className="rounded-md p-4 text-[13px]"
+            style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-danger)" }}
           >
             {actionError}
           </div>
@@ -203,8 +204,8 @@ export default function RoomView({ code }: RoomViewProps) {
         ) : dash && !dash.isMember ? (
           <form
             onSubmit={join}
-            className="rounded-clay p-6"
-            style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
+            className="rounded-lg p-6"
+            style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
           >
             <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>You&apos;re invited</p>
             <p className="mt-2 text-[20px] tracking-[-0.01em]" style={{ color: "var(--app-text)" }}>
@@ -223,8 +224,8 @@ export default function RoomView({ code }: RoomViewProps) {
                 value={joinName}
                 onChange={(e) => setJoinName(e.target.value)}
                 placeholder={data.profile?.displayName || data.user.name || "Your name"}
-                className="w-full rounded-clay-sm px-3 py-2.5 text-[14.5px] outline-none"
-                style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)", color: "var(--app-text)" }}
+                className="w-full rounded-md px-3 py-2.5 text-[14.5px] outline-none"
+                style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
               />
             </label>
             <div className="mt-4">
@@ -237,8 +238,8 @@ export default function RoomView({ code }: RoomViewProps) {
           <>
             {me && me.activity === "idle" ? (
               <div
-                className="flex flex-wrap items-center justify-between gap-3 rounded-clay-sm px-4 py-3"
-                style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)" }}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-md px-4 py-3"
+                style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)" }}
               >
                 <span className="text-[13px]" style={{ color: "var(--app-text-soft)" }}>
                   Start a focus timer and the room sees you studying.
@@ -315,10 +316,10 @@ function MemberCard({
 
   return (
     <li
-      className="flex flex-col gap-4 rounded-clay p-5"
+      className="flex flex-col gap-4 rounded-lg p-5"
       style={{
         background: "var(--app-surface)",
-        boxShadow: "var(--clay-shadow), var(--clay-rim)",
+        boxShadow: "var(--elev-1)",
         opacity: member.activity === "idle" ? 0.78 : 1,
       }}
     >
@@ -329,7 +330,7 @@ function MemberCard({
           style={{
             background: studying ? "var(--app-accent)" : "var(--app-surface-soft)",
             color: studying ? "var(--app-accent-on)" : "var(--app-text-soft)",
-            boxShadow: studying ? undefined : "var(--clay-well)",
+            boxShadow: studying ? undefined : "var(--elev-inset)",
           }}
         >
           {initial(member.displayName)}

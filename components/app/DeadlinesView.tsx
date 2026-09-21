@@ -41,17 +41,14 @@ export default function DeadlinesView() {
   return (
     <>
       <PageHeader
-        eyebrow="Deadlines"
-        title={
-          total === 0 ? (
-            <>All <span className="accent-serif">caught up</span>.</>
-          ) : (
-            <>
-              {total} open <span className="accent-serif">{total === 1 ? "task" : "tasks"}</span>
-            </>
-          )
+        eyebrow="Plan"
+        title="Deadlines"
+        meta={
+          total === 0
+            ? "No open tasks"
+            : `${total} open ${total === 1 ? "task" : "tasks"} · ${formatDurationMinutes(totalMinutes)} of work across ${data.subjects.length} ${data.subjects.length === 1 ? "subject" : "subjects"}`
         }
-        meta={total > 0 ? `${formatDurationMinutes(totalMinutes)} of work remaining across ${data.subjects.length} subjects` : undefined}
+        tour="deadlines"
         action={
           <AppButton
             variant="primary"
@@ -148,8 +145,8 @@ function DeadlineRow({
       <button
         type="button"
         onClick={onClick}
-        className={cn("group flex w-full items-center gap-4 rounded-clay-sm px-4 py-4 text-left transition-colors clay-hover")}
-        style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
+        className={cn("group flex w-full items-center gap-4 rounded-md px-4 py-4 text-left transition-colors ui-hover")}
+        style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
       >
         <span
           aria-hidden="true"

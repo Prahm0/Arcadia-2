@@ -113,12 +113,13 @@ export default function ScheduleView() {
   return (
     <>
       <PageHeader
-        eyebrow="Schedule"
-        title={weekLabel.title}
-        meta={weekLabel.subtitle}
+        eyebrow="Plan"
+        title="Schedule"
+        meta={`${weekLabel.title} ${weekLabel.subtitle}`}
+        tour="schedule"
         action={
           <div className="flex items-center gap-2">
-            <div className="flex items-center rounded-clay-sm" style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}>
+            <div className="flex items-center rounded-md" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
               <IconButton label="Previous week" onClick={() => setWeekOffset((v) => v - 1)}>
                 <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M12 5l-5 5 5 5" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </IconButton>
@@ -150,8 +151,8 @@ export default function ScheduleView() {
 
       <div className="px-4 py-6 sm:px-10 sm:py-8">
         <div
-          className="overflow-x-auto rounded-clay"
-          style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
+          className="overflow-x-auto rounded-lg"
+          style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
         >
           <div className="min-w-[760px]">
           <div
@@ -169,8 +170,6 @@ export default function ScheduleView() {
                 style={{ background: upToDate ? "var(--app-success)" : "var(--app-text-faint)" }}
               />
               <span>Live · {upToDate ? "Up to date" : "Historical"}</span>
-              <span className="mx-2" style={{ color: "var(--app-text-faint)" }}>·</span>
-              <span>Click a block to open · drag study blocks to move · click empty to add</span>
             </div>
           </div>
 
@@ -458,11 +457,11 @@ function WeekGrid({
                     onSelectEvent(event);
                   }}
                   className={cn(
-                    "block h-full w-full overflow-hidden rounded-clay-xs px-2.5 py-1.5 text-left leading-tight transition-shadow duration-150",
+                    "block h-full w-full overflow-hidden rounded-sm px-2.5 py-1.5 text-left leading-tight transition-shadow duration-150",
                     isCompleted && "opacity-55",
                     isMissed && "opacity-40",
                     draggable && "cursor-grab",
-                    isBeingDragged && "cursor-grabbing clay-raised",
+                    isBeingDragged && "cursor-grabbing surface-raised",
                   )}
                   style={{
                     background: styles.bg,

@@ -137,7 +137,7 @@ export default function MissedRecoveryCards() {
         return (
           <div
             key={event.id}
-            className="rounded-clay p-4"
+            className="rounded-lg p-4"
             style={{
               background: "var(--app-accent-soft)",
               border: "1px solid color-mix(in oklab, var(--app-accent) 30%, var(--app-border))",

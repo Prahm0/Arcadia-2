@@ -1,0 +1,755 @@
+import type { ReactNode } from "react";
+import {
+  Avatar,
+  BarChart,
+  Bubble,
+  CAT,
+  Chip,
+  FileRow,
+  Heatmap,
+  Meter,
+  MockButton,
+  MockInput,
+  Pointer,
+  Row,
+  Stack,
+  Stat,
+  TimerRing,
+  Toggle,
+  WeekGrid,
+  Window,
+} from "./TourVisuals";
+
+function Mono({ children }: { children: ReactNode }) {
+  return (
+    <span className="font-mono text-[10px]" style={{ color: "var(--app-text)" }}>
+      {children}
+    </span>
+  );
+}
+
+function Check({ done }: { done?: boolean }) {
+  return (
+    <span
+      className="grid h-3.5 w-3.5 place-items-center rounded-[3px] text-[8px]"
+      style={{
+        background: done ? "var(--app-text)" : "var(--app-surface)",
+        border: `1px solid ${done ? "var(--app-text)" : "var(--app-border-strong)"}`,
+        color: "var(--app-bg)",
+      }}
+    >
+      {done ? "✓" : ""}
+    </span>
+  );
+}
+
+export interface TourStep {
+  title: string;
+  body: string;
+  visual: ReactNode;
+}
+
+export interface Tour {
+  /** The page's name, as it appears in the sidebar. */
+  title: string;
+  steps: TourStep[];
+}
+
+export type TourId =
+  | "today"
+  | "arcad"
+  | "knowledge"
+  | "schedule"
+  | "deadlines"
+  | "commitments"
+  | "focus"
+  | "rooms"
+  | "analytics"
+  | "review";
+
+/**
+ * Bump when a tour's content changes enough that people who've seen it
+ * should see it again.
+ */
+export const TOUR_VERSION = 1;
+
+// Every step describes what the page actually does today. If a feature
+// changes, change its step in the same commit.
+export const TOURS: Record<TourId, Tour> = {
+  today: {
+    title: "Today",
+    steps: [
+      {
+        title: "Today's focus list",
+        body: "Focus lists the study blocks Arcadia planned for today: what each one is for, how long it takes and when it starts.",
+        visual: (
+          <Window width={300} title="Focus · 3 things to focus on today">
+            <Row bar={CAT.study} title="Kinematics review" meta="Physics · 4:00pm" right={<Mono>50m</Mono>} />
+            <Row bar={CAT.study} title="Lab report draft" meta="Chemistry · 6:30pm" right={<Mono>1h</Mono>} />
+            <Row bar={CAT.study} title="Essay plan" meta="English · 8:00pm" right={<Mono>30m</Mono>} />
+          </Window>
+        ),
+      },
+      {
+        title: "Start, tick or skip",
+        body: "Click a block to start a focus session on it. Tick the box when it's done, or mark it Missed if it didn't happen.",
+        visual: (
+          <Window width={300} title="Focus">
+            <Row bar="var(--app-border)" title="Kinematics review" meta="Physics" done right={<Check done />} />
+            <Row
+              bar={CAT.study}
+              title="Lab report draft"
+              meta="Chemistry · 6:30pm"
+              highlight
+              right={
+                <span className="flex items-center gap-2">
+                  <span className="text-[9.5px]" style={{ color: "var(--app-accent-strong)" }}>Focus →</span>
+                  <Check />
+                </span>
+              }
+            />
+            <Row
+              bar={CAT.study}
+              title="Essay plan"
+              meta="English · 8:00pm"
+              right={
+                <span className="flex items-center gap-2">
+                  <span className="text-[9.5px]" style={{ color: "var(--app-text-muted)" }}>Missed</span>
+                  <Check />
+                </span>
+              }
+            />
+            <Pointer style={{ left: 120, top: 70 }} />
+          </Window>
+        ),
+      },
+      {
+        title: "The rest at a glance",
+        body: "The side column keeps your next deadlines, today's and this week's focus time, and your streak in view.",
+        visual: (
+          <div className="grid w-[320px] grid-cols-[1fr_1.35fr] items-start gap-2">
+            <Stack gap={6}>
+              <Stat label="Streak" value="4" sub="days" />
+              <Stat label="Today · min" value="45" />
+              <Stat label="Week · hr" value="6.2" />
+            </Stack>
+            <Window width={180} title="Next deadlines">
+              <Row bar={CAT.rose} title="Chemistry lab report" meta="Due Fri" />
+              <Row bar={CAT.school} title="Complex numbers" meta="Due next Wed" />
+              <Row bar={CAT.extra} title="English essay" meta="Due 12 Oct" />
+            </Window>
+          </div>
+        ),
+      },
+      {
+        title: "Add work as it arrives",
+        body: "Press New task, or N anywhere, the moment something is set. Arcadia fits it into your week before it's due.",
+        visual: (
+          <Window width={290} title="New task">
+            <Stack>
+              <MockInput label="Title" value="English essay draft" focused />
+              <div className="grid grid-cols-2 gap-2">
+                <MockInput label="Subject" value="English" />
+                <MockInput label="Due" value="Fri 26 Sep" />
+              </div>
+              <div className="flex justify-end">
+                <MockButton variant="primary">Add &amp; schedule</MockButton>
+              </div>
+            </Stack>
+          </Window>
+        ),
+      },
+    ],
+  },
+
+  arcad: {
+    title: "Arcad",
+    steps: [
+      {
+        title: "Plan by talking",
+        body: "Tell Arcad what's going on in plain words: a test that moved, a busy night, a new assignment.",
+        visual: (
+          <Window width={290}>
+            <Stack>
+              <Bubble from="you">My chem test got moved to Thursday</Bubble>
+              <Bubble from="arcad">Got it. I&apos;ll pull two revision blocks forward to Tue and Wed.</Bubble>
+              <Bubble from="you">Can tonight be lighter? I have training</Bubble>
+            </Stack>
+          </Window>
+        ),
+      },
+      {
+        title: "Nothing changes until you apply",
+        body: "When Arcad wants to change your plan it sends a proposal. Review it, then Apply or Decline.",
+        visual: (
+          <Window width={290} title="Proposal from Arcad">
+            <Row bar={CAT.study} title="Move Chemistry revision" meta="Thu 6pm → Tue 6pm" />
+            <Row bar={CAT.study} title="Add Chemistry practice test" meta="Wed 5 – 6pm" />
+            <div className="mt-1.5 flex justify-end gap-1.5">
+              <MockButton size="sm">Decline</MockButton>
+              <MockButton size="sm" variant="primary">Apply</MockButton>
+            </div>
+            <Pointer style={{ right: 14, bottom: 4 }} />
+          </Window>
+        ),
+      },
+      {
+        title: "Follow-ups on missed blocks",
+        body: "If a study block ended without being ticked off, Arcad asks whether you got to it, and what got in the way if not.",
+        visual: (
+          <Window width={290}>
+            <p className="px-1 text-[11px] font-semibold" style={{ color: "var(--app-text)" }}>Did you get to Chemistry?</p>
+            <p className="mb-2 px-1 text-[10px]" style={{ color: "var(--app-text-muted)" }}>Yesterday · 6:30 – 7:30pm</p>
+            <div className="flex flex-wrap gap-1.5 px-1">
+              <Chip tone="accent">Ran out of time</Chip>
+              <Chip>Got interrupted</Chip>
+              <Chip>Wasn&apos;t ready</Chip>
+              <Chip>Something else</Chip>
+            </div>
+          </Window>
+        ),
+      },
+      {
+        title: "It knows your context",
+        body: "Arcad sees today's plan, your open tasks, subjects and streak, plus any Knowledge files you let it read.",
+        visual: (
+          <Window width={300} title="What Arcad knows">
+            <div className="grid grid-cols-2 gap-1.5">
+              <Stat label="Today" value="3" sub="blocks · 2h 10m" />
+              <Stat label="Open tasks" value="5" sub="due within 2 weeks" />
+              <Stat label="Subjects" value="3" sub="Physics, Chem, English" />
+              <Stat label="Streak" value="4" sub="consistent days" />
+            </div>
+          </Window>
+        ),
+      },
+    ],
+  },
+
+  knowledge: {
+    title: "Knowledge",
+    steps: [
+      {
+        title: "A shelf for every subject",
+        body: "Each subject you study gets its own space for files and notes. New subjects appear as soon as you add a task for them.",
+        visual: (
+          <Window width={280}>
+            <Stack gap={2}>
+              <Row bar={CAT.school} title="Physics" meta="3 files · notes" right={<Chip tone="accent">Arcad reads</Chip>} />
+              <Row bar={CAT.rose} title="Chemistry" meta="1 file" />
+              <Row bar={CAT.extra} title="English" meta="No files yet" />
+            </Stack>
+          </Window>
+        ),
+      },
+      {
+        title: "Upload your material",
+        body: "Add lecture slides, handouts and notes: PDF, Word, Pages, RTF, text or Markdown, up to 10 MB per file.",
+        visual: (
+          <Window width={280} title="Physics · Files">
+            <FileRow name="Week 6 – Momentum.pdf" meta="2.4 MB · uploaded today" />
+            <FileRow name="Formula sheet.docx" meta="180 KB" />
+            <FileRow name="Prac notes.md" meta="12 KB" />
+            <div className="mt-1.5 flex justify-end">
+              <MockButton size="sm">Upload file</MockButton>
+            </div>
+          </Window>
+        ),
+      },
+      {
+        title: "Leave notes for a tutor",
+        body: "Write down what anyone helping you should know: key topics, your textbook, how your teacher marks.",
+        visual: (
+          <Window width={280} title="Physics · Notes">
+            <MockInput
+              multiline
+              focused
+              value="Exam covers momentum + energy. Textbook: Jacaranda Physics 12. Teacher wants full working."
+            />
+          </Window>
+        ),
+      },
+      {
+        title: "You decide what Arcad reads",
+        body: "Turn on Let Arcad read this and Arcad uses that subject's files and notes when you ask it about the subject.",
+        visual: (
+          <Window width={260}>
+            <Stack gap={10}>
+              <Toggle on label="Let Arcad read this" />
+              <Bubble from="you">Explain impulse like my notes do</Bubble>
+              <Bubble from="arcad">From “Week 6 – Momentum”: impulse is…</Bubble>
+            </Stack>
+          </Window>
+        ),
+      },
+    ],
+  },
+
+  schedule: {
+    title: "Schedule",
+    steps: [
+      {
+        title: "Your week, planned for you",
+        body: "Arcadia fills the gaps around your commitments with study blocks for your open tasks, and keeps it current as things change.",
+        visual: (
+          <WeekGrid
+            blocks={[
+              { day: 0, start: 0, length: 4, color: CAT.school, label: "School" },
+              { day: 1, start: 0, length: 4, color: CAT.school, label: "School" },
+              { day: 2, start: 0, length: 4, color: CAT.school, label: "School" },
+              { day: 0, start: 5, length: 2, color: CAT.study, label: "Physics" },
+              { day: 1, start: 6, length: 2, color: CAT.sport, label: "Training" },
+              { day: 2, start: 5, length: 1, color: CAT.study, label: "Chem" },
+              { day: 3, start: 5, length: 2, color: CAT.study, label: "English" },
+              { day: 5, start: 1, length: 2, color: CAT.study, label: "Chem" },
+            ]}
+          />
+        ),
+      },
+      {
+        title: "Open any block",
+        body: "Click a block to see what it's for, start a focus session on it, or mark it done or missed.",
+        visual: (
+          <div className="relative flex items-start gap-3">
+            <div
+              className="mt-6 h-12 w-16 rounded-[4px] px-1.5 pt-1 text-[9px] font-semibold"
+              style={{
+                background: "color-mix(in oklab, var(--app-accent) 22%, var(--app-surface))",
+                borderLeft: "2px solid var(--app-accent)",
+                color: "var(--app-accent)",
+                boxShadow: "var(--elev-2)",
+              }}
+            >
+              Physics
+            </div>
+            <Window width={200}>
+              <p className="px-1 text-[11px] font-semibold" style={{ color: "var(--app-text)" }}>Physics · Kinematics</p>
+              <p className="mb-2 px-1 text-[9.5px]" style={{ color: "var(--app-text-muted)" }}>Mon 4:00 – 5:00pm · Part of: Prac report</p>
+              <div className="flex flex-wrap gap-1.5 px-1">
+                <MockButton size="sm" variant="primary">Start focus</MockButton>
+                <MockButton size="sm">Done</MockButton>
+                <MockButton size="sm">Missed</MockButton>
+              </div>
+            </Window>
+            <Pointer style={{ left: 40, top: 44 }} />
+          </div>
+        ),
+      },
+      {
+        title: "Drag to reschedule",
+        body: "Drag a study block to a better time and drop it. Only study blocks move; school and other commitments stay put.",
+        visual: (
+          <div className="relative">
+            <WeekGrid
+              width={300}
+              blocks={[
+                { day: 0, start: 0, length: 4, color: CAT.school, label: "School" },
+                { day: 1, start: 0, length: 4, color: CAT.school, label: "School" },
+                { day: 1, start: 5, length: 2, color: CAT.study, ghost: true },
+                { day: 3, start: 3, length: 2, color: CAT.study, label: "Physics", lifted: true },
+              ]}
+            />
+            <Pointer style={{ left: 196, top: 70 }} />
+          </div>
+        ),
+      },
+      {
+        title: "Click empty space to add",
+        body: "Click an empty spot on any day to add a task due then. Use the arrows or Today to move between weeks.",
+        visual: (
+          <div className="relative">
+            <WeekGrid
+              width={300}
+              blocks={[
+                { day: 0, start: 0, length: 4, color: CAT.school, label: "School" },
+                { day: 4, start: 5, length: 2, color: CAT.study, ghost: true, label: "+ New task" },
+              ]}
+            />
+            <Pointer style={{ left: 236, top: 92 }} />
+          </div>
+        ),
+      },
+    ],
+  },
+
+  deadlines: {
+    title: "Deadlines",
+    steps: [
+      {
+        title: "Everything that's due",
+        body: "Every open task in one list, with its subject, due date and how long it should take.",
+        visual: (
+          <Window width={290} title="Deadlines">
+            <Row bar={CAT.rose} title="Chemistry lab report" meta="Chem · Due Fri · 90 min" right={<Chip tone="warn">3 days</Chip>} />
+            <Row bar={CAT.school} title="Complex numbers set" meta="Maths · Due next Wed · 60 min" />
+            <Row bar={CAT.extra} title="English essay draft" meta="English · Due 12 Oct · 120 min" />
+          </Window>
+        ),
+      },
+      {
+        title: "Add a task in seconds",
+        body: "New task asks for a title, subject, type, due date and a time estimate. Arcadia schedules the work before the deadline.",
+        visual: (
+          <Window width={290} title="New task">
+            <Stack>
+              <MockInput label="Title" value="Chemistry lab report" />
+              <div className="grid grid-cols-2 gap-2">
+                <MockInput label="Type" value="Assignment" />
+                <MockInput label="Estimated time" value="1 hr 30" focused />
+              </div>
+              <div className="flex justify-end">
+                <MockButton variant="primary">Add &amp; schedule</MockButton>
+              </div>
+            </Stack>
+          </Window>
+        ),
+      },
+      {
+        title: "Or just tell Arcad",
+        body: "Type it in Arcad chat and it adds and schedules the task for you, with no form to fill in.",
+        visual: (
+          <Window width={290}>
+            <Stack>
+              <Bubble from="you">Lab report due Friday, about 90 minutes</Bubble>
+              <Bubble from="arcad">Added “Chemistry lab report” and booked Wed 6–7:30pm for it.</Bubble>
+            </Stack>
+          </Window>
+        ),
+      },
+    ],
+  },
+
+  commitments: {
+    title: "Commitments",
+    steps: [
+      {
+        title: "The fixed parts of your week",
+        body: "School hours, training, lessons: anything that happens at a set time and isn't up for negotiation.",
+        visual: (
+          <Window width={280} title="Commitments">
+            <Row bar={CAT.school} title="School" meta="Mon–Fri · 8:30am–3:15pm" />
+            <Row bar={CAT.sport} title="Training" meta="Tue, Thu · 6:00pm–7:30pm" />
+            <Row bar={CAT.extra} title="Music lesson" meta="Sat · 10:00am–11:00am" />
+          </Window>
+        ),
+      },
+      {
+        title: "Add it once",
+        body: "Set the days and times once and it repeats automatically. Choose Weekly, Weekdays, or One-off for a single date.",
+        visual: (
+          <Window width={280} title="New commitment">
+            <Stack>
+              <MockInput label="Title" value="Basketball training" />
+              <div>
+                <p className="mb-1 text-[9.5px] font-medium" style={{ color: "var(--app-text-soft)" }}>Repeats</p>
+                <div className="flex gap-1.5">
+                  <Chip tone="accent">Weekly</Chip>
+                  <Chip>Weekdays (Mon–Fri)</Chip>
+                  <Chip>One-off</Chip>
+                </div>
+              </div>
+            </Stack>
+          </Window>
+        ),
+      },
+      {
+        title: "Study fits around them",
+        body: "Arcadia only schedules study in the gaps your commitments leave, so the plan always fits your real week.",
+        visual: (
+          <WeekGrid
+            blocks={[
+              { day: 0, start: 0, length: 4, color: CAT.school, label: "School" },
+              { day: 1, start: 0, length: 4, color: CAT.school, label: "School" },
+              { day: 1, start: 6, length: 2, color: CAT.sport, label: "Training" },
+              { day: 3, start: 6, length: 2, color: CAT.sport, label: "Training" },
+              { day: 0, start: 5, length: 2, color: CAT.study, label: "Study" },
+              { day: 1, start: 4, length: 1, color: CAT.study, label: "Study" },
+              { day: 3, start: 4, length: 2, color: CAT.study, label: "Study" },
+              { day: 5, start: 1, length: 1, color: CAT.extra, label: "Music" },
+            ]}
+          />
+        ),
+      },
+    ],
+  },
+
+  focus: {
+    title: "Focus",
+    steps: [
+      {
+        title: "Pick a rhythm",
+        body: "Choose a preset: Deep focus (50 + 10), Classic (25 + 5), Long block (90 + 15), or set your own.",
+        visual: (
+          <Window width={240} title="Preset">
+            <Row title="Deep focus" right={<span className="font-mono text-[9.5px]" style={{ color: "var(--app-text-muted)" }}>50m · 10m</span>} highlight />
+            <Row title="Classic" right={<span className="font-mono text-[9.5px]" style={{ color: "var(--app-text-muted)" }}>25m · 5m</span>} />
+            <Row title="Long block" right={<span className="font-mono text-[9.5px]" style={{ color: "var(--app-text-muted)" }}>90m · 15m</span>} />
+            <Row title="Custom" right={<span className="font-mono text-[9.5px]" style={{ color: "var(--app-text-muted)" }}>your call</span>} />
+          </Window>
+        ),
+      },
+      {
+        title: "Say what you're working on",
+        body: "Pick the subject and, if you like, a goal for the session. Your study rooms see the subject while you focus.",
+        visual: (
+          <Window width={250} title="Working on">
+            <Stack>
+              <MockInput label="Subject" value="Physics" />
+              <MockInput label="Goal (optional)" value="Finish Q1–6 of the momentum set" focused />
+            </Stack>
+          </Window>
+        ),
+      },
+      {
+        title: "Start, and let it run",
+        body: "When focus ends the break starts on its own, and the session is logged to your stats. Skip or Reset any time.",
+        visual: (
+          <div className="flex items-center gap-4">
+            <TimerRing time="32:14" label="Focus" progress={0.36} />
+            <Stack gap={6}>
+              <MockButton variant="primary">Pause</MockButton>
+              <MockButton>Skip</MockButton>
+            </Stack>
+          </div>
+        ),
+      },
+      {
+        title: "Count distractions",
+        body: "Caught yourself drifting? Tap Distraction while the timer runs. The count is saved with the session.",
+        visual: (
+          <div className="flex flex-col items-center gap-3">
+            <TimerRing time="18:40" label="Focus" progress={0.62} size={100} />
+            <span
+              className="rounded-full px-3 py-1 text-[10.5px] font-medium"
+              style={{ border: "1px dashed var(--app-border-strong)", color: "var(--app-text-muted)", background: "var(--app-surface)" }}
+            >
+              Distraction · <span className="font-mono">2</span>
+            </span>
+          </div>
+        ),
+      },
+    ],
+  },
+
+  rooms: {
+    title: "Rooms",
+    steps: [
+      {
+        title: "Create or join a room",
+        body: "Create a room and share its 6-letter code or link. Friends type the code under Join, or just open the link.",
+        visual: (
+          <div className="grid w-[300px] grid-cols-2 gap-2">
+            <Window width={146} title="Create a room">
+              <Stack>
+                <MockInput value="Year 12 grind" />
+                <MockButton size="sm" variant="primary">Create</MockButton>
+              </Stack>
+            </Window>
+            <Window width={146} title="Join with a code">
+              <Stack>
+                <MockInput value="UX8SEK" focused />
+                <MockButton size="sm">Join</MockButton>
+              </Stack>
+            </Window>
+          </div>
+        ),
+      },
+      {
+        title: "See who's studying",
+        body: "Everyone's status comes from their focus timer: studying, on a break or idle, with a live timer and their subject.",
+        visual: (
+          <div className="grid w-[310px] grid-cols-2 gap-2">
+            <Window width={152}>
+              <div className="flex items-center gap-2">
+                <Avatar name="Josh" active />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10.5px] font-semibold" style={{ color: "var(--app-text)" }}>Josh</p>
+                  <p className="text-[9px]" style={{ color: "var(--app-text-muted)" }}>Chemistry</p>
+                </div>
+                <Chip tone="accent">Studying</Chip>
+              </div>
+              <p className="mt-2 font-mono text-[15px]" style={{ color: "var(--app-text)" }}>24:08</p>
+            </Window>
+            <Window width={152}>
+              <div className="flex items-center gap-2">
+                <Avatar name="Priya" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10.5px] font-semibold" style={{ color: "var(--app-text)" }}>Priya</p>
+                  <p className="text-[9px]" style={{ color: "var(--app-text-muted)" }}>4 min left</p>
+                </div>
+                <Chip tone="success">Break</Chip>
+              </div>
+              <p className="mt-2 font-mono text-[15px]" style={{ color: "var(--app-text)" }}>06:12</p>
+            </Window>
+          </div>
+        ),
+      },
+      {
+        title: "Compare today's totals",
+        body: "Each card shows how long that person has studied today. Whoever's studying is listed first.",
+        visual: (
+          <Window width={270} title="Year 12 grind · 2 studying now">
+            <Row title="Josh" meta="Studying · Chemistry" right={<span className="font-mono text-[11px]" style={{ color: "var(--app-text)" }}>2h 10m</span>} />
+            <Row title="You" meta="Studying · Physics" right={<span className="font-mono text-[11px]" style={{ color: "var(--app-text)" }}>1h 25m</span>} />
+            <Row title="Priya" meta="Idle" right={<span className="font-mono text-[11px]" style={{ color: "var(--app-text)" }}>1h 45m</span>} />
+          </Window>
+        ),
+      },
+      {
+        title: "Nothing to set up",
+        body: "Start a focus session anywhere in Arcadia and every room you're in sees it. No chat, no notifications.",
+        visual: (
+          <div className="flex items-center gap-3">
+            <TimerRing time="12:30" label="Focus" progress={0.25} size={96} />
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--app-text-faint)" strokeWidth="1.8" strokeLinecap="round">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+            <Window width={150}>
+              <div className="flex items-center gap-2">
+                <Avatar name="You" active />
+                <Chip tone="accent">Studying</Chip>
+              </div>
+              <p className="mt-1.5 text-[9.5px]" style={{ color: "var(--app-text-muted)" }}>Physics · 12:30</p>
+            </Window>
+          </div>
+        ),
+      },
+    ],
+  },
+
+  analytics: {
+    title: "Analytics",
+    steps: [
+      {
+        title: "Your study, measured",
+        body: "Focus time, sessions and your current streak for the week or the month. Switch with Week and Month at the top.",
+        visual: (
+          <div className="grid w-[300px] grid-cols-3 gap-2">
+            <Stat label="Focus time" value="6h 10m" />
+            <Stat label="Sessions" value="9" />
+            <Stat label="Current streak" value="4" sub="days" />
+          </div>
+        ),
+      },
+      {
+        title: "Where the time went",
+        body: "Daily focus shows which days you studied. By subject shows how your time splits between subjects.",
+        visual: (
+          <div className="grid w-[310px] grid-cols-[1.3fr_1fr] gap-2">
+            <Window width={170}>
+              <BarChart values={[40, 75, 0, 90, 55, 120, 30]} labels={["M", "T", "W", "T", "F", "S", "S"]} height={56} highlight={5} />
+            </Window>
+            <Window width={130}>
+              <Stack gap={7}>
+                <Meter label="Physics" value="2h 30m" fraction={0.8} />
+                <Meter label="Chem" value="1h 50m" fraction={0.6} />
+                <Meter label="English" value="50m" fraction={0.28} />
+              </Stack>
+            </Window>
+          </div>
+        ),
+      },
+      {
+        title: "Consistency over months",
+        body: "The heatmap shades each of the last 90 days by minutes focused. Gaps show up at a glance.",
+        visual: (
+          <Window width={200} style={{ width: "auto" }}>
+            <Heatmap weeks={14} />
+          </Window>
+        ),
+      },
+      {
+        title: "How streaks count",
+        body: "A day counts toward your streak when you complete at least 70% of the study minutes you planned for it.",
+        visual: (
+          <Window width={270}>
+            <Meter label="Today · planned 2h" value="1h 30m · 75%" fraction={0.75} />
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-[10px]" style={{ color: "var(--app-text-muted)" }}>70% locks the day in</span>
+              <Chip tone="success">Counts ✓</Chip>
+            </div>
+          </Window>
+        ),
+      },
+    ],
+  },
+
+  review: {
+    title: "Weekly review",
+    steps: [
+      {
+        title: "Planned vs done",
+        body: "See how much of the week's planned study you did, in time and in sessions. Switch between this week and last week.",
+        visual: (
+          <Window width={280} title="Last week">
+            <Meter label="6h 10m of 8h" value="77%" fraction={0.77} />
+            <p className="mt-1.5 text-[9.5px]" style={{ color: "var(--app-text-muted)" }}>77% of planned time · 9 of 11 sessions</p>
+          </Window>
+        ),
+      },
+      {
+        title: "Subject by subject",
+        body: "Each subject shows done against planned, so you can see which one is quietly falling behind.",
+        visual: (
+          <Window width={260}>
+            <Stack gap={8}>
+              <Meter label="Physics" value="2h 30m / 2h 30m" fraction={1} />
+              <Meter label="Chemistry" value="1h 50m / 3h" fraction={0.61} />
+              <Meter label="English" value="50m / 1h 30m" fraction={0.55} />
+            </Stack>
+          </Window>
+        ),
+      },
+      {
+        title: "One win, one adjustment",
+        body: "Arcadia picks out the week's best moment and one specific thing to change next week.",
+        visual: (
+          <Window width={280}>
+            <Stack gap={8}>
+              <div>
+                <Chip tone="success">Win</Chip>
+                <p className="mt-1 text-[10.5px]" style={{ color: "var(--app-text)" }}>Every Physics block done, all four.</p>
+              </div>
+              <div>
+                <Chip tone="accent">Adjustment</Chip>
+                <p className="mt-1 text-[10.5px]" style={{ color: "var(--app-text)" }}>Friday nights keep slipping, so move them to Saturday morning.</p>
+              </div>
+            </Stack>
+          </Window>
+        ),
+      },
+      {
+        title: "Consistency and streak",
+        body: "See how many planned days crossed the 70% line, plus your current and longest streak.",
+        visual: (
+          <Window width={250}>
+            <p className="text-[10.5px]" style={{ color: "var(--app-text)" }}>4 of 5 planned days hit 70%</p>
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-[10px]" style={{ color: "var(--app-text-muted)" }}>Streak</span>
+              <Chip tone="accent">4 consistent days · longest 9</Chip>
+            </div>
+          </Window>
+        ),
+      },
+    ],
+  },
+};
+
+// Which tour the page on screen offers, so the Help menu can reach it
+// without knowing about routes. PageTour sets it while mounted.
+let activeTour: TourId | null = null;
+const listeners = new Set<() => void>();
+
+export function setActiveTour(id: TourId | null): void {
+  activeTour = id;
+  listeners.forEach((listener) => listener());
+}
+
+export function subscribeActiveTour(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+export function getActiveTour(): TourId | null {
+  return activeTour;
+}

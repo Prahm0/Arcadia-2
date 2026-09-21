@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import AuthShell from "@/components/app/AuthShell";
 import Field from "@/components/app/Field";
 import PrimaryButton from "@/components/app/PrimaryButton";
@@ -14,7 +14,25 @@ interface RegisterResponse {
   verificationToken?: string;
 }
 
+// Someone arriving from a verification email lands here with `?token=…`. We
+// want to consume that token immediately and bounce them to /login with the
+// success banner, not drop them back on a blank register form. Everything
+// else on this page depends on client state, but useSearchParams needs its
+// own Suspense boundary per Next's rules — hence the inner component.
 export default function RegisterPage() {
+  return (
+    <Suspense fallback={<RegisterInner initialToken={null} />}>
+      <RegisterWithParams />
+    </Suspense>
+  );
+}
+
+function RegisterWithParams() {
+  const params = useSearchParams();
+  return <RegisterInner initialToken={params.get("token")} />;
+}
+
+function RegisterInner({ initialToken }: { initialToken: string | null }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -22,8 +40,36 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RegisterResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [verifying, setVerifying] = useState(false);
+  const [verifying, setVerifying] = useState(Boolean(initialToken));
+  const [verifyFailed, setVerifyFailed] = useState(false);
   const [guestLoading, setGuestLoading] = useState(false);
+
+  // Consume the token from the verification email on first render. On
+  // success bounce to /login?verified=1 (which shows the "Email verified"
+  // banner). On failure keep the status card open with a clear next step,
+  // rather than dropping back to a blank form.
+  useEffect(() => {
+    if (!initialToken) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await api(`/api/auth/verify?token=${encodeURIComponent(initialToken)}`);
+        if (!cancelled) router.replace("/login?verified=1");
+      } catch (err) {
+        if (cancelled) return;
+        // The raw backend message ("Internal Server Error", "Token not
+        // found", etc.) is alarming and unhelpful for someone clicking a
+        // stale email link. Keep it in the console for our own debugging
+        // and show the friendly copy in the UI.
+        console.warn("[register] verification failed", err);
+        setVerifying(false);
+        setVerifyFailed(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialToken, router]);
 
   async function onGuest() {
     setGuestLoading(true);
@@ -38,14 +84,16 @@ export default function RegisterPage() {
     }
   }
 
-  async function verifyWithToken(rawUrl: string) {
+  // Local-dev fallback: when RESEND_API_KEY isn't set the backend returns the
+  // token directly in the register response so the developer can proceed
+  // without a real inbox. In prod (Resend live) that field is absent and we
+  // show "Check your email to verify" instead.
+  async function autoVerify(token: string) {
     setVerifying(true);
     setError(null);
     try {
-      const token = new URL(rawUrl).searchParams.get("token");
-      if (!token) throw new Error("Verification link is missing a token.");
       await api(`/api/auth/verify?token=${encodeURIComponent(token)}`);
-      router.push("/login?verified=1");
+      router.replace("/login?verified=1");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Verification failed.");
       setVerifying(false);
@@ -63,7 +111,7 @@ export default function RegisterPage() {
       });
       setResult(response);
       if (response.verificationToken) {
-        void verifyWithToken(response.verificationToken);
+        void autoVerify(response.verificationToken);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -90,9 +138,9 @@ export default function RegisterPage() {
         </>
       }
     >
-      {result ? (
+      {verifying || verifyFailed || result ? (
         <div className="clay-well space-y-4 rounded-clay-sm p-5">
-          {result.verificationToken ? (
+          {verifying ? (
             <div className="flex items-center gap-3">
               <span
                 aria-hidden="true"
@@ -103,10 +151,42 @@ export default function RegisterPage() {
                 }}
               />
               <p className="text-[15px]" style={{ color: "var(--app-text)" }}>
-                {verifying ? "Verifying your email…" : "Preparing your account…"}
+                Verifying your email…
               </p>
             </div>
-          ) : (
+          ) : verifyFailed ? (
+            <>
+              <p className="text-[15px]" style={{ color: "var(--app-text)" }}>
+                This verification link didn&rsquo;t work.
+              </p>
+              <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
+                The link may have expired or already been used. If your
+                account is already verified, sign in below. Otherwise
+                create a new account and we&rsquo;ll send a fresh link.
+              </p>
+              <div className="flex flex-wrap gap-3 pt-1">
+                <Link
+                  href="/login"
+                  className="text-[13.5px] font-medium underline underline-offset-4"
+                  style={{ color: "var(--app-text)" }}
+                >
+                  Go to sign in
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVerifyFailed(false);
+                    setError(null);
+                    router.replace("/register");
+                  }}
+                  className="text-[13.5px] font-medium underline underline-offset-4"
+                  style={{ color: "var(--app-text-muted)" }}
+                >
+                  Create a new account
+                </button>
+              </div>
+            </>
+          ) : result ? (
             <>
               <p className="text-[15px]" style={{ color: "var(--app-text)" }}>
                 Check your email to verify.
@@ -114,12 +194,12 @@ export default function RegisterPage() {
               <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
                 {result.message}
               </p>
+              {error ? (
+                <p className="text-[13px]" style={{ color: "var(--app-danger)" }}>
+                  {error}
+                </p>
+              ) : null}
             </>
-          )}
-          {error ? (
-            <p className="text-[13px]" style={{ color: "var(--app-danger)" }}>
-              {error}
-            </p>
           ) : null}
         </div>
       ) : (

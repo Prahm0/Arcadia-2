@@ -185,6 +185,9 @@ google.post("/sync", async (c) => {
           subject: description || null,
           startAt: ev.startAt,
           endAt: ev.endAt,
+          // Refresh `kind` on every sync so rows written before the
+          // all-day handling landed get corrected on the next pass.
+          kind: ev.allDay ? "all-day" : "external",
           editable: false,
           pinned: true,
         })

@@ -515,11 +515,20 @@ function WeekGrid({
 }
 
 function positionFor(event: PlannerEvent, days: DayColumn[], timezone: string) {
-  const startMs = Date.parse(event.startAt);
-  const endMs = Date.parse(event.endAt);
   const startKey = dateKey(event.startAt, timezone);
   const dayIndex = days.findIndex((day) => day.key === startKey);
   if (dayIndex === -1) return { dayIndex: 0, top: 0, height: 0, visible: false };
+
+  // All-day events from external calendars (Google, Apple, Canvas, …) don't
+  // belong on the time grid — Google Calendar itself pins them to a strip
+  // at the top of the day. We approximate that here: a short 4%-tall chip
+  // anchored to the top of the day column, out of the way of study blocks.
+  if (event.kind === "all-day") {
+    return { dayIndex, top: 0, height: 4, visible: true };
+  }
+
+  const startMs = Date.parse(event.startAt);
+  const endMs = Date.parse(event.endAt);
   const dayStart = days[dayIndex].startMs;
   const startHours = (startMs - dayStart) / 3_600_000;
   const endHours = (endMs - dayStart) / 3_600_000;

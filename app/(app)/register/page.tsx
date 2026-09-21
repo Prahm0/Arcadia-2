@@ -7,6 +7,7 @@ import AuthShell from "@/components/app/AuthShell";
 import Field from "@/components/app/Field";
 import PrimaryButton from "@/components/app/PrimaryButton";
 import { api } from "@/lib/api/client";
+import { continueAsGuest } from "@/lib/auth/guest";
 
 interface RegisterResponse {
   message: string;
@@ -22,6 +23,20 @@ export default function RegisterPage() {
   const [result, setResult] = useState<RegisterResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
+  const [guestLoading, setGuestLoading] = useState(false);
+
+  async function onGuest() {
+    setGuestLoading(true);
+    setError(null);
+    try {
+      await continueAsGuest();
+      router.push("/app");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setGuestLoading(false);
+    }
+  }
 
   async function verifyWithToken(rawUrl: string) {
     setVerifying(true);
@@ -150,6 +165,30 @@ export default function RegisterPage() {
           <PrimaryButton type="submit" loading={loading}>
             Create account
           </PrimaryButton>
+          <div
+            className="flex items-center gap-3 text-[11.5px] uppercase tracking-[0.16em]"
+            style={{ color: "var(--app-text-faint)" }}
+          >
+            <span className="h-px flex-1" style={{ background: "var(--app-border)" }} />
+            or
+            <span className="h-px flex-1" style={{ background: "var(--app-border)" }} />
+          </div>
+          <button
+            type="button"
+            onClick={onGuest}
+            disabled={guestLoading || loading}
+            className="clay-pressable w-full rounded-clay-sm px-4 py-3 text-[14.5px] disabled:cursor-not-allowed disabled:opacity-60"
+            style={{
+              background: "var(--app-surface)",
+              color: "var(--app-text)",
+              boxShadow: "var(--clay-shadow), var(--clay-rim)",
+            }}
+          >
+            {guestLoading ? "Setting up a guest account…" : "Continue as guest"}
+          </button>
+          <p className="text-center text-[12px]" style={{ color: "var(--app-text-faint)" }}>
+            Skips sign-up with a throwaway account — nothing saves after you close the tab.
+          </p>
         </form>
       )}
     </AuthShell>

@@ -7,6 +7,7 @@ import AuthShell from "@/components/app/AuthShell";
 import Field from "@/components/app/Field";
 import PrimaryButton from "@/components/app/PrimaryButton";
 import { api } from "@/lib/api/client";
+import { continueAsGuest as continueAsGuestApi } from "@/lib/auth/guest";
 
 type Notice = { tone: "info" | "error"; text: string } | null;
 
@@ -47,33 +48,11 @@ function LoginForm() {
     }
   }
 
-  // Spins up a throwaway account, auto-verifies it via the dev-mode
-  // `verificationToken` the backend returns, then signs in — all in one
-  // click, no email required. Meant for demos and quick check-outs;
-  // there's no cleanup, so guest rows accumulate in the DB.
   async function continueAsGuest() {
     setGuestLoading(true);
     setNotice(null);
     try {
-      const suffix = Math.random().toString(36).slice(2, 10);
-      const guestEmail = `guest-${suffix}@arcadia.local`;
-      const guestPassword = `guest-${suffix}-${Math.random().toString(36).slice(2, 10)}`;
-      const guestName = `Guest ${suffix.slice(0, 4).toUpperCase()}`;
-
-      const register = await api<{ verificationToken?: string }>(
-        "/api/auth/register",
-        {
-          method: "POST",
-          body: JSON.stringify({ name: guestName, email: guestEmail, password: guestPassword }),
-        },
-      );
-      if (register.verificationToken) {
-        await api(`/api/auth/verify?token=${encodeURIComponent(register.verificationToken)}`);
-      }
-      await api("/api/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ email: guestEmail, password: guestPassword }),
-      });
+      await continueAsGuestApi();
       router.push("/app");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Something went wrong.";

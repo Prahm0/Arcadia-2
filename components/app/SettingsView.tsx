@@ -19,6 +19,7 @@ import {
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import { useRouter } from "next/navigation";
+import { isGuestEmail } from "@/lib/auth/guest";
 
 interface AccountResponse {
   account: {
@@ -78,6 +79,7 @@ export default function SettingsView() {
   }
 
   const google = data.google ?? { connected: false, lastSyncAt: null };
+  const isGuest = isGuestEmail(data.user.email);
   const [googleBusy, setGoogleBusy] = useState<"sync" | "disconnect" | null>(null);
   const [googleNotice, setGoogleNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
 
@@ -207,8 +209,38 @@ export default function SettingsView() {
       <PageHeader
         eyebrow="Settings"
         title={<><span className="accent-serif">Account</span> & preferences</>}
-        meta={account ? `Signed in as ${account.email}` : undefined}
+        meta={
+          account
+            ? isGuest
+              ? "Guest session — nothing you do here is saved after you sign out."
+              : `Signed in as ${account.email}`
+            : undefined
+        }
       />
+
+      {isGuest ? (
+        <div className="mx-auto w-full max-w-[720px] px-6 pt-6 sm:px-10">
+          <div
+            className="rounded-clay p-5"
+            style={{
+              background: "var(--app-accent-soft)",
+              boxShadow: "var(--clay-shadow), var(--clay-rim)",
+            }}
+          >
+            <p className="text-[14px] font-medium" style={{ color: "var(--app-accent-strong)" }}>
+              You're using a guest account.
+            </p>
+            <p className="mt-1.5 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
+              Your tasks, focus streak and Arcad chats live only in this session. Create an account to keep them.
+            </p>
+            <div className="mt-4">
+              <AppButton variant="primary" onClick={() => router.push("/register")}>
+                Create an account
+              </AppButton>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="mx-auto flex w-full max-w-[720px] flex-col gap-6 px-6 py-8 sm:px-10">
         <Card>
@@ -218,8 +250,12 @@ export default function SettingsView() {
               <Input value={name} onChange={setName} />
             </Field>
             <Field label="Email">
-              <Input value={data.user.email} onChange={() => {}} disabled />
-              <Hint>Email changes go through verification — use the change-email flow.</Hint>
+              <Input value={isGuest ? "" : data.user.email} onChange={() => {}} disabled />
+              <Hint>
+                {isGuest
+                  ? "Guest accounts have no email. Create an account to add one and save your progress."
+                  : "Email changes go through verification — use the change-email flow."}
+              </Hint>
             </Field>
             <div className="flex items-center justify-between pt-2">
               <Notice notice={profileNotice} />
@@ -416,22 +452,24 @@ export default function SettingsView() {
           )}
         </Card>
 
-        <Card>
-          <SectionHeader label="Password" />
-          <form onSubmit={changePassword} className="flex flex-col gap-4">
-            <Field label="Current password">
-              <Input value={currentPassword} onChange={setCurrentPassword} type="password" autoComplete="current-password" />
-            </Field>
-            <Field label="New password">
-              <Input value={newPassword} onChange={setNewPassword} type="password" autoComplete="new-password" minLength={10} />
-              <Hint>At least 10 characters.</Hint>
-            </Field>
-            <div className="flex items-center justify-between pt-2">
-              <Notice notice={passwordNotice} />
-              <AppButton type="submit" variant="primary" loading={savingPassword} disabled={!currentPassword || !newPassword}>Update</AppButton>
-            </div>
-          </form>
-        </Card>
+        {isGuest ? null : (
+          <Card>
+            <SectionHeader label="Password" />
+            <form onSubmit={changePassword} className="flex flex-col gap-4">
+              <Field label="Current password">
+                <Input value={currentPassword} onChange={setCurrentPassword} type="password" autoComplete="current-password" />
+              </Field>
+              <Field label="New password">
+                <Input value={newPassword} onChange={setNewPassword} type="password" autoComplete="new-password" minLength={10} />
+                <Hint>At least 10 characters.</Hint>
+              </Field>
+              <div className="flex items-center justify-between pt-2">
+                <Notice notice={passwordNotice} />
+                <AppButton type="submit" variant="primary" loading={savingPassword} disabled={!currentPassword || !newPassword}>Update</AppButton>
+              </div>
+            </form>
+          </Card>
+        )}
 
         <Card>
           <SectionHeader label="Session" />

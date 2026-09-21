@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { createRoom, joinRoom, listRooms, type StudyRoom } from "@/lib/api/rooms";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
@@ -11,7 +10,6 @@ import EmptyState, { ExampleRow } from "./EmptyState";
 
 export default function RoomsView() {
   const router = useRouter();
-  const { data } = useDashboardData();
   const [rooms, setRooms] = useState<StudyRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,8 +19,6 @@ export default function RoomsView() {
 
   const [joinCode, setJoinCode] = useState("");
   const [joining, setJoining] = useState(false);
-
-  const displayName = data.user.name.split(" ")[0];
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -45,7 +41,9 @@ export default function RoomsView() {
     setCreating(true);
     setError(null);
     try {
-      const room = await createRoom(name, displayName);
+      // No display name: the server uses the profile name, which keeps two
+      // guests from both showing up as "Guest".
+      const room = await createRoom(name);
       setCreateName("");
       router.push(`/app/rooms/${room.code}`);
     } catch (err) {
@@ -62,9 +60,9 @@ export default function RoomsView() {
     setJoining(true);
     setError(null);
     try {
-      await joinRoom(code, displayName);
+      const joined = await joinRoom(code);
       setJoinCode("");
-      router.push(`/app/rooms/${code}`);
+      router.push(`/app/rooms/${joined.room.code}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't join that room.");
     } finally {
@@ -77,7 +75,7 @@ export default function RoomsView() {
       <PageHeader
         eyebrow="Rooms"
         title={<>Focus with your <span className="accent-serif">people</span>.</>}
-        meta="Silent group study. Share a code. See each other's timers, nothing else."
+        meta="Share a code. See who's studying, what they're on, and how long they've gone today."
       />
 
       <div className="mx-auto flex w-full max-w-[860px] flex-col gap-6 px-6 py-8 sm:px-10">
@@ -168,15 +166,15 @@ export default function RoomsView() {
             <div className="mt-4">
               <EmptyState
                 title={<>No rooms <span className="accent-serif">yet</span>.</>}
-                body="Create one and share the code with a friend, or drop a code someone sent you. You'll see each other's timers — that's it."
+                body="Create one and share the code with a friend, or drop a code someone sent you. Start a focus timer and the room sees you studying."
                 example={
                   <>
-                    <ExampleRow title="Josh" meta="Focus · Physics · 32 min in · 18 min left" />
-                    <ExampleRow title="Priya" meta="Break · 4 min left" bar="var(--app-success)" />
-                    <ExampleRow title="You" meta="Idle" bar="var(--app-text-faint)" />
+                    <ExampleRow title="Josh" meta="Studying · Physics · 32 min in · 2h 10m today" />
+                    <ExampleRow title="Priya" meta="Break · 1h 45m today" bar="var(--app-success)" />
+                    <ExampleRow title="You" meta="Idle · 40m today" bar="var(--app-text-faint)" />
                   </>
                 }
-                hint="No chat, no notifications — just presence."
+                hint="No chat, no notifications — just who's working."
               />
             </div>
           ) : (
@@ -193,9 +191,20 @@ export default function RoomsView() {
                         {room.name}
                       </p>
                       <p className="mt-1 type-mono-label" style={{ color: "var(--app-text-muted)" }}>
-                        {room.code} · joined {relativeTime(room.joinedAt ?? room.createdAt)}
+                        {room.code} · {room.memberCount} {room.memberCount === 1 ? "member" : "members"}
                       </p>
                     </div>
+                    {room.studyingCount > 0 ? (
+                      <span
+                        className="rounded-full px-2.5 py-0.5 text-[11.5px] font-medium"
+                        style={{
+                          background: "color-mix(in oklab, var(--app-accent) 15%, transparent)",
+                          color: "var(--app-accent-strong)",
+                        }}
+                      >
+                        {room.studyingCount} studying
+                      </span>
+                    ) : null}
                     <span className="text-[11.5px]" style={{ color: "var(--app-text-muted)" }}>
                       Open →
                     </span>
@@ -208,16 +217,4 @@ export default function RoomsView() {
       </div>
     </>
   );
-}
-
-function relativeTime(iso: string): string {
-  const then = Date.parse(iso);
-  const diff = Date.now() - then;
-  const min = Math.round(diff / 60000);
-  if (min < 1) return "just now";
-  if (min < 60) return `${min} min ago`;
-  const hr = Math.round(min / 60);
-  if (hr < 24) return `${hr} hr ago`;
-  const day = Math.round(hr / 24);
-  return `${day} day${day === 1 ? "" : "s"} ago`;
 }

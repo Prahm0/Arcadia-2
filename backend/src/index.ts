@@ -11,6 +11,8 @@ import companion from "./routes/companion";
 import dashboard from "./routes/dashboard";
 import events from "./routes/events";
 import onboarding from "./routes/onboarding";
+import presence from "./routes/presence";
+import studyRooms from "./routes/study-rooms";
 import studySessions from "./routes/study-sessions";
 import tasks from "./routes/tasks";
 import uploads from "./routes/uploads";
@@ -32,7 +34,7 @@ app.use("/api/*", async (c, next) => {
     origin: (origin) => (allowed.includes(origin) ? origin : allowed[0]),
     credentials: true,
     allowHeaders: ["content-type", "x-csrf-token"],
-    allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   })(c, next);
 });
 
@@ -62,7 +64,9 @@ app.route("/api/conversations", conversations);
 app.route("/api/dashboard", dashboard);
 app.route("/api/events", events);
 app.route("/api/onboarding", onboarding);
+app.route("/api/presence", presence);
 app.route("/api/proposals", proposals);
+app.route("/api/study-rooms", studyRooms);
 app.route("/api/study-sessions", studySessions);
 app.route("/api/tasks", tasks);
 app.route("/api/uploads", uploads);

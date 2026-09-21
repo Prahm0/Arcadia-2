@@ -15,6 +15,13 @@
       "when": 1789966248774,
       "tag": "0001_add_companion_name",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789981999046,
+      "tag": "0002_study_rooms",
+      "breakpoints": true
     }
   ]
 }

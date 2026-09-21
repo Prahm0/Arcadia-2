@@ -223,6 +223,131 @@ console.log("--- isolation ---");
   csrf = savedCsrf;
 }
 
+console.log("--- study rooms ---");
+{
+  const check = (condition, label) => {
+    console.log(`${condition ? "ok  " : "FAIL"} ${label}`);
+    if (!condition) failures += 1;
+  };
+  const owner = { cookie, csrf };
+  const as = async (who, fn) => {
+    const saved = { cookie, csrf };
+    ({ cookie, csrf } = who);
+    try {
+      return await fn();
+    } finally {
+      who.cookie = cookie;
+      who.csrf = csrf;
+      ({ cookie, csrf } = saved);
+    }
+  };
+  const newUser = async (name) => {
+    const who = { cookie: "", csrf: "" };
+    await as(who, async () => {
+      const userEmail = `smoke-${name.toLowerCase()}-${Date.now()}@example.com`;
+      const reg = await call("/api/auth/register", {
+        method: "POST",
+        body: { name, email: userEmail, password },
+      });
+      await call(`/api/auth/verify?token=${encodeURIComponent(reg.verificationToken)}`);
+      await call("/api/auth/login", { method: "POST", body: { email: userEmail, password } });
+    });
+    return who;
+  };
+
+  const friend = await newUser("Friend");
+  const stranger = await newUser("Stranger");
+
+  await call("/api/study-rooms", { method: "POST", body: { name: "   " }, expect: 422 });
+  const { room } = await call("/api/study-rooms", {
+    method: "POST",
+    body: { name: "Physics grind" },
+    expect: 201,
+  });
+  check(/^[A-HJ-NP-Z2-9]{6}$/.test(room?.code ?? ""), "room code is 6 unambiguous chars");
+
+  // The friend joins with a lowercase code; joining twice is a no-op.
+  const joined = await as(friend, () =>
+    call(`/api/study-rooms/${room.code.toLowerCase()}/join`, { method: "POST", body: {} }),
+  );
+  check(joined.isMember && joined.members.length === 2, "friend joined, 2 members");
+  const again = await as(friend, () =>
+    call(`/api/study-rooms/${room.code}/join`, { method: "POST", body: {} }),
+  );
+  check(again.members.length === 2, "second join is a no-op");
+
+  // A non-member sees the room's name but not who is in it.
+  const peek = await as(stranger, () => call(`/api/study-rooms/${room.code}`));
+  check(peek.isMember === false && peek.members.length === 0 && peek.room.name === "Physics grind",
+    "non-member sees name only");
+  await call("/api/study-rooms/ZZZZZZ", { expect: 404 });
+
+  // Presence: owner starts focusing, friend sees it.
+  await call("/api/presence", { method: "PUT", body: { activity: "nope" }, expect: 400 });
+  await call("/api/presence", {
+    method: "PUT",
+    body: {
+      activity: "focus",
+      subject: "Physics",
+      startedAt: new Date(Date.now() - 5 * 60_000).toISOString(),
+      durationSeconds: 1500,
+    },
+  });
+  const view = await as(friend, () => call(`/api/study-rooms/${room.code}`));
+  const ownerRow = view.members.find((m) => m.userId === room.ownerUserId);
+  check(ownerRow?.activity === "focus" && ownerRow?.subject === "Physics", "friend sees owner focusing");
+  check(view.room.studyingCount === 1, "studyingCount is 1");
+
+  // Today total picks up a logged focus session (and ignores breaks).
+  const before = ownerRow?.todaySeconds ?? 0;
+  await call("/api/study-sessions", {
+    method: "POST",
+    body: [
+      { type: "focus", seconds: 600, subject: "Physics", endedAt: new Date().toISOString() },
+      { type: "break", seconds: 300, endedAt: new Date().toISOString() },
+    ],
+    expect: 201,
+  });
+  const after = await as(friend, () => call(`/api/study-rooms/${room.code}`));
+  const ownerAfter = after.members.find((m) => m.userId === room.ownerUserId);
+  check(ownerAfter?.todaySeconds === before + 600, "todaySeconds counts focus only");
+
+  // A focus row that has gone quiet reads as idle. Only possible against the
+  // local D1 that `wrangler dev` uses, so it is skipped for remote BASEs.
+  if (/127\.0\.0\.1|localhost/.test(BASE)) {
+    const { execSync } = await import("node:child_process");
+    execSync(
+      `npx wrangler d1 execute arcadia --local --command "UPDATE user_presence SET updated_at = updated_at - 200000 WHERE user_id = '${room.ownerUserId}'"`,
+      { stdio: "ignore" },
+    );
+    const stale = await as(friend, () => call(`/api/study-rooms/${room.code}`));
+    const ownerStale = stale.members.find((m) => m.userId === room.ownerUserId);
+    check(ownerStale?.activity === "idle" && stale.room.studyingCount === 0, "stale presence reads idle");
+  }
+
+  const list = await as(friend, () => call("/api/study-rooms"));
+  check(list.rooms.length === 1 && list.rooms[0].memberCount === 2, "friend's room list");
+
+  // Owner leaves: the friend inherits the room. Friend leaves: it's gone.
+  await call(`/api/study-rooms/${room.code}/leave`, { method: "POST" });
+  await call(`/api/study-rooms/${room.code}/leave`, { method: "POST", expect: 404 });
+  const handedOver = await as(friend, () => call(`/api/study-rooms/${room.code}`));
+  check(handedOver.room.ownerUserId !== room.ownerUserId && handedOver.members.length === 1,
+    "ownership passed to the friend");
+  await as(friend, () => call(`/api/study-rooms/${room.code}/leave`, { method: "POST" }));
+  await call(`/api/study-rooms/${room.code}`, { expect: 404 });
+
+  // Owned-room limit.
+  await as(stranger, async () => {
+    for (let i = 0; i < 10; i++) {
+      await call("/api/study-rooms", { method: "POST", body: { name: `Room ${i}` }, expect: 201 });
+    }
+    await call("/api/study-rooms", { method: "POST", body: { name: "One too many" }, expect: 409 });
+  });
+
+  ({ cookie, csrf } = owner);
+}
+
 console.log("--- logout ---");
 await call("/api/auth/logout", { method: "POST" });
 await call("/api/dashboard", { expect: 401 });

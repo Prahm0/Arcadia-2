@@ -2,150 +2,178 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ApiError } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import {
   getRoom,
-  heartbeatRoom,
+  joinRoom,
   leaveRoom,
-  type RoomState,
-  type StudyRoom,
+  type RoomDashboard,
   type StudyRoomMember,
 } from "@/lib/api/rooms";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
-import ArcadOrb from "./ArcadOrb";
 
-const POLL_MS = 5_000;
-const HEARTBEAT_MS = 15_000;
-/** Members whose last_seen_at is older than this read as "away". */
-const AWAY_THRESHOLD_MS = 60_000;
+/**
+ * How often the dashboard re-reads the room. Friends' timers tick locally
+ * between polls, so this only bounds how quickly a start/stop shows up.
+ */
+const POLL_MS = 20_000;
 
-const DEFAULT_STATE: RoomState = { activity: "idle" };
+const ACTIVITY_ORDER = { focus: 0, break: 1, idle: 2 } as const;
 
 interface RoomViewProps {
   code: string;
 }
 
 /**
- * A single study room — silent, presence-only. Polls the backend every 5s to
- * refresh member state and sends a heartbeat every 15s to hold this viewer's
- * own presence + timer state. No chat, no notifications.
+ * A study room's live dashboard: who's studying, on what, for how long, and
+ * how much they've done today. Status comes from each member's focus timer —
+ * nothing to set here. Read-only polling; viewing a room never writes.
  */
 export default function RoomView({ code }: RoomViewProps) {
   const router = useRouter();
   const { data } = useDashboardData();
-  const [room, setRoom] = useState<StudyRoom | null>(null);
-  const [members, setMembers] = useState<StudyRoomMember[]>([]);
+  const [dash, setDash] = useState<RoomDashboard | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [myState, setMyState] = useState<RoomState>(DEFAULT_STATE);
-  const [copied, setCopied] = useState(false);
+  const [notFound, setNotFound] = useState(false);
+  // A failed poll keeps the last good data on screen and just says so.
+  const [reconnecting, setReconnecting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [copied, setCopied] = useState<"code" | "link" | null>(null);
   const [leaving, setLeaving] = useState(false);
-  const stateRef = useRef<RoomState>(DEFAULT_STATE);
-
-  useEffect(() => {
-    stateRef.current = myState;
-  }, [myState]);
+  const [joining, setJoining] = useState(false);
+  const [joinName, setJoinName] = useState("");
+  const now = useNow(dash?.members.some((member) => member.activity !== "idle") ?? false);
 
   const load = useCallback(async () => {
     try {
-      const response = await getRoom(code);
-      setRoom(response.room);
-      setMembers(response.members);
-      setError(null);
+      setDash(await getRoom(code));
+      setReconnecting(false);
+      setNotFound(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't load the room.");
+      if (err instanceof ApiError && err.status === 404) setNotFound(true);
+      else setReconnecting(true);
     } finally {
       setLoading(false);
     }
   }, [code]);
 
+  // Poll while the tab is visible; a hidden tab costs nothing and catches up
+  // the moment it's looked at again.
   useEffect(() => {
     void load();
-    const id = window.setInterval(() => {
-      void load();
-    }, POLL_MS);
-    return () => window.clearInterval(id);
+    let id: number | null = null;
+    const startPolling = () => {
+      if (id === null) id = window.setInterval(() => void load(), POLL_MS);
+    };
+    const stopPolling = () => {
+      if (id !== null) window.clearInterval(id);
+      id = null;
+    };
+    const onVisibility = () => {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        void load();
+        startPolling();
+      }
+    };
+    if (!document.hidden) startPolling();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      stopPolling();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [load]);
 
-  // Send a heartbeat right away so this viewer registers as present.
-  useEffect(() => {
-    void heartbeatRoom(code, stateRef.current).catch(() => {
-      /* first heartbeat can race the room fetch; the interval will retry */
-    });
-    const id = window.setInterval(() => {
-      void heartbeatRoom(code, stateRef.current).then((response) => {
-        // Keep the members list warm between poll ticks.
-        setMembers(response.members);
-      }).catch(() => {
-        /* swallow — poll will refresh */
-      });
-    }, HEARTBEAT_MS);
-    return () => window.clearInterval(id);
-  }, [code]);
-
-  async function copyCode() {
-    if (!room) return;
+  async function join(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setJoining(true);
+    setActionError(null);
     try {
-      await navigator.clipboard.writeText(room.code);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1600);
-    } catch {
-      /* ignore */
+      setDash(await joinRoom(code, joinName.trim() || undefined));
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Couldn't join the room.");
+    } finally {
+      setJoining(false);
     }
   }
 
   async function leave() {
-    if (!confirm("Leave the room?")) return;
+    if (!confirm("Leave the room? You can rejoin with the code.")) return;
     setLeaving(true);
+    setActionError(null);
     try {
       await leaveRoom(code);
       router.push("/app/rooms");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't leave the room.");
+      setActionError(err instanceof Error ? err.message : "Couldn't leave the room.");
       setLeaving(false);
     }
   }
 
-  const shareUrl = useMemo(() => {
-    if (typeof window === "undefined" || !room) return "";
-    return `${window.location.origin}/app/rooms/${room.code}`;
-  }, [room]);
-
-  async function copyLink() {
-    if (!shareUrl) return;
+  async function copy(kind: "code" | "link") {
+    if (!dash) return;
+    const text =
+      kind === "code" ? dash.room.code : `${window.location.origin}/app/rooms/${dash.room.code}`;
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1600);
+      await navigator.clipboard.writeText(text);
+      setCopied(kind);
+      window.setTimeout(() => setCopied(null), 1600);
     } catch {
       /* ignore */
     }
   }
 
-  const activeCount = members.filter((member) => !isAway(member.lastSeenAt)).length;
+  const members = useMemo(() => {
+    if (!dash?.isMember) return [];
+    return [...dash.members].sort(
+      (a, b) =>
+        ACTIVITY_ORDER[a.activity] - ACTIVITY_ORDER[b.activity] ||
+        liveTodaySeconds(b, now) - liveTodaySeconds(a, now),
+    );
+  }, [dash, now]);
+
+  const studyingNow = members.filter((member) => member.activity === "focus").length;
+  const roomToday = members.reduce((sum, member) => sum + liveTodaySeconds(member, now), 0);
+  const me = members.find((member) => member.userId === data.user.id);
+
+  if (notFound) {
+    return (
+      <>
+        <PageHeader eyebrow="Room" title={<>No room with that <span className="accent-serif">code</span>.</>} />
+        <div className="mx-auto w-full max-w-[860px] px-6 py-8 sm:px-10">
+          <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
+            It may have been closed when the last person left. Double-check the code, or start a new room.
+          </p>
+          <Link href="/app/rooms" className="mt-4 inline-block text-[12.5px] font-medium underline underline-offset-4" style={{ color: "var(--app-text-muted)" }}>
+            ← All rooms
+          </Link>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
       <PageHeader
         eyebrow="Room"
-        title={
-          room ? (
-            <><span className="accent-serif">{room.name}</span></>
-          ) : (
-            <>Loading…</>
-          )
+        title={dash ? <span className="accent-serif">{dash.room.name}</span> : <>Loading…</>}
+        meta={
+          dash?.isMember
+            ? `${studyingNow} studying now · ${formatDuration(roomToday)} together today · code ${dash.room.code}`
+            : undefined
         }
-        meta={room ? `${activeCount} active · code ${room.code}` : undefined}
         action={
-          room ? (
+          dash?.isMember ? (
             <div className="flex flex-wrap items-center gap-2">
-              <AppButton variant="ghost" onClick={copyCode}>
-                {copied ? "Copied" : "Copy code"}
+              <AppButton variant="ghost" onClick={() => void copy("code")}>
+                {copied === "code" ? "Copied" : "Copy code"}
               </AppButton>
-              <AppButton variant="ghost" onClick={copyLink}>
-                Copy link
+              <AppButton variant="ghost" onClick={() => void copy("link")}>
+                {copied === "link" ? "Copied" : "Copy link"}
               </AppButton>
               <AppButton variant="ghost" onClick={leave} loading={leaving}>
                 Leave
@@ -156,111 +184,94 @@ export default function RoomView({ code }: RoomViewProps) {
       />
 
       <div className="mx-auto flex w-full max-w-[860px] flex-col gap-6 px-6 py-8 sm:px-10">
-        {error ? (
+        {actionError ? (
           <div
             className="rounded-clay-sm p-4 text-[13px]"
             style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)", color: "var(--app-danger)" }}
           >
-            {error}
+            {actionError}
           </div>
         ) : null}
 
-        {/* Your own status */}
-        <div
-          className="rounded-clay p-5"
-          style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
-        >
-          <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Your status</p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {(
-              [
-                { key: "idle", label: "Idle" },
-                { key: "focus", label: "Focus" },
-                { key: "break", label: "Break" },
-              ] as const
-            ).map((option) => (
-              <button
-                key={option.key}
-                type="button"
-                onClick={() =>
-                  setMyState((prev) => ({
-                    ...prev,
-                    activity: option.key,
-                    startedAt:
-                      option.key === prev.activity
-                        ? prev.startedAt
-                        : option.key === "idle"
-                          ? null
-                          : new Date().toISOString(),
-                  }))
-                }
-                className="rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-colors"
-                style={{
-                  background:
-                    myState.activity === option.key
-                      ? option.key === "focus"
-                        ? "var(--app-accent)"
-                        : option.key === "break"
-                          ? "var(--app-success)"
-                          : "var(--app-surface-soft)"
-                      : "transparent",
-                  color:
-                    myState.activity === option.key
-                      ? option.key === "idle"
-                        ? "var(--app-text)"
-                        : "white"
-                      : "var(--app-text-soft)",
-                  border: `1px solid ${
-                    myState.activity === option.key ? "transparent" : "var(--app-border-strong)"
-                  }`,
-                }}
-              >
-                {option.label}
-              </button>
-            ))}
-            <input
-              type="text"
-              value={myState.subject ?? ""}
-              onChange={(e) =>
-                setMyState((prev) => ({ ...prev, subject: e.target.value }))
-              }
-              placeholder="What are you on?"
-              maxLength={80}
-              className="ml-1 flex-1 rounded-clay-sm px-3 py-1.5 text-[13px] outline-none"
-              style={{
-                background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)",
-                color: "var(--app-text)",
-              }}
-            />
+        {loading && !dash ? (
+          <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>Loading…</p>
+        ) : !dash && reconnecting ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-[13.5px]" style={{ color: "var(--app-danger)" }}>Couldn&apos;t load the room.</p>
+            <AppButton variant="secondary" onClick={() => void load()}>Try again</AppButton>
           </div>
-          <p className="mt-3 text-[12px]" style={{ color: "var(--app-text-muted)" }}>
-            Your presence updates every {Math.round(HEARTBEAT_MS / 1000)}s. Close the tab and you'll drop to "away" within a minute.
-          </p>
-        </div>
-
-        {/* Members */}
-        <div
-          className="rounded-clay p-2"
-          style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
-        >
-          {loading ? (
-            <p className="p-4 text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>Loading…</p>
-          ) : members.length === 0 ? (
-            <p className="p-4 text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
-              No one here yet. Share the code above.
+        ) : dash && !dash.isMember ? (
+          <form
+            onSubmit={join}
+            className="rounded-clay p-6"
+            style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
+          >
+            <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>You&apos;re invited</p>
+            <p className="mt-2 text-[20px] tracking-[-0.01em]" style={{ color: "var(--app-text)" }}>
+              Join <span className="accent-serif">{dash.room.name}</span>
             </p>
-          ) : (
-            <ul className="flex flex-col">
+            <p className="mt-1 type-mono-label" style={{ color: "var(--app-text-muted)" }}>
+              {dash.room.memberCount} {dash.room.memberCount === 1 ? "member" : "members"} · code {dash.room.code}
+            </p>
+            <label className="mt-5 block max-w-[320px]">
+              <span className="mb-2 block text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>
+                Show me as <span style={{ color: "var(--app-text-faint)" }}>(optional)</span>
+              </span>
+              <input
+                type="text"
+                maxLength={40}
+                value={joinName}
+                onChange={(e) => setJoinName(e.target.value)}
+                placeholder={data.profile?.displayName || data.user.name || "Your name"}
+                className="w-full rounded-clay-sm px-3 py-2.5 text-[14.5px] outline-none"
+                style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)", color: "var(--app-text)" }}
+              />
+            </label>
+            <div className="mt-4">
+              <AppButton type="submit" variant="primary" loading={joining}>
+                Join room
+              </AppButton>
+            </div>
+          </form>
+        ) : dash?.isMember ? (
+          <>
+            {me && me.activity === "idle" ? (
+              <div
+                className="flex flex-wrap items-center justify-between gap-3 rounded-clay-sm px-4 py-3"
+                style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)" }}
+              >
+                <span className="text-[13px]" style={{ color: "var(--app-text-soft)" }}>
+                  Start a focus timer and the room sees you studying.
+                </span>
+                <Link
+                  href="/app/focus"
+                  className="text-[12.5px] font-medium underline underline-offset-4"
+                  style={{ color: "var(--app-text)" }}
+                >
+                  Start focusing →
+                </Link>
+              </div>
+            ) : null}
+
+            <ul className="grid gap-3 sm:grid-cols-2">
               {members.map((member) => (
-                <MemberRow key={member.userId} member={member} isYou={member.userId === data.user.id} />
+                <MemberCard
+                  key={member.userId}
+                  member={member}
+                  now={now}
+                  isYou={member.userId === data.user.id}
+                  isOwner={member.userId === dash.room.ownerUserId}
+                />
               ))}
             </ul>
-          )}
-        </div>
 
-        <p className="text-[12px]" style={{ color: "var(--app-text-faint)" }}>
-          Silent by design — no chat, no notifications. Just other people trying to focus at the same time.
-        </p>
+            <p className="text-[12px]" style={{ color: reconnecting ? "var(--app-danger)" : "var(--app-text-faint)" }}>
+              {reconnecting
+                ? "Reconnecting… showing the last update."
+                : "Updates about every 20 seconds. Timers tick live in between."}
+            </p>
+          </>
+        ) : null}
 
         <Link href="/app/rooms" className="text-[12.5px] font-medium underline underline-offset-4" style={{ color: "var(--app-text-muted)" }}>
           ← All rooms
@@ -270,81 +281,136 @@ export default function RoomView({ code }: RoomViewProps) {
   );
 }
 
-function MemberRow({ member, isYou }: { member: StudyRoomMember; isYou: boolean }) {
-  const away = isAway(member.lastSeenAt);
-  const activityLabel = away
-    ? "Away"
-    : member.activity === "focus"
-      ? "Focus"
+function MemberCard({
+  member,
+  now,
+  isYou,
+  isOwner,
+}: {
+  member: StudyRoomMember;
+  now: number;
+  isYou: boolean;
+  isOwner: boolean;
+}) {
+  const elapsed = elapsedSeconds(member, now);
+  const studying = member.activity === "focus";
+  const chip =
+    member.activity === "focus"
+      ? { label: "Studying", bg: "color-mix(in oklab, var(--app-accent) 15%, transparent)", fg: "var(--app-accent-strong)" }
       : member.activity === "break"
-        ? "Break"
-        : "Idle";
-  const chipColor = away
-    ? { bg: "var(--app-surface-soft)", fg: "var(--app-text-muted)" }
-    : member.activity === "focus"
-      ? { bg: "color-mix(in oklab, var(--app-accent) 15%, transparent)", fg: "var(--app-accent-strong)" }
-      : member.activity === "break"
-        ? { bg: "color-mix(in oklab, var(--app-success) 15%, transparent)", fg: "var(--app-success)" }
-        : { bg: "var(--app-surface-soft)", fg: "var(--app-text-muted)" };
-  const timingLine = buildTimingLine(member);
+        ? { label: "Break", bg: "color-mix(in oklab, var(--app-success) 15%, transparent)", fg: "var(--app-success)" }
+        : { label: "Idle", bg: "var(--app-surface-soft)", fg: "var(--app-text-muted)" };
+
+  let detail: string;
+  if (member.activity === "focus") {
+    detail = member.subject || "Focusing";
+  } else if (member.activity === "break" && member.durationSeconds) {
+    const left = Math.max(0, member.durationSeconds - elapsed);
+    detail = `${Math.ceil(left / 60)} min left`;
+  } else if (member.activity === "break") {
+    detail = "On a break";
+  } else {
+    detail = member.todaySeconds > 0 ? "Done for now" : "Not started today";
+  }
 
   return (
     <li
-      className="flex items-center gap-4 rounded-clay-sm px-3 py-3.5"
-      style={{ borderBottom: "1px solid var(--app-border)" }}
+      className="flex flex-col gap-4 rounded-clay p-5"
+      style={{
+        background: "var(--app-surface)",
+        boxShadow: "var(--clay-shadow), var(--clay-rim)",
+        opacity: member.activity === "idle" ? 0.78 : 1,
+      }}
     >
-      <ArcadOrb size={22} state={member.activity === "focus" && !away ? "thinking" : "idle"} />
-      <div className="min-w-0 flex-1">
-        <p className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>
-          {member.displayName}
-          {isYou ? (
-            <span className="ml-1.5 text-[11px]" style={{ color: "var(--app-text-muted)" }}>
-              you
-            </span>
-          ) : null}
-        </p>
-        <p className="mt-0.5 type-mono-label" style={{ color: "var(--app-text-muted)" }}>
-          {timingLine}
-        </p>
+      <div className="flex items-center gap-3">
+        <span
+          aria-hidden
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[14px] font-semibold"
+          style={{
+            background: studying ? "var(--app-accent)" : "var(--app-surface-soft)",
+            color: studying ? "var(--app-accent-on)" : "var(--app-text-soft)",
+            boxShadow: studying ? undefined : "var(--clay-well)",
+          }}
+        >
+          {initial(member.displayName)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[14.5px] font-medium" style={{ color: "var(--app-text)" }}>
+            {member.displayName}
+            {isYou ? <span className="ml-1.5 text-[11px]" style={{ color: "var(--app-text-muted)" }}>you</span> : null}
+            {isOwner ? <span className="ml-1.5 text-[11px]" style={{ color: "var(--app-text-faint)" }}>owner</span> : null}
+          </p>
+          <p className="truncate type-mono-label" style={{ color: "var(--app-text-muted)" }}>{detail}</p>
+        </div>
+        <span
+          className="shrink-0 rounded-full px-2.5 py-0.5 text-[11.5px] font-medium"
+          style={{ background: chip.bg, color: chip.fg }}
+        >
+          {chip.label}
+        </span>
       </div>
-      <span
-        className="rounded-full px-2.5 py-0.5 text-[11.5px] font-medium"
-        style={{ background: chipColor.bg, color: chipColor.fg }}
-      >
-        {activityLabel}
-      </span>
+
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <p className="type-eyebrow" style={{ color: "var(--app-text-faint)" }}>
+            {studying ? "This session" : member.activity === "break" ? "Break" : "Session"}
+          </p>
+          <p
+            className="font-mono text-[22px] tabular-nums tracking-[-0.01em]"
+            style={{ color: member.activity === "idle" ? "var(--app-text-faint)" : "var(--app-text)" }}
+          >
+            {member.activity === "idle" ? "—" : formatClock(elapsed)}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="type-eyebrow" style={{ color: "var(--app-text-faint)" }}>Today</p>
+          <p className="font-mono text-[22px] tabular-nums tracking-[-0.01em]" style={{ color: "var(--app-text)" }}>
+            {formatDuration(liveTodaySeconds(member, now))}
+          </p>
+        </div>
+      </div>
     </li>
   );
 }
 
-function isAway(lastSeenIso: string): boolean {
-  return Date.now() - Date.parse(lastSeenIso) > AWAY_THRESHOLD_MS;
+/** A 1s clock, only while someone's timer is actually running. */
+function useNow(ticking: boolean): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!ticking) return;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [ticking]);
+  return now;
 }
 
-function buildTimingLine(member: StudyRoomMember): string {
-  const parts: string[] = [];
-  if (member.subject) parts.push(member.subject);
-  if (member.activity !== "idle" && member.startedAt) {
-    const elapsedMin = Math.max(0, Math.round((Date.now() - Date.parse(member.startedAt)) / 60000));
-    parts.push(`${elapsedMin} min in`);
-    if (typeof member.durationSeconds === "number" && member.durationSeconds > 0) {
-      const remainingMin = Math.max(
-        0,
-        Math.round((member.durationSeconds - (Date.now() - Date.parse(member.startedAt)) / 1000) / 60),
-      );
-      parts.push(`${remainingMin} min left`);
-    }
-  }
-  parts.push(lastSeenRelative(member.lastSeenAt));
-  return parts.join(" · ");
+function elapsedSeconds(member: StudyRoomMember, now: number): number {
+  if (member.activity === "idle" || !member.startedAt) return 0;
+  return Math.max(0, Math.floor((now - Date.parse(member.startedAt)) / 1000));
 }
 
-function lastSeenRelative(iso: string): string {
-  const diffSec = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1000));
-  if (diffSec < 20) return "here now";
-  if (diffSec < 60) return `seen ${diffSec}s ago`;
-  const min = Math.round(diffSec / 60);
-  if (min < 60) return `seen ${min} min ago`;
-  const hr = Math.round(min / 60);
-  return `seen ${hr} hr ago`;
+/** Logged time today plus the focus session still on the clock. */
+function liveTodaySeconds(member: StudyRoomMember, now: number): number {
+  return member.todaySeconds + (member.activity === "focus" ? elapsedSeconds(member, now) : 0);
+}
+
+function formatClock(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  const mm = String(m).padStart(h > 0 ? 2 : 1, "0");
+  const ss = String(s).padStart(2, "0");
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
+function formatDuration(totalSeconds: number): string {
+  const totalMin = Math.floor(totalSeconds / 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h === 0) return `${m}m`;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+function initial(name: string): string {
+  return (name.trim()[0] ?? "?").toUpperCase();
 }

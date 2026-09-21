@@ -128,9 +128,16 @@ dashboard.get("/", async (c) => {
     analytics,
     companion: companionRow[0]
       ? {
-          form: companionRow[0].form,
-          palette: companionRow[0].palette,
-          accessory: companionRow[0].accessory ?? undefined,
+          profile: {
+            name: companionRow[0].name,
+            form: companionRow[0].form,
+            // Old rows may still carry the pre-picker "aurora" default;
+            // treat anything the client can't render as violet.
+            palette: ["violet", "aqua", "coral", "gold"].includes(companionRow[0].palette)
+              ? companionRow[0].palette
+              : "violet",
+            accessory: companionRow[0].accessory ?? "none",
+          },
           mood: companionRow[0].mood,
         }
       : null,

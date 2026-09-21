@@ -11,6 +11,8 @@ export interface Env {
   OPENAI_API_KEY?: string;
   RESEND_API_KEY?: string;
   TOKEN_ENCRYPTION_KEY?: string;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
 }
 
 export interface SessionContext {

@@ -40,10 +40,16 @@ auth.post("/register", async (c) => {
     return c.json({ message: "Check your email to confirm your account." });
   }
 
+  // Guest accounts use the reserved @arcadia.local suffix. There's no real
+  // inbox behind them, so we mark them verified on the spot and skip the
+  // mail send — otherwise "Continue as guest" fails to sign in with our
+  // usual "confirm your email first" gate.
+  const isGuest = email.endsWith("@arcadia.local");
+
   const salt = newSalt();
   const passwordHash = await hashPassword(password, salt);
   const userId = newId("usr");
-  const verificationToken = newToken(24);
+  const verificationToken = isGuest ? null : newToken(24);
 
   await database.insert(schema.users).values({
     id: userId,
@@ -51,8 +57,9 @@ auth.post("/register", async (c) => {
     passwordHash,
     passwordSalt: salt,
     name,
+    emailVerified: isGuest,
     verificationToken,
-    verificationExpiresAt: Date.now() + DAY,
+    verificationExpiresAt: isGuest ? null : Date.now() + DAY,
   });
 
   await database.insert(schema.profiles).values({
@@ -62,7 +69,11 @@ auth.post("/register", async (c) => {
   });
   await database.insert(schema.companions).values({ userId });
 
-  const link = `${c.env.APP_ORIGIN}/register?token=${encodeURIComponent(verificationToken)}`;
+  if (isGuest) {
+    return c.json({ message: "Guest account ready." });
+  }
+
+  const link = `${c.env.APP_ORIGIN}/register?token=${encodeURIComponent(verificationToken!)}`;
   const sent = await sendEmail(c.env, { to: email, ...verificationEmail(link) });
 
   // With no mail provider configured the register page finishes the flow

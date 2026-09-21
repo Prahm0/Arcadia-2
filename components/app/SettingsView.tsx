@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, ApiError, saveCsrf } from "@/lib/api/client";
+import type { CalendarFeed } from "@/lib/api/types";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { useTheme, type ThemeMode } from "@/lib/app/theme";
 import { isSoundEnabled, playCompletionTick, setSoundEnabled } from "@/lib/app/completion";
@@ -94,6 +95,101 @@ export default function SettingsView() {
   const isGuest = isGuestEmail(data.user.email);
   const [googleBusy, setGoogleBusy] = useState<"sync" | "disconnect" | null>(null);
   const [googleNotice, setGoogleNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
+
+  // Calendar feed subscriptions (Apple, Canvas, Outlook, and any .ics URL).
+  // Reads live from the dashboard, mutates via /api/calendar-feeds.
+  const calendarFeeds = data.calendarFeeds ?? [];
+  const [newFeedUrl, setNewFeedUrl] = useState("");
+  const [newFeedName, setNewFeedName] = useState("");
+  const [addingFeed, setAddingFeed] = useState(false);
+  const [feedBusy, setFeedBusy] = useState<string | null>(null);
+  const [feedNotice, setFeedNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
+
+  async function addCalendarFeed(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const url = newFeedUrl.trim();
+    if (!url) return;
+    setAddingFeed(true);
+    setFeedNotice(null);
+    try {
+      const response = await api<{ feed: CalendarFeed }>("/api/calendar-feeds", {
+        method: "POST",
+        body: JSON.stringify({ url, name: newFeedName.trim() || undefined }),
+      });
+      patch((prev) => ({
+        ...prev,
+        calendarFeeds: [...(prev.calendarFeeds ?? []), response.feed],
+      }));
+      setNewFeedUrl("");
+      setNewFeedName("");
+      if (response.feed.lastSyncError) {
+        setFeedNotice({
+          tone: "error",
+          text: `Added, but the first sync failed: ${response.feed.lastSyncError}`,
+        });
+      } else {
+        setFeedNotice({ tone: "info", text: "Calendar added and synced." });
+      }
+      await reload();
+    } catch (err) {
+      setFeedNotice({
+        tone: "error",
+        text: err instanceof Error ? err.message : "Couldn't add that calendar.",
+      });
+    } finally {
+      setAddingFeed(false);
+    }
+  }
+
+  async function syncCalendarFeed(id: string) {
+    setFeedBusy(`sync:${id}`);
+    setFeedNotice(null);
+    try {
+      const response = await api<{ feed: CalendarFeed; result: { error?: string; eventsWritten?: number } }>(
+        `/api/calendar-feeds/${id}/sync`,
+        { method: "POST" },
+      );
+      patch((prev) => ({
+        ...prev,
+        calendarFeeds: (prev.calendarFeeds ?? []).map((f) => (f.id === id ? response.feed : f)),
+      }));
+      if (response.result.error) {
+        setFeedNotice({ tone: "error", text: response.result.error });
+      } else {
+        setFeedNotice({ tone: "info", text: "Synced." });
+      }
+      await reload();
+    } catch (err) {
+      setFeedNotice({
+        tone: "error",
+        text: err instanceof Error ? err.message : "Sync failed.",
+      });
+    } finally {
+      setFeedBusy(null);
+    }
+  }
+
+  async function removeCalendarFeed(feed: CalendarFeed) {
+    if (!confirm(`Remove "${feed.name}"? Its imported events will disappear from Schedule.`)) return;
+    setFeedBusy(`delete:${feed.id}`);
+    setFeedNotice(null);
+    try {
+      await api(`/api/calendar-feeds/${feed.id}`, { method: "DELETE" });
+      patch((prev) => ({
+        ...prev,
+        calendarFeeds: (prev.calendarFeeds ?? []).filter((f) => f.id !== feed.id),
+      }));
+      setFeedNotice({ tone: "info", text: "Calendar removed." });
+      await reload();
+    } catch (err) {
+      setFeedNotice({
+        tone: "error",
+        text: err instanceof Error ? err.message : "Couldn't remove that calendar.",
+      });
+    } finally {
+      setFeedBusy(null);
+    }
+  }
 
   // When the OAuth callback redirects back to "/", it appends ?google=connected
   // or ?google=denied. Surface that once, then strip the param.
@@ -376,6 +472,122 @@ export default function SettingsView() {
               style={{ color: googleNotice.tone === "error" ? "var(--app-danger)" : "var(--app-success)" }}
             >
               {googleNotice.text}
+            </p>
+          ) : null}
+        </Card>
+
+        <Card>
+          <SectionHeader label="Calendar subscriptions" />
+          <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>
+            Paste any calendar URL — Apple, Canvas, Outlook, or a per-calendar
+            Google link — and Arcadia will pull its events in as fixed blocks on
+            Schedule. Read-only, so nothing is written back.
+          </p>
+
+          <form onSubmit={addCalendarFeed} className="mt-4 flex flex-col gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <input
+                type="url"
+                required
+                value={newFeedUrl}
+                onChange={(event) => setNewFeedUrl(event.target.value)}
+                placeholder="https://p01-calendars.icloud.com/…/calendar.ics"
+                className="flex-1 rounded-clay-sm px-3 py-2.5 text-[13.5px] outline-none"
+                style={{
+                  background: "var(--app-surface-soft)",
+                  boxShadow: "var(--clay-well)",
+                  color: "var(--app-text)",
+                }}
+                disabled={addingFeed}
+              />
+              <input
+                type="text"
+                value={newFeedName}
+                onChange={(event) => setNewFeedName(event.target.value)}
+                placeholder="Label (optional)"
+                maxLength={60}
+                className="rounded-clay-sm px-3 py-2.5 text-[13.5px] outline-none sm:w-[180px]"
+                style={{
+                  background: "var(--app-surface-soft)",
+                  boxShadow: "var(--clay-well)",
+                  color: "var(--app-text)",
+                }}
+                disabled={addingFeed}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <p className="type-mono-label" style={{ color: "var(--app-text-faint)" }}>
+                Apple Calendar → share icon → &ldquo;Public Calendar&rdquo; → copy URL. Canvas →
+                calendar page → &ldquo;Calendar feed&rdquo; link.
+              </p>
+              <AppButton
+                type="submit"
+                variant="primary"
+                loading={addingFeed}
+                disabled={!newFeedUrl.trim()}
+              >
+                Add calendar
+              </AppButton>
+            </div>
+          </form>
+
+          {calendarFeeds.length > 0 ? (
+            <ul className="mt-5 flex flex-col gap-3">
+              {calendarFeeds.map((feed) => (
+                <li
+                  key={feed.id}
+                  className="flex flex-wrap items-center gap-3 rounded-clay-sm px-3.5 py-3"
+                  style={{
+                    background: "var(--app-surface-soft)",
+                    boxShadow: "var(--clay-well)",
+                  }}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="h-8 w-1 shrink-0 rounded-full"
+                    style={{ background: feed.color }}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13.5px] font-medium" style={{ color: "var(--app-text)" }}>
+                      {feed.name}
+                    </p>
+                    <p className="mt-0.5 type-mono-label" style={{ color: "var(--app-text-muted)" }}>
+                      {feed.lastSyncError
+                        ? `⚠ ${feed.lastSyncError}`
+                        : feed.lastSyncAt
+                          ? `Last sync ${relativeTime(feed.lastSyncAt)}`
+                          : "Waiting for first sync"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <AppButton
+                      type="button"
+                      variant="ghost"
+                      onClick={() => void syncCalendarFeed(feed.id)}
+                      loading={feedBusy === `sync:${feed.id}`}
+                    >
+                      Sync now
+                    </AppButton>
+                    <AppButton
+                      type="button"
+                      variant="ghost"
+                      onClick={() => void removeCalendarFeed(feed)}
+                      loading={feedBusy === `delete:${feed.id}`}
+                    >
+                      Remove
+                    </AppButton>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          {feedNotice ? (
+            <p
+              className="mt-3 text-[13px]"
+              style={{ color: feedNotice.tone === "error" ? "var(--app-danger)" : "var(--app-success)" }}
+            >
+              {feedNotice.text}
             </p>
           ) : null}
         </Card>

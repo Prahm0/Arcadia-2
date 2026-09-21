@@ -44,7 +44,7 @@ dashboard.get("/", async (c) => {
     await rebuildSchedule(database, userId, start, end);
   }
 
-  const [subjectRows, taskRows, commitmentRows, eventRows, companionRow, googleRow] =
+  const [subjectRows, taskRows, commitmentRows, eventRows, companionRow, googleRow, feedRows] =
     await Promise.all([
       database.select().from(schema.subjects).where(eq(schema.subjects.userId, userId)),
       database.select().from(schema.tasks).where(eq(schema.tasks.userId, userId)),
@@ -69,6 +69,10 @@ dashboard.get("/", async (c) => {
         .from(schema.googleAccounts)
         .where(eq(schema.googleAccounts.userId, userId))
         .limit(1),
+      database
+        .select()
+        .from(schema.calendarFeeds)
+        .where(eq(schema.calendarFeeds.userId, userId)),
     ]);
 
   const pending = taskRows
@@ -165,6 +169,14 @@ dashboard.get("/", async (c) => {
       connected: Boolean(googleRow[0]?.accessTokenEnc),
       lastSyncAt: googleRow[0]?.lastSyncAt ? iso(googleRow[0].lastSyncAt) : null,
     },
+    calendarFeeds: feedRows.map((feed) => ({
+      id: feed.id,
+      url: feed.url,
+      name: feed.name,
+      color: feed.color,
+      lastSyncAt: feed.lastSyncAt ? iso(feed.lastSyncAt) : null,
+      lastSyncError: feed.lastSyncError,
+    })),
   });
 });
 

@@ -98,6 +98,40 @@ auth.get("/verify", async (c) => {
   return c.json({ ok: true });
 });
 
+auth.post("/resend-verification", async (c) => {
+  const body = await c.req.json<{ email?: string }>().catch(() => null);
+  if (!body) return c.json({ error: "Invalid request." }, 400);
+
+  const email = String(body.email ?? "").trim().toLowerCase();
+  if (!EMAIL_PATTERN.test(email) || email.length > 254) {
+    return c.json({ error: "Please enter a valid email address." }, 422);
+  }
+
+  const database = db(c.env.DB);
+  const [user] = await database
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.email, email))
+    .limit(1);
+
+  // Same response either way so the endpoint can't enumerate accounts and
+  // can't reveal that an existing account is already verified.
+  const genericOk = { message: "If that account needs verifying, we've sent a fresh link." };
+
+  if (!user || user.emailVerified) return c.json(genericOk);
+
+  const verificationToken = newToken(24);
+  await database
+    .update(schema.users)
+    .set({ verificationToken, verificationExpiresAt: Date.now() + DAY })
+    .where(eq(schema.users.id, user.id));
+
+  const link = `${c.env.APP_ORIGIN}/register?token=${encodeURIComponent(verificationToken)}`;
+  await sendEmail(c.env, { to: email, ...verificationEmail(link) });
+
+  return c.json(genericOk);
+});
+
 auth.post("/login", async (c) => {
   const body = await c.req.json<{ email?: string; password?: string }>().catch(() => null);
   if (!body) return c.json({ error: "Invalid request." }, 400);
@@ -124,7 +158,12 @@ auth.post("/login", async (c) => {
   if (!ok) return c.json(rejection, 401);
 
   if (!user.emailVerified) {
-    return c.json({ error: "Confirm your email address first." }, 403);
+    // Signal on the response so the login page can offer a "resend link"
+    // button, instead of leaving the user staring at a dead-end message.
+    return c.json(
+      { error: "Confirm your email address first.", needsVerification: true },
+      403,
+    );
   }
 
   await database

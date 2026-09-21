@@ -5,7 +5,7 @@ import { resetPasswordEmail, sendEmail, verificationEmail } from "../lib/email";
 import { newId, newToken, sha256Hex } from "../lib/ids";
 import { hashPassword, newSalt, passwordProblem, verifyPassword } from "../lib/password";
 import { throttle } from "../lib/rate-limit";
-import { createSession, destroySession, requireSession } from "../lib/session";
+import { createSession, destroySession } from "../lib/session";
 import { DAY } from "../lib/time";
 import type { Env, Variables } from "../types";
 
@@ -149,7 +149,7 @@ auth.post("/reset-password", async (c) => {
   return c.json({ ok: true, redirect: "/app", ...session });
 });
 
-auth.post("/logout", requireSession, async (c) => {
+auth.post("/logout", async (c) => {
   await destroySession(c);
   return c.json({ ok: true });
 });

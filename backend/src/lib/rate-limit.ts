@@ -23,6 +23,10 @@ async function consume(c: Ctx, key: string, limit: number, windowMs: number) {
        reset_at = CASE WHEN auth_rate_limits.reset_at <= ? THEN excluded.reset_at ELSE auth_rate_limits.reset_at END
      RETURNING count, reset_at`,
   ).bind(digest, now + windowMs, now, now).first<{ count: number; reset_at: number }>();
+  // No cron runs on this Worker, so occasionally sweep expired windows here.
+  if (Math.random() < 0.02) {
+    await c.env.DB.prepare("DELETE FROM auth_rate_limits WHERE reset_at <= ?").bind(now).run();
+  }
   if (!row || row.count <= limit) return null;
   c.header("Retry-After", String(Math.max(1, Math.ceil((row.reset_at - now) / 1000))));
   return c.json({ error: "Too many attempts. Please try again later." }, 429);

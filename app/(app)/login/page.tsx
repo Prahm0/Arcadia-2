@@ -27,7 +27,9 @@ function LoginForm() {
       ? { tone: "info", text: "Email updated. Sign in with your new address." }
       : params.get("expired") === "1"
         ? { tone: "info", text: "Your session expired. Sign back in and you'll land right where you left off." }
-        : params.get("error")
+        : params.get("deleted") === "1"
+          ? { tone: "info", text: "Your account and its data have been deleted." }
+          : params.get("error")
           ? { tone: "error", text: params.get("error") === "google_link_required" ? "Sign in with your password to link this Google address, or contact support." : "Google sign-in could not be completed. Please try again." }
           : null;
   const [notice, setNotice] = useState<Notice>(initialNotice);

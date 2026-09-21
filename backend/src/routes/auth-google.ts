@@ -101,7 +101,17 @@ auth.get("/callback", async (c) => {
         // Google's claim for a third-party mailbox may be stale; avoid takeover of an existing account.
         if (!email.endsWith("@gmail.com") && payload.hd !== email.split("@")[1]) return c.redirect(failure(c.env.APP_ORIGIN, "google_link_required"));
         userId = existing.id;
-        if (!existing.emailVerified) await database.update(schema.users).set({ emailVerified: true, verificationToken: null, verificationExpiresAt: null }).where(eq(schema.users.id, userId));
+        if (!existing.emailVerified) {
+          // Whoever registered this address never proved they own it, so their
+          // password must not survive Google proving the real owner.
+          const salt = newSalt();
+          await database.update(schema.users).set({
+            emailVerified: true, verificationToken: null, verificationExpiresAt: null,
+            passwordSalt: salt, passwordHash: await hashPassword(newToken(32), salt),
+          }).where(eq(schema.users.id, userId));
+          await database.delete(schema.sessions).where(eq(schema.sessions.userId, userId));
+          await database.delete(schema.passwordResetTokens).where(eq(schema.passwordResetTokens.userId, userId));
+        }
       } else {
         userId = newId("usr");
         const salt = newSalt(), name = String(payload.name ?? "").trim().slice(0, 120);

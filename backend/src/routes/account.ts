@@ -1,6 +1,8 @@
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../db";
+import { decryptToken } from "../lib/crypto";
+import { revokeToken } from "../lib/google-oauth";
 import { hashPassword, newSalt, passwordProblem, verifyPassword } from "../lib/password";
 import { iso } from "../lib/time";
 import { clearSessionCookie } from "../lib/session";
@@ -136,6 +138,15 @@ account.delete("/", async (c) => {
   } else {
     const [upload] = await database.select().from(schema.uploads).where(eq(schema.uploads.userId, userId)).limit(1);
     if (upload) return c.json({ error: "Uploads are temporarily unavailable. Contact support to delete your account." }, 503);
+  }
+  // Deleting the row alone would leave Arcadia's Calendar grant live on the user's Google account.
+  const [google] = await database.select().from(schema.googleAccounts).where(eq(schema.googleAccounts.userId, userId)).limit(1);
+  if (google?.refreshTokenEnc && c.env.TOKEN_ENCRYPTION_KEY) {
+    try {
+      await revokeToken(await decryptToken(google.refreshTokenEnc, c.env.TOKEN_ENCRYPTION_KEY));
+    } catch {
+      /* best-effort, as in Calendar disconnect */
+    }
   }
   await database.delete(schema.waitlist).where(eq(schema.waitlist.email, user.email));
   await database.delete(schema.users).where(eq(schema.users.id, userId));

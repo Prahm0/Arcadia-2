@@ -39,20 +39,31 @@ export async function createSession(c: Ctx, userId: string, transport: Transport
   return { csrfToken, expiresAt, bearerToken: transport === "bearer" ? raw : undefined };
 }
 
+function presentedCredential(c: Ctx): { raw: string | null | undefined; transport: Transport } {
+  const authorization = c.req.header("authorization");
+  const bearer = authorization?.match(/^Bearer ([a-f0-9]{64})$/i)?.[1];
+  const transport: Transport = authorization ? "bearer" : "cookie";
+  return { raw: bearer || (authorization ? null : getCookie(c, SESSION_COOKIE)), transport };
+}
+
+/**
+ * Revokes whatever session the request carries, without a CSRF check: the
+ * cookie is SameSite=Lax so another site can't trigger this, and a missing
+ * CSRF token must never leave a live session behind a "signed out" screen.
+ */
 export async function destroySession(c: Ctx) {
-  const session = c.get("session");
-  await db(c.env.DB).delete(schema.sessions).where(eq(schema.sessions.id, session.sessionId));
-  if (session.transport === "cookie") clearSessionCookie(c);
+  const { raw, transport } = presentedCredential(c);
+  if (raw) {
+    await db(c.env.DB).delete(schema.sessions).where(eq(schema.sessions.id, await sha256Hex(raw)));
+  }
+  if (transport === "cookie") clearSessionCookie(c);
 }
 
 /** Cookie writes require CSRF; explicit bearer credentials have no ambient CSRF risk. */
 export const requireSession: MiddlewareHandler<{ Bindings: Env; Variables: Variables }> = async (
   c, next,
 ) => {
-  const authorization = c.req.header("authorization");
-  const bearer = authorization?.match(/^Bearer ([a-f0-9]{64})$/i)?.[1];
-  const transport: Transport = authorization ? "bearer" : "cookie";
-  const raw = bearer || (authorization ? null : getCookie(c, SESSION_COOKIE));
+  const { raw, transport } = presentedCredential(c);
   if (!raw) return c.json({ error: "Not signed in." }, 401);
 
   const id = await sha256Hex(raw);

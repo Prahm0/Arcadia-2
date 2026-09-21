@@ -1,14 +1,19 @@
 # Account rollout checklist
 
-Do these before deploying the account branch. Never put API keys or client secrets in Git.
+Do these before merging the account branch. Merging to `main` deploys both
+Workers automatically. Never put API keys or client secrets in Git.
 
-1. Apply the new D1 migration before deploying the Worker:
-   `cd backend && npx wrangler d1 migrations apply arcadia --remote`.
-   This affects the production database; review the migration first.
-2. Verify `arcadiahq.app` in Resend and ensure `Arcadia <hello@arcadiahq.app>`
-   is an authorised sender. Set `RESEND_API_KEY` with
-   `npx wrangler secret put RESEND_API_KEY`. Registration fails closed if it
-   is absent; no email verification token is exposed.
+1. The deploy workflow applies `migrations/0004_auth_accounts.sql` to the
+   production database right before the backend Worker deploys, so no manual
+   step is needed. It only creates new tables (`CREATE TABLE IF NOT EXISTS`).
+2. **Blocking:** verify `arcadiahq.app` in Resend and ensure
+   `Arcadia <hello@arcadiahq.app>` is an authorised sender. Confirm
+   `RESEND_API_KEY` is set with `cd backend && npx wrangler secret list`,
+   and set it with `npx wrangler secret put RESEND_API_KEY` if not.
+   Without it, registration and resend return "temporarily unavailable"
+   and reset emails are silently not sent (the reset form's response stays
+   generic so it can't reveal which emails have accounts). No verification
+   token is ever exposed instead.
 3. In Google Cloud, configure an OAuth consent screen and a **Web application**
    OAuth client. The authorised redirect URI must exactly be
    `https://arcadiahq.app/api/auth/google/callback`. For local development

@@ -44,19 +44,35 @@ export function playCompletionTick(): void {
   if (!Ctor) return;
   try {
     const ctx = new Ctor();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.06);
-    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.06, ctx.currentTime + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.08);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.09);
-    // Let the context be garbage-collected once the tick finishes.
-    setTimeout(() => { void ctx.close(); }, 200);
+    // A small ascending C major arpeggio (C5 → G5 → C6). Triangle waves have
+    // more character than pure sines but still stay well-mannered — this is
+    // a task-completion cue, not a game achievement. Each note overlaps the
+    // next slightly to feel like one continuous flourish rather than three
+    // separate beeps.
+    const now = ctx.currentTime;
+    const notes: { freq: number; start: number; duration: number; peak: number }[] = [
+      { freq: 523.25, start: 0.00,  duration: 0.16, peak: 0.09 }, // C5
+      { freq: 783.99, start: 0.07,  duration: 0.22, peak: 0.09 }, // G5
+      { freq: 1046.5, start: 0.14,  duration: 0.28, peak: 0.10 }, // C6
+    ];
+
+    for (const n of notes) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(n.freq, now + n.start);
+      gain.gain.setValueAtTime(0.0001, now + n.start);
+      // Fast attack (~12ms) so it reads as percussive, slow exponential
+      // decay so it doesn't clip abruptly and feels warmer.
+      gain.gain.exponentialRampToValueAtTime(n.peak, now + n.start + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + n.start + n.duration);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now + n.start);
+      osc.stop(now + n.start + n.duration + 0.02);
+    }
+
+    // Let the context be garbage-collected once the last note finishes.
+    setTimeout(() => { void ctx.close(); }, 700);
   } catch {
     /* audio unlocked check failed — ignore */
   }

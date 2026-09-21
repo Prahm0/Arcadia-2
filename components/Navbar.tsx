@@ -7,6 +7,7 @@ import { EASE_OUT } from "@/lib/animation";
 import { cn } from "@/lib/cn";
 import { useEarlyAccess } from "./EarlyAccessProvider";
 import Button from "./ui/Button";
+import Logo from "./ui/Logo";
 
 // Order matches the vertical order of the sections on the page so clicking
 // any link always scrolls in the same direction as the reader is already
@@ -58,11 +59,14 @@ export default function Navbar() {
         <div className="mx-auto flex h-[72px] w-full max-w-[1440px] items-center justify-between px-5 sm:px-8 lg:h-20 lg:px-12 2xl:px-16">
           <Link
             href="#top"
-            className="font-serif text-[24px] italic leading-none tracking-[-0.01em] text-white"
+            className="flex items-center gap-2.5 text-white"
             aria-label="Arcadia — back to top"
             onClick={() => setMenuOpen(false)}
           >
-            Arcadia
+            <Logo size={22} className="text-accent-200" />
+            <span className="font-serif text-[24px] italic leading-none tracking-[-0.01em]">
+              Arcadia
+            </span>
           </Link>
 
           <div className="hidden items-center gap-8 lg:flex">

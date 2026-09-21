@@ -6,6 +6,7 @@ import account from "./routes/account";
 import analytics from "./routes/analytics";
 import auth from "./routes/auth";
 import calendarFeeds from "./routes/calendar-feeds";
+import google from "./routes/google";
 import chat, { conversations, proposals } from "./routes/chat";
 import commitments from "./routes/commitments";
 import companion from "./routes/companion";
@@ -44,7 +45,14 @@ app.use("/api/*", async (c, next) => {
  * except the two public ones. Listing the exceptions here rather than relying
  * on route registration order means adding a route defaults to protected.
  */
-const PUBLIC_PREFIXES = ["/api/auth/", "/api/waitlist"];
+const PUBLIC_PREFIXES = [
+  "/api/auth/",
+  "/api/waitlist",
+  // Google's OAuth redirect lands here without our session cookie in play
+  // — the state parameter carries the userId, verified by HMAC.
+  "/api/google/callback",
+  "/api/google/config",
+];
 
 app.use("/api/*", async (c, next) => {
   const path = c.req.path;
@@ -65,6 +73,7 @@ app.route("/api/companion", companion);
 app.route("/api/conversations", conversations);
 app.route("/api/dashboard", dashboard);
 app.route("/api/events", events);
+app.route("/api/google", google);
 app.route("/api/onboarding", onboarding);
 app.route("/api/presence", presence);
 app.route("/api/proposals", proposals);

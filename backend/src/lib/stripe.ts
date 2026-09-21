@@ -11,7 +11,10 @@
 import type { Env } from "../types";
 
 const STRIPE_API = "https://api.stripe.com/v1";
-const STRIPE_VERSION = "2025-01-27.acacia";
+// Managed Payments requires 2025-03-31.basil or later; we pin to the
+// current default release train so responses match what the dashboard
+// shows.
+const STRIPE_VERSION = "2026-08-26.dahlia";
 
 interface StripeCallOptions {
   method?: "GET" | "POST" | "DELETE";

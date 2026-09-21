@@ -11,8 +11,8 @@ export default function PrivacyPage() {
     <LegalPage title="Privacy policy" updated="September 2026">
       <p>
         This policy explains what personal information Arcadia collects, how we
-        use it, and the choices you have. Arcadia is operated by Parham [YOUR LAST
-        NAME] as a sole trader, based in Queensland, Australia. We handle personal
+        use it, and the choices you have. Arcadia is operated by Parham Rahmani
+        as a sole trader, based in Queensland, Australia. We handle personal
         information in line with the Australian Privacy Principles under the
         Privacy Act 1988.
       </p>

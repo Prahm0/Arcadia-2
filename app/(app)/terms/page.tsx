@@ -12,7 +12,7 @@ export default function TermsPage() {
     <LegalPage title="Terms of service" updated="September 2026">
       <p>
         These terms apply when you use Arcadia, a study planning app operated by Parham
-        [YOUR LAST NAME] as a sole trader (&ldquo;we&rdquo;, &ldquo;us&rdquo;,
+        Rahmani as a sole trader (&ldquo;we&rdquo;, &ldquo;us&rdquo;,
         &ldquo;Arcadia&rdquo;). By creating an account or using the service, you agree
         to these terms.
       </p>

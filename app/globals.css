@@ -153,11 +153,12 @@ html[data-app-theme] {
   --font-mono: var(--font-courier), ui-monospace, "Courier New", monospace;
   --font-serif: var(--font-courier), ui-monospace, "Courier New", monospace;
 
-  /* Courier Prime ships 400 and 700 only. Tailwind's font-medium resolves
-     var(--font-weight-medium) at the use site, so remapping it here fixes all
-     121 usages at once — without it they silently fall back to 400 and the
-     whole hierarchy flattens. */
-  --font-weight-medium: 700;
+  /* Courier Prime ships 400 and 700 only. We deliberately leave `font-medium`
+     mapped to 500 (which the browser resolves to 400 in Courier) — the app
+     was reading as bold-everywhere before, which is exactly what the type
+     hierarchy was NOT meant to signal. Semibold stays at 700 for the small
+     set of places that truly need weight to carry the eye. */
+  --font-weight-medium: 500;
   --font-weight-semibold: 700;
 }
 

@@ -8,10 +8,14 @@ import { cn } from "@/lib/cn";
 import { useEarlyAccess } from "./EarlyAccessProvider";
 import Button from "./ui/Button";
 
+// Order matches the vertical order of the sections on the page so clicking
+// any link always scrolls in the same direction as the reader is already
+// travelling — never sends them back up the page mid-scroll.
 const links = [
+  { label: "How it works", href: "#how-it-works" },
   { label: "Product", href: "#today" },
   { label: "Students", href: "#students" },
-  { label: "How it works", href: "#how-it-works" },
+  { label: "Pricing", href: "#pricing" },
   { label: "About", href: "#about" },
 ];
 

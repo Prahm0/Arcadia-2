@@ -116,6 +116,11 @@ export const events = sqliteTable(
       .references(() => users.id, { onDelete: "cascade" }),
     taskId: text("task_id"),
     commitmentId: text("commitment_id"),
+    // Set when the event came from an .ics feed subscription. `externalUid`
+    // is the VEVENT UID from the source calendar — stable across syncs so
+    // re-syncing updates the existing row rather than creating duplicates.
+    feedId: text("feed_id"),
+    externalUid: text("external_uid"),
     title: text("title").notNull(),
     subject: text("subject"),
     category: text("category").notNull().default("study"),
@@ -129,7 +134,31 @@ export const events = sqliteTable(
     pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
     createdAt: integer("created_at").notNull().default(now),
   },
-  (t) => [index("events_user_start_idx").on(t.userId, t.startAt)],
+  (t) => [
+    index("events_user_start_idx").on(t.userId, t.startAt),
+    index("events_feed_idx").on(t.feedId),
+    index("events_feed_uid_idx").on(t.feedId, t.externalUid),
+  ],
+);
+
+export const calendarFeeds = sqliteTable(
+  "calendar_feeds",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+    name: text("name").notNull().default("Calendar"),
+    color: text("color").notNull().default("#7c5cff"),
+    // HTTP conditional-fetch hints so we don't re-download unchanged feeds.
+    etag: text("etag"),
+    lastModified: text("last_modified"),
+    lastSyncAt: integer("last_sync_at"),
+    lastSyncError: text("last_sync_error"),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [index("calendar_feeds_user_idx").on(t.userId)],
 );
 
 export const studySessions = sqliteTable(

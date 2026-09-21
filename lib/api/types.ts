@@ -117,4 +117,14 @@ export interface DashboardResponse {
     conversations?: Array<Record<string, unknown>>;
   };
   google?: { connected?: boolean; lastSyncAt?: string | null };
+  calendarFeeds?: CalendarFeed[];
+}
+
+export interface CalendarFeed {
+  id: string;
+  url: string;
+  name: string;
+  color: string;
+  lastSyncAt: string | null;
+  lastSyncError: string | null;
 }

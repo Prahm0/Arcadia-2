@@ -3,26 +3,139 @@ import LegalPage from "@/components/LegalPage";
 
 export const metadata: Metadata = {
   title: "Privacy — Arcadia",
-  description: "How Arcadia handles your information during early access.",
+  description: "How Arcadia handles your personal information.",
 };
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy" updated="September 2026">
+    <LegalPage title="Privacy policy" updated="September 2026">
       <p>
-        Arcadia is in private early access. During this period the only personal
-        information we collect through this site is the email address you give us when
-        you request an invite.
+        This policy explains what personal information Arcadia collects, how we
+        use it, and the choices you have. Arcadia is operated by Parham Rahmani
+        as a sole trader, based in Queensland, Australia. We handle personal
+        information in line with the Australian Privacy Principles under the
+        Privacy Act 1988.
+      </p>
+
+      <h2>1. What we collect</h2>
+      <p>When you sign up and use Arcadia, we collect:</p>
+      <ul>
+        <li><strong>Account details</strong> — your email address, a hashed password,
+          your display name and (optionally) grade level and timezone.</li>
+        <li><strong>Plan content you create</strong> — subjects, tasks, deadlines,
+          study sessions, focus timer runs, and chat messages you send to Arcad.</li>
+        <li><strong>Calendar data you choose to sync</strong> — event titles, times
+          and locations from Google Calendar, Apple, Canvas or any .ics feed you
+          add. We import; we don&rsquo;t write back to your calendar.</li>
+        <li><strong>Files you upload</strong> — PDFs or notes you attach to the
+          Knowledge tab, so Arcad can answer questions from them.</li>
+        <li><strong>Billing information</strong> — handled by Stripe. We see your
+          plan and status, but not your card number.</li>
+        <li><strong>Basic usage telemetry</strong> — page views, error reports and
+          performance metrics, used to keep Arcadia stable.</li>
+      </ul>
+
+      <h2>2. How we use it</h2>
+      <p>We use your information to:</p>
+      <ul>
+        <li>Run and improve the service you signed up for;</li>
+        <li>Personalise your plan and give Arcad context about your schedule;</li>
+        <li>Send you transactional email (verification, receipts, service updates);</li>
+        <li>Detect abuse, prevent fraud and secure your account;</li>
+        <li>Comply with legal obligations (tax records, lawful requests).</li>
+      </ul>
+      <p>
+        We <strong>don&rsquo;t</strong> sell your data. We <strong>don&rsquo;t</strong>{" "}
+        use your content to train third-party AI models. We <strong>don&rsquo;t</strong>{" "}
+        add you to marketing lists you didn&rsquo;t opt in to.
+      </p>
+
+      <h2>3. Third parties we share with</h2>
+      <p>
+        To run Arcadia, we send some data to service providers. Each of them
+        processes data only on our instructions and under their own privacy terms:
+      </p>
+      <ul>
+        <li><strong>Cloudflare</strong> — hosting, edge database, R2 storage.</li>
+        <li><strong>Stripe</strong> — subscription payments and invoicing.</li>
+        <li><strong>OpenAI</strong> — Arcad&rsquo;s language model. We send the chat
+          history and a compact snapshot of your plan so Arcad can answer
+          contextually. OpenAI does not train on data sent through their API.</li>
+        <li><strong>Resend</strong> — transactional email delivery.</li>
+        <li><strong>Google</strong> — only if you connect Google Calendar. OAuth
+          tokens are stored encrypted and used solely to read calendar events.</li>
+        <li><strong>Sentry</strong> — error tracking, so we can fix crashes quickly.</li>
+      </ul>
+
+      <h2>4. Cookies and local storage</h2>
+      <p>
+        Arcadia uses a small number of cookies for authentication (keeping you
+        signed in) and CSRF protection. We store some settings locally on your
+        device (like your theme and notification preferences). We don&rsquo;t use
+        third-party advertising cookies.
+      </p>
+
+      <h2>5. Data retention</h2>
+      <p>
+        We keep your account data as long as your account is active. When you
+        delete your account, we remove your content within 30 days, except for
+        records we&rsquo;re legally required to keep (like invoices, which are
+        retained for 7 years under Australian tax law).
+      </p>
+
+      <h2>6. Your rights</h2>
+      <p>You can, at any time:</p>
+      <ul>
+        <li><strong>Access</strong> your data — export tasks and plans from Settings,
+          or ask us for a full copy.</li>
+        <li><strong>Correct</strong> anything that&rsquo;s wrong — edit it in-app or
+          email us.</li>
+        <li><strong>Delete</strong> your account and content from Settings.</li>
+        <li><strong>Withdraw</strong> a consent you gave (e.g. disconnect Google).</li>
+        <li><strong>Complain</strong> to the Office of the Australian Information
+          Commissioner if you think we&rsquo;ve mishandled your data.</li>
+      </ul>
+
+      <h2>7. Security</h2>
+      <p>
+        Passwords are hashed with PBKDF2-SHA256. Sensitive tokens (like Google
+        OAuth refresh tokens) are encrypted at rest with AES-GCM. All traffic
+        between your device and Arcadia is over HTTPS. We take security seriously,
+        but no service can promise perfect security — please keep your password
+        safe and enable device-level protection.
       </p>
       <p>
-        We use that address for one purpose: to tell you when your invite is ready. We
-        don&rsquo;t sell it, share it with advertisers or add it to any other list. You can
-        ask us to delete it at any time by emailing{" "}
-        <a href="mailto:hello@arcadia.study">hello@arcadia.study</a>.
+        If we ever discover a security incident that affects your data, we&rsquo;ll
+        notify you promptly and in line with our obligations under the Notifiable
+        Data Breaches scheme.
+      </p>
+
+      <h2>8. Children</h2>
+      <p>
+        Arcadia is built for students but is not intended for children under 13. If
+        you&rsquo;re under 18, we ask that a parent or guardian is aware you&rsquo;re
+        using it. If we learn we&rsquo;ve collected data from a child under 13
+        without appropriate consent, we&rsquo;ll delete it.
+      </p>
+
+      <h2>9. Where your data is stored</h2>
+      <p>
+        Arcadia runs on Cloudflare&rsquo;s global network, which means your data
+        may be processed in data centres outside Australia (including the United
+        States and the European Union). Our service providers apply protections at
+        least equivalent to Australian standards.
+      </p>
+
+      <h2>10. Changes and contact</h2>
+      <p>
+        We&rsquo;ll update this policy when things change and mark the &ldquo;last
+        updated&rdquo; date above. Material changes will be notified in-app or by
+        email.
       </p>
       <p>
-        A full privacy policy covering the Arcadia app, including how timetable, assignment
-        and calendar data is stored, will be published before the product launches.
+        Privacy questions or requests? Email{" "}
+        <a href="mailto:teamarcadiahq@gmail.com">teamarcadiahq@gmail.com</a>. We
+        aim to respond within 30 days.
       </p>
     </LegalPage>
   );

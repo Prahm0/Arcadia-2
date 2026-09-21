@@ -48,7 +48,7 @@ export default function LegalPage({ title, updated, children }: LegalPageProps) 
             {title}
           </h1>
           <div
-            className="type-body-lg mt-12 flex max-w-[680px] flex-col gap-6 [&_a]:underline [&_a]:underline-offset-4"
+            className="type-body-lg mt-12 flex max-w-[680px] flex-col gap-6 [&_a]:underline [&_a]:underline-offset-4 [&_h2]:mt-6 [&_h2]:text-[22px] [&_h2]:font-semibold [&_h2]:tracking-[-0.01em] [&_ul]:flex [&_ul]:flex-col [&_ul]:gap-2 [&_ul]:pl-5 [&_ul]:list-disc [&_strong]:font-semibold"
             style={{ color: "var(--app-text-soft)" }}
           >
             {children}

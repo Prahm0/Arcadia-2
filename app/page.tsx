@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import Hero from "@/components/Hero";
 import MentorSection from "@/components/MentorSection";
 import Navbar from "@/components/Navbar";
+import PricingSection from "@/components/PricingSection";
 import ProblemSection from "@/components/ProblemSection";
 import ScheduleDemo from "@/components/ScheduleDemo";
 import ThinkingSection from "@/components/ThinkingSection";
@@ -33,6 +34,7 @@ export default function Home() {
         <LazyMount minHeight="260vh" className="bg-dusk">
           <ConnectionsSection />
         </LazyMount>
+        <PricingSection />
         <FinalCTA />
       </main>
       <Footer />

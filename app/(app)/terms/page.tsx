@@ -11,7 +11,7 @@ export default function TermsPage() {
   return (
     <LegalPage title="Terms of service" updated="September 2026">
       <p>
-        These terms apply when you use Arcadia, a study planning app operated by Parham
+        These terms apply when you use Arcadia, a study planning app operated by Iman
         Rahmani as a sole trader (&ldquo;we&rdquo;, &ldquo;us&rdquo;,
         &ldquo;Arcadia&rdquo;). By creating an account or using the service, you agree
         to these terms.

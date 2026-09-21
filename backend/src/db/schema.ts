@@ -200,8 +200,11 @@ export const companions = sqliteTable("companions", {
   userId: text("user_id")
     .primaryKey()
     .references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull().default("Star"),
   form: text("form").notNull().default("orb"),
-  palette: text("palette").notNull().default("aurora"),
+  // Frontend picker is {violet, aqua, coral, gold}. The historical default
+  // "aurora" predates this UI and is treated by the client as violet.
+  palette: text("palette").notNull().default("violet"),
   accessory: text("accessory"),
   mood: text("mood").notNull().default("calm"),
 });

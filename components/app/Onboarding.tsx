@@ -13,22 +13,52 @@ interface OnboardingProps {
 }
 
 const SUBJECT_SUGGESTIONS = [
+  // Maths
+  "General Mathematics",
   "Mathematical Methods",
-  "Specialist Maths",
+  "Specialist Mathematics",
+  "Essential Mathematics",
+  // English
   "English",
   "Literature",
+  "English as an Additional Language",
+  // Sciences
+  "Biology",
   "Chemistry",
   "Physics",
-  "Biology",
-  "Economics",
-  "Legal Studies",
-  "History",
   "Psychology",
-  "Business Management",
-  "PE",
+  "Marine Science",
+  // Humanities
+  "Modern History",
+  "Ancient History",
+  "Geography",
+  "Legal Studies",
+  "Economics",
+  "Business",
+  "Study of Religion",
+  // Tech & Design
+  "Digital Solutions",
+  "Design",
+  "Engineering",
+  "Industrial Technology Skills",
+  // Arts & lifestyle
   "Music",
-  "Art",
-  "Software Dev",
+  "Music Extension",
+  "Visual Art",
+  "Drama",
+  "Film, Television & New Media",
+  "Dance",
+  "Physical Education",
+  "Health",
+  "Food & Nutrition",
+  // Languages
+  "Japanese",
+  "Chinese",
+  "French",
+  "Spanish",
+  "German",
+  "Italian",
+  "Indonesian",
 ] as const;
 
 const GRADE_OPTIONS = ["Year 10", "Year 11", "Year 12", "First year uni", "Second year+", "Other"] as const;

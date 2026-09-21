@@ -5,6 +5,7 @@ import { api, ApiError, saveCsrf } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { useTheme, type ThemeMode } from "@/lib/app/theme";
 import { isSoundEnabled, playCompletionTick, setSoundEnabled } from "@/lib/app/completion";
+import { is24Hour, set24Hour } from "@/lib/app/timeFormat";
 import {
   getLeadMinutes,
   getPermissionState,
@@ -49,6 +50,7 @@ export default function SettingsView() {
   const [remindersOn, setRemindersOn] = useState(false);
   const [permission, setPermission] = useState<NotificationPermissionState>("default");
   const [leadMin, setLeadMin] = useState(10);
+  const [use24h, setUse24h] = useState(false);
 
   useEffect(() => {
     api<AccountResponse>("/api/account").then((r) => setAccount(r.account)).catch(() => {});
@@ -56,7 +58,17 @@ export default function SettingsView() {
     setRemindersOn(isReminderEnabled());
     setPermission(getPermissionState());
     setLeadMin(getLeadMinutes());
+    setUse24h(is24Hour());
   }, []);
+
+  function toggleTimeFormat(next: boolean) {
+    setUse24h(next);
+    set24Hour(next);
+    // Force a re-render of anything holding a formatClock result already
+    // committed to the DOM. router.refresh() re-runs server code too, which
+    // is more than we need, but it's the simplest way to fan out.
+    router.refresh();
+  }
 
   function toggleSound(next: boolean) {
     setSoundOn(next);
@@ -280,6 +292,30 @@ export default function SettingsView() {
                 }}
               >
                 {option}
+              </button>
+            ))}
+          </div>
+        </Card>
+
+        <Card>
+          <SectionHeader label="Time format" />
+          <div className="grid grid-cols-2 gap-2">
+            {([{ v: false, label: "12-hour", sub: "1:45 pm" }, { v: true, label: "24-hour", sub: "13:45" }] as const).map((option) => (
+              <button
+                key={option.label}
+                type="button"
+                onClick={() => toggleTimeFormat(option.v)}
+                className="flex flex-col items-start rounded-clay-sm px-3 py-2.5 text-left transition-colors"
+                style={{
+                  background: use24h === option.v ? "var(--app-accent-soft)" : "transparent",
+                  color: use24h === option.v ? "var(--app-accent-strong)" : "var(--app-text-soft)",
+                  border: "1px solid var(--app-border)",
+                }}
+              >
+                <span className="text-[13.5px] font-medium">{option.label}</span>
+                <span className="text-[11.5px]" style={{ color: "var(--app-text-muted)" }}>
+                  {option.sub}
+                </span>
               </button>
             ))}
           </div>

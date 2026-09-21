@@ -309,7 +309,7 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
               </div>
             ) : null}
             <Link
-              href="/app/settings"
+              href="/app/pricing"
               aria-label="Upgrade plan"
               className="group mx-2 flex items-center justify-between rounded-clay-sm border px-3 py-2.5 transition-[transform,box-shadow,background-color] hover:-translate-y-0.5"
               style={{

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 const now = sql`(unixepoch() * 1000)`;
 
@@ -246,3 +246,52 @@ export const waitlist = sqliteTable(
   },
   (t) => [uniqueIndex("waitlist_email_idx").on(t.email)],
 );
+
+export const studyRooms = sqliteTable(
+  "study_rooms",
+  {
+    id: text("id").primaryKey(),
+    // 6 characters from an alphabet without look-alikes; stored uppercase.
+    code: text("code").notNull(),
+    name: text("name").notNull(),
+    ownerUserId: text("owner_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [
+    uniqueIndex("study_rooms_code_idx").on(t.code),
+    index("study_rooms_owner_idx").on(t.ownerUserId),
+  ],
+);
+
+export const studyRoomMembers = sqliteTable(
+  "study_room_members",
+  {
+    roomId: text("room_id")
+      .notNull()
+      .references(() => studyRooms.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    displayName: text("display_name").notNull(),
+    joinedAt: integer("joined_at").notNull().default(now),
+  },
+  (t) => [
+    primaryKey({ columns: [t.roomId, t.userId] }),
+    index("study_room_members_user_idx").on(t.userId),
+  ],
+);
+
+// One row per user, written by the focus timer and read by every room the
+// user is in. A focus/break row older than PRESENCE_STALE_MS reads as idle.
+export const userPresence = sqliteTable("user_presence", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  activity: text("activity").notNull().default("idle"),
+  subject: text("subject"),
+  startedAt: integer("started_at"),
+  durationSeconds: integer("duration_seconds"),
+  updatedAt: integer("updated_at").notNull().default(now),
+});

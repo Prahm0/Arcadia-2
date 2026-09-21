@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
+import { setPresence } from "@/lib/api/presence";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import type { DashboardResponse, PlannerEvent } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
@@ -23,6 +24,9 @@ const CUSTOM_DEFAULT = { focusMin: 30, breakMin: 5 };
 // actually spent time in focus. Sub-30s pokes stay unlogged so the recents
 // list doesn't fill with noise from misclicks.
 const RESET_LOG_MIN_SECONDS = 30;
+// Study-room presence keepalive. The server treats a timer quiet for 150s as
+// gone, so this leaves room for one missed beat.
+const PRESENCE_KEEPALIVE_MS = 60_000;
 
 function readCustomPreset(): { focusMin: number; breakMin: number } {
   if (typeof window === "undefined") return CUSTOM_DEFAULT;
@@ -197,6 +201,58 @@ function FocusViewInner() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remaining, phase, preset]);
+
+  // Study rooms: publish what this timer is doing. Sent when it starts, stops
+  // or changes phase, then once a minute while it runs so the server can tell
+  // a live timer from a closed tab. A paused timer reads as idle.
+  const presenceRef = useRef({ phase, remaining, subject, total: preset.focus });
+  // Declared before the effects that read it, so it is current when they run.
+  useEffect(() => {
+    presenceRef.current = {
+      phase,
+      remaining,
+      subject,
+      total: phase === "break" ? preset.break : preset.focus,
+    };
+  });
+  const wasLive = useRef(false);
+
+  const publishPresence = useCallback((live: boolean) => {
+    if (!live) {
+      // Only an actual stop is worth a write; opening the page idle isn't.
+      if (wasLive.current) setPresence({ activity: "idle" });
+      wasLive.current = false;
+      return;
+    }
+    const { phase: current, remaining: left, subject: on, total } = presenceRef.current;
+    if (current === "idle") return;
+    wasLive.current = true;
+    setPresence({
+      activity: current,
+      subject: on,
+      // Back-dated by the time already on the clock, so a resumed timer shows
+      // the right "min in" to friends.
+      startedAt: new Date(Date.now() - (total - left) * 1000).toISOString(),
+      durationSeconds: total,
+    });
+  }, []);
+
+  useEffect(() => {
+    publishPresence(running);
+    if (!running) return;
+    const id = window.setInterval(() => publishPresence(true), PRESENCE_KEEPALIVE_MS);
+    return () => window.clearInterval(id);
+  }, [running, phase, presetIndex, publishPresence]);
+
+  // A subject edit mid-session reaches the room once typing settles.
+  useEffect(() => {
+    if (!wasLive.current) return;
+    const id = window.setTimeout(() => publishPresence(true), 1500);
+    return () => window.clearTimeout(id);
+  }, [subject, publishPresence]);
+
+  // Leaving the focus page stops the timer, so stop showing as studying.
+  useEffect(() => () => publishPresence(false), [publishPresence]);
 
   async function logSession(
     type: string,

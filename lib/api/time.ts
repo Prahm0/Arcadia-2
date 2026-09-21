@@ -1,13 +1,16 @@
+import { is24Hour } from "@/lib/app/timeFormat";
+
 export function formatClock(iso: string, timezone: string): string {
-  return new Intl.DateTimeFormat("en-AU", {
+  const use24 = is24Hour();
+  const formatted = new Intl.DateTimeFormat("en-AU", {
     timeZone: timezone,
-    hour: "numeric",
+    hour: use24 ? "2-digit" : "numeric",
     minute: "2-digit",
-    hour12: true,
-  })
-    .format(new Date(iso))
-    .replace(" ", "")
-    .toLowerCase();
+    hour12: !use24,
+  }).format(new Date(iso));
+  // 12h output ("1:45 pm") gets stripped/lowercased. 24h output ("13:45") is
+  // already the shape we want.
+  return use24 ? formatted : formatted.replace(" ", "").toLowerCase();
 }
 
 export function formatRange(startIso: string, endIso: string, timezone: string): string {

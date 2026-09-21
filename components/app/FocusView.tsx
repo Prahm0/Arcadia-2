@@ -11,11 +11,48 @@ import { formatClock as formatWallClock } from "@/lib/api/time";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 
-const PRESETS = [
+const BUILT_IN_PRESETS = [
   { label: "Deep focus", focus: 50 * 60, break: 10 * 60 },
   { label: "Classic", focus: 25 * 60, break: 5 * 60 },
   { label: "Long block", focus: 90 * 60, break: 15 * 60 },
 ];
+
+const CUSTOM_KEY = "arcadia:focus:custom";
+const CUSTOM_DEFAULT = { focusMin: 30, breakMin: 5 };
+// Skip the "you barely started" case: reset only logs a session if the user
+// actually spent time in focus. Sub-30s pokes stay unlogged so the recents
+// list doesn't fill with noise from misclicks.
+const RESET_LOG_MIN_SECONDS = 30;
+
+function readCustomPreset(): { focusMin: number; breakMin: number } {
+  if (typeof window === "undefined") return CUSTOM_DEFAULT;
+  try {
+    const raw = window.localStorage.getItem(CUSTOM_KEY);
+    if (!raw) return CUSTOM_DEFAULT;
+    const parsed = JSON.parse(raw);
+    return {
+      focusMin: clampMinutes(parsed.focusMin, CUSTOM_DEFAULT.focusMin),
+      breakMin: clampMinutes(parsed.breakMin, CUSTOM_DEFAULT.breakMin),
+    };
+  } catch {
+    return CUSTOM_DEFAULT;
+  }
+}
+
+function writeCustomPreset(value: { focusMin: number; breakMin: number }) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(CUSTOM_KEY, JSON.stringify(value));
+  } catch {
+    /* ignore */
+  }
+}
+
+function clampMinutes(v: unknown, fallback: number): number {
+  const n = typeof v === "number" ? v : Number(v);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(240, Math.max(1, Math.round(n)));
+}
 
 type Phase = "focus" | "break" | "idle";
 type AsideTab = "session" | "recents";
@@ -41,7 +78,7 @@ export default function FocusView() {
 function pickPresetForMinutes(minutes: number): number {
   let best = 0;
   let bestDelta = Infinity;
-  PRESETS.forEach((p, i) => {
+  BUILT_IN_PRESETS.forEach((p, i) => {
     const delta = Math.abs(p.focus / 60 - minutes);
     if (delta < bestDelta) {
       best = i;
@@ -67,6 +104,22 @@ function FocusViewInner() {
     ? Math.round((Date.parse(linkedEvent.endAt) - Date.parse(linkedEvent.startAt)) / 60000)
     : null;
 
+  const [customPreset, setCustomPreset] = useState(CUSTOM_DEFAULT);
+  useEffect(() => {
+    setCustomPreset(readCustomPreset());
+  }, []);
+  const PRESETS = useMemo(
+    () => [
+      ...BUILT_IN_PRESETS,
+      {
+        label: "Custom",
+        focus: customPreset.focusMin * 60,
+        break: customPreset.breakMin * 60,
+      },
+    ],
+    [customPreset],
+  );
+  const customIndex = PRESETS.length - 1;
   const [presetIndex, setPresetIndex] = useState(() =>
     linkedMinutes ? pickPresetForMinutes(linkedMinutes) : 0,
   );
@@ -116,7 +169,7 @@ function FocusViewInner() {
     hasHydrated.current = true;
     const nextIdx = linkedMinutes ? pickPresetForMinutes(linkedMinutes) : 0;
     setPresetIndex(nextIdx);
-    setRemaining(PRESETS[nextIdx].focus);
+    setRemaining(BUILT_IN_PRESETS[nextIdx].focus);
     setSubject(linkedEvent.subject || data.subjects[0]?.name || "General");
     setGoal(linkedEvent.title);
   }, [linkedEvent, linkedMinutes, data.subjects]);
@@ -208,6 +261,15 @@ function FocusViewInner() {
   }
 
   function reset() {
+    // If the user pressed reset mid-focus after actually working for a bit,
+    // log the effort so it isn't lost. Shorter pokes stay unlogged so recents
+    // don't fill with misclick noise (see RESET_LOG_MIN_SECONDS).
+    if (phase === "focus") {
+      const elapsed = preset.focus - remaining;
+      if (elapsed >= RESET_LOG_MIN_SECONDS) {
+        void logSession("focus", elapsed);
+      }
+    }
     setRunning(false);
     setPhase("idle");
     setRemaining(preset.focus);
@@ -431,6 +493,47 @@ function FocusViewInner() {
                 </button>
               ))}
             </div>
+            {presetIndex === customIndex ? (
+              <div className="mt-3 flex gap-2">
+                <label className="flex-1">
+                  <span className="mb-1 block text-[11.5px]" style={{ color: "var(--app-text-muted)" }}>
+                    Focus (min)
+                  </span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={240}
+                    value={customPreset.focusMin}
+                    onChange={(e) => {
+                      const next = { ...customPreset, focusMin: clampMinutes(e.target.value, customPreset.focusMin) };
+                      setCustomPreset(next);
+                      writeCustomPreset(next);
+                      if (phase === "idle") setRemaining(next.focusMin * 60);
+                    }}
+                    className="w-full rounded-clay-sm px-2 py-1.5 text-[13.5px] outline-none"
+                    style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)", color: "var(--app-text)" }}
+                  />
+                </label>
+                <label className="flex-1">
+                  <span className="mb-1 block text-[11.5px]" style={{ color: "var(--app-text-muted)" }}>
+                    Break (min)
+                  </span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={60}
+                    value={customPreset.breakMin}
+                    onChange={(e) => {
+                      const next = { ...customPreset, breakMin: clampMinutes(e.target.value, customPreset.breakMin) };
+                      setCustomPreset(next);
+                      writeCustomPreset(next);
+                    }}
+                    className="w-full rounded-clay-sm px-2 py-1.5 text-[13.5px] outline-none"
+                    style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)", color: "var(--app-text)" }}
+                  />
+                </label>
+              </div>
+            ) : null}
           </div>
 
           <div className="rounded-clay p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}>

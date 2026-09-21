@@ -492,10 +492,10 @@ export default function SettingsView() {
                 value={newFeedUrl}
                 onChange={(event) => setNewFeedUrl(event.target.value)}
                 placeholder="https://p01-calendars.icloud.com/…/calendar.ics"
-                className="flex-1 rounded-clay-sm px-3 py-2.5 text-[13.5px] outline-none"
+                className="flex-1 rounded-md px-3 py-2.5 text-[13.5px] outline-none"
                 style={{
                   background: "var(--app-surface-soft)",
-                  boxShadow: "var(--clay-well)",
+                  boxShadow: "var(--elev-inset)",
                   color: "var(--app-text)",
                 }}
                 disabled={addingFeed}
@@ -506,10 +506,10 @@ export default function SettingsView() {
                 onChange={(event) => setNewFeedName(event.target.value)}
                 placeholder="Label (optional)"
                 maxLength={60}
-                className="rounded-clay-sm px-3 py-2.5 text-[13.5px] outline-none sm:w-[180px]"
+                className="rounded-md px-3 py-2.5 text-[13.5px] outline-none sm:w-[180px]"
                 style={{
                   background: "var(--app-surface-soft)",
-                  boxShadow: "var(--clay-well)",
+                  boxShadow: "var(--elev-inset)",
                   color: "var(--app-text)",
                 }}
                 disabled={addingFeed}
@@ -536,10 +536,10 @@ export default function SettingsView() {
               {calendarFeeds.map((feed) => (
                 <li
                   key={feed.id}
-                  className="flex flex-wrap items-center gap-3 rounded-clay-sm px-3.5 py-3"
+                  className="flex flex-wrap items-center gap-3 rounded-md px-3.5 py-3"
                   style={{
                     background: "var(--app-surface-soft)",
-                    boxShadow: "var(--clay-well)",
+                    boxShadow: "var(--elev-inset)",
                   }}
                 >
                   <span

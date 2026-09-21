@@ -5,6 +5,7 @@ import { requireSession } from "./lib/session";
 import account from "./routes/account";
 import analytics from "./routes/analytics";
 import auth from "./routes/auth";
+import googleAuth from "./routes/auth-google";
 import calendarFeeds from "./routes/calendar-feeds";
 import google from "./routes/google";
 import chat, { conversations, proposals } from "./routes/chat";
@@ -35,7 +36,7 @@ app.use("/api/*", async (c, next) => {
   return cors({
     origin: (origin) => (allowed.includes(origin) ? origin : allowed[0]),
     credentials: true,
-    allowHeaders: ["content-type", "x-csrf-token"],
+    allowHeaders: ["content-type", "x-csrf-token", "authorization"],
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   })(c, next);
 });
@@ -63,6 +64,7 @@ app.use("/api/*", async (c, next) => {
 app.get("/health", (c) => c.json({ ok: true, service: "arcadia-api" }));
 
 app.route("/api/auth", auth);
+app.route("/api/auth/google", googleAuth);
 app.route("/api/waitlist", waitlist);
 app.route("/api/account", account);
 app.route("/api/analytics", analytics);

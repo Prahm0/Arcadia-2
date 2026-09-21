@@ -7,7 +7,6 @@ import AuthShell from "@/components/app/AuthShell";
 import Field from "@/components/app/Field";
 import PrimaryButton from "@/components/app/PrimaryButton";
 import { api, ApiError } from "@/lib/api/client";
-import { continueAsGuest as continueAsGuestApi } from "@/lib/auth/guest";
 
 type Notice = { tone: "info" | "error"; text: string } | null;
 
@@ -17,7 +16,6 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [guestLoading, setGuestLoading] = useState(false);
   // Unverified-email state: gates the "Resend verification email" affordance.
   // Tracks the specific email that failed so a resend still works if the
   // student types something new before clicking.
@@ -29,7 +27,9 @@ function LoginForm() {
       ? { tone: "info", text: "Email updated. Sign in with your new address." }
       : params.get("expired") === "1"
         ? { tone: "info", text: "Your session expired. Sign back in and you'll land right where you left off." }
-        : null;
+        : params.get("error")
+          ? { tone: "error", text: params.get("error") === "google_link_required" ? "Sign in with your password to link this Google address, or contact support." : "Google sign-in could not be completed. Please try again." }
+          : null;
   const [notice, setNotice] = useState<Notice>(initialNotice);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -68,10 +68,11 @@ function LoginForm() {
     if (!needsVerification) return;
     setResending(true);
     try {
-      await api("/api/auth/resend-verification", {
+      const response = await api<{ verificationToken?: string }>("/api/auth/resend-verification", {
         method: "POST",
         body: JSON.stringify({ email: needsVerification }),
       });
+      if (response.verificationToken) { router.push(`/register?token=${encodeURIComponent(response.verificationToken)}`); return; }
       setNotice({
         tone: "info",
         text: "Fresh verification link sent — check your inbox (and spam folder).",
@@ -82,20 +83,6 @@ function LoginForm() {
       setNotice({ tone: "error", text: message });
     } finally {
       setResending(false);
-    }
-  }
-
-  async function continueAsGuest() {
-    setGuestLoading(true);
-    setNotice(null);
-    try {
-      await continueAsGuestApi();
-      router.push("/app");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Something went wrong.";
-      setNotice({ tone: "error", text: message });
-    } finally {
-      setGuestLoading(false);
     }
   }
 
@@ -173,6 +160,7 @@ function LoginForm() {
         <PrimaryButton type="submit" loading={loading}>
           Sign in
         </PrimaryButton>
+        <Link href="/forgot-password" className="block text-right text-[13px] underline underline-offset-4" style={{ color: "var(--app-text-muted)" }}>Forgot password?</Link>
         <div
           className="flex items-center gap-3 text-[11.5px] uppercase tracking-[0.16em]"
           style={{ color: "var(--app-text-faint)" }}
@@ -181,22 +169,9 @@ function LoginForm() {
           or
           <span className="h-px flex-1" style={{ background: "var(--app-border)" }} />
         </div>
-        <button
-          type="button"
-          onClick={continueAsGuest}
-          disabled={guestLoading || loading}
-          className="ui-pressable w-full rounded-md px-4 py-3 text-[14.5px] disabled:cursor-not-allowed disabled:opacity-60"
-          style={{
-            background: "var(--app-surface)",
-            color: "var(--app-text)",
-            boxShadow: "var(--elev-1)",
-          }}
-        >
-          {guestLoading ? "Setting up a guest account…" : "Continue as guest"}
-        </button>
-        <p className="text-center text-[12px]" style={{ color: "var(--app-text-faint)" }}>
-          Skips sign-up with a throwaway account — nothing saves after you close the tab.
-        </p>
+        {/* OAuth must use a document navigation so Google can redirect the browser. */}
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+        <a href="/api/auth/google/start" className="ui-pressable block w-full rounded-md px-4 py-3 text-center text-[14.5px]" style={{ background: "var(--app-surface)", color: "var(--app-text)", boxShadow: "var(--elev-1)" }}>Continue with Google</a>
       </form>
     </AuthShell>
   );

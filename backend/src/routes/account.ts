@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { db, schema } from "../db";
 import { hashPassword, newSalt, passwordProblem, verifyPassword } from "../lib/password";
 import { iso } from "../lib/time";
+import { clearSessionCookie } from "../lib/session";
 import type { Env, Variables } from "../types";
 
 const account = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -24,9 +25,12 @@ account.get("/", async (c) => {
     .where(eq(schema.profiles.userId, userId))
     .limit(1);
 
+  const [googleIdentity] = await database.select({ subject: schema.authIdentities.subject }).from(schema.authIdentities).where(eq(schema.authIdentities.userId, userId)).limit(1);
+
   return c.json({
     account: {
       email: user.email,
+      googleSignInLinked: Boolean(googleIdentity),
       displayName: profile?.displayName || user.name,
       theme: user.theme,
       createdAt: iso(user.createdAt),
@@ -106,6 +110,36 @@ account.post("/change-password", async (c) => {
     }
   }
 
+  return c.json({ ok: true });
+});
+
+
+account.delete("/", async (c) => {
+  const { userId, sessionId } = c.get("session");
+  const body = await c.req.json<{ confirmation?: string }>().catch(() => null);
+  if (body?.confirmation !== "DELETE") return c.json({ error: "Type DELETE to confirm." }, 422);
+  const database = db(c.env.DB);
+  const [session] = await database.select().from(schema.sessions).where(eq(schema.sessions.id, sessionId)).limit(1);
+  if (!session || Date.now() - session.createdAt > 15 * 60_000) {
+    return c.json({ error: "Sign out and sign back in before deleting your account." }, 403);
+  }
+  const [user] = await database.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
+  if (!user) return c.json({ error: "Not signed in." }, 401);
+  // Enumerate the entire user prefix, including orphaned R2 objects not referenced by D1.
+  if (c.env.UPLOADS) {
+    let cursor: string | undefined;
+    do {
+      const page = await c.env.UPLOADS.list({ prefix: `${userId}/`, cursor });
+      if (page.objects.length) await c.env.UPLOADS.delete(page.objects.map((object) => object.key));
+      cursor = page.truncated ? page.cursor : undefined;
+    } while (cursor);
+  } else {
+    const [upload] = await database.select().from(schema.uploads).where(eq(schema.uploads.userId, userId)).limit(1);
+    if (upload) return c.json({ error: "Uploads are temporarily unavailable. Contact support to delete your account." }, 503);
+  }
+  await database.delete(schema.waitlist).where(eq(schema.waitlist.email, user.email));
+  await database.delete(schema.users).where(eq(schema.users.id, userId));
+  clearSessionCookie(c);
   return c.json({ ok: true });
 });
 

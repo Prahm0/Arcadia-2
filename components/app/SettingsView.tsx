@@ -21,11 +21,11 @@ import {
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import { useRouter } from "next/navigation";
-import { isGuestEmail } from "@/lib/auth/guest";
 
 interface AccountResponse {
   account: {
     email: string;
+    googleSignInLinked: boolean;
     displayName: string;
     theme: string;
     createdAt: string;
@@ -47,6 +47,11 @@ export default function SettingsView() {
   const [passwordNotice, setPasswordNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
 
   const [account, setAccount] = useState<AccountResponse["account"] | null>(null);
+  const [linkingGoogle, setLinkingGoogle] = useState(false);
+  const [linkError, setLinkError] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [soundOn, setSoundOn] = useState(true);
   const [remindersOn, setRemindersOn] = useState(false);
   const [permission, setPermission] = useState<NotificationPermissionState>("default");
@@ -92,7 +97,6 @@ export default function SettingsView() {
   }
 
   const google = data.google ?? { connected: false, lastSyncAt: null };
-  const isGuest = isGuestEmail(data.user.email);
   const [googleBusy, setGoogleBusy] = useState<"sync" | "disconnect" | null>(null);
   const [googleNotice, setGoogleNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
 
@@ -302,6 +306,30 @@ export default function SettingsView() {
     }
   }
 
+  async function linkGoogleSignIn() {
+    setLinkingGoogle(true);
+    setLinkError("");
+    try {
+      const result = await api<{ url: string }>("/api/auth/google/link-start", { method: "POST" });
+      window.location.assign(result.url);
+    } catch (error) {
+      setLinkError(error instanceof Error ? error.message : "Could not connect Google sign-in.");
+      setLinkingGoogle(false);
+    }
+  }
+  async function deleteAccount() {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await api("/api/account", { method: "DELETE", body: JSON.stringify({ confirmation: deleteConfirm }) });
+      saveCsrf(null);
+      router.replace("/login?deleted=1");
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : "Could not delete account.");
+    } finally {
+      setDeleting(false);
+    }
+  }
   async function signOut() {
     try {
       await api("/api/auth/logout", { method: "POST" });
@@ -317,38 +345,8 @@ export default function SettingsView() {
       <PageHeader
         eyebrow="Settings"
         title="Account & preferences"
-        meta={
-          account
-            ? isGuest
-              ? "Guest session — nothing you do here is saved after you sign out."
-              : `Signed in as ${account.email}`
-            : undefined
-        }
+        meta={account ? `Signed in as ${account.email}` : undefined}
       />
-
-      {isGuest ? (
-        <div className="mx-auto w-full max-w-[720px] px-6 pt-6 sm:px-10">
-          <div
-            className="rounded-lg p-5"
-            style={{
-              background: "var(--app-accent-soft)",
-              boxShadow: "var(--elev-1)",
-            }}
-          >
-            <p className="text-[14px] font-medium" style={{ color: "var(--app-accent-strong)" }}>
-              You're using a guest account.
-            </p>
-            <p className="mt-1.5 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-              Your tasks, focus streak and Arcad chats live only in this session. Create an account to keep them.
-            </p>
-            <div className="mt-4">
-              <AppButton variant="primary" onClick={() => router.push("/register")}>
-                Create an account
-              </AppButton>
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       <div className="mx-auto flex w-full max-w-[720px] flex-col gap-6 px-6 py-8 sm:px-10">
         <Card>
@@ -358,12 +356,8 @@ export default function SettingsView() {
               <Input value={name} onChange={setName} />
             </Field>
             <Field label="Email">
-              <Input value={isGuest ? "" : data.user.email} onChange={() => {}} disabled />
-              <Hint>
-                {isGuest
-                  ? "Guest accounts have no email. Create an account to add one and save your progress."
-                  : "Email changes go through verification — use the change-email flow."}
-              </Hint>
+              <Input value={data.user.email} onChange={() => {}} disabled />
+              <Hint>Your email address is used for account recovery.</Hint>
             </Field>
             <div className="flex items-center justify-between pt-2">
               <Notice notice={profileNotice} />
@@ -600,7 +594,7 @@ export default function SettingsView() {
                 Completion tick
               </p>
               <p className="mt-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-                A quiet click when you mark a study block or task done. Off doesn't affect the visual burst.
+                A quiet click when you mark a study block or task done. Off doesn&rsquo;t affect the visual burst.
               </p>
             </div>
             <button
@@ -626,7 +620,7 @@ export default function SettingsView() {
           <SectionHeader label="Session reminders" />
           {!notificationsSupported() ? (
             <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
-              This browser doesn't support notifications. On iOS Safari, add the app to your Home Screen to unlock them.
+              This browser doesn&rsquo;t support notifications. On iOS Safari, add the app to your Home Screen to unlock them.
             </p>
           ) : (
             <>
@@ -700,8 +694,7 @@ export default function SettingsView() {
           )}
         </Card>
 
-        {isGuest ? null : (
-          <Card>
+        <Card>
             <SectionHeader label="Password" />
             <form onSubmit={changePassword} className="flex flex-col gap-4">
               <Field label="Current password">
@@ -716,9 +709,22 @@ export default function SettingsView() {
                 <AppButton type="submit" variant="primary" loading={savingPassword} disabled={!currentPassword || !newPassword}>Update</AppButton>
               </div>
             </form>
-          </Card>
-        )}
+        </Card>
 
+        <Card>
+          <SectionHeader label="Google sign-in" />
+          <p className="mb-4 text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>Link this account to Google without granting access to your Calendar.</p>
+          {account?.googleSignInLinked ? <p className="text-[13px]">Google sign-in is linked.</p> : <AppButton variant="secondary" onClick={() => void linkGoogleSignIn()} loading={linkingGoogle}>Link Google sign-in</AppButton>}
+          {linkError ? <p role="alert" className="mt-3 text-[13px]" style={{ color: "var(--app-danger)" }}>{linkError}</p> : null}
+        </Card>
+
+        <Card>
+          <SectionHeader label="Delete account" />
+          <p className="mb-4 text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>Permanently remove your account, study data and uploaded files. This cannot be undone. For security, sign in again if your session is over 15 minutes old.</p>
+          <Field label="Type DELETE to confirm"><Input value={deleteConfirm} onChange={setDeleteConfirm} /></Field>
+          {deleteError ? <p role="alert" className="my-3 text-[13px]" style={{ color: "var(--app-danger)" }}>{deleteError}</p> : null}
+          <div className="mt-4"><AppButton variant="secondary" onClick={() => void deleteAccount()} loading={deleting} disabled={deleteConfirm !== "DELETE"}>Delete account permanently</AppButton></div>
+        </Card>
         <Card>
           <SectionHeader label="Session" />
           <div className="flex items-center justify-between">

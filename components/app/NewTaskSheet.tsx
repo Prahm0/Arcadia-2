@@ -231,7 +231,7 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
               </datalist>
               {!data.subjects.some((s) => s.name.toLowerCase() === subject.trim().toLowerCase()) && subject.trim().length > 0 ? (
                 <p className="mt-1.5 text-[11.5px]" style={{ color: "var(--app-accent-strong)" }}>
-                  New subject — I'll add {subject.trim()} to your list.
+                  New subject — I&rsquo;ll add {subject.trim()} to your list.
                 </p>
               ) : null}
             </Field>

@@ -202,7 +202,7 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
           className="mt-2 text-[32px] font-medium leading-[1.1] tracking-[-0.02em] sm:text-[40px]"
           style={{ color: "var(--app-text)" }}
         >
-          {currentStep.key === "you" && <>Tell me who I'm <span className="accent-serif">planning</span> for.</>}
+          {currentStep.key === "you" && <>Tell me who I&rsquo;m <span className="accent-serif">planning</span> for.</>}
           {currentStep.key === "subjects" && <>What are you actually <span className="accent-serif">studying</span>?</>}
           {currentStep.key === "life" && <>When are you <span className="accent-serif">awake</span>?</>}
           {currentStep.key === "focus" && <>How long do you <span className="accent-serif">lock in</span>?</>}

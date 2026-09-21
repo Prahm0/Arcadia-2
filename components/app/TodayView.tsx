@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import { CATEGORY_COLOR } from "@/lib/app/categoryColors";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
-import type { PlannerEvent } from "@/lib/api/types";
+import type { DashboardResponse, PlannerEvent, PlannerTask } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import {
   dateKey,
@@ -400,7 +400,7 @@ function FocusRow({
   );
 }
 
-function NextDeadlinesCard({ tasks, timezone }: { tasks: any[]; timezone: string }) {
+function NextDeadlinesCard({ tasks, timezone }: { tasks: PlannerTask[]; timezone: string }) {
   if (!tasks?.length) {
     return (
       <div className="rounded-lg p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
@@ -431,7 +431,7 @@ function NextDeadlinesCard({ tasks, timezone }: { tasks: any[]; timezone: string
   );
 }
 
-function StatsCard({ analytics }: { analytics: any }) {
+function StatsCard({ analytics }: { analytics: DashboardResponse["analytics"] }) {
   const streak = useStreak();
   const current = streak.current;
   const week = Number(analytics?.weekMinutes ?? 0);

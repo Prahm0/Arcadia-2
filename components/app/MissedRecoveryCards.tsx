@@ -155,11 +155,11 @@ export default function MissedRecoveryCards() {
                   </p>
                 ) : state.step === "why" ? (
                   <p className="mt-1.5 text-[14.5px] leading-snug" style={{ color: "var(--app-text)" }}>
-                    Marked missed. The plan's re-checked around it. What got in the way?
+                    Marked missed. The plan&rsquo;s re-checked around it. What got in the way?
                   </p>
                 ) : (
                   <p className="mt-1.5 text-[14.5px] leading-snug" style={{ color: "var(--app-text)" }}>
-                    Locked in. That's on the streak.
+                    Locked in. That&rsquo;s on the streak.
                   </p>
                 )}
               </div>
@@ -199,7 +199,7 @@ export default function MissedRecoveryCards() {
                     loading={state.saving && state.resolution === "missed"}
                     onClick={() => respond(event, "missed")}
                   >
-                    No, didn't
+                    No, didn&rsquo;t
                   </AppButton>
                 </>
               ) : state.step === "why" ? (

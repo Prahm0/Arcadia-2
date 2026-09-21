@@ -92,7 +92,7 @@ export default function CommitmentsView() {
             className="rounded-lg p-6 text-center"
             style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
           >
-            <p className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>Couldn't load your commitments.</p>
+            <p className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>Couldn&rsquo;t load your commitments.</p>
             <p className="mt-1.5 text-[13px]" style={{ color: "var(--app-text-muted)" }}>{error}</p>
             <div className="mt-4 flex justify-center">
               <AppButton variant="secondary" onClick={() => void load()}>Try again</AppButton>

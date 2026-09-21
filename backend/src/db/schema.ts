@@ -36,6 +36,28 @@ export const sessions = sqliteTable(
   (t) => [index("sessions_user_idx").on(t.userId)],
 );
 
+export const passwordResetTokens = sqliteTable("password_reset_tokens", {
+  // Only a SHA-256 digest is stored; the raw token exists solely in the email.
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: integer("expires_at").notNull(),
+  createdAt: integer("created_at").notNull().default(now),
+}, (t) => [index("password_reset_tokens_user_idx").on(t.userId)]);
+
+export const authIdentities = sqliteTable("auth_identities", {
+  // A provider subject is stable even if the account's email changes.
+  provider: text("provider").notNull(),
+  subject: text("subject").notNull(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: integer("created_at").notNull().default(now),
+}, (t) => [primaryKey({ columns: [t.provider, t.subject] }), index("auth_identities_user_idx").on(t.userId)]);
+
+export const authRateLimits = sqliteTable("auth_rate_limits", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull(),
+  resetAt: integer("reset_at").notNull(),
+});
+
 export const profiles = sqliteTable("profiles", {
   userId: text("user_id")
     .primaryKey()

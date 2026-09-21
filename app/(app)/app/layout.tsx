@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import AppShell from "@/components/app/AppShell";
 import { DashboardDataProvider, useDashboard } from "@/lib/app/DashboardProvider";
@@ -14,12 +14,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
 function Gate({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { state, reload, patch } = useDashboard();
   useDashboardAutoRefresh(reload);
 
   useEffect(() => {
     if (state.status === "unauthenticated") router.replace("/login");
-  }, [state.status, router]);
+    if (state.status === "ready" && !state.data.user.onboardingComplete && pathname !== "/app") router.replace("/app");
+  }, [state, pathname, router]);
 
   if (state.status === "loading") {
     return (
@@ -45,7 +47,7 @@ function Gate({ children }: { children: ReactNode }) {
         style={{ background: "var(--app-bg)", color: "var(--app-text)" }}
       >
         <p className="text-[20px] font-medium tracking-[-0.015em]">
-          Couldn't <span className="accent-serif">reach</span> the server.
+          Couldn&rsquo;t <span className="accent-serif">reach</span> the server.
         </p>
         <p className="max-w-[380px] text-[14px]" style={{ color: "var(--app-text-muted)" }}>
           {state.error}
@@ -60,6 +62,8 @@ function Gate({ children }: { children: ReactNode }) {
       </div>
     );
   }
+
+  if (!state.data.user.onboardingComplete && pathname !== "/app") return null;
 
   const briefing = state.data.user.onboardingComplete ? state.data.briefing : null;
 

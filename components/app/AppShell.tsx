@@ -10,7 +10,6 @@ import { useStreak } from "@/lib/app/useStreak";
 import { useSessionReminders } from "@/lib/app/useSessionReminders";
 import { useAppShortcuts } from "@/lib/app/useAppShortcuts";
 import ArcadFloatingButton from "./ArcadFloatingButton";
-import GuestBanner from "./GuestBanner";
 import MenuBar from "./MenuBar";
 import MobileBottomNav from "./MobileBottomNav";
 import NewTaskSheet from "./NewTaskSheet";
@@ -18,7 +17,6 @@ import NotificationCentre from "./NotificationCentre";
 import PageMount from "./PageMount";
 import ShortcutsDialog from "./ShortcutsDialog";
 import Logo from "@/components/ui/Logo";
-import { isGuestEmail } from "@/lib/auth/guest";
 
 interface AppShellProps {
   user: AuthUser | null;
@@ -384,7 +382,7 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-medium" style={{ color: "var(--app-text)" }}>{user.name}</p>
-                    <p className="truncate text-[11.5px]" style={{ color: "var(--app-text-muted)" }}>{isGuestEmail(user.email) ? "Guest account" : user.email}</p>
+                    <p className="truncate text-[11.5px]" style={{ color: "var(--app-text-muted)" }}>{user.email}</p>
                   </div>
                 </Link>
                 <button
@@ -419,9 +417,6 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
               <span className="font-medium" style={{ color: "var(--app-arcad-strong)" }}>Arcad</span>
               <span>{briefing}</span>
             </div>
-          ) : null}
-          {isGuestEmail(user?.email) ? (
-            <GuestBanner />
           ) : null}
           <PageMount>{children}</PageMount>
         </main>

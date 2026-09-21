@@ -7,7 +7,6 @@ import AuthShell from "@/components/app/AuthShell";
 import Field from "@/components/app/Field";
 import PrimaryButton from "@/components/app/PrimaryButton";
 import { api } from "@/lib/api/client";
-import { continueAsGuest } from "@/lib/auth/guest";
 
 interface RegisterResponse {
   message: string;
@@ -42,7 +41,6 @@ function RegisterInner({ initialToken }: { initialToken: string | null }) {
   const [error, setError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(Boolean(initialToken));
   const [verifyFailed, setVerifyFailed] = useState(false);
-  const [guestLoading, setGuestLoading] = useState(false);
 
   // Consume the token from the verification email on first render. On
   // success bounce to /login?verified=1 (which shows the "Email verified"
@@ -71,23 +69,7 @@ function RegisterInner({ initialToken }: { initialToken: string | null }) {
     };
   }, [initialToken, router]);
 
-  async function onGuest() {
-    setGuestLoading(true);
-    setError(null);
-    try {
-      await continueAsGuest();
-      router.push("/app");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
-    } finally {
-      setGuestLoading(false);
-    }
-  }
-
-  // Local-dev fallback: when RESEND_API_KEY isn't set the backend returns the
-  // token directly in the register response so the developer can proceed
-  // without a real inbox. In prod (Resend live) that field is absent and we
-  // show "Check your email to verify" instead.
+  // A token is returned only under the explicit localhost development flag.
   async function autoVerify(token: string) {
     setVerifying(true);
     setError(null);
@@ -253,22 +235,9 @@ function RegisterInner({ initialToken }: { initialToken: string | null }) {
             or
             <span className="h-px flex-1" style={{ background: "var(--app-border)" }} />
           </div>
-          <button
-            type="button"
-            onClick={onGuest}
-            disabled={guestLoading || loading}
-            className="ui-pressable w-full rounded-md px-4 py-3 text-[14.5px] disabled:cursor-not-allowed disabled:opacity-60"
-            style={{
-              background: "var(--app-surface)",
-              color: "var(--app-text)",
-              boxShadow: "var(--elev-1)",
-            }}
-          >
-            {guestLoading ? "Setting up a guest account…" : "Continue as guest"}
-          </button>
-          <p className="text-center text-[12px]" style={{ color: "var(--app-text-faint)" }}>
-            Skips sign-up with a throwaway account — nothing saves after you close the tab.
-          </p>
+          {/* OAuth must use a document navigation so Google can redirect the browser. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a href="/api/auth/google/start" className="ui-pressable block w-full rounded-md px-4 py-3 text-center text-[14.5px]" style={{ background: "var(--app-surface)", color: "var(--app-text)", boxShadow: "var(--elev-1)" }}>Continue with Google</a>
         </form>
       )}
     </AuthShell>

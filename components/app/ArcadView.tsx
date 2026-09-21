@@ -75,16 +75,16 @@ export default function ArcadView() {
       const path = conversationId
         ? `/api/conversations/${encodeURIComponent(conversationId)}`
         : "/api/chat";
-      const response = await api<any>(path);
+      const response = await api<{ conversation?: Conversation; conversationId?: string | null; messages: Message[]; proposals?: Proposal[] }>(path);
       if (conversationId) {
         setState({
-          conversationId: response.conversation.id,
+          conversationId: response.conversation!.id,
           messages: response.messages,
           proposals: state.proposals,
         });
       } else {
         setState({
-          conversationId: response.conversationId,
+          conversationId: response.conversationId ?? null,
           messages: response.messages,
           proposals: response.proposals || [],
         });
@@ -227,7 +227,7 @@ export default function ArcadView() {
     setError(null);
     try {
       const response = await api<{ conversation: Conversation }>("/api/conversations", { method: "POST" });
-      setState({ conversationId: response.conversation.id, messages: [], proposals: state.proposals });
+      setState({ conversationId: response.conversation!.id, messages: [], proposals: state.proposals });
       setConversations((prev) => [response.conversation, ...prev]);
       setTab("chat");
       inputRef.current?.focus();

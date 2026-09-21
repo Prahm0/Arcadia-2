@@ -102,7 +102,7 @@ export default function PricingSection() {
           <div className="col-span-12 lg:col-span-5 lg:col-start-8 lg:self-end">
             <FadeIn delay={0.2}>
               <p className="type-body-lg max-w-[440px] text-white/60">
-                Start free — you'll feel it in your first week. When you're ready,
+                Start free — you&rsquo;ll feel it in your first week. When you&rsquo;re ready,
                 Pro turns Arcad into a proper study partner. Max adds a voice tutor
                 and, soon, real humans.
               </p>

@@ -55,8 +55,8 @@ export async function verifyPassword(
 }
 
 export function passwordProblem(password: string): string | null {
-  if (typeof password !== "string" || password.length < 8) {
-    return "Password must be at least 8 characters.";
+  if (typeof password !== "string" || password.length < 10) {
+    return "Password must be at least 10 characters.";
   }
   if (password.length > 200) return "Password is too long.";
   return null;

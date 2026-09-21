@@ -105,6 +105,8 @@ export async function syncFeed(
           startAt: event.startAt,
           endAt: event.endAt,
           subject: description || null,
+          // Refresh `kind` so all-day events sync down for pre-existing rows.
+          kind: event.allDay ? "all-day" : "external",
           source: "feed",
           editable: false,
           pinned: true,

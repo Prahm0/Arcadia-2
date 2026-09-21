@@ -66,7 +66,7 @@ export default function DailyCheckInCard() {
 
   return (
     <div
-      className="hero-fade-up mb-6 flex flex-wrap items-start gap-4 rounded-clay px-5 py-4"
+      className="hero-fade-up mb-6 flex flex-wrap items-start gap-4 rounded-lg px-5 py-4"
       style={{
         background: "var(--app-accent-soft)",
         border: "1px solid color-mix(in oklab, var(--app-accent) 25%, var(--app-border))",

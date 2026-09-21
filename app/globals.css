@@ -48,21 +48,17 @@
 
   --breakpoint-2xl: 90rem;
 
-  /* App shell tokens. The product is its own world now: white cards and
-     near-black type in light, soft grey clay in dark, earthy accents in both.
-     It no longer borrows the landing's night palette or its purple — purple
-     survives only as --app-arcad, so the AI companion stays distinct.
-
-     Cards stay white and type stays near-black so the theme keeps its
-     black-on-white crispness. Only the page ground is tinted, and only so
-     clay has a step to rise out of. Earthy belongs in the accents, not in
-     the paper. Dark overrides live under [data-app-theme="dark"] below. */
-  --app-bg: #ece7dd;              /* warm ground */
-  --app-surface: #ffffff;
-  --app-surface-soft: #f1ece2;    /* recessed wells and insets */
-  --app-elev: #ffffff;
-  --app-border: #ded5c6;
-  --app-border-strong: #c4b9a6;
+  /* App shell tokens. The product is working software, not a showpiece:
+     flat panels on a barely-warm ground, separated by hairlines rather than
+     shadows. Depth is reserved for things that float (menus, sheets,
+     dialogs) — see the --elev-* scale below. Dark overrides live under
+     [data-app-theme="dark"]. */
+  --app-bg: #f6f5f2;              /* page ground, a breath warmer than white */
+  --app-surface: #ffffff;         /* panels, cards, the menu bar */
+  --app-surface-soft: #f0eee9;    /* sidebar, insets, input fills */
+  --app-elev: #ffffff;            /* floating layers */
+  --app-border: #e4e0d9;          /* hairlines between everything */
+  --app-border-strong: #cfc9bf;   /* inputs, hovered borders */
   --app-text: #100f0d;            /* 19:1 on the card */
   --app-text-soft: #35322c;
   --app-text-muted: #5f5a52;
@@ -88,28 +84,35 @@
   --app-cat-extra: #966a2b;       /* ochre */
   --app-cat-rose: #8f5560;
   --app-cat-plum: #6e6182;
-
-  /* Light clay: warm brown-tinted shadow, bright white top rim. */
-  --clay-shadow:
-    0 8px 20px -6px rgba(90, 74, 58, 0.18), 0 2px 5px -2px rgba(90, 74, 58, 0.1);
-  --clay-shadow-lift:
-    0 14px 28px -8px rgba(90, 74, 58, 0.24), 0 3px 7px -3px rgba(90, 74, 58, 0.12);
-  --clay-rim:
-    inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -2px 3px rgba(90, 74, 58, 0.06);
-  --clay-well:
-    inset 0 2px 5px rgba(90, 74, 58, 0.1), inset 0 -1px 0 rgba(255, 255, 255, 0.7);
-  --clay-shadow-sheet: 0 -20px 60px -20px rgba(90, 74, 58, 0.28);
 }
 
-/* Dark theme = landing night palette, softened just enough for extended reading.
+/* Elevation. Borders are drawn as a 1px box-shadow ring so switching a
+   surface between levels never shifts layout. Only --elev-2 and up cast a
+   real shadow, and only floating layers use them. Plain :root rather than
+   @theme so Tailwind never tree-shakes them out from under inline styles. */
+:root {
+  --shadow-rgb: 32, 26, 20;
+  --elev-1: 0 0 0 1px var(--app-border), 0 1px 2px rgba(var(--shadow-rgb), 0.04);
+  --elev-2:
+    0 0 0 1px var(--app-border), 0 6px 16px -4px rgba(var(--shadow-rgb), 0.12),
+    0 2px 4px -2px rgba(var(--shadow-rgb), 0.06);
+  --elev-3:
+    0 0 0 1px var(--app-border), 0 20px 48px -16px rgba(var(--shadow-rgb), 0.28),
+    0 4px 12px -4px rgba(var(--shadow-rgb), 0.08);
+  --elev-inset: inset 0 0 0 1px var(--app-border);
+  --elev-inset-strong: inset 0 0 0 1px var(--app-border-strong);
+}
+
+/* Dark theme: the same warm greys, flattened, for long sessions.
    Applied via [data-app-theme="dark"] on <html>. */
 [data-app-theme="dark"] {
-  --app-bg: #232220;              /* warm grey, not black and not blue */
-  --app-surface: #2b2a27;
-  --app-surface-soft: #1d1c1a;
-  --app-elev: #34322e;
-  --app-border: #3a3834;
-  --app-border-strong: #4d4a44;
+  --shadow-rgb: 0, 0, 0;
+  --app-bg: #1c1b19;              /* warm grey, not black and not blue */
+  --app-surface: #232220;
+  --app-surface-soft: #191816;
+  --app-elev: #2a2926;
+  --app-border: #34322e;
+  --app-border-strong: #48453f;
   --app-text: #f6f3ec;
   --app-text-soft: #d9d3c7;
   --app-text-muted: #a39c8e;
@@ -132,46 +135,24 @@
   --app-cat-extra: #d6a967;
   --app-cat-rose: #c08d97;
   --app-cat-plum: #a297b8;
-
-  /* Dark clay: the rim is a faint warm highlight plus a dark bottom lip —
-     the light-mode white inset would read as a scuff on grey. */
-  --clay-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.45), 0 2px 5px -2px rgba(0, 0, 0, 0.3);
-  --clay-shadow-lift: 0 14px 28px -8px rgba(0, 0, 0, 0.55), 0 3px 7px -3px rgba(0, 0, 0, 0.35);
-  --clay-rim:
-    inset 0 1px 0 rgba(255, 250, 240, 0.07), inset 0 -2px 3px rgba(0, 0, 0, 0.35);
-  --clay-well:
-    inset 0 2px 6px rgba(0, 0, 0, 0.4), inset 0 -1px 0 rgba(255, 250, 240, 0.05);
-  --clay-shadow-sheet: 0 -20px 60px -20px rgba(0, 0, 0, 0.6);
 }
 
 /* Everything the product needs that the landing must not inherit. The selector
    matches on the presence of the attribute, which only pages under the (app)
    route group ever get. Specificity (0,1,1) beats the :root that @theme emits,
-   so these win over the tokens above. */
+   so these win over the tokens above.
+
+   Inter for the interface, JetBrains Mono only where a value is a value —
+   timers, codes, counts. No display serif: the product is a tool. */
 html[data-app-theme] {
-  --font-sans: var(--font-courier), ui-monospace, "Courier New", monospace;
-  --font-mono: var(--font-courier), ui-monospace, "Courier New", monospace;
-  --font-serif: var(--font-courier), ui-monospace, "Courier New", monospace;
+  --font-sans:
+    var(--font-ui), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono:
+    var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-serif: var(--font-sans);
 
-  /* Courier Prime ships 400 and 700 only. We deliberately leave `font-medium`
-     mapped to 500 (which the browser resolves to 400 in Courier) — the app
-     was reading as bold-everywhere before, which is exactly what the type
-     hierarchy was NOT meant to signal. Semibold stays at 700 for the small
-     set of places that truly need weight to carry the eye. */
   --font-weight-medium: 500;
-  --font-weight-semibold: 700;
-}
-
-/* Claymorphism radii. In the --radius-* namespace so Tailwind also generates
-   rounded-clay / rounded-clay-lg / … utilities. `static` because @theme
-   tree-shakes unused variables, and these are referenced from hand-written CSS
-   (:focus-visible, the clay utilities) that the scanner does not credit. */
-@theme static {
-  --radius-clay-xs: 8px;          /* heatmap cells, schedule blocks */
-  --radius-clay-sm: 14px;         /* chips, small insets */
-  --radius-clay: 20px;            /* buttons, inputs, nav items */
-  --radius-clay-lg: 26px;         /* cards, panels */
-  --radius-clay-xl: 30px;         /* sheets, popovers */
+  --font-weight-semibold: 600;
 }
 
 @layer base {
@@ -202,20 +183,14 @@ html[data-app-theme] {
   html[data-app-theme] body {
     background: var(--app-bg);
     color: var(--app-text);
-    /* Courier Prime has a much smaller x-height than DM Sans, so the ~300
-       hardcoded px sizes across the product would all read a size too small.
-       Normalising the x-height fixes them in one line instead of 300 edits.
-       Where font-size-adjust is unsupported, text just renders slightly
-       small — nothing breaks. Tuned by eye; see the plan. */
-    font-size-adjust: 0.47;
-    font-size-adjust: ex-height 0.47;
-    /* And it is ~20% wider per character, so claw a little back. */
-    letter-spacing: -0.01em;
+    /* Inter's interface defaults: open digits and a straight-sided 1 read
+       better in dense numbers; tighter tracking suits its UI sizes. */
+    font-feature-settings: "cv01", "cv05", "cv11", "ss03";
+    letter-spacing: -0.006em;
   }
 
-  /* The film-grain overlay reads as artful over black on the landing, but over
-     clay it muddies the soft gradients the whole style depends on. The product
-     goes without it in both themes; the landing keeps it. */
+  /* The film-grain overlay reads as artful over black on the landing; over
+     flat panels it's just noise. The product goes without it. */
   html[data-app-theme] body::after {
     display: none;
   }
@@ -225,8 +200,9 @@ html[data-app-theme] {
   }
 
   html[data-app-theme] :focus-visible {
-    outline-color: var(--app-accent);
-    border-radius: var(--radius-clay-sm);
+    outline: 2px solid var(--app-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
   }
 
   /* Film grain over everything: keeps the dark surfaces from reading as flat. */
@@ -348,37 +324,35 @@ html[data-app-theme] {
   line-height: 0.9;
 }
 
-/* Hairline between sections so surface changes read as deliberate. */
-/* Claymorphism.
-   Surfaces are puffy and lit from above: a soft tinted drop shadow plus an
-   inner rim that replaces the old 1px border. Radius is deliberately NOT set
-   here — call sites pass rounded-clay / rounded-clay-lg / … so utility
-   ordering can never decide it for us. */
-@utility clay-card {
+/* Surfaces. Flat panels outlined by a hairline; radius is deliberately NOT
+   set here — call sites pass rounded-md / rounded-lg so utility ordering can
+   never decide it for us. */
+@utility surface-card {
   background: var(--app-surface);
-  box-shadow: var(--clay-shadow), var(--clay-rim);
+  box-shadow: var(--elev-1);
 }
 
-/* One step further off the page: popovers, the FAB, anything floating. */
-@utility clay-raised {
+/* Floating: popovers, menus, the FAB. */
+@utility surface-raised {
   background: var(--app-elev);
-  box-shadow: var(--clay-shadow-lift), var(--clay-rim);
+  box-shadow: var(--elev-2);
 }
 
-/* Recessed — inputs, insets, the pressed state of a segmented control. */
-@utility clay-well {
+/* Inset: inputs, wells, the pressed state of a segmented control. */
+@utility surface-inset {
   background: var(--app-surface-soft);
-  box-shadow: var(--clay-well);
+  box-shadow: var(--elev-inset);
 }
 
-/* Recessed but transparent, for wells drawn over an already-soft surface. */
-@utility clay-well-bare {
-  box-shadow: var(--clay-well);
+/* Inset outline only, for insets drawn over an already-soft surface. */
+@utility inset-ring {
+  box-shadow: var(--elev-inset);
 }
 
-@utility clay-sheet {
+/* Sheets and dialogs: the one place a real shadow earns its keep. */
+@utility surface-sheet {
   background: var(--app-elev);
-  box-shadow: var(--clay-shadow-sheet), var(--clay-rim);
+  box-shadow: var(--elev-3);
 }
 
 /* ---- Interaction feedback -------------------------------------------------
@@ -450,50 +424,90 @@ html[data-app-theme] {
 /* Row and icon-button hover. Replaces the hover:bg-black/5 that was invisible
    on any dark surface — this tints with the foreground colour, so it works in
    both themes. */
-@utility clay-hover {
-  transition: background-color 160ms var(--ease-out-expo);
+@utility ui-hover {
+  transition: background-color 120ms ease-out;
 
   &:hover {
-    background: color-mix(in oklab, var(--app-text) 7%, transparent);
+    background: color-mix(in oklab, var(--app-text) 6%, transparent);
   }
 }
 
-/* The press affordance: lifts under the cursor, sinks into a well when held. */
-@utility clay-pressable {
+/* Press affordance for buttons and clickable cards. Flat: the border firms
+   up on hover and the fill darkens a touch while held — nothing moves. */
+@utility ui-pressable {
   transition:
-    transform 180ms var(--ease-out-expo),
-    box-shadow 180ms var(--ease-out-expo),
-    background-color 180ms var(--ease-out-expo),
-    border-color 180ms var(--ease-out-expo),
-    color 180ms var(--ease-out-expo);
+    box-shadow 120ms ease-out,
+    background-color 120ms ease-out,
+    border-color 120ms ease-out,
+    color 120ms ease-out,
+    filter 120ms ease-out;
 
   &:hover:not(:disabled):not([aria-disabled="true"]) {
-    transform: translateY(-1px);
-    box-shadow: var(--clay-shadow-lift), var(--clay-rim);
+    box-shadow: 0 0 0 1px var(--app-border-strong), 0 1px 2px rgba(var(--shadow-rgb), 0.06);
   }
 
   &:active:not(:disabled):not([aria-disabled="true"]) {
-    transform: translateY(1px);
-    box-shadow: var(--clay-well);
+    filter: brightness(0.96);
   }
 
   @media (prefers-reduced-motion: reduce) {
     transition: none;
-
-    &:hover:not(:disabled),
-    &:active:not(:disabled) {
-      transform: none;
-    }
   }
 }
 
-/* The product has no serif, so the "one emphasised word per headline" idiom
-   becomes Courier Prime italic. The 1.08em bump in accent-serif exists to
-   optically match Instrument Serif and is wrong at this size. Unlayered, so it
-   beats the utility without needing specificity games. */
+/* The landing's "one emphasised word in a serif italic" idiom has no place in
+   a tool. Inside the product it renders as the surrounding text. Unlayered,
+   so it beats the utility without needing specificity games. */
 html[data-app-theme] .accent-serif {
-  font-family: var(--font-courier), ui-monospace, "Courier New", monospace;
+  font-family: inherit;
+  font-style: normal;
+  font-weight: inherit;
   font-size: 1em;
+  letter-spacing: inherit;
+  line-height: inherit;
+}
+
+/* Page tours: the backdrop fades, the panel rises a few pixels into place. */
+@keyframes tour-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes tour-rise {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+
+.tour-backdrop {
+  animation: tour-fade 160ms ease-out both;
+}
+
+.tour-panel {
+  animation: tour-rise 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-panel {
+    animation: tour-fade 120ms ease-out both;
+  }
+}
+
+/* Section labels: sentence-case sans, not tracked-out mono. */
+html[data-app-theme] .type-eyebrow {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.3;
+}
+
+/* Meta lines (counts, dates, codes) stay sans with tabular figures so
+   sentences don't turn into terminal output. */
+html[data-app-theme] .type-mono-label {
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 @utility section-seam {

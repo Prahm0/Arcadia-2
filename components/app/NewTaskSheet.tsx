@@ -177,8 +177,8 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
         role="dialog"
         aria-modal="true"
         aria-labelledby="new-task-title"
-        className="relative w-full max-w-[520px] rounded-t-clay-lg p-6 sm:rounded-clay"
-        style={{ background: "var(--app-elev)", boxShadow: "var(--clay-shadow-sheet), var(--clay-rim)", color: "var(--app-text)" }}
+        className="relative w-full max-w-[520px] rounded-t-xl p-6 sm:rounded-lg"
+        style={{ background: "var(--app-elev)", boxShadow: "var(--elev-3)", color: "var(--app-text)" }}
       >
         <div className="flex items-start justify-between">
           <div>
@@ -191,7 +191,7 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="grid h-8 w-8 place-items-center rounded-clay-sm transition-colors clay-hover"
+            className="grid h-8 w-8 place-items-center rounded-md transition-colors ui-hover"
             style={{ color: "var(--app-text-muted)" }}
           >
             <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M5 5l10 10M15 5L5 15" strokeLinecap="round" /></svg>
@@ -206,8 +206,8 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Chemistry lab report"
-              className="w-full rounded-clay-sm px-3 py-2.5 text-[15px] outline-none"
-              style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)", color: "var(--app-text)" }}
+              className="w-full rounded-md px-3 py-2.5 text-[15px] outline-none"
+              style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
             />
           </Field>
 
@@ -221,8 +221,8 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
                 placeholder={data.subjects.length === 0 ? "Type a subject" : "Pick or type a new one"}
                 autoComplete="off"
                 maxLength={80}
-                className="w-full rounded-clay-sm px-3 py-2.5 text-[15px] outline-none"
-                style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)", color: "var(--app-text)" }}
+                className="w-full rounded-md px-3 py-2.5 text-[15px] outline-none"
+                style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
               />
               <datalist id="arcadia-subjects">
                 {data.subjects.map((s) => (
@@ -239,8 +239,8 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
               <select
                 value={taskType}
                 onChange={(e) => setTaskType(e.target.value)}
-                className="w-full rounded-clay-sm px-3 py-2.5 text-[15px] outline-none"
-                style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)", color: "var(--app-text)" }}
+                className="w-full rounded-md px-3 py-2.5 text-[15px] outline-none"
+                style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
               >
                 {TASK_TYPES.map((t) => (
                   <option key={t.value} value={t.value}>{t.label}</option>
@@ -256,8 +256,8 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full rounded-clay-sm px-3 py-2.5 text-[15px] outline-none"
-                style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)", color: "var(--app-text)" }}
+                className="w-full rounded-md px-3 py-2.5 text-[15px] outline-none"
+                style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
               />
             </Field>
             <Field label={`Estimated time · ${formatMinutes(minutes)}`}>

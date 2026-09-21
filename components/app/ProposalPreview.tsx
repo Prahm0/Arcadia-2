@@ -78,8 +78,8 @@ function OperationChip({
 
   return (
     <div
-      className="rounded-clay-sm p-3"
-      style={{ background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)" }}
+      className="rounded-md p-3"
+      style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
     >
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-[13px] font-medium" style={{ color: "var(--app-text)" }}>
@@ -159,8 +159,8 @@ function MiniDayChart({
     <div className="min-w-0">
       <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>{label}</p>
       <div
-        className="relative mt-1.5 h-[64px] w-full overflow-hidden rounded-clay-xs"
-        style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)" }}
+        className="relative mt-1.5 h-[64px] w-full overflow-hidden rounded-sm"
+        style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)" }}
         aria-hidden="true"
       >
         {/* Hour ticks */}
@@ -206,7 +206,7 @@ function BeforeEmpty({ label }: { label: string }) {
     <div className="min-w-0">
       <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>{label}</p>
       <div
-        className="mt-1.5 grid h-[64px] w-full place-items-center rounded-clay-xs text-[11px] font-mono"
+        className="mt-1.5 grid h-[64px] w-full place-items-center rounded-sm text-[11px] font-mono"
         style={{
           background: "var(--app-surface-soft)",
           border: "1px dashed var(--app-border-strong)",

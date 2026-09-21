@@ -139,7 +139,7 @@ function LoginForm() {
         {needsVerification ? (
           <div
             role="alert"
-            className="clay-well space-y-3 rounded-clay-sm px-4 py-3 text-[13.5px]"
+            className="surface-inset space-y-3 rounded-md px-4 py-3 text-[13.5px]"
             style={{ color: "var(--app-text-soft)" }}
           >
             <p style={{ color: "var(--app-text)" }}>
@@ -162,7 +162,7 @@ function LoginForm() {
         ) : notice ? (
           <div
             role="alert"
-            className="clay-well rounded-clay-sm px-4 py-3 text-[13.5px]"
+            className="surface-inset rounded-md px-4 py-3 text-[13.5px]"
             style={{
               color: notice.tone === "error" ? "var(--app-danger)" : "var(--app-text-soft)",
             }}
@@ -185,11 +185,11 @@ function LoginForm() {
           type="button"
           onClick={continueAsGuest}
           disabled={guestLoading || loading}
-          className="clay-pressable w-full rounded-clay-sm px-4 py-3 text-[14.5px] disabled:cursor-not-allowed disabled:opacity-60"
+          className="ui-pressable w-full rounded-md px-4 py-3 text-[14.5px] disabled:cursor-not-allowed disabled:opacity-60"
           style={{
             background: "var(--app-surface)",
             color: "var(--app-text)",
-            boxShadow: "var(--clay-shadow), var(--clay-rim)",
+            boxShadow: "var(--elev-1)",
           }}
         >
           {guestLoading ? "Setting up a guest account…" : "Continue as guest"}

@@ -139,7 +139,7 @@ function RegisterInner({ initialToken }: { initialToken: string | null }) {
       }
     >
       {verifying || verifyFailed || result ? (
-        <div className="clay-well space-y-4 rounded-clay-sm p-5">
+        <div className="surface-inset space-y-4 rounded-md p-5">
           {verifying ? (
             <div className="flex items-center gap-3">
               <span
@@ -236,7 +236,7 @@ function RegisterInner({ initialToken }: { initialToken: string | null }) {
           {error ? (
             <div
               role="alert"
-              className="clay-well rounded-clay-sm px-4 py-3 text-[13.5px]"
+              className="surface-inset rounded-md px-4 py-3 text-[13.5px]"
               style={{ color: "var(--app-danger)" }}
             >
               {error}
@@ -257,11 +257,11 @@ function RegisterInner({ initialToken }: { initialToken: string | null }) {
             type="button"
             onClick={onGuest}
             disabled={guestLoading || loading}
-            className="clay-pressable w-full rounded-clay-sm px-4 py-3 text-[14.5px] disabled:cursor-not-allowed disabled:opacity-60"
+            className="ui-pressable w-full rounded-md px-4 py-3 text-[14.5px] disabled:cursor-not-allowed disabled:opacity-60"
             style={{
               background: "var(--app-surface)",
               color: "var(--app-text)",
-              boxShadow: "var(--clay-shadow), var(--clay-rim)",
+              boxShadow: "var(--elev-1)",
             }}
           >
             {guestLoading ? "Setting up a guest account…" : "Continue as guest"}

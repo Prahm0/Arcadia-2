@@ -124,9 +124,9 @@ export default function CompanionSheet({ open, onClose, initial }: CompanionShee
         role="dialog"
         aria-modal="true"
         aria-labelledby="companion-sheet-title"
-        className="relative w-full max-w-[520px] rounded-t-clay-lg p-6 sm:rounded-clay"
+        className="relative w-full max-w-[520px] rounded-t-xl p-6 sm:rounded-lg"
         style={{
-          background: "var(--app-elev)", boxShadow: "var(--clay-shadow-sheet), var(--clay-rim)",
+          background: "var(--app-elev)", boxShadow: "var(--elev-3)",
           color: "var(--app-text)",
         }}
       >
@@ -141,7 +141,7 @@ export default function CompanionSheet({ open, onClose, initial }: CompanionShee
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="grid h-8 w-8 place-items-center rounded-clay-sm transition-colors clay-hover"
+            className="grid h-8 w-8 place-items-center rounded-md transition-colors ui-hover"
             style={{ color: "var(--app-text-muted)" }}
           >
             <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -152,8 +152,8 @@ export default function CompanionSheet({ open, onClose, initial }: CompanionShee
 
         {/* Live preview */}
         <div
-          className="mt-5 flex items-center gap-4 rounded-clay-sm p-4"
-          style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)" }}
+          className="mt-5 flex items-center gap-4 rounded-md p-4"
+          style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)" }}
         >
           <Companion
             form={profile.form}
@@ -185,9 +185,9 @@ export default function CompanionSheet({ open, onClose, initial }: CompanionShee
               maxLength={40}
               onChange={(e) => setProfile((prev) => ({ ...prev, name: e.target.value }))}
               placeholder="Star"
-              className="w-full rounded-clay-sm px-3 py-2.5 text-[15px] outline-none"
+              className="w-full rounded-md px-3 py-2.5 text-[15px] outline-none"
               style={{
-                background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)",
+                background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)",
                 color: "var(--app-text)",
               }}
             />
@@ -203,7 +203,7 @@ export default function CompanionSheet({ open, onClose, initial }: CompanionShee
                 key={option.key}
                 type="button"
                 onClick={() => setProfile((prev) => ({ ...prev, form: option.key }))}
-                className="rounded-clay-sm px-3 py-2.5 text-[13.5px] font-medium capitalize transition-colors"
+                className="rounded-md px-3 py-2.5 text-[13.5px] font-medium capitalize transition-colors"
                 style={{
                   background: profile.form === option.key ? "var(--app-arcad-soft)" : "transparent",
                   color: profile.form === option.key ? "var(--app-arcad-strong)" : "var(--app-text-soft)",

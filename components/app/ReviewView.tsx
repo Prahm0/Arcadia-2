@@ -12,30 +12,25 @@ export default function ReviewView() {
   return (
     <>
       <PageHeader
-        eyebrow="Review"
-        title={
-          which === "previous" ? (
-            <>Last <span className="accent-serif">week</span>.</>
-          ) : (
-            <>This <span className="accent-serif">week</span>.</>
-          )
-        }
-        meta="Planned vs done, one win, one adjustment, streak status."
+        eyebrow="Progress"
+        title="Weekly review"
+        meta={which === "previous" ? "Last week" : "This week"}
+        tour="review"
         action={
           <div
-            className="inline-flex rounded-clay-sm p-1"
-            style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)" }}
+            className="inline-flex rounded-md p-1"
+            style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)" }}
           >
             {(["previous", "current"] as Which[]).map((option) => (
               <button
                 key={option}
                 type="button"
                 onClick={() => setWhich(option)}
-                className="rounded-clay-xs px-3.5 py-1.5 text-[13px] font-medium capitalize"
+                className="rounded-sm px-3.5 py-1.5 text-[13px] font-medium capitalize"
                 style={{
                   background: which === option ? "var(--app-surface)" : "transparent",
                   color: which === option ? "var(--app-text)" : "var(--app-text-muted)",
-                  boxShadow: which === option ? "var(--clay-shadow), var(--clay-rim)" : "none",
+                  boxShadow: which === option ? "var(--elev-1)" : "none",
                 }}
               >
                 {option === "previous" ? "Last week" : "This week"}

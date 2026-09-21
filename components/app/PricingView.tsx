@@ -142,7 +142,7 @@ export default function PricingView() {
         {notifyStatus ? (
           <div
             role="alert"
-            className="rounded-clay-sm px-4 py-3 text-[13.5px]"
+            className="rounded-md px-4 py-3 text-[13.5px]"
             style={{
               background:
                 notifyStatus.tone === "error"
@@ -152,7 +152,7 @@ export default function PricingView() {
                 notifyStatus.tone === "error"
                   ? "var(--app-danger)"
                   : "var(--app-accent-strong)",
-              boxShadow: "var(--clay-shadow), var(--clay-rim)",
+              boxShadow: "var(--elev-1)",
             }}
           >
             {notifyStatus.text}
@@ -179,14 +179,14 @@ function TierCard({
   const isFree = tier.key === "free";
   return (
     <div
-      className="relative flex flex-col gap-5 rounded-clay p-6"
+      className="relative flex flex-col gap-5 rounded-lg p-6"
       style={{
         background: tier.highlighted
           ? "color-mix(in oklab, var(--app-accent) 12%, var(--app-surface))"
           : "var(--app-surface)",
         boxShadow: tier.highlighted
-          ? "var(--clay-shadow-strong, var(--clay-shadow)), var(--clay-rim)"
-          : "var(--clay-shadow), var(--clay-rim)",
+          ? "var(--elev-2)"
+          : "var(--elev-1)",
         border: tier.highlighted
           ? "1px solid color-mix(in oklab, var(--app-accent) 45%, transparent)"
           : "1px solid transparent",
@@ -319,10 +319,10 @@ function Faq() {
 function FaqItem({ q, a }: { q: string; a: string }) {
   return (
     <div
-      className="rounded-clay-sm p-5"
+      className="rounded-md p-5"
       style={{
         background: "var(--app-surface)",
-        boxShadow: "var(--clay-shadow), var(--clay-rim)",
+        boxShadow: "var(--elev-1)",
       }}
     >
       <p className="text-[14px] font-semibold" style={{ color: "var(--app-text)" }}>

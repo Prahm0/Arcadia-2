@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { useStreak } from "@/lib/app/useStreak";
 import { buildContextualStarters, buildGreeting } from "@/lib/app/arcadStarters";
+import { OPEN_ARCAD_EVENT } from "@/lib/app/commands";
 import { requestDashboardRefresh } from "@/lib/app/useDashboardAutoRefresh";
 import ArcadOrb from "./ArcadOrb";
 import MicButton from "./MicButton";
@@ -72,6 +73,15 @@ export default function ArcadFloatingButton() {
     },
     [],
   );
+
+  // Help → Ask Arcad in the menu bar. Re-subscribes each render so the
+  // handler always sees current state; the listener itself is cheap.
+  // (showPanel is a hoisted function declaration below.)
+  useEffect(() => {
+    const onOpen = () => showPanel();
+    window.addEventListener(OPEN_ARCAD_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_ARCAD_EVENT, onOpen);
+  });
 
   if (pathname?.startsWith("/app/arcad")) return null;
 
@@ -197,7 +207,7 @@ export default function ArcadFloatingButton() {
         onClick={mounted ? hidePanel : showPanel}
         aria-label="Open Arcad side panel"
         aria-expanded={open}
-        className="group fixed bottom-[calc(env(safe-area-inset-bottom,0)+88px)] right-4 z-40 flex items-center gap-2.5 rounded-full py-1.5 pl-1.5 pr-3 transition-transform hover:scale-[1.02] clay-raised clay-pressable lg:bottom-6 lg:right-6"
+        className="group fixed bottom-[calc(env(safe-area-inset-bottom,0)+88px)] right-4 z-40 flex items-center gap-2.5 rounded-full py-1.5 pl-1.5 pr-3 surface-raised ui-pressable lg:bottom-6 lg:right-6"
         style={{
           background: "var(--app-surface)",
           border: "1px solid var(--app-border-strong)",
@@ -222,11 +232,11 @@ export default function ArcadFloatingButton() {
       {mounted ? (
         <aside
           aria-label="Arcad side panel"
-          className="fixed bottom-2 right-2 top-2 z-50 flex w-[min(420px,calc(100vw-16px))] flex-col overflow-hidden rounded-[26px]"
+          className="fixed bottom-2 right-2 top-2 z-50 flex w-[min(420px,calc(100vw-16px))] flex-col overflow-hidden rounded-xl"
           style={{
             background: "var(--app-elev)",
             color: "var(--app-text)",
-            boxShadow: "-18px 0 52px -24px rgba(18, 15, 13, 0.52), var(--clay-rim)",
+            boxShadow: "var(--elev-3)",
             transform: open ? "translateX(0)" : "translateX(calc(100% + 16px))",
             opacity: open ? 1 : 0.96,
             transition: "transform 300ms var(--ease-out-expo), opacity 220ms ease",
@@ -246,7 +256,7 @@ export default function ArcadFloatingButton() {
               <Link
                 href="/app/arcad"
                 onClick={hidePanel}
-                className="clay-hover rounded-full px-3 py-2 text-[11.5px] font-medium"
+                className="ui-hover rounded-full px-3 py-2 text-[11.5px] font-medium"
                 style={{ color: "var(--app-arcad-strong)" }}
               >
                 Full chat
@@ -255,7 +265,7 @@ export default function ArcadFloatingButton() {
                 type="button"
                 onClick={hidePanel}
                 aria-label="Close Arcad side panel"
-                className="clay-hover grid size-9 place-items-center rounded-full"
+                className="ui-hover grid size-9 place-items-center rounded-full"
                 style={{ color: "var(--app-text-muted)" }}
               >
                 <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
@@ -286,7 +296,7 @@ export default function ArcadFloatingButton() {
                         key={starter.label}
                         type="button"
                         onClick={() => void send(starter.message)}
-                        className="rounded-clay-sm px-3 py-2.5 text-left text-[12.5px] font-medium transition-colors clay-hover"
+                        className="rounded-md px-3 py-2.5 text-left text-[12.5px] font-medium transition-colors ui-hover"
                         style={{
                           border: "1px solid var(--app-border)",
                           color: "var(--app-text-soft)",
@@ -306,7 +316,7 @@ export default function ArcadFloatingButton() {
                     <li key={item.id} className={isUser ? "flex justify-end" : "flex justify-start gap-2.5"}>
                       {!isUser ? <ArcadOrb size={21} /> : null}
                       <div
-                        className="max-w-[82%] whitespace-pre-wrap rounded-[18px] px-3.5 py-2.5 text-[13.5px] leading-relaxed"
+                        className="max-w-[82%] whitespace-pre-wrap rounded-lg px-3.5 py-2.5 text-[13.5px] leading-relaxed"
                         style={
                           isUser
                             ? { background: "var(--app-text)", color: "var(--app-bg)" }
@@ -331,7 +341,7 @@ export default function ArcadFloatingButton() {
               <Link
                 href="/app/arcad"
                 onClick={hidePanel}
-                className="mt-5 block rounded-clay-sm px-3.5 py-3 text-[12.5px] font-medium"
+                className="mt-5 block rounded-md px-3.5 py-3 text-[12.5px] font-medium"
                 style={{ background: "var(--app-arcad-soft)", color: "var(--app-arcad-strong)" }}
               >
                 Arcad has a plan change ready — review it in full chat
@@ -348,8 +358,8 @@ export default function ArcadFloatingButton() {
               event.preventDefault();
               void send(message);
             }}
-            className="m-3 flex items-end gap-1.5 rounded-[20px] p-1.5"
-            style={{ background: "var(--app-surface-soft)", boxShadow: "var(--clay-well)" }}
+            className="m-3 flex items-end gap-1.5 rounded-lg p-1.5"
+            style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)" }}
           >
             <textarea
               ref={inputRef}

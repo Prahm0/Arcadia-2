@@ -1,52 +1,50 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
+import PageTour from "./tour/PageTour";
+import type { TourId } from "./tour/tours";
 
 interface PageHeaderProps {
-  eyebrow: string;
-  /** String for a plain title, or a ReactNode when one word is set in the serif italic accent. */
+  /** Section the page belongs to, shown above the title like a breadcrumb. */
+  eyebrow?: string;
+  /** The page's name. Explanations of how it works belong in its tour. */
   title: ReactNode;
+  /** Live facts about the page's data — counts, dates, totals. */
   meta?: string;
   action?: ReactNode;
+  /** The page's "How it works" tour: auto-opens on first visit. */
+  tour?: TourId;
 }
 
 /**
- * Staggered on-mount reveal — eyebrow at 0 ms, title at 60 ms, meta at 140 ms,
- * action at 180 ms — using the same hero-fade-up utility the landing page
- * uses on Hero. `--d` is the per-element delay; the utility applies the
- * animation with reduced-motion swap built in.
+ * The top of every page: where you are, what this is, and the page's actions
+ * on the right. Deliberately static — a tool's chrome shouldn't animate in.
  */
-const reveal = (delayMs: number): CSSProperties =>
-  ({ "--d": `${delayMs}ms` } as CSSProperties);
-
-export default function PageHeader({ eyebrow, title, meta, action }: PageHeaderProps) {
+export default function PageHeader({ eyebrow, title, meta, action, tour }: PageHeaderProps) {
   return (
     <header
-      className="flex flex-wrap items-end justify-between gap-4 border-b py-6 pl-6 pr-16 sm:py-8 sm:pl-10 sm:pr-24"
-      style={{ borderColor: "var(--app-border)" }}
+      className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b px-6 py-5 sm:px-10"
+      style={{ borderColor: "var(--app-border)", background: "var(--app-surface)" }}
     >
       <div className="min-w-0">
-        <p
-          className="type-eyebrow hero-fade-up"
-          style={{ color: "var(--app-accent)", ...reveal(0) }}
-        >
-          {eyebrow}
-        </p>
+        {eyebrow ? (
+          <p className="text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>
+            {eyebrow}
+          </p>
+        ) : null}
         <h1
-          className="hero-fade-up mt-2 text-[28px] font-medium tracking-[-0.02em] sm:text-[34px]"
-          style={{ color: "var(--app-text)", ...reveal(60) }}
+          className="mt-1 text-[22px] font-semibold leading-tight tracking-[-0.015em]"
+          style={{ color: "var(--app-text)" }}
         >
           {title}
         </h1>
         {meta ? (
-          <p
-            className="type-mono-label hero-fade-up mt-1.5"
-            style={{ color: "var(--app-text-muted)", ...reveal(140) }}
-          >
+          <p className="mt-1 text-[13px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
             {meta}
           </p>
         ) : null}
       </div>
-      {action ? (
-        <div className="hero-fade-up flex-shrink-0" style={reveal(180)}>
+      {action || tour ? (
+        <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
+          {tour ? <PageTour id={tour} /> : null}
           {action}
         </div>
       ) : null}

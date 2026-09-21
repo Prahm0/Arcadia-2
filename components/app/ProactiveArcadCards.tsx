@@ -72,7 +72,7 @@ export default function ProactiveArcadCards({ limit = 2, compact = false }: Proa
       {visible.map((card) => (
         <div
           key={card.id}
-          className="rounded-clay p-4"
+          className="rounded-lg p-4"
           style={{
             background: cardBg(card.tone),
             border: `1px solid ${cardBorder(card.tone)}`,

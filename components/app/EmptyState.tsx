@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 interface EmptyStateProps {
   /** Optional icon element — falls back to the constellation glyph. */
   icon?: ReactNode;
-  /** Short headline. Wrap one word in <span className="accent-serif"> to match the landing type system. */
+  /** Short headline. */
   title: ReactNode;
   /** One or two sentence explanation of what this page is for. */
   body: string;
@@ -18,47 +18,43 @@ interface EmptyStateProps {
 }
 
 /**
- * A friendly first-time story card used on every otherwise-empty page.
- *
- * The visual language matches the landing: warm surface, constellation glyph,
- * serif italic accent inside the title. The optional example mockup is
- * intentionally low-contrast so users read it as "here's what it will look
- * like" rather than a live UI.
+ * The first-time card on every otherwise-empty page: what goes here, an
+ * optional faded preview of it filled in, and the action that starts it.
  */
 export default function EmptyState({ icon, title, body, example, action, hint }: EmptyStateProps) {
   return (
     <div
-      className="rounded-clay p-8 sm:p-10"
+      className="rounded-lg px-6 py-10 sm:px-10"
       style={{
-        background: "var(--app-surface)", boxShadow: "var(--clay-shadow), var(--clay-rim)",
+        background: "var(--app-surface)", boxShadow: "var(--elev-1)",
       }}
     >
       <div className="mx-auto flex max-w-[440px] flex-col items-center text-center">
         <span
           aria-hidden="true"
-          className="grid size-11 place-items-center rounded-full"
-          style={{ background: "var(--app-accent-soft)", color: "var(--app-accent-strong)" }}
+          className="grid size-10 place-items-center rounded-md"
+          style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text-muted)" }}
         >
           {icon ?? <ConstellationGlyph />}
         </span>
         <h3
-          className="mt-4 text-[22px] font-medium leading-[1.2] tracking-[-0.015em]"
+          className="mt-4 text-[16px] font-semibold leading-snug tracking-[-0.01em]"
           style={{ color: "var(--app-text)" }}
         >
           {title}
         </h3>
-        <p className="mt-2.5 text-[14px] leading-[1.55]" style={{ color: "var(--app-text-muted)" }}>
+        <p className="mt-1.5 text-[13.5px] leading-[1.55]" style={{ color: "var(--app-text-muted)" }}>
           {body}
         </p>
 
         {example ? (
           <div
             aria-hidden="true"
-            className="mt-6 w-full rounded-clay-sm p-4"
+            className="mt-6 w-full rounded-md px-4 py-3"
             style={{
               background: "var(--app-surface-soft)",
-              border: "1px dashed var(--app-border-strong)",
-              opacity: 0.85,
+              boxShadow: "var(--elev-inset)",
+              opacity: 0.8,
             }}
           >
             {example}
@@ -77,8 +73,7 @@ export default function EmptyState({ icon, title, body, example, action, hint }:
 }
 
 function ConstellationGlyph() {
-  // A small constellation of three connected stars — matches the landing hero
-  // motif so first-time surfaces feel continuous with the marketing site.
+  // Three connected points: the brand mark reduced to an icon.
   return (
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.4">
       <path d="M6 15L11 6L18 14L6 15Z" strokeLinejoin="round" strokeLinecap="round" opacity="0.4" />
@@ -114,7 +109,7 @@ export function ExampleRow({
           {title}
         </p>
         {meta ? (
-          <p className="mt-0.5 text-[11.5px] font-mono" style={{ color: "var(--app-text-muted)" }}>
+          <p className="mt-0.5 text-[12px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
             {meta}
           </p>
         ) : null}

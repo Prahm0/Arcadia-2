@@ -132,9 +132,9 @@ export default function EventDetailSheet({ event, timezone, onClose }: EventDeta
         role="dialog"
         aria-modal="true"
         aria-labelledby="event-detail-title"
-        className="relative w-full max-w-[480px] rounded-t-clay-lg p-6 sm:rounded-clay"
+        className="relative w-full max-w-[480px] rounded-t-xl p-6 sm:rounded-lg"
         style={{
-          background: "var(--app-elev)", boxShadow: "var(--clay-shadow-sheet), var(--clay-rim)",
+          background: "var(--app-elev)", boxShadow: "var(--elev-3)",
           color: "var(--app-text)",
         }}
       >
@@ -192,7 +192,7 @@ export default function EventDetailSheet({ event, timezone, onClose }: EventDeta
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="grid h-8 w-8 place-items-center rounded-clay-sm transition-colors clay-hover"
+            className="grid h-8 w-8 place-items-center rounded-md transition-colors ui-hover"
             style={{ color: "var(--app-text-muted)" }}
           >
             <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6">

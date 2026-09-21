@@ -6,7 +6,7 @@ import { Suspense, useState } from "react";
 import AuthShell from "@/components/app/AuthShell";
 import Field from "@/components/app/Field";
 import PrimaryButton from "@/components/app/PrimaryButton";
-import { api } from "@/lib/api/client";
+import { api, ApiError } from "@/lib/api/client";
 import { continueAsGuest as continueAsGuestApi } from "@/lib/auth/guest";
 
 type Notice = { tone: "info" | "error"; text: string } | null;
@@ -18,6 +18,11 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [guestLoading, setGuestLoading] = useState(false);
+  // Unverified-email state: gates the "Resend verification email" affordance.
+  // Tracks the specific email that failed so a resend still works if the
+  // student types something new before clicking.
+  const [needsVerification, setNeedsVerification] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
   const initialNotice: Notice = params.get("verified")
     ? { tone: "info", text: "Email confirmed — sign in to continue." }
     : params.get("email") === "changed"
@@ -31,6 +36,7 @@ function LoginForm() {
     event.preventDefault();
     setLoading(true);
     setNotice(null);
+    setNeedsVerification(null);
     try {
       await api<{ redirect: string; csrfToken: string }>("/api/auth/login", {
         method: "POST",
@@ -42,9 +48,40 @@ function LoginForm() {
       router.push(safe);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Something went wrong.";
-      setNotice({ tone: "error", text: message });
+      if (
+        error instanceof ApiError &&
+        error.data &&
+        typeof error.data === "object" &&
+        "needsVerification" in error.data
+      ) {
+        setNeedsVerification(email);
+        setNotice(null);
+      } else {
+        setNotice({ tone: "error", text: message });
+      }
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function resendVerification() {
+    if (!needsVerification) return;
+    setResending(true);
+    try {
+      await api("/api/auth/resend-verification", {
+        method: "POST",
+        body: JSON.stringify({ email: needsVerification }),
+      });
+      setNotice({
+        tone: "info",
+        text: "Fresh verification link sent — check your inbox (and spam folder).",
+      });
+      setNeedsVerification(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Something went wrong.";
+      setNotice({ tone: "error", text: message });
+    } finally {
+      setResending(false);
     }
   }
 
@@ -99,7 +136,30 @@ function LoginForm() {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
         />
-        {notice ? (
+        {needsVerification ? (
+          <div
+            role="alert"
+            className="clay-well space-y-3 rounded-clay-sm px-4 py-3 text-[13.5px]"
+            style={{ color: "var(--app-text-soft)" }}
+          >
+            <p style={{ color: "var(--app-text)" }}>
+              Please confirm your email address first.
+            </p>
+            <p className="text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
+              We sent a verification link to <strong>{needsVerification}</strong>. Can&rsquo;t
+              find it? We&rsquo;ll send a fresh one.
+            </p>
+            <button
+              type="button"
+              onClick={resendVerification}
+              disabled={resending}
+              className="text-[13px] font-medium underline underline-offset-4 disabled:opacity-60"
+              style={{ color: "var(--app-accent-strong)" }}
+            >
+              {resending ? "Sending…" : "Resend verification email"}
+            </button>
+          </div>
+        ) : notice ? (
           <div
             role="alert"
             className="clay-well rounded-clay-sm px-4 py-3 text-[13.5px]"

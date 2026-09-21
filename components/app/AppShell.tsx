@@ -10,9 +10,11 @@ import { useTheme } from "@/lib/app/theme";
 import { useStreak } from "@/lib/app/useStreak";
 import { useSessionReminders } from "@/lib/app/useSessionReminders";
 import ArcadFloatingButton from "./ArcadFloatingButton";
+import GuestBanner from "./GuestBanner";
 import MobileBottomNav from "./MobileBottomNav";
 import NotificationCentre from "./NotificationCentre";
 import PageMount from "./PageMount";
+import { isGuestEmail } from "@/lib/auth/guest";
 
 interface AppShellProps {
   user: AuthUser | null;
@@ -419,6 +421,11 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
               />
               <span className="font-medium" style={{ color: "var(--app-arcad-strong)" }}>Arcad</span>
               <span>{briefing}</span>
+            </div>
+          ) : null}
+          {isGuestEmail(user?.email) ? (
+            <div className="px-6 pt-4 sm:px-10">
+              <GuestBanner />
             </div>
           ) : null}
           <PageMount>{children}</PageMount>

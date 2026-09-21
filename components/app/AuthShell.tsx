@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import Logo from "@/components/ui/Logo";
 
 interface AuthShellProps {
   eyebrow: string;
@@ -32,9 +33,7 @@ export default function AuthShell({ eyebrow, title, subtitle, children, footer }
             className="clay-card grid h-7 w-7 place-items-center rounded-clay-xs"
             style={{ color: "var(--app-accent)" }}
           >
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6">
-              <path d="M12 3l8 18H4L12 3z" strokeLinejoin="round" />
-            </svg>
+            <Logo size={14} />
           </span>
           Arcadia
         </Link>

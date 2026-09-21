@@ -14,6 +14,7 @@ import GuestBanner from "./GuestBanner";
 import MobileBottomNav from "./MobileBottomNav";
 import NotificationCentre from "./NotificationCentre";
 import PageMount from "./PageMount";
+import Logo from "@/components/ui/Logo";
 import { isGuestEmail } from "@/lib/auth/guest";
 
 interface AppShellProps {
@@ -445,9 +446,7 @@ function BrandMark() {
         className="grid h-7 w-7 place-items-center rounded-clay-xs"
         style={{ background: "var(--app-accent-soft)", color: "var(--app-accent-strong)" }}
       >
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.7">
-          <path d="M12 3l8 18H4L12 3z" strokeLinejoin="round" />
-        </svg>
+        <Logo size={14} />
       </span>
       <span style={{ color: "var(--app-text)" }}>Arcadia</span>
     </Link>

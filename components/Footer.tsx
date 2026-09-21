@@ -1,6 +1,7 @@
 import Link from "next/link";
 import LiveNow from "./LiveNow";
 import Container from "./ui/Container";
+import Logo from "./ui/Logo";
 
 const links = [
   { label: "Product", href: "#today" },
@@ -16,8 +17,11 @@ export default function Footer() {
     <footer className="section-seam bg-night-900 text-white">
       <Container className="flex flex-col gap-6 py-10 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-5">
-          <Link href="#top" className="font-serif text-[22px] italic leading-none tracking-[-0.01em]">
-            Arcadia
+          <Link href="#top" className="flex items-center gap-2.5">
+            <Logo size={20} className="text-accent-200" />
+            <span className="font-serif text-[22px] italic leading-none tracking-[-0.01em]">
+              Arcadia
+            </span>
           </Link>
           <LiveNow className="text-white/45" dot={false} />
         </div>

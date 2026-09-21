@@ -5,6 +5,10 @@ export interface AuthUser {
   grade?: string | null;
   timezone?: string;
   onboardingComplete?: boolean;
+  tier?: "free" | "pro" | "max";
+  hasSubscription?: boolean;
+  subscriptionStatus?: string | null;
+  subscriptionCurrentPeriodEnd?: string | null;
 }
 
 export interface PlannerTask {

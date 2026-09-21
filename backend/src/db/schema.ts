@@ -17,8 +17,34 @@ export const users = sqliteTable(
     verificationExpiresAt: integer("verification_expires_at"),
     createdAt: integer("created_at").notNull().default(now),
     lastSignInAt: integer("last_sign_in_at"),
+    // Billing. `tier` is the source of truth the app reads; the stripe_*
+    // columns exist so the webhook can reconcile without a lookup.
+    tier: text("tier").notNull().default("free"),
+    stripeCustomerId: text("stripe_customer_id"),
+    stripeSubscriptionId: text("stripe_subscription_id"),
+    subscriptionStatus: text("subscription_status"),
+    subscriptionCurrentPeriodEnd: integer("subscription_current_period_end"),
   },
-  (t) => [uniqueIndex("users_email_idx").on(t.email)],
+  (t) => [
+    uniqueIndex("users_email_idx").on(t.email),
+    index("users_stripe_customer_idx").on(t.stripeCustomerId),
+  ],
+);
+
+// Per-user per-day Arcad message counter. `day` is a UTC YYYY-MM-DD
+// string so tier caps line up on the same calendar day for every user
+// regardless of local timezone, and we can prune old rows with a simple
+// day comparison.
+export const arcadUsage = sqliteTable(
+  "arcad_usage",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    day: text("day").notNull(),
+    count: integer("count").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.day] })],
 );
 
 export const sessions = sqliteTable(

@@ -96,6 +96,30 @@ export default function SettingsView() {
   const [googleBusy, setGoogleBusy] = useState<"sync" | "disconnect" | null>(null);
   const [googleNotice, setGoogleNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
 
+  const tier = data.user.tier ?? "free";
+  const hasSubscription = Boolean(data.user.hasSubscription);
+  const [billingBusy, setBillingBusy] = useState(false);
+  const [billingNotice, setBillingNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
+
+  async function openBillingPortal() {
+    setBillingBusy(true);
+    setBillingNotice(null);
+    try {
+      const response = await api<{ url: string }>("/api/billing/portal", { method: "POST" });
+      if (response?.url) {
+        window.location.href = response.url;
+        return;
+      }
+      throw new Error("Portal URL missing.");
+    } catch (err) {
+      setBillingNotice({
+        tone: "error",
+        text: err instanceof Error && err.message ? err.message : "Couldn't open the billing portal.",
+      });
+      setBillingBusy(false);
+    }
+  }
+
   // Calendar feed subscriptions (Apple, Canvas, Outlook, and any .ics URL).
   // Reads live from the dashboard, mutates via /api/calendar-feeds.
   const calendarFeeds = data.calendarFeeds ?? [];
@@ -699,6 +723,50 @@ export default function SettingsView() {
             </>
           )}
         </Card>
+
+        {isGuest ? null : (
+          <Card>
+            <SectionHeader label="Plan & billing" />
+            <div className="flex flex-col gap-3">
+              <div className="flex items-baseline justify-between">
+                <div>
+                  <p className="text-[14px] font-semibold" style={{ color: "var(--app-text)" }}>
+                    Arcadia {tier === "free" ? "Free" : tier === "pro" ? "Pro" : "Max"}
+                  </p>
+                  <p className="mt-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
+                    {tier === "free"
+                      ? "2 Arcad messages per day. Upgrade any time."
+                      : tier === "pro"
+                      ? "20 Arcad messages per day, calendar sync, uploads."
+                      : "100 Arcad messages per day, voice mode, tutor mode."}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between pt-2">
+                <Notice notice={billingNotice} />
+                <div className="flex gap-2">
+                  {tier === "free" ? (
+                    <AppButton
+                      variant="primary"
+                      onClick={() => router.push("/app/pricing")}
+                    >
+                      See plans
+                    </AppButton>
+                  ) : null}
+                  {hasSubscription ? (
+                    <AppButton
+                      variant="secondary"
+                      onClick={openBillingPortal}
+                      loading={billingBusy}
+                    >
+                      Manage subscription
+                    </AppButton>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
 
         {isGuest ? null : (
           <Card>

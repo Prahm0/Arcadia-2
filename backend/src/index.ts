@@ -5,6 +5,7 @@ import { requireSession } from "./lib/session";
 import account from "./routes/account";
 import analytics from "./routes/analytics";
 import auth from "./routes/auth";
+import billing from "./routes/billing";
 import calendarFeeds from "./routes/calendar-feeds";
 import google from "./routes/google";
 import chat, { conversations, proposals } from "./routes/chat";
@@ -52,6 +53,9 @@ const PUBLIC_PREFIXES = [
   // — the state parameter carries the userId, verified by HMAC.
   "/api/google/callback",
   "/api/google/config",
+  // Stripe posts webhook events from its own IPs; the HMAC signature
+  // header is the authentication.
+  "/api/billing/webhook",
 ];
 
 app.use("/api/*", async (c, next) => {
@@ -66,6 +70,7 @@ app.route("/api/auth", auth);
 app.route("/api/waitlist", waitlist);
 app.route("/api/account", account);
 app.route("/api/analytics", analytics);
+app.route("/api/billing", billing);
 app.route("/api/calendar-feeds", calendarFeeds);
 app.route("/api/chat", chat);
 app.route("/api/commitments", commitments);

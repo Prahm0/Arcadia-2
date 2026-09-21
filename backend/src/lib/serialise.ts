@@ -74,6 +74,15 @@ export function serialiseUser(user: UserRow, profile: ProfileRow | null) {
     grade: profile?.grade ?? null,
     timezone: profile?.timezone ?? "Australia/Brisbane",
     onboardingComplete: profile?.onboardingComplete ?? false,
+    tier: (user.tier === "pro" || user.tier === "max" ? user.tier : "free") as
+      | "free"
+      | "pro"
+      | "max",
+    hasSubscription: Boolean(user.stripeCustomerId),
+    subscriptionStatus: user.subscriptionStatus ?? null,
+    subscriptionCurrentPeriodEnd: user.subscriptionCurrentPeriodEnd
+      ? new Date(user.subscriptionCurrentPeriodEnd).toISOString()
+      : null,
   };
 }
 

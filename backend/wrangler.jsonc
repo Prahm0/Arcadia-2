@@ -14,7 +14,13 @@
   "vars": {
     "APP_ORIGIN": "https://arcadiahq.app",
     "MAIL_FROM": "Arcadia <hello@arcadiahq.app>",
-    "OPENAI_MODEL": "gpt-4o-mini"
+    "OPENAI_MODEL": "gpt-4o-mini",
+    // Stripe price IDs — not secret. Replace the sandbox ids with live
+    // ones when we flip the account out of test mode.
+    "STRIPE_PRICE_PRO_MONTHLY": "price_1UI5LT8lZVee1v52pbvvdSpq",
+    "STRIPE_PRICE_PRO_YEARLY": "price_1UI5L78lZVee1v520txjo42s",
+    "STRIPE_PRICE_MAX_MONTHLY": "price_1UI5Mk8lZVee1v52Rh8eLzF2",
+    "STRIPE_PRICE_MAX_YEARLY": "price_1UI5MR8lZVee1v52a1pvfRDO"
   },
 
   "d1_databases": [

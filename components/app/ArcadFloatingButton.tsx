@@ -84,6 +84,9 @@ export default function ArcadFloatingButton() {
   });
 
   if (pathname?.startsWith("/app/arcad")) return null;
+  // Hide during onboarding — the floating orb overlaps the Continue
+  // button on mobile, and Arcad can't help before there's a plan anyway.
+  if (!data.user.onboardingComplete) return null;
 
   async function loadChat() {
     setLoading(true);

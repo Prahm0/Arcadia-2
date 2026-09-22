@@ -1,6 +1,5 @@
 import ArcadiaInput from "@/components/ArcadiaInput";
 import ConnectionsSection from "@/components/ConnectionsSection";
-import EarlyAccessProvider from "@/components/EarlyAccessProvider";
 import FinalCTA from "@/components/FinalCTA";
 import Footer from "@/components/Footer";
 import Hero from "@/components/Hero";
@@ -19,7 +18,7 @@ import LazyMount from "@/components/ui/LazyMount";
  */
 export default function Home() {
   return (
-    <EarlyAccessProvider>
+    <>
       <Navbar />
       <main>
         <Hero />
@@ -38,6 +37,6 @@ export default function Home() {
         <FinalCTA />
       </main>
       <Footer />
-    </EarlyAccessProvider>
+    </>
   );
 }

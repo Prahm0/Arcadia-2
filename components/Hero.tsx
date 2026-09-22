@@ -4,7 +4,6 @@ import { motion, useTransform, type MotionStyle, type MotionValue } from "framer
 import { useRef } from "react";
 import { usePrefersReducedMotion, useScrollProgress } from "@/lib/hooks";
 import { cn } from "@/lib/cn";
-import { useEarlyAccess } from "./EarlyAccessProvider";
 import HeroInterface from "./HeroInterface";
 import LiveNow from "./LiveNow";
 import Starfield from "./Starfield";
@@ -29,7 +28,6 @@ const COPY_OUT_END = 0.7;
 export default function Hero() {
   const ref = useRef<HTMLElement>(null);
   const reduced = usePrefersReducedMotion();
-  const { open } = useEarlyAccess();
 
   const scrollYProgress = useScrollProgress(ref);
 

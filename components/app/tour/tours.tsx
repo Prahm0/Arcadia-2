@@ -62,6 +62,7 @@ export type TourId =
   | "deadlines"
   | "focus"
   | "rooms"
+  | "cards"
   | "analytics"
   | "review";
 
@@ -542,6 +543,57 @@ export const TOURS: Record<TourId, Tour> = {
               <p className="mt-1.5 text-[9.5px]" style={{ color: "var(--app-text-muted)" }}>Physics · 12:30</p>
             </Window>
           </div>
+        ),
+      },
+    ],
+  },
+
+  cards: {
+    title: "Cards",
+    steps: [
+      {
+        title: "Make a deck in seconds",
+        body: "Type cards in, or paste a list: one card per line, term and definition split by a tab. Quizlet's export pastes straight in.",
+        visual: (
+          <Window width={300} title="New deck">
+            <Stack>
+              <MockInput label="Name" value="Stoichiometry" />
+              <MockInput label="Paste a list" value="Mole ⇥ 6.022 × 10²³ particles" focused />
+              <div className="flex justify-end">
+                <MockButton variant="primary">Make deck (2)</MockButton>
+              </div>
+            </Stack>
+          </Window>
+        ),
+      },
+      {
+        title: "Flashcards and Learn",
+        body: "Flashcards: flip, then Got it or Not yet. Learn: multiple choice until you know a card, then you type it. Wrong cards come round again.",
+        visual: (
+          <Window width={290}>
+            <Stack>
+              <div className="rounded-md px-3 py-4 text-center" style={{ background: "var(--app-surface-soft)" }}>
+                <Mono>The reactant that runs out first</Mono>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                <MockButton size="sm">1 Mole</MockButton>
+                <MockButton size="sm" variant="primary">2 Limiting reagent</MockButton>
+                <MockButton size="sm">3 Excess</MockButton>
+                <MockButton size="sm">4 Yield</MockButton>
+              </div>
+            </Stack>
+          </Window>
+        ),
+      },
+      {
+        title: "Cards come back when they're due",
+        body: "Each right answer spaces a card out: tomorrow, 3 days, a week, then longer. Miss one and it's due again. Review all due does every deck at once.",
+        visual: (
+          <Window width={290} title="Cards">
+            <Row bar={CAT.study} title="18 cards due today" meta="Chemistry 12 · Biology 6" right={<MockButton size="sm" variant="primary">Review all</MockButton>} />
+            <Row bar={CAT.school} title="Stoichiometry" meta="42 cards · 12 due" />
+            <Row bar={CAT.sport} title="Cell organelles" meta="28 cards · all mastered" right={<Chip tone="success">Mastered</Chip>} />
+          </Window>
         ),
       },
     ],

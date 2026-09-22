@@ -411,6 +411,49 @@ export const subjectAssessments = sqliteTable(
   (t) => [index("subject_assessments_subject_idx").on(t.subjectId)],
 );
 
+/** A deck of flashcards (see migration 0009). */
+export const decks = sqliteTable(
+  "decks",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    subjectId: text("subject_id").references(() => subjects.id, { onDelete: "set null" }),
+    topicId: text("topic_id").references(() => subjectTopics.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    source: text("source").notNull().default("manual"),
+    studiedAt: integer("studied_at"),
+    createdAt: integer("created_at").notNull().default(now),
+    updatedAt: integer("updated_at").notNull().default(now),
+  },
+  (t) => [index("decks_user_idx").on(t.userId)],
+);
+
+/** One flashcard and its review schedule. `box` 0 is learning, 1-5 known. */
+export const cards = sqliteTable(
+  "cards",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    deckId: text("deck_id")
+      .notNull()
+      .references(() => decks.id, { onDelete: "cascade" }),
+    front: text("front").notNull(),
+    back: text("back").notNull(),
+    position: integer("position").notNull().default(0),
+    box: integer("box").notNull().default(0),
+    dueAt: integer("due_at"),
+    reviewedAt: integer("reviewed_at"),
+    reviews: integer("reviews").notNull().default(0),
+    lapses: integer("lapses").notNull().default(0),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [index("cards_deck_idx").on(t.deckId, t.position), index("cards_user_due_idx").on(t.userId, t.dueAt)],
+);
+
 export const uploads = sqliteTable(
   "uploads",
   {

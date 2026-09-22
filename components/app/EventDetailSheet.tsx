@@ -12,6 +12,7 @@ import AppButton from "./AppButton";
 interface EventDetailSheetProps {
   event: PlannerEvent | null;
   timezone: string;
+  initialMode?: "details" | "reschedule";
   onClose: () => void;
 }
 
@@ -24,10 +25,18 @@ const CATEGORY_LABEL: Record<string, string> = {
   other: "Other",
 };
 
-export default function EventDetailSheet({ event, timezone, onClose }: EventDetailSheetProps) {
+export default function EventDetailSheet({
+  event,
+  timezone,
+  initialMode = "details",
+  onClose,
+}: EventDetailSheetProps) {
   const { data, patch, reload } = useDashboardData();
   const [busy, setBusy] = useState<"complete" | "miss" | "delete" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [rescheduling, setRescheduling] = useState(initialMode === "reschedule");
+  const [draftStart, setDraftStart] = useState("");
+  const [savingReschedule, setSavingReschedule] = useState(false);
 
   useEffect(() => {
     if (!event) return;
@@ -39,8 +48,12 @@ export default function EventDetailSheet({ event, timezone, onClose }: EventDeta
   }, [event, onClose]);
 
   useEffect(() => {
-    if (event) setError(null);
-  }, [event]);
+    if (!event) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setError(null);
+    setRescheduling(initialMode === "reschedule");
+    setDraftStart(toZonedDateTimeInput(event.startAt, timezone));
+  }, [event, initialMode, timezone]);
 
   if (!event) return null;
 
@@ -51,6 +64,7 @@ export default function EventDetailSheet({ event, timezone, onClose }: EventDeta
   const canAct = !isCompleted && !isMissed;
   const isStudy = event.category === "study";
   const isEditable = event.editable !== false;
+  const canReschedule = isEditable && canAct;
 
   async function markOutcome(outcome: "completed" | "missed") {
     if (!event) return;
@@ -110,6 +124,46 @@ export default function EventDetailSheet({ event, timezone, onClose }: EventDeta
       setError(err instanceof Error ? err.message : "Couldn't remove.");
     } finally {
       setBusy(null);
+    }
+  }
+
+  async function saveReschedule() {
+    if (!event) return;
+    const selectedEvent = event;
+    const nextStart = parseZonedDateTimeInput(draftStart, timezone);
+    if (!nextStart) {
+      setError("Choose a valid new time.");
+      return;
+    }
+    const duration = Date.parse(selectedEvent.endAt) - Date.parse(selectedEvent.startAt);
+    const nextEnd = new Date(Date.parse(nextStart) + duration).toISOString();
+    const previousStart = selectedEvent.startAt;
+    const previousEnd = selectedEvent.endAt;
+    setSavingReschedule(true);
+    setError(null);
+    patch((prev: DashboardResponse) => ({
+      ...prev,
+      events: prev.events.map((existing) =>
+        existing.id === selectedEvent.id ? { ...existing, startAt: nextStart, endAt: nextEnd } : existing,
+      ),
+    }));
+    try {
+      await api(`/api/events/${encodeURIComponent(selectedEvent.id)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ startAt: nextStart, endAt: nextEnd }),
+      });
+      await reload();
+      onClose();
+    } catch (err) {
+      patch((prev: DashboardResponse) => ({
+        ...prev,
+        events: prev.events.map((existing) =>
+          existing.id === selectedEvent.id ? { ...existing, startAt: previousStart, endAt: previousEnd } : existing,
+        ),
+      }));
+      setError(err instanceof Error ? err.message : "Couldn't reschedule this session.");
+    } finally {
+      setSavingReschedule(false);
     }
   }
 
@@ -237,6 +291,36 @@ export default function EventDetailSheet({ event, timezone, onClose }: EventDeta
           </p>
         ) : null}
 
+        {rescheduling ? (
+          <div
+            className="mt-5 rounded-md p-4"
+            style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)" }}
+          >
+            <label className="block text-[13px] font-medium" htmlFor="reschedule-start">
+              New start time
+            </label>
+            <input
+              id="reschedule-start"
+              type="datetime-local"
+              value={draftStart}
+              onChange={(input) => setDraftStart(input.target.value)}
+              className="mt-2 h-9 w-full rounded-md px-3 text-[13px] outline-none"
+              style={{ background: "var(--app-elev)", color: "var(--app-text)", border: "1px solid var(--app-border-strong)" }}
+            />
+            <p className="mt-2 text-[12px]" style={{ color: "var(--app-text-muted)" }}>
+              The session keeps its current length and is pinned at the new time.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <AppButton type="button" variant="ghost" onClick={() => setRescheduling(false)} disabled={savingReschedule}>
+                Cancel
+              </AppButton>
+              <AppButton type="button" variant="primary" onClick={() => void saveReschedule()} loading={savingReschedule}>
+                Save time
+              </AppButton>
+            </div>
+          </div>
+        ) : null}
+
         <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             {isEditable && !isCompleted && !isMissed ? (
@@ -253,14 +337,19 @@ export default function EventDetailSheet({ event, timezone, onClose }: EventDeta
             )}
           </div>
           <div className="flex items-center gap-2">
-            {isStudy && canAct ? (
+            {canReschedule && !rescheduling ? (
+              <AppButton type="button" variant="secondary" onClick={() => setRescheduling(true)}>
+                Reschedule
+              </AppButton>
+            ) : null}
+            {isStudy && canAct && !rescheduling ? (
               <Link href={`/app/focus?eventId=${encodeURIComponent(event.id)}`} onClick={onClose}>
                 <AppButton type="button" variant="secondary">
                   Start focus
                 </AppButton>
               </Link>
             ) : null}
-            {canAct ? (
+            {canAct && !rescheduling ? (
               <>
                 <AppButton
                   type="button"
@@ -285,4 +374,45 @@ export default function EventDetailSheet({ event, timezone, onClose }: EventDeta
       </div>
     </div>
   );
+}
+
+function zonedParts(iso: string, timezone: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(iso));
+  return Object.fromEntries(parts.map((part) => [part.type, part.value]));
+}
+
+function toZonedDateTimeInput(iso: string, timezone: string): string {
+  const parts = zonedParts(iso, timezone);
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}
+
+function parseZonedDateTimeInput(value: string, timezone: string): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
+  if (!match) return null;
+  const [, year, month, day, hour, minute] = match;
+  const desired = Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute));
+  if (!Number.isFinite(desired)) return null;
+
+  let timestamp = desired;
+  // Repeating handles offsets on either side of a daylight-saving change.
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const parts = zonedParts(new Date(timestamp).toISOString(), timezone);
+    const actual = Date.UTC(
+      Number(parts.year),
+      Number(parts.month) - 1,
+      Number(parts.day),
+      Number(parts.hour),
+      Number(parts.minute),
+    );
+    timestamp += desired - actual;
+  }
+  return new Date(timestamp).toISOString();
 }

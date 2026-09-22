@@ -29,6 +29,7 @@ import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import { useRouter } from "next/navigation";
 import { isGuestEmail } from "@/lib/auth/guest";
+import DeleteAccountModal from "./DeleteAccountModal";
 
 interface AccountResponse {
   account: {
@@ -112,6 +113,7 @@ export default function SettingsView() {
   const [pushNotice, setPushNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
   const [billingBusy, setBillingBusy] = useState(false);
   const [billingNotice, setBillingNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
 
   async function openBillingPortal() {
     setBillingBusy(true);
@@ -901,7 +903,34 @@ export default function SettingsView() {
             <AppButton variant="secondary" onClick={signOut}>Sign out</AppButton>
           </div>
         </Card>
+
+        {isGuest ? null : (
+          <Card>
+            <SectionHeader label="Danger zone" />
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>Delete account</p>
+                <p className="mt-1 text-[13px] leading-5" style={{ color: "var(--app-text-muted)" }}>
+                  Permanently remove your account and all Arcadia data.
+                </p>
+              </div>
+              <AppButton variant="danger" onClick={() => setDeleteAccountOpen(true)}>
+                Delete account
+              </AppButton>
+            </div>
+          </Card>
+        )}
       </div>
+      {deleteAccountOpen ? (
+        <DeleteAccountModal
+          hasPaidPlan={hasPaidPlan}
+          onClose={() => setDeleteAccountOpen(false)}
+          onManageSubscription={() => {
+            setDeleteAccountOpen(false);
+            void openBillingPortal();
+          }}
+        />
+      ) : null}
     </>
   );
 }

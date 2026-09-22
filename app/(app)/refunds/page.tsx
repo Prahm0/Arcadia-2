@@ -21,6 +21,11 @@ export default function RefundsPage() {
         current billing period, then automatically move to the Free tier. Your
         data stays with you either way.
       </p>
+      <p>
+        Deleting your Arcadia account is different: it permanently removes your
+        app data and cancels any active subscription immediately. Unused paid
+        time is not refunded.
+      </p>
 
       <h2>Refunds</h2>
       <p>

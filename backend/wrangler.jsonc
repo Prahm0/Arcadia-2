@@ -15,18 +15,15 @@
     "APP_ORIGIN": "https://arcadiahq.app",
     "MAIL_FROM": "Arcadia <hello@arcadiahq.app>",
     "OPENAI_MODEL": "gpt-4o-mini",
-    // Stripe price IDs — not secret. Replace the sandbox ids with live
-    // ones when we flip the account out of test mode.
-    // Six sandbox price IDs: Pro/Max × weekly/monthly/yearly. Pro
-    // price IDs are fresh (weekly, monthly, yearly all created 22 Sep).
-    // Max weekly is new; Max monthly and yearly reuse the pre-existing
-    // IDs, whose amounts were updated in place to the new numbers.
-    "STRIPE_PRICE_PRO_WEEKLY": "price_1UINLB8lZVee1v52hY2P2rtE",
-    "STRIPE_PRICE_PRO_MONTHLY": "price_1UINMI8lZVee1v52dZS4Zy6Q",
-    "STRIPE_PRICE_PRO_YEARLY": "price_1UINMe8lZVee1v52QcbNvH8v",
-    "STRIPE_PRICE_MAX_WEEKLY": "price_1UINN68lZVee1v522FLDudzY",
-    "STRIPE_PRICE_MAX_MONTHLY": "price_1UI5Mk8lZVee1v52Rh8eLzF2",
-    "STRIPE_PRICE_MAX_YEARLY": "price_1UI5MR8lZVee1v52a1pvfRDO"
+    // Stripe price IDs — not secret. Live-mode ids, copied over from the
+    // sandbox products after the account was activated. Amounts match the
+    // sandbox: Pro $4.95/$12.82/$49.40, Max $9.95/$34.54/$205.40 (AUD).
+    "STRIPE_PRICE_PRO_WEEKLY": "price_1UIO8W9e8rebDtOcmpM05x4B",
+    "STRIPE_PRICE_PRO_MONTHLY": "price_1UIO8V9e8rebDtOcsHhFDvcm",
+    "STRIPE_PRICE_PRO_YEARLY": "price_1UIO8V9e8rebDtOclg6FUfH0",
+    "STRIPE_PRICE_MAX_WEEKLY": "price_1UIO8R9e8rebDtOcnPZs0Nn3",
+    "STRIPE_PRICE_MAX_MONTHLY": "price_1UIO8S9e8rebDtOcAXdSoZZa",
+    "STRIPE_PRICE_MAX_YEARLY": "price_1UIO8S9e8rebDtOcyuG3u5Ih"
   },
 
   "d1_databases": [

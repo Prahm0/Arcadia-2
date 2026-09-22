@@ -83,6 +83,15 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    key: "resources",
+    label: "Resources",
+    icon: icon(<><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H15v12H5.5A1.5 1.5 0 0 0 4 16.5v-12z" /><path d="M4 16.5A1.5 1.5 0 0 0 5.5 18H15v-3" /></>),
+    items: [
+      { label: "Cards", href: "/app/cards", icon: icon(<><rect x="3" y="6" width="11" height="10" rx="1.5" /><path d="M6 6V4.5A1.5 1.5 0 0 1 7.5 3h8A1.5 1.5 0 0 1 17 4.5v7a1.5 1.5 0 0 1-1.5 1.5H14" /></>) },
+      { label: "Files", href: "/app/files", icon: icon(<><path d="M11 3H6a1.5 1.5 0 0 0-1.5 1.5v11A1.5 1.5 0 0 0 6 17h8a1.5 1.5 0 0 0 1.5-1.5V7.5L11 3z" /><path d="M11 3v4.5h4.5" /></>) },
+    ],
+  },
+  {
     key: "progress",
     label: "Progress",
     icon: icon(<><path d="M4 15v-4M9 15V7M14 15v-6" /><path d="M2 17h16" /></>),

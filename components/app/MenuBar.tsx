@@ -70,6 +70,7 @@ export default function MenuBar({
       entries: [
         { kind: "item", label: "New task…", shortcut: ["N"], onSelect: onNewTask },
         { kind: "item", label: "New study room…", onSelect: () => go("/app/rooms") },
+        { kind: "item", label: "New card deck…", onSelect: () => go("/app/cards?new=1") },
         { kind: "item", label: "Start focus session", onSelect: () => go("/app/focus") },
         { kind: "separator" },
         { kind: "item", label: "Your profile", shortcut: ["G", "P"], onSelect: () => go("/app/profile") },

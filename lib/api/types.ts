@@ -40,6 +40,31 @@ export interface PlannerEvent {
   source?: string;
   editable?: boolean;
   pinned?: boolean;
+  /** Arcad's set-up for a study block, made when the session is opened. */
+  plan?: SessionPlan | null;
+  /** How the session went, once it's done. */
+  checkout?: SessionCheckout | null;
+  /** When the student actually started it. */
+  startedAt?: string | null;
+}
+
+export interface SessionPlan {
+  /** What the session is on, e.g. "3.2 Limiting reagents". */
+  topic: string;
+  /** Why now, e.g. "Prac report due Mon 2 Nov". */
+  why: string;
+  steps: Array<{ minutes: number; text: string }>;
+  /** "fallback" when built without Arcad (offline or unavailable). */
+  by: "arcad" | "fallback";
+  createdAt: string;
+}
+
+export interface SessionCheckout {
+  done: number[];
+  leftover: string;
+  feeling: "good" | "ok" | "rough" | null;
+  minutes: number;
+  at: string;
 }
 
 export interface PlannerProfile {

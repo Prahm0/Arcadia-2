@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import { setPresence } from "@/lib/api/presence";
@@ -9,6 +9,9 @@ import { useDashboardData } from "@/lib/app/DashboardProvider";
 import type { DashboardResponse, PlannerEvent } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { formatClock as formatWallClock } from "@/lib/api/time";
+import { subjectColour } from "@/lib/app/subjectColour";
+import { useReplaceEvent, useSessionPlan } from "@/lib/app/useSessionPlan";
+import CheckoutSheet from "./CheckoutSheet";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 
@@ -79,23 +82,33 @@ export default function FocusView() {
   );
 }
 
-function pickPresetForMinutes(minutes: number): number {
-  let best = 0;
-  let bestDelta = Infinity;
-  BUILT_IN_PRESETS.forEach((p, i) => {
-    const delta = Math.abs(p.focus / 60 - minutes);
-    if (delta < bestDelta) {
-      best = i;
-      bestDelta = delta;
-    }
-  });
-  return best;
+const DONE_KEY = "arcadia:focus:done:";
+
+/** Plan steps ticked off in this browser, so a reload mid-session keeps them. */
+function readDoneSteps(eventId: string | null): number[] {
+  if (!eventId || typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(DONE_KEY + eventId) ?? "[]");
+    return Array.isArray(parsed) ? parsed.filter((item) => Number.isInteger(item)) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeDoneSteps(eventId: string | null, done: number[]) {
+  if (!eventId) return;
+  try {
+    window.localStorage.setItem(DONE_KEY + eventId, JSON.stringify(done));
+  } catch {
+    /* storage blocked; the ticks just won't survive a reload */
+  }
 }
 
 function FocusViewInner() {
   const { data, reload, patch } = useDashboardData();
   const params = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
   const timezone = data.profile?.timezone || data.user.timezone || "Australia/Sydney";
 
   const eventId = params.get("eventId");
@@ -112,8 +125,11 @@ function FocusViewInner() {
   useEffect(() => {
     setCustomPreset(readCustomPreset());
   }, []);
+  const breakSeconds = Math.max(5, Number(data.preferences?.breakMinutes ?? 10) || 10) * 60;
   const PRESETS = useMemo(
     () => [
+      // A scheduled session runs for its own length, not the nearest preset's.
+      ...(linkedMinutes ? [{ label: "This session", focus: linkedMinutes * 60, break: breakSeconds }] : []),
       ...BUILT_IN_PRESETS,
       {
         label: "Custom",
@@ -121,12 +137,10 @@ function FocusViewInner() {
         break: customPreset.breakMin * 60,
       },
     ],
-    [customPreset],
+    [customPreset, linkedMinutes, breakSeconds],
   );
   const customIndex = PRESETS.length - 1;
-  const [presetIndex, setPresetIndex] = useState(() =>
-    linkedMinutes ? pickPresetForMinutes(linkedMinutes) : 0,
-  );
+  const [presetIndex, setPresetIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>("idle");
   const [remaining, setRemaining] = useState(PRESETS[presetIndex].focus);
   const [running, setRunning] = useState(false);
@@ -139,7 +153,24 @@ function FocusViewInner() {
   const [recents, setRecents] = useState<StudySession[] | null>(null);
   const [recentsError, setRecentsError] = useState(false);
   const intervalRef = useRef<number | null>(null);
-  const preset = PRESETS[presetIndex];
+  const preset = PRESETS[presetIndex] ?? PRESETS[0];
+
+  // Scheduled sessions: Arcad's plan, the steps ticked off so far (kept per
+  // session in this browser, in case the page reloads), and the check-out.
+  const { plan, loading: planLoading, refresh: refreshPlan, refreshing: planRefreshing } = useSessionPlan(linkedEvent);
+  const replaceEvent = useReplaceEvent();
+  const [doneSteps, setDoneSteps] = useState<number[]>(() => readDoneSteps(eventId));
+  const [checkout, setCheckout] = useState<{ minutes: number } | null>(null);
+  const sessionGoal = plan?.topic ?? goal;
+  const colour = linkedEvent ? subjectColour(data.subjects, linkedEvent.subject) ?? "var(--app-accent)" : null;
+
+  function toggleStep(index: number) {
+    setDoneSteps((prev) => {
+      const next = prev.includes(index) ? prev.filter((item) => item !== index) : [...prev, index];
+      writeDoneSteps(eventId, next);
+      return next;
+    });
+  }
 
   const loadRecents = useCallback(async () => {
     try {
@@ -171,12 +202,45 @@ function FocusViewInner() {
       return;
     }
     hasHydrated.current = true;
-    const nextIdx = linkedMinutes ? pickPresetForMinutes(linkedMinutes) : 0;
-    setPresetIndex(nextIdx);
-    setRemaining(BUILT_IN_PRESETS[nextIdx].focus);
+    setPresetIndex(0);
+    // A session already under way (the page was reloaded) picks up the clock.
+    const left = linkedEvent.startedAt ? Math.round((Date.parse(linkedEvent.endAt) - Date.now()) / 1000) : 0;
+    setRemaining(left > 60 ? left : (linkedMinutes ?? 50) * 60);
+    if (left > 60) setPhase("focus");
     setSubject(linkedEvent.subject || data.subjects[0]?.name || "General");
-    setGoal(linkedEvent.title);
+    setGoal(linkedEvent.plan?.topic ?? linkedEvent.title);
   }, [linkedEvent, linkedMinutes, data.subjects]);
+
+  // "Start now" from Today: the block moves to now, and the timer runs
+  // straight away. The flag comes off the URL so a reload doesn't restart it.
+  const autoStarted = useRef(false);
+  const wantsStart = params.get("start") === "1";
+  useEffect(() => {
+    if (!wantsStart || !linkedEvent || autoStarted.current) return;
+    autoStarted.current = true;
+    const id = linkedEvent.id;
+    void (async () => {
+      try {
+        const response = await api<{ event: PlannerEvent }>(`/api/events/${encodeURIComponent(id)}/start`, { method: "POST" });
+        replaceEvent(response.event);
+      } catch {
+        /* the timer still runs; the block just isn't moved */
+      }
+      router.replace(`${pathname}?eventId=${encodeURIComponent(id)}`);
+      setPhase("focus");
+      setRunning(true);
+    })();
+  }, [wantsStart, linkedEvent, replaceEvent, router, pathname]);
+
+  /** Ends a scheduled session now: log the time spent and check out. */
+  function finishSession() {
+    const elapsed = phase === "focus" ? preset.focus - remaining : 0;
+    if (elapsed >= RESET_LOG_MIN_SECONDS) void logSession("focus", elapsed);
+    setRunning(false);
+    setPhase("idle");
+    setRemaining(preset.focus);
+    setCheckout({ minutes: Math.max(1, Math.round((elapsed || preset.focus) / 60)) });
+  }
 
   useEffect(() => {
     if (!running) return;
@@ -190,6 +254,15 @@ function FocusViewInner() {
 
   useEffect(() => {
     if (remaining !== 0) return;
+    // A scheduled session ends in a check-out rather than a break.
+    if (phase === "focus" && linkedEvent && !linkedEvent.checkout) {
+      void logSession("focus", preset.focus);
+      setRunning(false);
+      setPhase("idle");
+      setRemaining(preset.focus);
+      setCheckout({ minutes: Math.round(preset.focus / 60) });
+      return;
+    }
     if (phase === "focus") {
       void logSession("focus", preset.focus, { markEvent: "completed" });
       setPhase("break");
@@ -263,7 +336,7 @@ function FocusViewInner() {
       await api("/api/study-sessions", {
         method: "POST",
         body: JSON.stringify([
-          { type, seconds, subject, goal, distractions, endedAt: new Date().toISOString() },
+          { type, seconds, subject, goal: sessionGoal, distractions, endedAt: new Date().toISOString() },
         ]),
       });
     } catch {
@@ -348,6 +421,10 @@ function FocusViewInner() {
   }
 
   function detach() {
+    setRunning(false);
+    setPhase("idle");
+    setPresetIndex(0);
+    setRemaining(BUILT_IN_PRESETS[0].focus);
     router.replace("/app/focus");
   }
 
@@ -362,34 +439,41 @@ function FocusViewInner() {
         eyebrow="Study"
         title="Focus"
         meta={`${phase === "break" ? "On a break · " : ""}${todayMinutes} min focused today`}
-        tour="focus"
+        // No tour popping up over a session that has just started.
+        tour={linkedEvent ? undefined : "focus"}
       />
 
       {linkedEvent ? (
-        <div className="border-b px-6 py-3 sm:px-10" style={{ borderColor: "var(--app-border)", background: "var(--app-accent-soft)" }}>
-          <div className="mx-auto flex max-w-[960px] flex-wrap items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <span
-                aria-hidden="true"
-                className="h-1.5 w-1.5 rounded-full"
-                style={{ background: "var(--app-accent)" }}
-              />
-              <span className="type-eyebrow" style={{ color: "var(--app-accent-strong)" }}>
-                Focusing on
-              </span>
-              <span className="truncate text-[14px] font-medium" style={{ color: "var(--app-text)" }}>
-                {linkedEvent.title}
-              </span>
-              <span className="type-mono-label hidden sm:inline" style={{ color: "var(--app-text-muted)" }}>
-                {linkedEvent.subject ? `${linkedEvent.subject} · ` : ""}
-                {formatWallClock(linkedEvent.startAt, timezone)}–{formatWallClock(linkedEvent.endAt, timezone)}
-                {linkedMinutes ? ` · ${linkedMinutes} min` : ""}
-              </span>
+        // What this session is, in one glance: subject and time, Arcad's
+        // topic, and why it's the thing to do now.
+        <div className="border-b" style={{ borderColor: "var(--app-border)", background: "var(--app-surface)" }}>
+          <div className="mx-auto flex max-w-[960px] gap-4 px-6 py-5 sm:px-10">
+            <span aria-hidden="true" className="w-1 shrink-0 rounded-full" style={{ background: colour ?? "var(--app-accent)" }} />
+            <div className="min-w-0 flex-1">
+              <p className="flex flex-wrap items-center gap-x-2 text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>
+                <span style={{ color: "var(--app-text-soft)" }}>{linkedEvent.subject ?? "Study"}</span>
+                <span aria-hidden="true">·</span>
+                <span className="font-mono">
+                  {formatWallClock(linkedEvent.startAt, timezone)}–{formatWallClock(linkedEvent.endAt, timezone)}
+                </span>
+                {linkedMinutes ? (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <span className="font-mono">{linkedMinutes} min</span>
+                  </>
+                ) : null}
+              </p>
+              <h2 className="mt-1 truncate text-[22px] font-semibold tracking-[-0.015em]" style={{ color: "var(--app-text)" }}>
+                {plan?.topic ?? (linkedEvent.taskId ? linkedEvent.title : linkedEvent.subject ?? "Study session")}
+              </h2>
+              <p className="mt-0.5 text-[14px]" style={{ color: plan ? "var(--app-text-soft)" : "var(--app-text-muted)" }} role={plan ? undefined : "status"}>
+                {plan ? plan.why : planLoading ? "Arcad's setting this one up…" : "No plan for this one."}
+              </p>
             </div>
             <button
               type="button"
               onClick={detach}
-              className="rounded-full px-2.5 py-1 text-[12px] hover:underline"
+              className="self-start rounded-md px-2 py-1 text-[12px] ui-hover"
               style={{ color: "var(--app-text-muted)" }}
             >
               Detach
@@ -408,7 +492,7 @@ function FocusViewInner() {
               <circle cx="50" cy="50" r="46" fill="none" stroke="var(--app-border)" strokeWidth="2" />
               <circle
                 cx="50" cy="50" r="46" fill="none"
-                stroke={phase === "break" ? "var(--app-success)" : "var(--app-accent)"}
+                stroke={phase === "break" ? "var(--app-success)" : colour ?? "var(--app-accent)"}
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeDasharray={`${2 * Math.PI * 46}`}
@@ -512,6 +596,65 @@ function FocusViewInner() {
               failed={recentsError}
               timezone={timezone}
             />
+          ) : linkedEvent ? (
+            <div className="app-enter rounded-lg p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
+              <div className="flex items-center justify-between gap-3">
+                <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>The plan</p>
+                {plan && !linkedEvent.checkout ? (
+                  <button
+                    type="button"
+                    onClick={() => void refreshPlan()}
+                    disabled={planRefreshing || running}
+                    className="rounded-md px-2 py-1 text-[12px] ui-hover disabled:opacity-50"
+                    style={{ color: "var(--app-text-muted)" }}
+                    title={running ? "Pause first to get a new plan" : undefined}
+                  >
+                    {planRefreshing ? "Thinking…" : "New plan"}
+                  </button>
+                ) : null}
+              </div>
+              {plan ? (
+                <ol className="mt-3 flex flex-col gap-1">
+                  {plan.steps.map((step, index) => (
+                    <li key={index}>
+                      <label className="flex cursor-pointer items-start gap-3 rounded-md px-1 py-2 ui-hover">
+                        <input
+                          type="checkbox"
+                          checked={doneSteps.includes(index)}
+                          onChange={() => toggleStep(index)}
+                          className="mt-0.5 h-4 w-4 shrink-0"
+                          style={{ accentColor: colour ?? "var(--app-accent)" }}
+                        />
+                        <span className="min-w-0 flex-1 text-[14px] leading-snug" style={{
+                          color: doneSteps.includes(index) ? "var(--app-text-muted)" : "var(--app-text)",
+                          textDecoration: doneSteps.includes(index) ? "line-through" : undefined,
+                        }}>
+                          {step.text}
+                        </span>
+                        <span className="shrink-0 font-mono text-[12px]" style={{ color: "var(--app-text-muted)" }}>
+                          {step.minutes}m
+                        </span>
+                      </label>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="mt-3 text-[13.5px]" style={{ color: "var(--app-text-muted)" }} role="status">
+                  {planLoading ? "Arcad's setting this one up…" : "No plan yet. Start anyway, and check out at the end."}
+                </p>
+              )}
+              {linkedEvent.checkout ? (
+                <p className="mt-4 text-[13px]" style={{ color: "var(--app-success)" }}>
+                  Done and checked out.
+                </p>
+              ) : (
+                <div className="mt-4">
+                  <AppButton variant="secondary" onClick={finishSession} className="w-full">
+                    {phase === "focus" ? "Finish session" : "Check out"}
+                  </AppButton>
+                </div>
+              )}
+            </div>
           ) : (
             <div className="app-enter flex flex-col gap-6">
           <div className="rounded-lg p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
@@ -621,6 +764,21 @@ function FocusViewInner() {
           )}
         </aside>
       </div>
+
+      {linkedEvent ? (
+        <CheckoutSheet
+          open={checkout !== null}
+          event={linkedEvent}
+          initialDone={doneSteps}
+          minutes={checkout?.minutes ?? linkedMinutes ?? 0}
+          onClose={() => setCheckout(null)}
+          onSaved={async (updated) => {
+            replaceEvent(updated);
+            writeDoneSteps(linkedEvent.id, []);
+            await reload();
+          }}
+        />
+      ) : null}
     </>
   );
 }

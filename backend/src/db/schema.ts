@@ -204,6 +204,10 @@ export const events = sqliteTable(
     source: text("source").notNull().default("auto"),
     editable: integer("editable", { mode: "boolean" }).notNull().default(true),
     pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
+    // Session plan and check-out, both JSON (see migration 0008).
+    plan: text("plan"),
+    checkout: text("checkout"),
+    startedAt: integer("started_at"),
     createdAt: integer("created_at").notNull().default(now),
   },
   (t) => [

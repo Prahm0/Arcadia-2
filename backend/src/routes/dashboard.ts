@@ -112,7 +112,10 @@ dashboard.get("/", async (c) => {
     .from(schema.proposals)
     .where(and(eq(schema.proposals.userId, userId), eq(schema.proposals.status, "pending")));
 
+  // Blocks the student took off the schedule stay in the table (they hold the
+  // slot so it isn't refilled) but aren't shown.
   const events = eventRows
+    .filter((event) => event.status !== "cancelled")
     .sort((a, b) => a.startAt - b.startAt)
     .map(serialiseEvent);
 

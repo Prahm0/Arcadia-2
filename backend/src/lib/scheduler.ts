@@ -1,6 +1,7 @@
 import { and, eq, gte, inArray, lt, lte } from "drizzle-orm";
 import type { Database } from "../db";
 import { schema } from "../db";
+import { matchesCommitmentWeekday, parseCustomWeekdays } from "./commitments";
 import { newId } from "./ids";
 import {
   DAY,
@@ -55,8 +56,14 @@ function commitmentSlots(commitment: Commitment, from: number, to: number, tz: s
 
   const slots: Slot[] = [];
   for (let day = startOfLocalDay(from, tz); day < to; day = nextLocalDay(day, tz)) {
-    if (commitment.recurrence === "weekly") {
-      if (commitment.weekday === null || localWeekday(day, tz) !== commitment.weekday) continue;
+    const weekday = localWeekday(day, tz);
+    if (["weekly", "weekdays", "custom"].includes(commitment.recurrence)) {
+      if (!matchesCommitmentWeekday(
+        commitment.recurrence,
+        commitment.weekday,
+        parseCustomWeekdays(commitment.customWeekdays),
+        weekday,
+      )) continue;
     } else if (commitment.recurrence === "none") {
       if (!commitment.startDate) continue;
       const target = Date.parse(`${commitment.startDate}T00:00:00Z`);

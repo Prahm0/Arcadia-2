@@ -25,7 +25,7 @@ const TASK_TYPES = [
 export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: initialDue }: NewTaskSheetProps) {
   const { data, patch, reload } = useDashboardData();
   const [title, setTitle] = useState("");
-  const [subject, setSubject] = useState(data.subjects[0]?.name ?? "");
+  const [subject, setSubject] = useState("");
   const [taskType, setTaskType] = useState("homework");
   const [dueDate, setDueDate] = useState(() => defaultDueDate());
   const [minutes, setMinutes] = useState(60);
@@ -46,7 +46,7 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
         setMinutes(editing.remainingMinutes || 60);
       } else {
         setTitle("");
-        setSubject(data.subjects[0]?.name || "");
+        setSubject("");
         setTaskType("homework");
         setDueDate(initialDue || defaultDueDate());
         setMinutes(60);
@@ -218,7 +218,7 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
                 list="arcadia-subjects"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                placeholder={data.subjects.length === 0 ? "Type a subject" : "Pick or type a new one"}
+                placeholder="e.g. Chemistry"
                 autoComplete="off"
                 maxLength={80}
                 className="w-full rounded-md px-3 py-2.5 text-[15px] outline-none"
@@ -256,6 +256,7 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
+                onClick={(event) => event.currentTarget.showPicker?.()}
                 className="w-full rounded-md px-3 py-2.5 text-[15px] outline-none"
                 style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
               />

@@ -2,19 +2,21 @@ import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../db";
 import { newId } from "../lib/ids";
+import { normaliseCustomWeekdays } from "../lib/commitments";
 import { replan } from "../lib/replan";
 import { serialiseCommitment } from "../lib/serialise";
 import { parseClock } from "../lib/time";
 import type { Env, Variables } from "../types";
 
 const CATEGORIES = ["school", "sport", "extracurricular", "study", "sleep", "other"];
-const RECURRENCES = ["none", "daily", "weekly"];
+const RECURRENCES = ["none", "daily", "weekly", "weekdays", "custom"];
 
 interface CommitmentBody {
   title?: string;
   category?: string;
   recurrence?: string;
   weekday?: number | null;
+  customWeekdays?: number[];
   startDate?: string | null;
   startTime?: string;
   endTime?: string;
@@ -40,8 +42,17 @@ function validate(body: CommitmentBody): string | null {
   if (end <= start) return "The end time has to be after the start time.";
   if (body.category && !CATEGORIES.includes(body.category)) return "Unknown category.";
   if (body.recurrence && !RECURRENCES.includes(body.recurrence)) return "Unknown recurrence.";
-  if (body.recurrence === "weekly" && (body.weekday === null || body.weekday === undefined)) {
+  const recurrence = body.recurrence ?? "weekly";
+  if (recurrence === "weekly" && (body.weekday === null || body.weekday === undefined)) {
     return "Pick a day of the week.";
+  }
+  if (recurrence === "weekly" && (!Number.isInteger(body.weekday) || body.weekday! < 0 || body.weekday! > 6)) {
+    return "Pick a valid day of the week.";
+  }
+  if (recurrence === "custom") {
+    const days = normaliseCustomWeekdays(body.customWeekdays);
+    if (days.length === 0) return "Pick at least one day of the week.";
+    if (days.length !== body.customWeekdays?.length) return "Choose valid custom weekdays.";
   }
   return null;
 }
@@ -62,6 +73,8 @@ commitments.post("/", async (c) => {
     category: body.category ?? "other",
     recurrence: body.recurrence ?? "weekly",
     weekday: typeof body.weekday === "number" ? body.weekday : null,
+    customWeekdays:
+      body.recurrence === "custom" ? JSON.stringify(normaliseCustomWeekdays(body.customWeekdays)) : null,
     startDate: body.startDate ?? null,
     startTime: body.startTime!,
     endTime: body.endTime!,
@@ -96,6 +109,8 @@ commitments.patch("/:id", async (c) => {
       category: body.category ?? "other",
       recurrence: body.recurrence ?? "weekly",
       weekday: typeof body.weekday === "number" ? body.weekday : null,
+      customWeekdays:
+        body.recurrence === "custom" ? JSON.stringify(normaliseCustomWeekdays(body.customWeekdays)) : null,
       startDate: body.startDate ?? null,
       startTime: body.startTime!,
       endTime: body.endTime!,

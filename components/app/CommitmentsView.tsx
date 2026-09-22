@@ -13,8 +13,9 @@ interface Commitment {
   id: string;
   title: string;
   category: "school" | "sport" | "extracurricular" | "other";
-  recurrence: "none" | "weekly" | "weekdays";
+  recurrence: "none" | "weekly" | "weekdays" | "custom";
   weekday: number | null;
+  customWeekdays: number[];
   startDate: string | null;
   startTime: string;
   endTime: string;
@@ -30,6 +31,15 @@ const CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WEEKDAY_OPTIONS = [
+  { label: "Mon", value: 1 },
+  { label: "Tue", value: 2 },
+  { label: "Wed", value: 3 },
+  { label: "Thu", value: 4 },
+  { label: "Fri", value: 5 },
+  { label: "Sat", value: 6 },
+  { label: "Sun", value: 0 },
+];
 
 export default function CommitmentsView() {
   const { reload } = useDashboardData();
@@ -199,6 +209,7 @@ function CommitmentSheet({
   const [category, setCategory] = useState<Commitment["category"]>("school");
   const [recurrence, setRecurrence] = useState<Commitment["recurrence"]>("weekly");
   const [weekday, setWeekday] = useState<number>(1);
+  const [customWeekdays, setCustomWeekdays] = useState<number[]>([]);
   const [startTime, setStartTime] = useState("08:30");
   const [endTime, setEndTime] = useState("15:00");
   const [loading, setLoading] = useState(false);
@@ -213,6 +224,7 @@ function CommitmentSheet({
       setCategory(editing.category);
       setRecurrence(editing.recurrence);
       setWeekday(editing.weekday ?? 1);
+      setCustomWeekdays(editing.customWeekdays ?? []);
       setStartTime(editing.startTime);
       setEndTime(editing.endTime);
     } else {
@@ -220,6 +232,7 @@ function CommitmentSheet({
       setCategory("school");
       setRecurrence("weekly");
       setWeekday(1);
+      setCustomWeekdays([]);
       setStartTime("08:30");
       setEndTime("15:00");
     }
@@ -242,6 +255,7 @@ function CommitmentSheet({
         category,
         recurrence,
         weekday: recurrence === "weekly" ? weekday : null,
+        customWeekdays: recurrence === "custom" ? customWeekdays : [],
         startDate: recurrence === "none" ? new Date().toISOString().slice(0, 10) : null,
         startTime,
         endTime,
@@ -277,6 +291,22 @@ function CommitmentSheet({
     } finally {
       setDeleting(false);
     }
+  }
+
+  function changeRecurrence(next: Commitment["recurrence"]) {
+    setRecurrence(next);
+    if (next === "custom" && customWeekdays.length === 0) {
+      setCustomWeekdays([weekday]);
+    }
+  }
+
+  function toggleCustomWeekday(value: number) {
+    setCustomWeekdays((current) => {
+      if (current.includes(value)) {
+        return current.length === 1 ? current : current.filter((day) => day !== value);
+      }
+      return [...current, value];
+    });
   }
 
   if (!open) return null;
@@ -335,35 +365,40 @@ function CommitmentSheet({
             <Field label="Repeats">
               <select
                 value={recurrence}
-                onChange={(e) => setRecurrence(e.target.value as Commitment["recurrence"])}
+                onChange={(e) => changeRecurrence(e.target.value as Commitment["recurrence"])}
                 className="w-full rounded-md px-3 py-2.5 text-[15px] outline-none"
                 style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
               >
                 <option value="weekly">Weekly</option>
                 <option value="weekdays">Weekdays (Mon–Fri)</option>
+                <option value="custom">Custom</option>
                 <option value="none">One-off</option>
               </select>
             </Field>
           </div>
 
-          {recurrence === "weekly" ? (
-            <Field label="On">
+          {recurrence === "weekly" || recurrence === "custom" ? (
+            <Field label={recurrence === "custom" ? "Repeats on" : "On"}>
               <div className="flex gap-1">
-                {WEEKDAYS.map((day, index) => (
-                  <button
-                    key={day}
-                    type="button"
-                    onClick={() => setWeekday(index)}
-                    className={cn("flex-1 rounded-sm py-2 text-[13px] font-medium transition-colors")}
-                    style={{
-                      background: weekday === index ? "var(--app-accent-soft)" : "var(--app-surface-soft)",
-                      color: weekday === index ? "var(--app-accent-strong)" : "var(--app-text-soft)",
-                      border: `1px solid ${weekday === index ? "var(--app-accent)" : "var(--app-border)"}`,
-                    }}
-                  >
-                    {day}
-                  </button>
-                ))}
+                {WEEKDAY_OPTIONS.map(({ label, value }) => {
+                  const selected = recurrence === "custom" ? customWeekdays.includes(value) : weekday === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => recurrence === "custom" ? toggleCustomWeekday(value) : setWeekday(value)}
+                      className={cn("flex-1 rounded-sm py-2 text-[13px] font-medium transition-colors")}
+                      style={{
+                        background: selected ? "var(--app-accent-soft)" : "var(--app-surface-soft)",
+                        color: selected ? "var(--app-accent-strong)" : "var(--app-text-soft)",
+                        border: `1px solid ${selected ? "var(--app-accent)" : "var(--app-border)"}`,
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
             </Field>
           ) : null}
@@ -375,6 +410,7 @@ function CommitmentSheet({
                 type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
+                onClick={(event) => event.currentTarget.showPicker?.()}
                 className="w-full rounded-md px-3 py-2.5 text-[15px] outline-none"
                 style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
               />
@@ -385,6 +421,7 @@ function CommitmentSheet({
                 type="time"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
+                onClick={(event) => event.currentTarget.showPicker?.()}
                 className="w-full rounded-md px-3 py-2.5 text-[15px] outline-none"
                 style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
               />
@@ -422,6 +459,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function describeRecurrence(c: Commitment): string {
   if (c.recurrence === "weekdays") return "Weekdays";
   if (c.recurrence === "weekly" && c.weekday !== null) return `Every ${WEEKDAYS[c.weekday]}`;
+  if (c.recurrence === "custom") {
+    return WEEKDAY_OPTIONS
+      .filter(({ value }) => c.customWeekdays.includes(value))
+      .map(({ label }) => label)
+      .join(", ");
+  }
   if (c.recurrence === "none" && c.startDate) return c.startDate;
   return "One-off";
 }

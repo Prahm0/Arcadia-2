@@ -1,4 +1,5 @@
 import { schema } from "../db";
+import { parseCustomWeekdays } from "./commitments";
 import { defaultWeeklyMinutes } from "./scheduler";
 import { iso } from "./time";
 
@@ -55,6 +56,7 @@ export function serialiseCommitment(commitment: CommitmentRow) {
     category: commitment.category,
     recurrence: commitment.recurrence,
     weekday: commitment.weekday,
+    customWeekdays: parseCustomWeekdays(commitment.customWeekdays),
     startDate: commitment.startDate,
     startTime: commitment.startTime,
     endTime: commitment.endTime,

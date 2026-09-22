@@ -127,6 +127,7 @@ export const commitments = sqliteTable(
     category: text("category").notNull().default("other"),
     recurrence: text("recurrence").notNull().default("weekly"),
     weekday: integer("weekday"),
+    customWeekdays: text("custom_weekdays"),
     startDate: text("start_date"),
     startTime: text("start_time").notNull(),
     endTime: text("end_time").notNull(),

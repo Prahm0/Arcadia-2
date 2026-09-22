@@ -68,6 +68,16 @@ const SUBJECT_SUGGESTIONS = [
 ] as const;
 
 const GRADE_OPTIONS = ["Year 10", "Year 11", "Year 12", "First year uni", "Second year+", "Other"] as const;
+const MIN_DAILY_STUDY_MINUTES = 60;
+const MAX_DAILY_STUDY_MINUTES = 360;
+const DAILY_STUDY_STEP_MINUTES = 15;
+
+function formatStudyDuration(totalMinutes: number) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return minutes ? `${hours} hr ${minutes} min` : `${hours} hr`;
+}
 
 type StepKey = "you" | "subjects" | "life" | "focus" | "week";
 const STEPS: { key: StepKey; label: string; eyebrow: string }[] = [
@@ -342,16 +352,16 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
                 <>
                   Max daily study{" "}
                   <span className="ml-2 font-mono" style={{ color: "var(--app-text-muted)" }}>
-                    {Math.round(maxDaily / 60)} hr {maxDaily % 60 ? `${maxDaily % 60} min` : ""}
+                    {formatStudyDuration(maxDaily)}
                   </span>
                 </>
               }
             >
               <input
                 type="range"
-                min={60}
-                max={360}
-                step={15}
+                min={MIN_DAILY_STUDY_MINUTES}
+                max={MAX_DAILY_STUDY_MINUTES}
+                step={DAILY_STUDY_STEP_MINUTES}
                 value={maxDaily}
                 onChange={(e) => setMaxDaily(Number(e.target.value))}
                 className="mt-3 w-full"
@@ -568,6 +578,11 @@ function FormInput({
       value={value}
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
+      onClick={(event) => {
+        if (type !== "time") return;
+
+        event.currentTarget.showPicker?.();
+      }}
       className="w-full rounded-md px-3 py-2.5 text-[15px] outline-none disabled:opacity-60"
       style={{
         background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)",

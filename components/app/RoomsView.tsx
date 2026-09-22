@@ -170,7 +170,7 @@ export default function RoomsView() {
                 body="Create one and share the code with a friend, or drop a code someone sent you. Start a focus timer and the room sees you studying."
                 example={
                   <>
-                    <ExampleRow title="Josh" meta="Studying · Physics · 32 min in · 2h 10m today" />
+                    <ExampleRow title="Zara" meta="Studying · Physics · 32 min in · 2h 10m today" />
                     <ExampleRow title="Priya" meta="Break · 1h 45m today" bar="var(--app-success)" />
                     <ExampleRow title="You" meta="Idle · 40m today" bar="var(--app-text-faint)" />
                   </>

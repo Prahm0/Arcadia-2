@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, Inter, Instrument_Serif, JetBrains_Mono } from "next/font/google";
+import PwaInstallPrompt from "@/components/PwaInstallPrompt";
 import "./globals.css";
 
 // DM Sans replaces Inter as the primary sans — warmer letterforms, no
@@ -41,10 +42,17 @@ const description =
   "Arcadia builds a study plan around your classes, deadlines, training and the rest of your life — then quietly rebuilds it every time something moves.";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://arcadia.study"),
+  metadataBase: new URL("https://arcadiahq.app"),
   title,
   description,
   applicationName: "Arcadia",
+  // PWA install hints. iOS Safari uses its own set of tags for
+  // "Add to Home Screen" that Next.js maps through appleWebApp.
+  appleWebApp: {
+    capable: true,
+    title: "Arcadia",
+    statusBarStyle: "black-translucent",
+  },
   keywords: [
     "student planner",
     "study planner",
@@ -70,8 +78,14 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#000000",
+  // Matches the manifest's theme_color / background — sets the iOS status
+  // bar tint when installed as a PWA and the Android URL bar tint in
+  // Chrome. Kept as the deep-night background rather than pure black so
+  // the tint blends with the app's own surface rather than punching a
+  // hard cutoff at the top.
+  themeColor: "#0a0714",
   colorScheme: "dark",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -92,7 +106,10 @@ export default function RootLayout({
           @layer utilities, which outranks every layered rule — including the
           product's own `html[data-app-theme] body` override, so the app shell
           was sitting on a black body in both themes. */}
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        {children}
+        <PwaInstallPrompt />
+      </body>
     </html>
   );
 }

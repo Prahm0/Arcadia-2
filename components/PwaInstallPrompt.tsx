@@ -13,6 +13,7 @@
  * (already installed) never see it.
  */
 
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const DISMISS_KEY = "arcadia:pwa-prompt-dismissed-at";
@@ -27,13 +28,21 @@ interface BeforeInstallPromptEvent extends Event {
 type Mode = "hidden" | "ios" | "android";
 
 export default function PwaInstallPrompt() {
+  const pathname = usePathname();
   const [mode, setMode] = useState<Mode>("hidden");
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
+
+  // Only show inside the product itself. On the landing the banner
+  // competes with the primary Get Started CTA, especially on phones
+  // where the fixed banner covers the button. Once a student has
+  // signed in, the install pitch is welcome.
+  const isInApp = pathname?.startsWith("/app");
 
   useEffect(() => {
     // Guard everything behind window checks so nothing runs during SSR
     // or in the pre-hydration snapshot.
     if (typeof window === "undefined") return;
+    if (!isInApp) return;
 
     // Already installed, nothing to prompt.
     const isStandalone =
@@ -58,8 +67,9 @@ export default function PwaInstallPrompt() {
     const isIos = /iPhone|iPad|iPod/.test(ua) && !/CriOS|FxiOS/.test(ua);
 
     if (isIos) {
-      // Delay a little so it doesn't slam in front of the hero on first paint.
-      const timer = window.setTimeout(() => setMode("ios"), 4000);
+      // Wait longer than before so the student can see the app before
+      // the pitch lands, and so it never slams over a first-paint CTA.
+      const timer = window.setTimeout(() => setMode("ios"), 12000);
       return () => window.clearTimeout(timer);
     }
 
@@ -73,7 +83,7 @@ export default function PwaInstallPrompt() {
     };
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
-  }, []);
+  }, [isInApp]);
 
   function dismiss() {
     setMode("hidden");

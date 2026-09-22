@@ -62,6 +62,23 @@ export const sessions = sqliteTable(
   (t) => [index("sessions_user_idx").on(t.userId)],
 );
 
+export const oauthAccounts = sqliteTable(
+  "oauth_accounts",
+  {
+    provider: text("provider").notNull(),
+    providerUserId: text("provider_user_id").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [
+    primaryKey({ columns: [t.provider, t.providerUserId] }),
+    uniqueIndex("oauth_accounts_provider_user_idx").on(t.provider, t.userId),
+    index("oauth_accounts_user_idx").on(t.userId),
+  ],
+);
+
 /** One row per browser/device push subscription. The endpoint is a secret capability URL. */
 export const pushSubscriptions = sqliteTable(
   "push_subscriptions",

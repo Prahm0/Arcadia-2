@@ -8,6 +8,7 @@ export interface Env {
   APP_ORIGIN: string;
   MAIL_FROM: string;
   OPENAI_MODEL: string;
+  GOOGLE_SIGN_IN_ENABLED?: string;
   // Local dev only: point Arcad at a stand-in server instead of OpenAI.
   OPENAI_BASE_URL?: string;
   STRIPE_PRICE_PRO_WEEKLY: string;
@@ -23,6 +24,10 @@ export interface Env {
   TOKEN_ENCRYPTION_KEY?: string;
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
+  APPLE_CLIENT_ID?: string;
+  APPLE_TEAM_ID?: string;
+  APPLE_KEY_ID?: string;
+  APPLE_PRIVATE_KEY?: string;
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
   VAPID_PUBLIC_KEY?: string;

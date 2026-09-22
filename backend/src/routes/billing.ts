@@ -15,6 +15,7 @@ const billing = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 type Plan = "pro" | "max";
 type Interval = "week" | "month" | "year";
+const MANAGEABLE_SUBSCRIPTION_STATUSES = new Set(["active", "trialing", "past_due", "incomplete", "unpaid"]);
 
 /**
  * Returns the price ID for the {plan, interval} combo from the Worker's
@@ -90,6 +91,19 @@ billing.post("/checkout", async (c) => {
         code: "guest_cannot_upgrade",
       },
       403,
+    );
+  }
+
+  // A second Checkout session can create a second Stripe subscription. Plan
+  // changes, payment recovery and cancellation all belong in the customer
+  // portal, where Stripe updates the existing subscription safely.
+  if (user.subscriptionStatus && MANAGEABLE_SUBSCRIPTION_STATUSES.has(user.subscriptionStatus)) {
+    return c.json(
+      {
+        error: "You already have a subscription. Manage it in the Stripe billing portal.",
+        code: "subscription_already_exists",
+      },
+      409,
     );
   }
 

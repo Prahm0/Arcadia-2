@@ -219,7 +219,11 @@ export default function PricingView() {
               loading={busyTier === tier.key}
               onUpgrade={() => {
                 if (tier.key === "free") return;
-                void startCheckout(tier.key);
+                if (hasSubscription) {
+                  void openPortal();
+                } else {
+                  void startCheckout(tier.key);
+                }
               }}
               onManage={openPortal}
             />
@@ -445,7 +449,7 @@ function TierCard({
             {isGuest
               ? `Sign up for ${tier.name}`
               : hasSubscription
-              ? `Switch to ${tier.name}`
+              ? "Manage in Stripe"
               : `Start ${tier.name}`}
           </AppButton>
         )}

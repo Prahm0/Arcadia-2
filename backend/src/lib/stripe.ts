@@ -114,6 +114,8 @@ export async function createCustomer(env: Env, email: string, userId: string): P
       email,
       metadata: { userId },
     },
+    // Retrying a first upgrade cannot create a duplicate Stripe customer.
+    idempotencyKey: `arcadia-customer-${userId}`,
   });
 }
 
@@ -180,15 +182,17 @@ export async function verifyWebhookSignature(
   body: string,
   signatureHeader: string,
 ): Promise<{ event: StripeEvent }> {
-  const parts = Object.fromEntries(
-    signatureHeader.split(",").map((p) => {
-      const idx = p.indexOf("=");
-      return [p.slice(0, idx).trim(), p.slice(idx + 1).trim()];
-    }),
-  );
-  const timestamp = Number(parts.t);
-  const signature = parts.v1;
-  if (!Number.isFinite(timestamp) || !signature) {
+  let timestamp: number | null = null;
+  const signatures: string[] = [];
+  for (const part of signatureHeader.split(",")) {
+    const index = part.indexOf("=");
+    if (index < 1) continue;
+    const key = part.slice(0, index).trim();
+    const value = part.slice(index + 1).trim();
+    if (key === "t") timestamp = Number(value);
+    if (key === "v1" && value) signatures.push(value);
+  }
+  if (timestamp === null || !Number.isFinite(timestamp) || signatures.length === 0) {
     throw new Error("Stripe signature header malformed.");
   }
   if (Math.abs(Date.now() - timestamp * 1000) > TOLERANCE_MS) {
@@ -205,7 +209,9 @@ export async function verifyWebhookSignature(
   );
   const sigBytes = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload)));
   const expected = Array.from(sigBytes, (b) => b.toString(16).padStart(2, "0")).join("");
-  if (!constantTimeEqual(expected, signature)) {
+  // Stripe includes two v1 values while a webhook endpoint secret is being
+  // rotated. Accept either valid signature so rotations do not drop events.
+  if (!signatures.some((signature) => constantTimeEqual(expected, signature))) {
     throw new Error("Stripe signature mismatch.");
   }
   return { event: JSON.parse(body) as StripeEvent };

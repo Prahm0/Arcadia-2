@@ -10,6 +10,8 @@ import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
 import { formatWeekly, suggestedWeeklyMinutes } from "@/lib/app/studyTargets";
 import AppButton from "../AppButton";
+import ResourcesSection from "./ResourcesSection";
+import SyllabusSection from "./SyllabusSection";
 import { ColourSwatches, Label, Section, TextArea, TextInput, WeeklyStepper, formatHoursMinutes } from "./ui";
 
 const NOTES_LIMIT = 2000;
@@ -50,8 +52,16 @@ export default function SubjectView({ subjectId }: { subjectId: string }) {
   const index = state.status === "ready" ? state.data.subjects.indexOf(subject) : 0;
   return (
     <SubjectEditor
-      // Fresh drafts whenever the saved subject changes.
-      key={JSON.stringify(subject)}
+      // Fresh drafts whenever the saved editable fields change; topic and file
+      // edits refresh the sections below without touching unsaved drafts.
+      key={JSON.stringify([
+        subject.name,
+        subject.colour,
+        subject.weeklyMinutes,
+        subject.weeklyMinutesSuggested,
+        subject.targetGrade,
+        subject.notes,
+      ])}
       subject={subject}
       fallbackColour={SUBJECT_COLORS[index % SUBJECT_COLORS.length]}
       grade={state.status === "ready" ? state.data.profile.grade : null}
@@ -173,6 +183,9 @@ function SubjectEditor({
           {notes.length}/{NOTES_LIMIT}
         </p>
       </Section>
+
+      <SyllabusSection subject={subject} refresh={refresh} replanned={async () => void (await Promise.all([refresh(), reload()]))} />
+      <ResourcesSection subject={subject} refresh={refresh} />
 
       <Section id="time" title="Time and target">
         <div className="space-y-5">

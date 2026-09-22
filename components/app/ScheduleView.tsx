@@ -10,7 +10,8 @@ import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import NewTaskSheet from "./NewTaskSheet";
 import EventDetailSheet from "./EventDetailSheet";
-import { categoryBlock, type CategoryBlockStyle } from "@/lib/app/categoryColors";
+import { categoryBlock, hueBlock, type CategoryBlockStyle } from "@/lib/app/categoryColors";
+import { studyTitle, subjectColour } from "@/lib/app/subjectColour";
 
 const DAY_MS = 86_400_000;
 const HOUR_START = 7;
@@ -246,6 +247,7 @@ function WeekGrid({
   onCreateAtDay,
   onReschedule,
 }: WeekGridProps) {
+  const { subjects } = useDashboardData().data;
   const HEIGHT = 720;
   const canvasRef = useRef<HTMLDivElement>(null);
 
@@ -416,7 +418,9 @@ function WeekGrid({
           {events.map((event) => {
             const { dayIndex, top, height, visible } = positionFor(event, days, timezone);
             if (!visible) return null;
-            const styles = CATEGORY_STYLE[event.category] ?? CATEGORY_STYLE.other;
+            // Study blocks take their subject's colour; everything else its category's.
+            const hue = event.category === "study" ? subjectColour(subjects, event.subject) : null;
+            const styles = hue ? hueBlock(hue) : CATEGORY_STYLE[event.category] ?? CATEGORY_STYLE.other;
             const durationMinutes = Math.max(0, (Date.parse(event.endAt) - Date.parse(event.startAt)) / 60000);
             const showTime = durationMinutes >= 35;
             const isCompleted = event.outcome === "completed";
@@ -470,7 +474,9 @@ function WeekGrid({
                   }}
                 >
                   <div className="flex items-start justify-between gap-1">
-                    <span className="truncate text-[12px] font-medium">{event.title}</span>
+                    <span className="truncate text-[12px] font-medium">
+                      {event.category === "study" ? studyTitle(event) : event.title}
+                    </span>
                     {isCompleted ? (
                       <span aria-hidden="true" className="mt-0.5 shrink-0">
                         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">

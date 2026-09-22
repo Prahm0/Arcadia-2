@@ -49,7 +49,11 @@ export function categoryBlock(category: string): CategoryBlockStyle {
       border: `color-mix(in oklab, ${categoryColor(category)} 40%, transparent)`,
     };
   }
-  const hue = categoryColor(category);
+  return hueBlock(categoryColor(category));
+}
+
+/** The same block treatment for any hue, e.g. a subject's own colour. */
+export function hueBlock(hue: string): CategoryBlockStyle {
   return {
     bg: `color-mix(in oklab, ${hue} 16%, var(--app-surface))`,
     text: "var(--app-text)",

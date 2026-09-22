@@ -1,10 +1,29 @@
 import type { Env } from "../types";
 
+/** A piece of a multimodal message: text, an image, or a PDF. */
+export type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } }
+  | { type: "file"; file: { filename: string; file_data: string } };
+
 export interface ChatMessage {
   role: "system" | "user" | "assistant" | "tool";
-  content: string;
+  content: string | ContentPart[];
   tool_call_id?: string;
 }
+
+/**
+ * How Arcad sounds everywhere: chat, session plans, anything it writes.
+ * Short, casual, specific, and it plans the work rather than doing it.
+ */
+export const ARCAD_VOICE = [
+  "You are Arcad, the study planner inside Arcadia, for Australian high school students.",
+  "Talk like a sharp mate who's good at school. Casual Australian English. Australian spelling.",
+  "One to three short sentences. No paragraphs, no headings, no filler. Use a list only for steps, and never more than three.",
+  "No pep talks, no \"Great question!\", no emojis.",
+  "You plan the work; you never do it. Don't write essays, paragraphs, answers, solutions or code for schoolwork, and don't answer assessment or homework questions. You can say what to study, why now, and how to go about it, and give a one-line nudge on a concept. If they ask you to do the work, say so in one line and turn it into a plan: what to do, in what order, for how long.",
+  "Always tie advice to their real stuff: deadlines, syllabus topics, what they did last session. Never invent tasks, topics or deadlines they haven't given you.",
+].join("\n");
 
 export interface ToolCall {
   id: string;
@@ -97,16 +116,29 @@ export const REMEMBER_TOOL = {
 
 export type Tool = typeof PROPOSE_TOOL | typeof REMEMBER_TOOL;
 
-export async function complete(
-  env: Env,
-  messages: ChatMessage[],
-  tools: Tool[] = [PROPOSE_TOOL],
-): Promise<Completion> {
+/** True when Arcad can actually call the model. */
+export function aiConfigured(env: Env): boolean {
+  return Boolean(env.OPENAI_API_KEY);
+}
+
+interface RequestOptions {
+  tools?: Tool[];
+  /** Hard cap on reply length. Chat keeps this small so Arcad can't ramble. */
+  maxTokens?: number;
+  temperature?: number;
+  /** Structured output: the reply must match this JSON schema. */
+  schema?: { name: string; schema: Record<string, unknown> };
+}
+
+async function request(env: Env, messages: ChatMessage[], options: RequestOptions) {
   if (!env.OPENAI_API_KEY) {
-    throw new Error("The assistant is not configured yet.");
+    throw new Error("Arcad isn't set up yet.");
   }
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  // OPENAI_BASE_URL only exists so local dev can point at a stand-in server.
+  const base = (env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "");
+  const tools = options.tools ?? [];
+  const response = await fetch(`${base}/chat/completions`, {
     method: "POST",
     headers: {
       authorization: `Bearer ${env.OPENAI_API_KEY}`,
@@ -115,9 +147,17 @@ export async function complete(
     body: JSON.stringify({
       model: env.OPENAI_MODEL || "gpt-4o-mini",
       messages,
-      temperature: 0.4,
-      max_tokens: 700,
+      temperature: options.temperature ?? 0.4,
+      max_tokens: options.maxTokens ?? 250,
       ...(tools.length > 0 ? { tools, tool_choice: "auto" } : {}),
+      ...(options.schema
+        ? {
+            response_format: {
+              type: "json_schema",
+              json_schema: { name: options.schema.name, strict: true, schema: options.schema.schema },
+            },
+          }
+        : {}),
     }),
   });
 
@@ -125,9 +165,7 @@ export async function complete(
     const detail = await response.text().catch(() => "");
     console.error("[openai] request failed", response.status, detail.slice(0, 500));
     throw new Error(
-      response.status === 429
-        ? "Arcad is busy right now. Try again in a moment."
-        : "Arcad couldn't respond.",
+      response.status === 429 ? "Arcad's flat out right now. Try again in a sec." : "Arcad couldn't respond.",
     );
   }
 
@@ -139,8 +177,15 @@ export async function complete(
       };
     }>;
   };
+  return data.choices?.[0]?.message;
+}
 
-  const message = data.choices?.[0]?.message;
+export async function complete(
+  env: Env,
+  messages: ChatMessage[],
+  tools: Tool[] = [PROPOSE_TOOL],
+): Promise<Completion> {
+  const message = await request(env, messages, { tools, maxTokens: 250 });
   return {
     content: message?.content ?? "",
     toolCalls: (message?.tool_calls ?? []).map((call) => ({
@@ -149,4 +194,23 @@ export async function complete(
       arguments: call.function.arguments,
     })),
   };
+}
+
+/**
+ * A reply shaped by a JSON schema, parsed. Returns null if the model came
+ * back with something unparseable, so callers can fall back.
+ */
+export async function completeJson<T>(
+  env: Env,
+  messages: ChatMessage[],
+  schema: { name: string; schema: Record<string, unknown> },
+  maxTokens = 600,
+): Promise<T | null> {
+  const message = await request(env, messages, { schema, maxTokens, temperature: 0.3 });
+  try {
+    return JSON.parse(message?.content ?? "") as T;
+  } catch {
+    console.error("[openai] unparseable structured reply");
+    return null;
+  }
 }

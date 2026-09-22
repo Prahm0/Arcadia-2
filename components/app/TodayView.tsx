@@ -22,7 +22,9 @@ import CompletionBurst from "./CompletionBurst";
 import DailyCheckInCard from "./DailyCheckInCard";
 import NewTaskSheet from "./NewTaskSheet";
 import ProactiveArcadCards from "./ProactiveArcadCards";
+import StartNowCard from "./StartNowCard";
 import SundayReviewInline from "./SundayReviewInline";
+import { subjectColour } from "@/lib/app/subjectColour";
 import { useStreak } from "@/lib/app/useStreak";
 import { playCompletionTick } from "@/lib/app/completion";
 
@@ -122,6 +124,7 @@ export default function TodayView() {
 
       <div className="mx-auto grid w-full max-w-[1160px] gap-8 px-6 py-8 sm:px-10 sm:py-10 lg:grid-cols-[minmax(0,1fr)_320px]">
         <section className="min-w-0">
+          <StartNowCard />
           <SundayReviewInline />
           <ProactiveArcadCards />
           <DailyCheckInCard />
@@ -294,38 +297,47 @@ function FocusRow({
   onComplete: () => void;
   onMiss: () => void;
 }) {
+  const { subjects } = useDashboardData().data;
   const isDone = event.outcome === "completed";
   const isMissed = event.outcome === "missed";
   const isActionable = !isDone && !isMissed;
   const minutes = Math.round((Date.parse(event.endAt) - Date.parse(event.startAt)) / 60000);
   const startClock = formatClock(event.startAt, timezone);
   const focusHref = `/app/focus?eventId=${encodeURIComponent(event.id)}`;
+  const colour = subjectColour(subjects, event.subject) ?? CATEGORY_BAR[event.category] ?? "var(--app-accent)";
+  // Arcad's topic once it's set up; a deadline's own name; otherwise the
+  // subject label above says it all until Arcad sets the session up.
+  const title = event.plan?.topic ?? (event.taskId ? event.title : null);
 
   const rowContent = (
     <>
       <span
         aria-hidden="true"
         className="h-8 w-[3px] shrink-0 rounded-full transition-colors duration-200"
-        style={{
-          background: isDone || isMissed ? "var(--app-border)" : CATEGORY_BAR[event.category] ?? "var(--app-accent)",
-        }}
+        style={{ background: isDone || isMissed ? "var(--app-border)" : colour }}
       />
       <span className="min-w-0 flex-1">
         <span className="block text-[12px]" style={{ color: "var(--app-text-muted)" }}>
           {event.subject || "Study"}
         </span>
-        <span
-          className={cn(
-            "mt-0.5 block truncate text-[16px] font-medium transition-opacity",
-            (isDone || isMissed) && "line-through",
-          )}
-          style={{
-            color: "var(--app-text)",
-            opacity: isDone ? 0.4 : isMissed ? 0.35 : 1,
-          }}
-        >
-          {event.title}
-        </span>
+        {title ? (
+          <span
+            className={cn(
+              "mt-0.5 block truncate text-[16px] font-medium transition-opacity",
+              (isDone || isMissed) && "line-through",
+            )}
+            style={{
+              color: "var(--app-text)",
+              opacity: isDone ? 0.4 : isMissed ? 0.35 : 1,
+            }}
+          >
+            {title}
+          </span>
+        ) : (
+          <span className="mt-0.5 block truncate text-[14px]" style={{ color: "var(--app-text-muted)", opacity: isDone || isMissed ? 0.5 : 1 }}>
+            Arcad sets this up when you start
+          </span>
+        )}
       </span>
       <span className="flex shrink-0 flex-col items-end gap-1">
         <span className="font-mono text-[13px]" style={{ color: "var(--app-text)" }}>
@@ -355,7 +367,7 @@ function FocusRow({
         <Link
           href={focusHref}
           className="flex min-w-0 flex-1 items-center gap-4 rounded-md px-3 py-3.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--app-accent)]"
-          aria-label={`Start focus on ${event.title}`}
+          aria-label={`Open ${event.subject ?? "study"} session${title ? `: ${title}` : ""}`}
         >
           {rowContent}
         </Link>
@@ -383,7 +395,7 @@ function FocusRow({
           type="button"
           onClick={onComplete}
           disabled={busy || isDone || isMissed}
-          aria-label={`Mark ${event.title} as done`}
+          aria-label={`Mark ${title ?? event.subject ?? event.title} as done`}
           className="flex size-11 items-center justify-center rounded-md transition-colors sm:size-9"
         >
           <CompletionBurst trigger={celebrateTrigger}>

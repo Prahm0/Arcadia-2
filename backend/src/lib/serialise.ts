@@ -1,5 +1,6 @@
 import { schema } from "../db";
 import { defaultWeeklyMinutes } from "./scheduler";
+import type { Checkout, SessionPlan } from "./session-plan";
 import { iso } from "./time";
 
 type TaskRow = typeof schema.tasks.$inferSelect;
@@ -45,7 +46,19 @@ export function serialiseEvent(event: EventRow) {
     source: event.source,
     editable: event.editable,
     pinned: event.pinned,
+    plan: parseJson<SessionPlan>(event.plan),
+    checkout: parseJson<Checkout>(event.checkout),
+    startedAt: event.startedAt ? iso(event.startedAt) : null,
   };
+}
+
+function parseJson<T>(value: string | null | undefined): T | null {
+  if (!value) return null;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return null;
+  }
 }
 
 export function serialiseCommitment(commitment: CommitmentRow) {

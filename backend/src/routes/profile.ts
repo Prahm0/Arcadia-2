@@ -6,7 +6,9 @@ import { subjectWeekProgress } from "../lib/progress";
 import { replan } from "../lib/replan";
 import { subjectKey } from "../lib/scheduler";
 import { serialiseCommitment, serialiseSubject } from "../lib/serialise";
-import { DAY, iso, parseClock, startOfLocalWeek } from "../lib/time";
+import { currentTopic } from "../lib/syllabus";
+import { DAY, iso, localDateKey, parseClock, startOfLocalWeek } from "../lib/time";
+import { serialiseAssessment, serialiseFile, serialiseTopic } from "./syllabus";
 import type { Env, Variables } from "../types";
 
 export const AU_STATES = ["ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA"];
@@ -30,8 +32,18 @@ export async function buildProfile(database: Database, userId: string) {
   const now = Date.now();
   const weekStart = startOfLocalWeek(now, timezone);
 
-  const [subjectRows, commitmentRows, goalRows, memoryRows, recentSessions, [totals], progress] =
-    await Promise.all([
+  const [
+    subjectRows,
+    commitmentRows,
+    goalRows,
+    memoryRows,
+    recentSessions,
+    [totals],
+    progress,
+    fileRows,
+    topicRows,
+    assessmentRows,
+  ] = await Promise.all([
       database
         .select()
         .from(schema.subjects)
@@ -68,7 +80,15 @@ export async function buildProfile(database: Database, userId: string) {
           and(eq(schema.studySessions.userId, userId), ne(schema.studySessions.type, "break")),
         ),
       subjectWeekProgress(database, userId, timezone),
+      database.select().from(schema.subjectFiles).where(eq(schema.subjectFiles.userId, userId)),
+      database
+        .select()
+        .from(schema.subjectTopics)
+        .where(eq(schema.subjectTopics.userId, userId))
+        .orderBy(asc(schema.subjectTopics.position)),
+      database.select().from(schema.subjectAssessments).where(eq(schema.subjectAssessments.userId, userId)),
     ]);
+  const today = localDateKey(now, timezone);
 
   const streaks = computeStreaks(recentSessions, timezone);
   const weekFocusSeconds = recentSessions
@@ -96,10 +116,24 @@ export async function buildProfile(database: Database, userId: string) {
     },
     subjects: subjectRows.map((subject) => {
       const week = progress.get(subjectKey(subject.name));
+      const files = fileRows.filter((file) => file.subjectId === subject.id);
+      const subjectTopics = topicRows.filter((topic) => topic.subjectId === subject.id);
+      const subjectAssessments = assessmentRows
+        .filter((item) => item.subjectId === subject.id)
+        .sort((a, b) => (a.dueOn ?? "9999").localeCompare(b.dueOn ?? "9999"));
+      const current = currentTopic(subjectTopics, today);
+      const next = subjectAssessments.find((item) => item.dueOn && item.dueOn >= today);
+      const syllabus = files.find((file) => file.kind === "syllabus");
       return {
         ...serialiseSubject(subject, row.grade),
         weekDoneMinutes: week?.doneMinutes ?? 0,
         weekPlannedMinutes: week?.plannedMinutes ?? 0,
+        syllabus: syllabus ? serialiseFile(syllabus) : null,
+        resources: files.filter((file) => file.kind === "resource").map(serialiseFile),
+        topics: subjectTopics.map(serialiseTopic),
+        assessments: subjectAssessments.map(serialiseAssessment),
+        currentTopic: current ? { ...serialiseTopic(current.topic), upcoming: current.upcoming } : null,
+        nextAssessment: next ? serialiseAssessment(next) : null,
       };
     }),
     commitments: commitmentRows.map(serialiseCommitment),

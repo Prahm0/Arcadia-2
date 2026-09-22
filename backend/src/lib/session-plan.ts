@@ -1,0 +1,285 @@
+import { and, asc, desc, eq, isNotNull, lt } from "drizzle-orm";
+import { schema, type Database } from "../db";
+import type { Env } from "../types";
+import { ARCAD_VOICE, aiConfigured, completeJson } from "./openai";
+import { subjectKey } from "./scheduler";
+import { describeBrief, subjectBriefs, type SubjectBrief } from "./study-context";
+import { MINUTE } from "./time";
+
+type EventRow = typeof schema.events.$inferSelect;
+
+export interface PlanStep {
+  minutes: number;
+  text: string;
+}
+
+/** What Arcad sets a study block up as. */
+export interface SessionPlan {
+  /** The one line that says what this session is: "3.2 Limiting reagents". */
+  topic: string;
+  /** Why this, now: "Prac report due Mon 2 Nov". */
+  why: string;
+  /** One to three timed steps that add up to the block. */
+  steps: PlanStep[];
+  /** "arcad" when the model wrote it; "fallback" when built from the data alone. */
+  by: "arcad" | "fallback";
+  createdAt: string;
+}
+
+/** How a session went, written at the end. */
+export interface Checkout {
+  /** Indexes of the plan steps that got done. */
+  done: number[];
+  /** What's left over, in the student's words. Seeds the next plan. */
+  leftover: string;
+  feeling: "good" | "ok" | "rough" | null;
+  minutes: number;
+  at: string;
+}
+
+const PLAN_SCHEMA = {
+  name: "session_plan",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["topic", "why", "steps"],
+    properties: {
+      topic: { type: "string" },
+      why: { type: "string" },
+      steps: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["minutes", "text"],
+          properties: { minutes: { type: "integer" }, text: { type: "string" } },
+        },
+      },
+    },
+  },
+};
+
+const clip = (value: unknown, max: number) => String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
+
+function parse<T>(value: string | null): T | null {
+  if (!value) return null;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return null;
+  }
+}
+
+/** "Thu 8 Oct" in the student's timezone. */
+function shortDate(value: number | string, timeZone: string): string {
+  const ms = typeof value === "number" ? value : Date.parse(value.length === 10 ? `${value}T12:00:00Z` : value);
+  return new Intl.DateTimeFormat("en-AU", { weekday: "short", day: "numeric", month: "short", timeZone }).format(ms);
+}
+
+/**
+ * Steps that add up to exactly the block: at most three, each at least five
+ * minutes, rounded to five where possible.
+ */
+export function fitSteps(steps: PlanStep[], total: number): PlanStep[] {
+  const clean = steps
+    .map((step) => ({ minutes: Math.max(1, Math.round(Number(step.minutes) || 0)), text: clip(step.text, 90) }))
+    .filter((step) => step.text)
+    .slice(0, 3);
+  if (clean.length === 0) return [{ minutes: total, text: "Work through it" }];
+  if (total < 5 * clean.length) return [{ minutes: total, text: clean[0].text }];
+
+  const sum = clean.reduce((acc, step) => acc + step.minutes, 0);
+  const scaled = clean.map((step) => ({
+    ...step,
+    minutes: Math.max(5, Math.round(((step.minutes / sum) * total) / 5) * 5),
+  }));
+  // Whatever rounding left over goes on the longest step.
+  const longest = scaled.reduce((best, step, index) => (step.minutes > scaled[best].minutes ? index : best), 0);
+  scaled[longest].minutes += total - scaled.reduce((acc, step) => acc + step.minutes, 0);
+  if (scaled[longest].minutes < 5) return [{ minutes: total, text: clean[0].text }];
+  return scaled;
+}
+
+interface PlanInputs {
+  event: EventRow;
+  minutes: number;
+  subject: typeof schema.subjects.$inferSelect | undefined;
+  brief: SubjectBrief | undefined;
+  task: typeof schema.tasks.$inferSelect | undefined;
+  lastCheckouts: Array<{ topic: string | null; checkout: Checkout; startAt: number }>;
+  profile: typeof schema.profiles.$inferSelect | undefined;
+  goals: string[];
+  memories: string[];
+  timeZone: string;
+}
+
+async function gatherInputs(database: Database, userId: string, event: EventRow): Promise<PlanInputs> {
+  const [[profile], subjects, [task], previous, goalRows, memoryRows] = await Promise.all([
+    database.select().from(schema.profiles).where(eq(schema.profiles.userId, userId)).limit(1),
+    database.select().from(schema.subjects).where(eq(schema.subjects.userId, userId)),
+    event.taskId
+      ? database.select().from(schema.tasks).where(eq(schema.tasks.id, event.taskId)).limit(1)
+      : Promise.resolve([] as Array<typeof schema.tasks.$inferSelect>),
+    // The last few sessions of this subject that were checked out.
+    event.subject
+      ? database
+          .select()
+          .from(schema.events)
+          .where(
+            and(
+              eq(schema.events.userId, userId),
+              eq(schema.events.subject, event.subject),
+              isNotNull(schema.events.checkout),
+              lt(schema.events.startAt, event.startAt),
+            ),
+          )
+          .orderBy(desc(schema.events.startAt))
+          .limit(3)
+      : Promise.resolve([] as EventRow[]),
+    database.select().from(schema.goals).where(eq(schema.goals.userId, userId)),
+    database
+      .select()
+      .from(schema.memories)
+      .where(eq(schema.memories.userId, userId))
+      .orderBy(asc(schema.memories.createdAt)),
+  ]);
+  const timeZone = profile?.timezone ?? "Australia/Brisbane";
+  const briefs = await subjectBriefs(database, userId, timeZone);
+  return {
+    event,
+    minutes: Math.max(5, Math.round((event.endAt - event.startAt) / MINUTE)),
+    subject: subjects.find((row) => subjectKey(row.name) === subjectKey(event.subject)),
+    brief: briefs.get(subjectKey(event.subject)),
+    task,
+    lastCheckouts: previous.flatMap((row) => {
+      const checkout = parse<Checkout>(row.checkout);
+      return checkout ? [{ topic: parse<SessionPlan>(row.plan)?.topic ?? row.title, checkout, startAt: row.startAt }] : [];
+    }),
+    profile,
+    goals: goalRows.filter((goal) => !goal.done).map((goal) => goal.title),
+    memories: profile?.memoryEnabled === false ? [] : memoryRows.map((row) => row.content),
+    timeZone,
+  };
+}
+
+/** A plan built from the data alone, for when Arcad can't be reached. */
+export function fallbackPlan(inputs: PlanInputs): SessionPlan {
+  const { event, minutes, brief, task, lastCheckouts, timeZone } = inputs;
+  const subjectName = event.subject ?? "Study";
+  const topicTitle = task?.title ?? brief?.topic?.title ?? `${subjectName} revision`;
+  const assessment = brief?.upcomingAssessments[0];
+
+  const why = task
+    ? `Due ${shortDate(task.dueAt, timeZone)}`
+    : assessment
+      ? `${assessment.title} due ${shortDate(assessment.dueOn!, timeZone)}`
+      : brief?.topic && !brief.topic.upcoming
+        ? "What you're doing in class this week"
+        : "Keeping it ticking over";
+
+  // Leftovers from last time first, practice questions last if something's
+  // assessed within three weeks; the main step gets the rest.
+  const leftover = lastCheckouts[0]?.checkout.leftover;
+  const warmUp = leftover && minutes >= 30 ? Math.min(15, Math.round(minutes / 15) * 5) : 0;
+  const soon = assessment?.dueOn && Date.parse(`${assessment.dueOn}T00:00:00Z`) - Date.now() < 21 * 86_400_000;
+  const practice = soon && minutes - warmUp >= 30 ? 10 : 0;
+  const steps: PlanStep[] = [
+    ...(warmUp ? [{ minutes: warmUp, text: `Finish off: ${leftover}` }] : []),
+    {
+      minutes: minutes - warmUp - practice,
+      text: task
+        ? `Work on ${task.title}`
+        : brief?.topic
+          ? `Work through ${brief.topic.title}${brief.topic.detail ? ` (${brief.topic.detail})` : ""}`
+          : `Go over this week's ${subjectName} work`,
+    },
+    ...(practice ? [{ minutes: practice, text: `Practice questions for ${assessment!.title}` }] : []),
+  ];
+
+  return {
+    topic: clip(topicTitle, 60),
+    why: clip(why, 70),
+    steps: fitSteps(steps, minutes),
+    by: "fallback",
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function prompt(inputs: PlanInputs): string {
+  const { event, minutes, subject, brief, task, lastCheckouts, profile, goals, memories, timeZone } = inputs;
+  const lines = [
+    `Session: ${event.subject ?? "study"}, ${minutes} minutes, starting ${new Intl.DateTimeFormat("en-AU", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone,
+    }).format(event.startAt)}.`,
+    task
+      ? `This block is for a deadline: "${task.title}", due ${shortDate(task.dueAt, timeZone)}, about ${Math.max(0, task.estimatedMinutes - task.completedMinutes)} minutes of work left.`
+      : "This block is regular study time for the subject.",
+  ];
+  if (subject?.targetGrade) lines.push(`They're aiming for ${subject.targetGrade}.`);
+  if (subject?.notes.trim()) lines.push(`Their note on this subject: ${subject.notes.trim()}`);
+  const course = describeBrief(brief);
+  if (course) lines.push(`Course: ${course}.`);
+  if (brief?.previousTopic) lines.push(`Previous topic: ${brief.previousTopic.title}.`);
+  for (const past of lastCheckouts) {
+    const when = shortDate(past.startAt, timeZone);
+    lines.push(
+      `Last time (${when}, "${past.topic}"): ${past.checkout.feeling ?? "no rating"}${
+        past.checkout.leftover ? `, left over: ${past.checkout.leftover}` : ", nothing left over"
+      }.`,
+    );
+  }
+  if (goals.length) lines.push(`Their goals: ${goals.join("; ")}.`);
+  if (profile?.atarTarget) lines.push(`ATAR target ${profile.atarTarget.toFixed(2)}.`);
+  if (profile?.arcadAbout.trim()) lines.push(`About them: ${profile.arcadAbout.trim()}`);
+  if (memories.length) lines.push(`You remember: ${memories.slice(-15).join(" ")}`);
+  return lines.join("\n");
+}
+
+/**
+ * Sets up one study session: what it's on, why now, and up to three timed
+ * steps. Falls back to a plan built from the data if Arcad isn't available
+ * or answers with something unusable, so a session always has a plan.
+ */
+export async function planSession(env: Env, database: Database, userId: string, event: EventRow): Promise<SessionPlan> {
+  const inputs = await gatherInputs(database, userId, event);
+  if (!aiConfigured(env)) return fallbackPlan(inputs);
+
+  try {
+    const reply = await completeJson<{ topic: string; why: string; steps: PlanStep[] }>(
+      env,
+      [
+        {
+          role: "system",
+          content: [
+            ARCAD_VOICE,
+            "",
+            "Set up one study session. Reply with:",
+            "- topic: what this session is on, under 60 characters. Name the real syllabus topic, textbook section or task (\"3.2 Limiting reagents\"), never just the subject.",
+            "- why: why this now, under 70 characters: what's assessed or due and when, or that it's this week's class topic.",
+            `- steps: one to three steps whose minutes add up to exactly ${inputs.minutes}. Each is one short line of something they do: a section to work through, questions to attempt, a past paper, a draft to write themselves. If they left something unfinished last time, start with it. If the last session felt rough, go back over that before moving on.`,
+            "Use only what's in the details below. Don't invent chapters, question numbers or assessments.",
+          ].join("\n"),
+        },
+        { role: "user", content: prompt(inputs) },
+      ],
+      PLAN_SCHEMA,
+      300,
+    );
+    if (!reply || !clip(reply.topic, 60)) return fallbackPlan(inputs);
+    return {
+      topic: clip(reply.topic, 60),
+      why: clip(reply.why, 70),
+      steps: fitSteps(reply.steps ?? [], inputs.minutes),
+      by: "arcad",
+      createdAt: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error("[session-plan] Arcad failed, using fallback", error);
+    return fallbackPlan(inputs);
+  }
+}

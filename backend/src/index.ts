@@ -21,6 +21,7 @@ import profile from "./routes/profile";
 import studyRooms from "./routes/study-rooms";
 import studySessions from "./routes/study-sessions";
 import subjects from "./routes/subjects";
+import { assessments, subjectFiles, subjectMaterials, topics } from "./routes/syllabus";
 import tasks from "./routes/tasks";
 import uploads from "./routes/uploads";
 import waitlist from "./routes/waitlist";
@@ -92,6 +93,10 @@ app.route("/api/proposals", proposals);
 app.route("/api/study-rooms", studyRooms);
 app.route("/api/study-sessions", studySessions);
 app.route("/api/subjects", subjects);
+app.route("/api/subjects", subjectMaterials);
+app.route("/api/subject-files", subjectFiles);
+app.route("/api/topics", topics);
+app.route("/api/assessments", assessments);
 app.route("/api/tasks", tasks);
 app.route("/api/uploads", uploads);
 

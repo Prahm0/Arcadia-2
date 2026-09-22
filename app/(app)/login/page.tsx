@@ -26,6 +26,8 @@ function LoginForm() {
   const [resending, setResending] = useState(false);
   const initialNotice: Notice = params.get("verified")
     ? { tone: "info", text: "Email confirmed, sign in to continue." }
+    : params.get("deleted") === "1"
+      ? { tone: "info", text: "Your account and Arcadia data have been deleted." }
     : params.get("email") === "changed"
       ? { tone: "info", text: "Email updated. Sign in with your new address." }
       : params.get("expired") === "1"

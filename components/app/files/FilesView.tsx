@@ -6,6 +6,7 @@ import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
 import EmptyState from "../EmptyState";
 import PageHeader from "../PageHeader";
 import { appButtonClass } from "../AppButton";
+import { SubjectTag } from "../cards/shared";
 import ResourcesSection from "../profile/ResourcesSection";
 
 /**
@@ -57,14 +58,9 @@ export default function FilesView() {
                 sectionId={`files-${subject.id}`}
                 subject={subject}
                 refresh={refresh}
-                title={subject.name}
+                title={<SubjectTag subject={{ name: subject.name, colour: subject.colour || SUBJECT_COLORS[index % SUBJECT_COLORS.length] }} />}
                 meta={
                   <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span
-                      aria-hidden="true"
-                      className="h-2 w-2 rounded-full"
-                      style={{ background: subject.colour || SUBJECT_COLORS[index % SUBJECT_COLORS.length] }}
-                    />
                     {subject.syllabus ? (
                       subject.syllabus.stored ? (
                         <a

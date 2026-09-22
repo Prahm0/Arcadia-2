@@ -13,7 +13,7 @@ export function Section({
   children,
 }: {
   id: string;
-  title: string;
+  title: ReactNode;
   meta?: ReactNode;
   action?: ReactNode;
   children: ReactNode;

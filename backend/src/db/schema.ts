@@ -88,6 +88,9 @@ export const subjects = sqliteTable(
     name: text("name").notNull(),
     colour: text("colour"),
     priority: integer("priority").notNull().default(2),
+    // Weekly study target in minutes. NULL = the year-level default the
+    // scheduler suggests; 0 = no maintenance blocks for this subject.
+    weeklyMinutes: integer("weekly_minutes"),
     createdAt: integer("created_at").notNull().default(now),
   },
   (t) => [index("subjects_user_idx").on(t.userId)],

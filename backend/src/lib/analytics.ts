@@ -1,5 +1,5 @@
 import { schema } from "../db";
-import { DAY, localDateKey, startOfLocalDay } from "./time";
+import { DAY, localDateKey, nextLocalDay, startOfLocalDay } from "./time";
 
 type SessionRow = typeof schema.studySessions.$inferSelect;
 
@@ -35,12 +35,15 @@ export function computeStreaks(
 
   // Count back from today. An empty today does not break a streak that ran
   // up to yesterday, but an empty yesterday does.
+  // Step back by local day, not a flat 24h, or the 23-hour day when the
+  // clocks go forward gets skipped and the streak breaks.
+  const previousDay = (day: number) => startOfLocalDay(day - DAY / 2, timeZone);
   const todayStart = startOfLocalDay(Date.now(), timeZone);
-  let cursor = days.has(localDateKey(todayStart, timeZone)) ? todayStart : todayStart - DAY;
+  let cursor = days.has(localDateKey(todayStart, timeZone)) ? todayStart : previousDay(todayStart);
   let current = 0;
   while (days.has(localDateKey(cursor, timeZone)) && current <= 3650) {
     current += 1;
-    cursor -= DAY;
+    cursor = previousDay(cursor);
   }
 
   return { currentStreak: current, longestStreak: Math.max(longest, current) };
@@ -59,7 +62,7 @@ export function bucketByDay(
   timeZone: string,
 ): Bucket[] {
   const buckets = new Map<string, Bucket>();
-  for (let day = startOfLocalDay(from, timeZone); day < to; day += DAY) {
+  for (let day = startOfLocalDay(from, timeZone); day < to; day = nextLocalDay(day, timeZone)) {
     const key = localDateKey(day, timeZone);
     buckets.set(key, { date: key, minutes: 0, sessions: 0 });
   }

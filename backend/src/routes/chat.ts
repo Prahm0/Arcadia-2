@@ -4,6 +4,7 @@ import { db, schema } from "../db";
 import { newId } from "../lib/ids";
 import { complete, type ChatMessage } from "../lib/openai";
 import { replan } from "../lib/replan";
+import { weeklyTargetMinutes } from "../lib/scheduler";
 import { DAILY_MESSAGE_CAP, isValidTier, tryConsumeMessage } from "../lib/tiers";
 import { DAY, iso, parseClock } from "../lib/time";
 import type { Env, Variables } from "../types";
@@ -278,6 +279,11 @@ async function buildContext(env: Env, userId: string): Promise<string> {
     .from(schema.commitments)
     .where(eq(schema.commitments.userId, userId));
 
+  const subjectRows = await database
+    .select()
+    .from(schema.subjects)
+    .where(eq(schema.subjects.userId, userId));
+
   const lines = [
     "You are Arcad, the study assistant inside Arcadia, a planner for high school students.",
     "Be concise and practical. Two or three sentences unless asked for more.",
@@ -289,6 +295,16 @@ async function buildContext(env: Env, userId: string): Promise<string> {
     `Wake ${profile?.wakeTime ?? "07:00"}, bed ${profile?.bedtime ?? "22:30"}, up to ${
       profile?.maxDailyStudyMinutes ?? 180
     } minutes of study a day in ${profile?.preferredSessionMinutes ?? 50} minute sessions.`,
+    "",
+    "Subjects and weekly study targets (the scheduler tops each one up across the week):",
+    ...(subjectRows.length
+      ? subjectRows.map(
+          (subject) =>
+            `- ${subject.name}: ${weeklyTargetMinutes(subject, profile?.grade)} minutes a week${
+              subject.weeklyMinutes === null ? " (suggested default)" : ""
+            }`,
+        )
+      : ["- none"]),
     "",
     "Open tasks:",
     ...(taskRows.length

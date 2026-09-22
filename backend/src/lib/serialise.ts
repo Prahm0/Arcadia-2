@@ -1,4 +1,5 @@
 import { schema } from "../db";
+import { defaultWeeklyMinutes } from "./scheduler";
 import { iso } from "./time";
 
 type TaskRow = typeof schema.tasks.$inferSelect;
@@ -61,8 +62,19 @@ export function serialiseCommitment(commitment: CommitmentRow) {
   };
 }
 
-export function serialiseSubject(subject: SubjectRow) {
-  return { id: subject.id, name: subject.name, colour: subject.colour };
+/**
+ * `weeklyMinutes` is always the target the scheduler is working to;
+ * `weeklyMinutesSuggested` says it's the year-level default rather than a
+ * number the student picked.
+ */
+export function serialiseSubject(subject: SubjectRow, grade: string | null | undefined) {
+  return {
+    id: subject.id,
+    name: subject.name,
+    colour: subject.colour,
+    weeklyMinutes: subject.weeklyMinutes ?? defaultWeeklyMinutes(grade),
+    weeklyMinutesSuggested: subject.weeklyMinutes === null,
+  };
 }
 
 /** Matches AuthUser in lib/api/types.ts. */

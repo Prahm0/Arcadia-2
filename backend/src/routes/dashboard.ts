@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../db";
-import { rebuildSchedule } from "../lib/scheduler";
+import { rebuildSchedule, weeklyBudget, type WeeklyBudget } from "../lib/scheduler";
 import {
   serialiseCommitment,
   serialiseEvent,
@@ -122,13 +122,17 @@ dashboard.get("/", async (c) => {
     user: serialiseUser(user, profile ?? null),
     profile: serialiseProfile(profile ?? null),
     preferences: serialisePreferences(profile ?? null),
-    subjects: subjectRows.map(serialiseSubject),
+    subjects: subjectRows.map((subject) => serialiseSubject(subject, profile?.grade)),
     tasks: pending.map(serialiseTask),
     commitments: commitmentRows.map(serialiseCommitment),
     range: { start: iso(start), end: iso(end) },
     events,
     focusTasks: focus,
-    briefing: buildBriefing(events, focus.length),
+    briefing: buildBriefing(
+      events,
+      focus.length,
+      profile ? weeklyBudget(profile, subjectRows) : null,
+    ),
     analytics,
     companion: companionRow[0]
       ? {
@@ -183,22 +187,34 @@ dashboard.get("/", async (c) => {
 function buildBriefing(
   events: ReturnType<typeof serialiseEvent>[],
   focusCount: number,
+  budget: WeeklyBudget | null,
 ): string | null {
   const now = Date.now();
   const upcoming = events.filter(
     (event) => event.category === "study" && Date.parse(event.startAt) >= now,
   );
+  // The scheduler shrinks every subject evenly when targets outgrow the
+  // daily cap; say so rather than leaving the student to wonder why.
+  const overBudget =
+    budget && budget.targetMinutes > budget.capacityMinutes
+      ? ` Your subject targets add up to ${formatHours(budget.targetMinutes)} a week but your daily limit fits ${formatHours(budget.capacityMinutes)}, so each subject gets a little less.`
+      : "";
   if (upcoming.length === 0) {
     return focusCount > 0
       ? "Nothing scheduled yet. Add a due date and Arcadia will find the time."
-      : null;
+      : overBudget.trim() || null;
   }
   const minutes = upcoming.reduce(
     (sum, event) => sum + Math.round((Date.parse(event.endAt) - Date.parse(event.startAt)) / 60000),
     0,
   );
   const hours = Math.round((minutes / 60) * 10) / 10;
-  return `${upcoming.length} study block${upcoming.length === 1 ? "" : "s"} ahead, about ${hours}h in total.`;
+  return `${upcoming.length} study block${upcoming.length === 1 ? "" : "s"} ahead, about ${hours}h in total.${overBudget}`;
+}
+
+function formatHours(minutes: number): string {
+  const hours = Math.round((minutes / 60) * 2) / 2;
+  return `${hours}h`;
 }
 
 export default dashboard;

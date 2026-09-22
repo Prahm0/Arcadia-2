@@ -5,6 +5,7 @@ import { useState } from "react";
 import { api } from "@/lib/api/client";
 import type { ProfileSubject } from "@/lib/api/profile";
 import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
+import { formatDateSpan } from "@/lib/api/subjectMaterials";
 import { formatWeekly, suggestedWeeklyMinutes } from "@/lib/app/studyTargets";
 import AppButton from "../AppButton";
 import type { SectionProps } from "./ProfileView";
@@ -118,7 +119,22 @@ function SubjectCard({ subject, fallback }: { subject: ProfileSubject; fallback:
         </>
       )}
 
-      {subject.notes.trim() ? (
+      {subject.currentTopic || subject.nextAssessment ? (
+        <div className="mt-3 space-y-0.5 text-[12.5px] leading-snug" style={{ color: "var(--app-text-soft)" }}>
+          {subject.currentTopic ? (
+            <p className="truncate">
+              <span style={{ color: "var(--app-text-muted)" }}>{subject.currentTopic.upcoming ? "Next: " : "Now: "}</span>
+              {subject.currentTopic.title}
+            </p>
+          ) : null}
+          {subject.nextAssessment ? (
+            <p className="truncate">
+              <span style={{ color: "var(--app-text-muted)" }}>Due: </span>
+              {subject.nextAssessment.title} · {formatDateSpan(subject.nextAssessment.dueOn, null)}
+            </p>
+          ) : null}
+        </div>
+      ) : subject.notes.trim() ? (
         <p className="mt-3 line-clamp-2 text-[12.5px] leading-snug" style={{ color: "var(--app-text-muted)" }}>
           {subject.notes}
         </p>

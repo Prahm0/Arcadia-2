@@ -321,6 +321,73 @@ export const googleAccounts = sqliteTable("google_accounts", {
   lastSyncAt: integer("last_sync_at"),
 });
 
+/** A syllabus or resource Arcad has read for a subject (see migration 0007). */
+export const subjectFiles = sqliteTable(
+  "subject_files",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    subjectId: text("subject_id")
+      .notNull()
+      .references(() => subjects.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    filename: text("filename").notNull(),
+    contentType: text("content_type").notNull(),
+    bytes: integer("bytes").notNull(),
+    storageKey: text("storage_key"),
+    summary: text("summary").notNull().default(""),
+    status: text("status").notNull().default("read"),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [index("subject_files_subject_idx").on(t.subjectId)],
+);
+
+/** What's taught when, from the syllabus or added by hand. Dates are YYYY-MM-DD. */
+export const subjectTopics = sqliteTable(
+  "subject_topics",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    subjectId: text("subject_id")
+      .notNull()
+      .references(() => subjects.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    detail: text("detail").notNull().default(""),
+    startsOn: text("starts_on"),
+    endsOn: text("ends_on"),
+    position: integer("position").notNull().default(0),
+    source: text("source").notNull().default("manual"),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [index("subject_topics_subject_idx").on(t.subjectId, t.position)],
+);
+
+export const subjectAssessments = sqliteTable(
+  "subject_assessments",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    subjectId: text("subject_id")
+      .notNull()
+      .references(() => subjects.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    kind: text("kind").notNull().default("assignment"),
+    dueOn: text("due_on"),
+    dueLabel: text("due_label").notNull().default(""),
+    weight: text("weight").notNull().default(""),
+    taskId: text("task_id"),
+    source: text("source").notNull().default("manual"),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [index("subject_assessments_subject_idx").on(t.subjectId)],
+);
+
 export const uploads = sqliteTable(
   "uploads",
   {

@@ -36,10 +36,11 @@
     }
   ],
 
-  // R2 temporarily disabled — needs a payment method on the account first.
-  // To re-enable: add a card in the R2 dashboard, run
+  // R2 is off until it's enabled on the account (Cloudflare dashboard > R2,
+  // which asks for a payment method). Syllabus and resource uploads work
+  // without it: Arcad reads each file and keeps what it found in D1; only the
+  // original file isn't kept. To keep originals too, enable R2, run
   //   npx wrangler r2 bucket create arcadia-uploads
-  // then un-comment this block and re-deploy. File uploads (Knowledge tab)
-  // return an error until then; everything else works.
+  // and set this to [{ "binding": "UPLOADS", "bucket_name": "arcadia-uploads" }].
   "r2_buckets": []
 }

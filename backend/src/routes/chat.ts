@@ -5,7 +5,8 @@ import { newId } from "../lib/ids";
 import { saveMemories } from "../lib/memories";
 import { ARCAD_VOICE, PROPOSE_TOOL, REMEMBER_TOOL, complete, type ChatMessage } from "../lib/openai";
 import { replan } from "../lib/replan";
-import { weeklyTargetMinutes } from "../lib/scheduler";
+import { subjectKey, weeklyTargetMinutes } from "../lib/scheduler";
+import { describeBrief, subjectBriefs } from "../lib/study-context";
 import { DAILY_MESSAGE_CAP, isValidTier, tryConsumeMessage } from "../lib/tiers";
 import { DAY, iso, parseClock } from "../lib/time";
 import type { Env, Variables } from "../types";
@@ -315,6 +316,7 @@ async function buildContext(
         .orderBy(asc(schema.memories.createdAt)),
     ]);
 
+  const briefs = await subjectBriefs(database, userId, profile?.timezone ?? "Australia/Brisbane");
   const memoryEnabled = profile?.memoryEnabled ?? true;
   const about = profile?.arcadAbout.trim() ?? "";
   const style = profile?.arcadStyle.trim() ?? "";
@@ -354,7 +356,10 @@ async function buildContext(
               subject.weeklyMinutes === null ? " (suggested default)" : ""
             }${subject.targetGrade ? `, aiming for ${subject.targetGrade}` : ""}${
               subject.notes.trim() ? `. Their note: ${subject.notes.trim()}` : ""
-            }`,
+            }${(() => {
+              const course = describeBrief(briefs.get(subjectKey(subject.name)));
+              return course ? `. ${course}` : "";
+            })()}`,
         )
       : ["- none"]),
     "",

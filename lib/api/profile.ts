@@ -3,6 +3,46 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api/client";
 
+export interface SubjectFile {
+  id: string;
+  kind: "syllabus" | "resource";
+  filename: string;
+  contentType: string;
+  bytes: number;
+  /** What Arcad took from it. */
+  summary: string;
+  /** False when Arcad couldn't read it. */
+  read: boolean;
+  /** Whether Arcadia kept the original (only once file storage is on). */
+  stored: boolean;
+  createdAt: string;
+}
+
+export interface SubjectTopic {
+  id: string;
+  title: string;
+  detail: string;
+  /** YYYY-MM-DD */
+  startsOn: string | null;
+  endsOn: string | null;
+  source: string;
+}
+
+export type AssessmentKind = "exam" | "assignment" | "test" | "prac" | "other";
+
+export interface SubjectAssessment {
+  id: string;
+  title: string;
+  kind: AssessmentKind;
+  dueOn: string | null;
+  /** As the document put it, e.g. "Term 3, Week 8". */
+  dueLabel: string;
+  weight: string;
+  /** Set once it's been added to deadlines. */
+  taskId: string | null;
+  source: string;
+}
+
 export interface ProfileSubject {
   id: string;
   name: string;
@@ -13,6 +53,12 @@ export interface ProfileSubject {
   notes: string;
   weekDoneMinutes: number;
   weekPlannedMinutes: number;
+  syllabus: SubjectFile | null;
+  resources: SubjectFile[];
+  topics: SubjectTopic[];
+  assessments: SubjectAssessment[];
+  currentTopic: (SubjectTopic & { upcoming: boolean }) | null;
+  nextAssessment: SubjectAssessment | null;
 }
 
 export interface ProfileCommitment {

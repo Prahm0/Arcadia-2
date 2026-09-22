@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { db, schema } from "../db";
 import { newId } from "../lib/ids";
 import { syncAndRecord } from "../lib/sync-feed";
+import { getUserTier, isPaidTier } from "../lib/tiers";
 import type { Env, Variables } from "../types";
 
 const feeds = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -43,6 +44,14 @@ feeds.get("/", async (c) => {
 
 feeds.post("/", async (c) => {
   const { userId } = c.get("session");
+  const database = db(c.env.DB);
+  const tier = await getUserTier(database, userId);
+  if (!isPaidTier(tier)) {
+    return c.json(
+      { error: "Calendar sync is available on Pro and Max.", code: "upgrade_required" },
+      402,
+    );
+  }
   const body = await c.req.json<{ url?: string; name?: string; color?: string }>().catch(() => null);
   if (!body) return c.json({ error: "Invalid request." }, 400);
 
@@ -51,7 +60,6 @@ feeds.post("/", async (c) => {
     return c.json({ error: "Enter a valid https:// or webcal:// calendar URL." }, 422);
   }
 
-  const database = db(c.env.DB);
   const existing = await database
     .select({ id: schema.calendarFeeds.id })
     .from(schema.calendarFeeds)
@@ -97,6 +105,13 @@ feeds.post("/:id/sync", async (c) => {
   const { userId } = c.get("session");
   const id = c.req.param("id");
   const database = db(c.env.DB);
+  const tier = await getUserTier(database, userId);
+  if (!isPaidTier(tier)) {
+    return c.json(
+      { error: "Calendar sync is available on Pro and Max.", code: "upgrade_required" },
+      402,
+    );
+  }
   const [row] = await database
     .select()
     .from(schema.calendarFeeds)

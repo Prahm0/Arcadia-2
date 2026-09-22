@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../db";
 import { newId } from "../lib/ids";
+import { getUserTier, isPaidTier } from "../lib/tiers";
 import { iso } from "../lib/time";
 import type { Env, Variables } from "../types";
 
@@ -38,6 +39,14 @@ uploads.get("/", async (c) => {
 
 uploads.post("/", async (c) => {
   const { userId } = c.get("session");
+  const database = db(c.env.DB);
+  const tier = await getUserTier(database, userId);
+  if (!isPaidTier(tier)) {
+    return c.json(
+      { error: "File uploads are available on Pro and Max.", code: "upgrade_required" },
+      402,
+    );
+  }
 
   const form = await c.req.formData().catch(() => null);
   const file = form?.get("file");
@@ -54,7 +63,7 @@ uploads.post("/", async (c) => {
     httpMetadata: { contentType },
   });
 
-  await db(c.env.DB).insert(schema.uploads).values({
+  await database.insert(schema.uploads).values({
     id,
     userId,
     key,

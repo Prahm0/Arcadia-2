@@ -97,6 +97,7 @@ export default function SettingsView() {
   const [googleNotice, setGoogleNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
 
   const tier = data.user.tier ?? "free";
+  const hasPaidPlan = tier === "pro" || tier === "max";
   const hasSubscription = Boolean(data.user.hasSubscription);
   const [billingBusy, setBillingBusy] = useState(false);
   const [billingNotice, setBillingNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
@@ -225,6 +226,8 @@ export default function SettingsView() {
     if (flag === "connected") {
       setGoogleNotice({ tone: "info", text: "Google Calendar connected. Fixed events will appear on Schedule after the first sync." });
       void reload();
+    } else if (flag === "upgrade") {
+      setGoogleNotice({ tone: "error", text: "Google Calendar sync needs a Pro or Max plan." });
     } else if (flag === "denied") {
       setGoogleNotice({ tone: "error", text: "Google didn't grant access. You can try again anytime." });
     }
@@ -443,6 +446,7 @@ export default function SettingsView() {
 
         <Card>
           <SectionHeader label="Google Calendar" />
+          {!hasPaidPlan ? <PlanGate onUpgrade={() => router.push("/app/pricing")} /> : null}
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
@@ -471,6 +475,7 @@ export default function SettingsView() {
                     variant="secondary"
                     onClick={syncGoogle}
                     loading={googleBusy === "sync"}
+                    disabled={!hasPaidPlan}
                   >
                     Sync now
                   </AppButton>
@@ -484,7 +489,7 @@ export default function SettingsView() {
                   </AppButton>
                 </>
               ) : (
-                <AppButton type="button" variant="primary" onClick={connectGoogle}>
+                <AppButton type="button" variant="primary" onClick={connectGoogle} disabled={!hasPaidPlan}>
                   Connect Google Calendar
                 </AppButton>
               )}
@@ -502,6 +507,7 @@ export default function SettingsView() {
 
         <Card>
           <SectionHeader label="Calendar subscriptions" />
+          {!hasPaidPlan ? <PlanGate onUpgrade={() => router.push("/app/pricing")} /> : null}
           <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>
             Paste any calendar URL, Apple, Canvas, Outlook, or a per-calendar
             Google link, and Arcadia will pull its events in as fixed blocks on
@@ -522,7 +528,7 @@ export default function SettingsView() {
                   boxShadow: "var(--elev-inset)",
                   color: "var(--app-text)",
                 }}
-                disabled={addingFeed}
+                disabled={addingFeed || !hasPaidPlan}
               />
               <input
                 type="text"
@@ -536,7 +542,7 @@ export default function SettingsView() {
                   boxShadow: "var(--elev-inset)",
                   color: "var(--app-text)",
                 }}
-                disabled={addingFeed}
+                disabled={addingFeed || !hasPaidPlan}
               />
             </div>
             <div className="flex items-center justify-between gap-3">
@@ -548,7 +554,7 @@ export default function SettingsView() {
                 type="submit"
                 variant="primary"
                 loading={addingFeed}
-                disabled={!newFeedUrl.trim()}
+                disabled={!hasPaidPlan || !newFeedUrl.trim()}
               >
                 Add calendar
               </AppButton>
@@ -589,6 +595,7 @@ export default function SettingsView() {
                       variant="ghost"
                       onClick={() => void syncCalendarFeed(feed.id)}
                       loading={feedBusy === `sync:${feed.id}`}
+                      disabled={!hasPaidPlan}
                     >
                       Sync now
                     </AppButton>
@@ -817,6 +824,22 @@ function SectionHeader({ label }: { label: string }) {
     <h2 className="type-eyebrow mb-4" style={{ color: "var(--app-text-muted)" }}>
       {label}
     </h2>
+  );
+}
+
+function PlanGate({ onUpgrade }: { onUpgrade: () => void }) {
+  return (
+    <div
+      className="mb-4 flex flex-col gap-3 rounded-md px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+      style={{ background: "var(--app-accent-soft)", color: "var(--app-accent-strong)" }}
+    >
+      <p className="text-[13px]">
+        Calendar sync is included with Pro and Max. Upgrade to plan around your real timetable.
+      </p>
+      <AppButton type="button" variant="primary" onClick={onUpgrade}>
+        See plans
+      </AppButton>
+    </div>
   );
 }
 

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { EASE_OUT } from "@/lib/animation";
 import { cn } from "@/lib/cn";
-import { useEarlyAccess } from "./EarlyAccessProvider";
 import Button from "./ui/Button";
 import Logo from "./ui/Logo";
 
@@ -24,7 +23,6 @@ export default function Navbar() {
   const { scrollY } = useScroll();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const { open } = useEarlyAccess();
 
   useMotionValueEvent(scrollY, "change", (v) => {
     const next = v > 80;

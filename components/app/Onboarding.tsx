@@ -69,14 +69,24 @@ const SUBJECT_SUGGESTIONS = [
 
 const GRADE_OPTIONS = ["Year 10", "Year 11", "Year 12", "First year uni", "Second year+", "Other"] as const;
 
-type StepKey = "you" | "subjects" | "life" | "focus" | "week";
+type StepKey = "you" | "subjects" | "life" | "coming" | "week";
 const STEPS: { key: StepKey; label: string; eyebrow: string }[] = [
-  { key: "you",      label: "You",      eyebrow: "Step 1 · Who you are" },
-  { key: "subjects", label: "Subjects", eyebrow: "Step 2 · What you're studying" },
-  { key: "life",     label: "Life",     eyebrow: "Step 3 · When you're around" },
-  { key: "focus",    label: "Focus",    eyebrow: "Step 4 · How you study" },
-  { key: "week",     label: "Week",     eyebrow: "Step 5 · How your week splits" },
+  { key: "you",      label: "You",       eyebrow: "Step 1 · Who you are" },
+  { key: "subjects", label: "Subjects",  eyebrow: "Step 2 · What you're studying" },
+  { key: "life",     label: "Life",      eyebrow: "Step 3 · When you're around" },
+  { key: "coming",   label: "Coming up", eyebrow: "Step 4 · What's on this week" },
+  { key: "week",     label: "Week",      eyebrow: "Step 5 · How your week splits" },
 ];
+
+interface OnboardingTask {
+  title: string;
+  dueAt: string;
+}
+const EMPTY_TASK: OnboardingTask = { title: "", dueAt: "" };
+const MAX_ONBOARDING_TASKS = 3;
+
+/** Fallback when a user picks "I'm not sure yet" on the subjects step. */
+const FALLBACK_SUBJECT = "General study";
 
 /**
  * Five-slide onboarding. Each slide holds one facet of the plan so a
@@ -98,11 +108,16 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
     "Physics",
   ]);
   const [subjectDraft, setSubjectDraft] = useState("");
+  const [subjectSearch, setSubjectSearch] = useState("");
   const [wakeTime, setWakeTime] = useState("06:30");
   const [bedtime, setBedtime] = useState("22:30");
   const [maxDaily, setMaxDaily] = useState(180);
-  const [sessionMinutes, setSessionMinutes] = useState(60);
-  const [breakMinutes, setBreakMinutes] = useState(15);
+  // Focus prefs (session length + break) aren't part of onboarding any more,
+  // students adjust these in Settings if they care. Defaults get sent so the
+  // scheduler has something workable from day one.
+  const sessionMinutes = 50;
+  const breakMinutes = 15;
+  const [tasks, setTasks] = useState<OnboardingTask[]>([{ ...EMPTY_TASK }]);
   // Only the subjects the student has adjusted. Everything else follows the
   // suggestion, so it keeps up if they go back and change year or limit.
   const [weeklyOverrides, setWeeklyOverrides] = useState<Record<string, number>>({});
@@ -146,10 +161,63 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
     setSubjectDraft("");
   }
 
+  function pickImNotSure() {
+    // Reset to a single generic placeholder so the scheduler still has a
+    // subject to plan against. Students refine this later in Profile.
+    setSelectedSubjects([FALLBACK_SUBJECT]);
+    setSubjectSearch("");
+    setSubjectDraft("");
+  }
+
+  const filteredSuggestions = useMemo(() => {
+    const query = subjectSearch.trim().toLowerCase();
+    // Custom-added subjects (not in the canonical list) always appear so
+    // the student can see them next to the toggles they can un-tick.
+    const extras = selectedSubjects.filter(
+      (s) => !SUBJECT_SUGGESTIONS.includes(s as (typeof SUBJECT_SUGGESTIONS)[number]),
+    );
+    const combined = [...SUBJECT_SUGGESTIONS, ...extras];
+    if (!query) return combined;
+    return combined.filter((subject) => subject.toLowerCase().includes(query));
+  }, [subjectSearch, selectedSubjects]);
+
+  function updateTask(index: number, patch: Partial<OnboardingTask>) {
+    setTasks((prev) => prev.map((task, i) => (i === index ? { ...task, ...patch } : task)));
+  }
+
+  function addTaskRow() {
+    setTasks((prev) => (prev.length >= MAX_ONBOARDING_TASKS ? prev : [...prev, { ...EMPTY_TASK }]));
+  }
+
+  function removeTaskRow(index: number) {
+    setTasks((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      return next.length === 0 ? [{ ...EMPTY_TASK }] : next;
+    });
+  }
+
   async function submit() {
     setError(null);
     setLoading(true);
     try {
+      // Turn each task row into a payload entry. Anything without a title or
+      // a valid date is dropped, which also naturally throws away the one
+      // empty row we always keep visible for adding.
+      const readyTasks = tasks.flatMap((task) => {
+        const title = task.title.trim();
+        if (!title || !task.dueAt) return [];
+        // The date picker gives us a plain YYYY-MM-DD; anchor it to 5pm so
+        // it lands as "end of day-ish" in the user's timezone rather than
+        // getting bumped to the day before at midnight UTC.
+        const iso = `${task.dueAt}T17:00:00`;
+        const millis = Date.parse(iso);
+        if (Number.isNaN(millis)) return [];
+        return [{
+          title,
+          dueAt: new Date(millis).toISOString(),
+          estimatedMinutes: 60,
+        }];
+      });
       await api("/api/onboarding", {
         method: "POST",
         body: JSON.stringify({
@@ -162,7 +230,7 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
             priority: 2,
             weeklyMinutes: weeklyFor(subjectName),
           })),
-          tasks: [],
+          tasks: readyTasks,
           commitments: [],
           preferences: {
             wakeTime,
@@ -231,14 +299,14 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
           {currentStep.key === "you" && <>Tell me who I&apos;m <span className="accent-serif">planning</span> for.</>}
           {currentStep.key === "subjects" && <>What are you actually <span className="accent-serif">studying</span>?</>}
           {currentStep.key === "life" && <>When are you <span className="accent-serif">awake</span>?</>}
-          {currentStep.key === "focus" && <>How long do you <span className="accent-serif">lock in</span>?</>}
+          {currentStep.key === "coming" && <>Anything with a <span className="accent-serif">deadline</span> this week?</>}
           {currentStep.key === "week" && <>How much time does each subject <span className="accent-serif">get</span>?</>}
         </h1>
         <p className="mt-3 text-[15px]" style={{ color: "var(--app-text-muted)" }}>
           {currentStep.key === "you" && "Your name goes on greetings and streak nudges. Grade helps set expectations."}
-          {currentStep.key === "subjects" && "Pick everything you'd want a study block for. You can add and remove any of these later."}
+          {currentStep.key === "subjects" && "Search or pick everything you'd want a study block for. You can add and remove any of these later."}
           {currentStep.key === "life" && "Study never gets scheduled outside these hours, so sleep stays real."}
-          {currentStep.key === "focus" && "The Focus timer uses these as its default preset, always adjustable per session."}
+          {currentStep.key === "coming" && "Assignments, exams, anything due soon. Arcad puts study blocks in the days leading up to each one. Skip if there's nothing yet."}
           {currentStep.key === "week" && `A starting point for ${grade || "your year"}. Arcad spreads it across the week around everything else, and deadlines come first.`}
         </p>
       </div>
@@ -276,28 +344,59 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
 
         {currentStep.key === "subjects" ? (
           <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap gap-1.5">
-              {[...SUBJECT_SUGGESTIONS, ...selectedSubjects.filter((s) => !SUBJECT_SUGGESTIONS.includes(s as (typeof SUBJECT_SUGGESTIONS)[number]))].map((subject) => {
-                const active = selectedSubjects.includes(subject);
-                return (
-                  <button
-                    key={subject}
-                    type="button"
-                    onClick={() => toggleSubject(subject)}
-                    className={cn(
-                      "rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors",
-                    )}
-                    style={{
-                      background: active ? "var(--app-accent-soft)" : "transparent",
-                      color: active ? "var(--app-accent-strong)" : "var(--app-text-soft)",
-                      border: `1px solid ${active ? "var(--app-accent)" : "var(--app-border-strong)"}`,
-                    }}
-                  >
-                    {active ? "✓ " : ""}{subject}
-                  </button>
-                );
-              })}
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="search"
+                value={subjectSearch}
+                onChange={(e) => setSubjectSearch(e.target.value)}
+                placeholder="Search subjects…"
+                className="min-w-0 flex-1 rounded-md px-3 py-2.5 text-[14.5px] outline-none"
+                style={{
+                  background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)",
+                  color: "var(--app-text)",
+                }}
+              />
+              <button
+                type="button"
+                onClick={pickImNotSure}
+                className="rounded-full px-3 py-2 text-[12.5px] font-medium transition-colors"
+                style={{
+                  background: "transparent",
+                  color: "var(--app-text-soft)",
+                  border: "1px solid var(--app-border-strong)",
+                }}
+              >
+                I&apos;m not sure yet
+              </button>
             </div>
+            {filteredSuggestions.length === 0 ? (
+              <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
+                Nothing matches, use the add box below to type it in yourself.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {filteredSuggestions.map((subject) => {
+                  const active = selectedSubjects.includes(subject);
+                  return (
+                    <button
+                      key={subject}
+                      type="button"
+                      onClick={() => toggleSubject(subject)}
+                      className={cn(
+                        "rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors",
+                      )}
+                      style={{
+                        background: active ? "var(--app-accent-soft)" : "transparent",
+                        color: active ? "var(--app-accent-strong)" : "var(--app-text-soft)",
+                        border: `1px solid ${active ? "var(--app-accent)" : "var(--app-border-strong)"}`,
+                      }}
+                    >
+                      {active ? "✓ " : ""}{subject}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             <div className="flex gap-2">
               <input
                 type="text"
@@ -361,50 +460,69 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
           </div>
         ) : null}
 
-        {currentStep.key === "focus" ? (
-          <div className="flex flex-col gap-5">
-            <FormField
-              label={
-                <>
-                  Preferred session length{" "}
-                  <span className="ml-2 font-mono" style={{ color: "var(--app-text-muted)" }}>
-                    {sessionMinutes} min
-                  </span>
-                </>
-              }
-            >
-              <input
-                type="range"
-                min={25}
-                max={90}
-                step={5}
-                value={sessionMinutes}
-                onChange={(e) => setSessionMinutes(Number(e.target.value))}
-                className="mt-3 w-full"
-                style={{ accentColor: "var(--app-accent)" }}
-              />
-            </FormField>
-            <FormField
-              label={
-                <>
-                  Break between sessions{" "}
-                  <span className="ml-2 font-mono" style={{ color: "var(--app-text-muted)" }}>
-                    {breakMinutes} min
-                  </span>
-                </>
-              }
-            >
-              <input
-                type="range"
-                min={5}
-                max={30}
-                step={5}
-                value={breakMinutes}
-                onChange={(e) => setBreakMinutes(Number(e.target.value))}
-                className="mt-3 w-full"
-                style={{ accentColor: "var(--app-accent)" }}
-              />
-            </FormField>
+        {currentStep.key === "coming" ? (
+          <div className="flex flex-col gap-3">
+            <ul className="flex flex-col gap-2.5">
+              {tasks.map((task, index) => (
+                <li key={index} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <input
+                    type="text"
+                    value={task.title}
+                    onChange={(e) => updateTask(index, { title: e.target.value })}
+                    maxLength={200}
+                    placeholder={index === 0 ? "e.g. English essay draft" : "Add another…"}
+                    className="min-w-0 flex-1 rounded-md px-3 py-2.5 text-[14.5px] outline-none"
+                    style={{
+                      background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)",
+                      color: "var(--app-text)",
+                    }}
+                  />
+                  <input
+                    type="date"
+                    value={task.dueAt}
+                    onChange={(e) => updateTask(index, { dueAt: e.target.value })}
+                    className="rounded-md px-3 py-2.5 text-[14.5px] outline-none sm:w-[170px]"
+                    style={{
+                      background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)",
+                      color: "var(--app-text)",
+                    }}
+                  />
+                  {tasks.length > 1 ? (
+                    <button
+                      type="button"
+                      onClick={() => removeTaskRow(index)}
+                      aria-label={`Remove task ${index + 1}`}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-colors"
+                      style={{
+                        color: "var(--app-text-muted)",
+                        border: "1px solid var(--app-border-strong)",
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8">
+                        <path d="M3 3l8 8M3 11l8-8" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+            {tasks.length < MAX_ONBOARDING_TASKS ? (
+              <button
+                type="button"
+                onClick={addTaskRow}
+                className="self-start rounded-full px-3 py-1.5 text-[12.5px] font-medium"
+                style={{
+                  background: "transparent",
+                  color: "var(--app-text-soft)",
+                  border: "1px solid var(--app-border-strong)",
+                }}
+              >
+                + Add another
+              </button>
+            ) : null}
+            <p className="type-mono-label mt-1" style={{ color: "var(--app-text-muted)" }}>
+              Up to 3 for now, add more from Today once you&apos;re in.
+            </p>
           </div>
         ) : null}
 

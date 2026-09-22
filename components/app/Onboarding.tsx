@@ -5,6 +5,12 @@ import { api } from "@/lib/api/client";
 import AppButton from "@/components/app/AppButton";
 import { cn } from "@/lib/cn";
 import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
+import {
+  WEEKLY_MAX_MINUTES,
+  WEEKLY_STEP_MINUTES,
+  fittedWeeklyMinutes,
+  formatWeekly,
+} from "@/lib/app/studyTargets";
 
 interface OnboardingProps {
   defaultName: string;
@@ -63,18 +69,23 @@ const SUBJECT_SUGGESTIONS = [
 
 const GRADE_OPTIONS = ["Year 10", "Year 11", "Year 12", "First year uni", "Second year+", "Other"] as const;
 
-type StepKey = "you" | "subjects" | "life" | "focus";
+type StepKey = "you" | "subjects" | "life" | "focus" | "week";
 const STEPS: { key: StepKey; label: string; eyebrow: string }[] = [
   { key: "you",      label: "You",      eyebrow: "Step 1 · Who you are" },
   { key: "subjects", label: "Subjects", eyebrow: "Step 2 · What you're studying" },
   { key: "life",     label: "Life",     eyebrow: "Step 3 · When you're around" },
   { key: "focus",    label: "Focus",    eyebrow: "Step 4 · How you study" },
+  { key: "week",     label: "Week",     eyebrow: "Step 5 · How your week splits" },
 ];
 
 /**
- * Four-slide onboarding. Each slide holds one facet of the plan so a
+ * Five-slide onboarding. Each slide holds one facet of the plan so a
  * first-time student never sees a wall of fields. Progress dots at the top,
  * Back/Continue at the bottom, final slide builds the plan and hands off.
+ *
+ * The last slide sets each subject's weekly target. That's what the
+ * scheduler fills the week toward, so it comes last, once the daily limit it
+ * has to fit inside is known.
  */
 export default function Onboarding({ defaultName, defaultTimezone, onComplete }: OnboardingProps) {
   const [step, setStep] = useState(0);
@@ -92,10 +103,24 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
   const [maxDaily, setMaxDaily] = useState(180);
   const [sessionMinutes, setSessionMinutes] = useState(60);
   const [breakMinutes, setBreakMinutes] = useState(15);
+  // Only the subjects the student has adjusted. Everything else follows the
+  // suggestion, so it keeps up if they go back and change year or limit.
+  const [weeklyOverrides, setWeeklyOverrides] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const currentStep = STEPS[step];
+
+  const suggestedWeekly = fittedWeeklyMinutes(grade, selectedSubjects.length, maxDaily);
+  const weeklyFor = (subject: string) => weeklyOverrides[subject] ?? suggestedWeekly;
+  const weeklyTotal = selectedSubjects.reduce((sum, subject) => sum + weeklyFor(subject), 0);
+  const weeklyCapacity = maxDaily * 7;
+  const hasOverrides = selectedSubjects.some((subject) => subject in weeklyOverrides);
+
+  function setWeekly(subject: string, minutes: number) {
+    const clamped = Math.min(WEEKLY_MAX_MINUTES, Math.max(0, minutes));
+    setWeeklyOverrides((prev) => ({ ...prev, [subject]: clamped }));
+  }
 
   const canContinue = useMemo(() => {
     if (currentStep.key === "you") return name.trim().length > 0 && grade.trim().length > 0;
@@ -135,6 +160,7 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
             name: subjectName,
             color: SUBJECT_COLORS[index % SUBJECT_COLORS.length],
             priority: 2,
+            weeklyMinutes: weeklyFor(subjectName),
           })),
           tasks: [],
           commitments: [],
@@ -202,16 +228,18 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
           className="mt-2 text-[32px] font-medium leading-[1.1] tracking-[-0.02em] sm:text-[40px]"
           style={{ color: "var(--app-text)" }}
         >
-          {currentStep.key === "you" && <>Tell me who I'm <span className="accent-serif">planning</span> for.</>}
+          {currentStep.key === "you" && <>Tell me who I&apos;m <span className="accent-serif">planning</span> for.</>}
           {currentStep.key === "subjects" && <>What are you actually <span className="accent-serif">studying</span>?</>}
           {currentStep.key === "life" && <>When are you <span className="accent-serif">awake</span>?</>}
           {currentStep.key === "focus" && <>How long do you <span className="accent-serif">lock in</span>?</>}
+          {currentStep.key === "week" && <>How much time does each subject <span className="accent-serif">get</span>?</>}
         </h1>
         <p className="mt-3 text-[15px]" style={{ color: "var(--app-text-muted)" }}>
           {currentStep.key === "you" && "Your name goes on greetings and streak nudges. Grade helps set expectations."}
           {currentStep.key === "subjects" && "Pick everything you'd want a study block for. You can add and remove any of these later."}
           {currentStep.key === "life" && "Study never gets scheduled outside these hours, so sleep stays real."}
           {currentStep.key === "focus" && "The Focus timer uses these as its default preset, always adjustable per session."}
+          {currentStep.key === "week" && `A starting point for ${grade || "your year"}. Arcad spreads it across the week around everything else, and deadlines come first.`}
         </p>
       </div>
 
@@ -380,6 +408,82 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
           </div>
         ) : null}
 
+        {currentStep.key === "week" ? (
+          <div className="flex flex-col">
+            <ul className="divide-y" style={{ borderColor: "var(--app-border)" }}>
+              {selectedSubjects.map((subject, index) => {
+                const minutes = weeklyFor(subject);
+                return (
+                  <li
+                    key={subject}
+                    className="flex items-center gap-3 py-3"
+                    style={{ borderColor: "var(--app-border)" }}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ background: SUBJECT_COLORS[index % SUBJECT_COLORS.length] }}
+                    />
+                    <span
+                      className="min-w-0 flex-1 truncate text-[15px]"
+                      style={{ color: minutes > 0 ? "var(--app-text)" : "var(--app-text-muted)" }}
+                    >
+                      {subject}
+                    </span>
+                    <div className="flex items-center gap-1" role="group" aria-label={`${subject}, time each week`}>
+                      <StepperButton
+                        label={`Less time for ${subject}`}
+                        disabled={minutes <= 0}
+                        onClick={() => setWeekly(subject, minutes - WEEKLY_STEP_MINUTES)}
+                      >
+                        <path d="M5 10h10" strokeLinecap="round" />
+                      </StepperButton>
+                      <span
+                        className="w-[68px] text-center font-mono text-[14px]"
+                        style={{ color: minutes > 0 ? "var(--app-text)" : "var(--app-text-muted)" }}
+                        aria-live="polite"
+                      >
+                        {formatWeekly(minutes)}
+                      </span>
+                      <StepperButton
+                        label={`More time for ${subject}`}
+                        disabled={minutes >= WEEKLY_MAX_MINUTES}
+                        onClick={() => setWeekly(subject, minutes + WEEKLY_STEP_MINUTES)}
+                      >
+                        <path d="M10 5v10M5 10h10" strokeLinecap="round" />
+                      </StepperButton>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            <div
+              className="mt-2 flex items-center justify-between gap-3 pt-4"
+              style={{ borderTop: "1px solid var(--app-border)" }}
+            >
+              <p
+                className="type-mono-label"
+                style={{
+                  color: weeklyTotal > weeklyCapacity ? "var(--app-danger)" : "var(--app-text-muted)",
+                }}
+              >
+                {formatWeekly(weeklyTotal)} a week · your limit fits {formatWeekly(weeklyCapacity)}
+              </p>
+              {hasOverrides ? (
+                <AppButton type="button" variant="ghost" size="sm" onClick={() => setWeeklyOverrides({})}>
+                  Use suggestions
+                </AppButton>
+              ) : null}
+            </div>
+            {weeklyTotal > weeklyCapacity ? (
+              <p className="mt-2 text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
+                That&apos;s more than your daily limit fits, so every subject will get a little less. Trim a
+                few, or go back and raise your limit.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         {error ? (
           <p role="alert" className="mt-4 text-[13.5px]" style={{ color: "var(--app-danger)" }}>
             {error}
@@ -408,6 +512,30 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
         </AppButton>
       </div>
     </div>
+  );
+}
+
+function StepperButton({
+  label, disabled, onClick, children,
+}: {
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className="flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-[var(--app-surface-soft)] disabled:pointer-events-none disabled:opacity-40"
+      style={{ color: "var(--app-text-soft)", border: "1px solid var(--app-border-strong)" }}
+    >
+      <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+        {children}
+      </svg>
+    </button>
   );
 }
 

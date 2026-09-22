@@ -84,7 +84,15 @@ export interface DashboardResponse {
   user: AuthUser;
   profile: PlannerProfile | null;
   preferences: Record<string, unknown>;
-  subjects: Array<{ id: string; name: string; colour?: string | null }>;
+  subjects: Array<{
+    id: string;
+    name: string;
+    colour?: string | null;
+    /** Weekly study target the scheduler works to, in minutes. */
+    weeklyMinutes?: number;
+    /** True when weeklyMinutes is the year-level default, not the student's pick. */
+    weeklyMinutesSuggested?: boolean;
+  }>;
   subjectContexts?: SubjectContext[];
   tasks: PlannerTask[];
   commitments: Array<Record<string, unknown>>;

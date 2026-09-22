@@ -10,7 +10,7 @@ interface OnboardingBody {
   name?: string;
   grade?: string;
   timezone?: string;
-  subjects?: Array<{ name?: string; color?: string; priority?: number }>;
+  subjects?: Array<{ name?: string; color?: string; priority?: number; weeklyMinutes?: number }>;
   tasks?: Array<{ title?: string; subject?: string; dueAt?: string; estimatedMinutes?: number }>;
   commitments?: Array<{
     title?: string;
@@ -77,6 +77,12 @@ onboarding.post("/", async (c) => {
       name,
       colour: subject.color ?? null,
       priority: clamp(subject.priority, 1, 5, 2),
+      // Missing means "use the year-level default", which the scheduler
+      // resolves at plan time; 20 hours a week is plenty for one subject.
+      weeklyMinutes:
+        subject.weeklyMinutes === undefined || subject.weeklyMinutes === null
+          ? null
+          : clamp(subject.weeklyMinutes, 0, 1200, 0),
     });
   }
 

@@ -5,6 +5,7 @@ import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import type { DashboardResponse, PlannerTask } from "@/lib/api/types";
 import AppButton from "./AppButton";
+import SubjectPicker from "./SubjectPicker";
 
 interface NewTaskSheetProps {
   open: boolean;
@@ -25,7 +26,7 @@ const TASK_TYPES = [
 export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: initialDue }: NewTaskSheetProps) {
   const { data, patch, reload } = useDashboardData();
   const [title, setTitle] = useState("");
-  const [subject, setSubject] = useState(data.subjects[0]?.name ?? "");
+  const [subject, setSubject] = useState<string | null>(null);
   const [taskType, setTaskType] = useState("homework");
   const [dueDate, setDueDate] = useState(() => defaultDueDate());
   const [minutes, setMinutes] = useState(60);
@@ -40,13 +41,13 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
       setError(null);
       if (editing) {
         setTitle(editing.title);
-        setSubject(editing.subject || data.subjects[0]?.name || "");
+        setSubject(editing.subject || null);
         setTaskType(editing.taskType || "homework");
         setDueDate(editing.dueAt.slice(0, 10));
         setMinutes(editing.remainingMinutes || 60);
       } else {
         setTitle("");
-        setSubject(data.subjects[0]?.name || "");
+        setSubject(null);
         setTaskType("homework");
         setDueDate(initialDue || defaultDueDate());
         setMinutes(60);
@@ -213,27 +214,7 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="Subject">
-              <input
-                required
-                list="arcadia-subjects"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder={data.subjects.length === 0 ? "Type a subject" : "Pick or type a new one"}
-                autoComplete="off"
-                maxLength={80}
-                className="w-full rounded-md px-3 py-2.5 text-[15px] outline-none"
-                style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
-              />
-              <datalist id="arcadia-subjects">
-                {data.subjects.map((s) => (
-                  <option key={s.id} value={s.name} />
-                ))}
-              </datalist>
-              {!data.subjects.some((s) => s.name.toLowerCase() === subject.trim().toLowerCase()) && subject.trim().length > 0 ? (
-                <p className="mt-1.5 text-[11.5px]" style={{ color: "var(--app-accent-strong)" }}>
-                  New subject, I'll add {subject.trim()} to your list.
-                </p>
-              ) : null}
+              <SubjectPicker subjects={data.subjects} value={subject} onChange={setSubject} />
             </Field>
             <Field label="Type">
               <select

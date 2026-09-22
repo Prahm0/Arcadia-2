@@ -7,7 +7,7 @@ import AppButton, { appButtonClass } from "../AppButton";
 import EmptyState, { ExampleRow } from "../EmptyState";
 import PageHeader from "../PageHeader";
 import NewDeckSheet from "./NewDeckSheet";
-import { CardsIcon, MasteryBar, PlusIcon, Spinner, useSubjects, type SubjectInfo } from "./shared";
+import { CardsIcon, MasteryBar, PlusIcon, Spinner, SubjectTag, useSubjects, type SubjectInfo } from "./shared";
 
 /**
  * Every deck, grouped by subject, with what's due today on top. Studying
@@ -75,17 +75,8 @@ export default function CardsView({ startCreating = false }: { startCreating?: b
             <DueStrip due={due} fresh={fresh} decks={decks} find={find} />
             {groups.map((group) => (
               <section key={group.subject?.id ?? "none"} aria-labelledby={`deck-group-${group.subject?.id ?? "none"}`}>
-                <h2
-                  id={`deck-group-${group.subject?.id ?? "none"}`}
-                  className="flex items-center gap-2 text-[13px] font-semibold"
-                  style={{ color: "var(--app-text)" }}
-                >
-                  <span
-                    aria-hidden="true"
-                    className="h-2.5 w-2.5 rounded-full"
-                    style={{ background: group.subject?.colour ?? "var(--app-border-strong)" }}
-                  />
-                  {group.subject?.name ?? "No subject"}
+                <h2 id={`deck-group-${group.subject?.id ?? "none"}`} className="flex">
+                  <SubjectTag subject={group.subject} />
                 </h2>
                 <ul className="mt-3 grid gap-2 sm:grid-cols-2">
                   {group.decks.map((deck) => (
@@ -117,12 +108,12 @@ function DueStrip({
   find: (id: string | null) => SubjectInfo | null;
 }) {
   // Due cards per subject, biggest first.
-  const bySubject = new Map<string, { label: string; colour: string | null; count: number }>();
+  const bySubject = new Map<string, { key: string; subject: SubjectInfo | null; count: number }>();
   for (const deck of decks) {
     if (!deck.dueCount) continue;
     const subject = find(deck.subjectId);
     const key = subject?.id ?? "none";
-    const entry = bySubject.get(key) ?? { label: subject?.name ?? "No subject", colour: subject?.colour ?? null, count: 0 };
+    const entry = bySubject.get(key) ?? { key, subject, count: 0 };
     entry.count += deck.dueCount;
     bySubject.set(key, entry);
   }
@@ -137,14 +128,9 @@ function DueStrip({
         <p className="text-[15px] font-semibold" style={{ color: "var(--app-text)" }}>
           {due > 0 ? `${cardCount(due)} due today` : "Nothing due right now"}
         </p>
-        <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
+        <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
           {due > 0
-            ? parts.map((part) => (
-                <span key={part.label} className="inline-flex items-center gap-1.5">
-                  <span aria-hidden="true" className="h-2 w-2 rounded-full" style={{ background: part.colour ?? "var(--app-border-strong)" }} />
-                  {part.label} {part.count}
-                </span>
-              ))
+            ? parts.map((part) => <SubjectTag key={part.key} subject={part.subject} count={part.count} size="sm" />)
             : fresh > 0
               ? `${cardCount(fresh)} you haven't studied yet. Open a deck and hit Learn.`
               : "Every card is scheduled. They'll come back when they're due."}

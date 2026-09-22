@@ -6,7 +6,7 @@ import { cardCount, useDeck, type Card, type DeckWithCards } from "@/lib/api/car
 import AppButton, { appButtonClass } from "../AppButton";
 import DeckEditor from "./DeckEditor";
 import DeckSettingsSheet from "./DeckSettingsSheet";
-import { BackLink, LoadError, MasteryBar, Spinner, useSubjects } from "./shared";
+import { BackLink, LoadError, MasteryBar, Spinner, SubjectTag, useSubjects } from "./shared";
 
 /** One deck: how well it's known, the ways to study it, and its cards. */
 export default function DeckView({ deckId, startEditing }: { deckId: string; startEditing: boolean }) {
@@ -36,7 +36,7 @@ function Deck({
   const learning = deck.cardCount - deck.newCount - deck.masteredCount;
   const base = `/app/cards/${encodeURIComponent(deck.id)}`;
 
-  const meta = [subject?.name ?? "No subject", cardCount(deck.cardCount)];
+  const meta = [cardCount(deck.cardCount)];
   if (deck.topic?.title) meta.push(deck.topic.title);
 
   return (
@@ -45,18 +45,12 @@ function Deck({
         <BackLink href="/app/cards">Cards</BackLink>
         <div className="mt-2 flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <div className="flex items-center gap-3">
-              <span
-                aria-hidden="true"
-                className="h-3.5 w-3.5 shrink-0 rounded-full"
-                style={{ background: subject?.colour ?? "var(--app-border-strong)" }}
-              />
-              <h1 className="min-w-0 truncate text-[26px] font-semibold tracking-[-0.02em]" style={{ color: "var(--app-text)" }}>
-                {deck.title}
-              </h1>
-            </div>
-            <p className="mt-1 text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
-              {meta.join(" · ")}
+            <h1 className="min-w-0 truncate text-[26px] font-semibold tracking-[-0.02em]" style={{ color: "var(--app-text)" }}>
+              {deck.title}
+            </h1>
+            <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
+              <SubjectTag subject={subject} />
+              <span>{meta.join(" · ")}</span>
             </p>
           </div>
           <AppButton variant="ghost" size="sm" onClick={() => setSettings(true)} aria-label="Deck settings">
@@ -102,9 +96,9 @@ function Deck({
             <div>
               <MasteryBar deck={deck} />
               <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12.5px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
-                <Legend colour="var(--app-success)" label={`${deck.masteredCount} mastered`} />
-                <Legend colour="var(--app-accent)" label={`${learning} still learning`} />
-                <Legend colour="var(--app-border-strong)" label={`${deck.newCount} not studied`} />
+                <Legend colour="var(--app-success)" count={deck.masteredCount} label="mastered" />
+                <Legend colour="var(--app-accent)" count={learning} label="still learning" />
+                <Legend count={deck.newCount} label="not studied" />
               </ul>
             </div>
           </section>
@@ -140,42 +134,61 @@ function Deck({
   );
 }
 
-function Legend({ colour, label }: { colour: string; label: string }) {
+/** The count in the colour it has in the bar above, so the words are the key. */
+function Legend({ colour, count, label }: { colour?: string; count: number; label: string }) {
   return (
-    <li className="inline-flex items-center gap-1.5">
-      <span aria-hidden="true" className="h-2 w-2 rounded-full" style={{ background: colour }} />
+    <li>
+      <span className="font-semibold" style={{ color: colour ?? "var(--app-text-soft)" }}>
+        {count}
+      </span>{" "}
       {label}
     </li>
   );
 }
 
-const STATUS: Record<Card["status"], { label: string; colour: string }> = {
-  new: { label: "Not studied", colour: "var(--app-border-strong)" },
-  learning: { label: "Still learning", colour: "var(--app-accent)" },
+const STATUS: Record<Card["status"], { label: string; colour: string | null }> = {
+  new: { label: "New", colour: null },
+  learning: { label: "Learning", colour: "var(--app-accent)" },
   mastered: { label: "Mastered", colour: "var(--app-success)" },
 };
 
+/** Where a card stands, as an outlined word rather than a coloured dot. */
+function StatusTag({ card }: { card: Card }) {
+  const status = card.due ? { label: "Due", colour: "var(--app-cat-extra)" } : STATUS[card.status];
+  return (
+    <span
+      className="inline-flex shrink-0 items-center rounded-md px-1.5 py-px text-[11.5px] font-medium"
+      style={
+        status.colour
+          ? {
+              color: `color-mix(in oklab, ${status.colour} 80%, var(--app-text))`,
+              boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${status.colour} 50%, transparent)`,
+            }
+          : { color: "var(--app-text-muted)", boxShadow: "inset 0 0 0 1px var(--app-border-strong)" }
+      }
+    >
+      {status.label}
+    </span>
+  );
+}
+
 function CardRow({ card }: { card: Card }) {
-  const status = STATUS[card.status];
   return (
     <li
-      className="grid gap-1 border-b px-4 py-3 last:border-b-0 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] sm:gap-6"
+      className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 border-b px-4 py-3 last:border-b-0 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_auto] sm:gap-x-6"
       style={{ borderColor: "var(--app-border)" }}
     >
-      <span className="flex min-w-0 items-start gap-2.5">
-        <span
-          className="mt-[7px] h-2 w-2 shrink-0 rounded-full"
-          style={{ background: status.colour }}
-          title={card.due ? `${status.label} · due` : status.label}
-          aria-label={card.due ? `${status.label}, due` : status.label}
-          role="img"
-        />
-        <span className="min-w-0 whitespace-pre-wrap break-words text-[14px] font-medium" style={{ color: "var(--app-text)" }}>
-          {card.front}
-        </span>
+      <span className="min-w-0 whitespace-pre-wrap break-words text-[14px] font-medium" style={{ color: "var(--app-text)" }}>
+        {card.front}
       </span>
-      <span className="min-w-0 whitespace-pre-wrap break-words pl-[18px] text-[14px] sm:pl-0" style={{ color: "var(--app-text-soft)" }}>
+      <span
+        className="col-start-1 row-start-2 min-w-0 whitespace-pre-wrap break-words text-[14px] sm:col-start-2 sm:row-start-1"
+        style={{ color: "var(--app-text-soft)" }}
+      >
         {card.back}
+      </span>
+      <span className="col-start-2 row-start-1 sm:col-start-3">
+        <StatusTag card={card} />
       </span>
     </li>
   );

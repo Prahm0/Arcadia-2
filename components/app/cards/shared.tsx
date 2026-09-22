@@ -31,6 +31,44 @@ export function useSubjects() {
   return { subjects, find };
 }
 
+/**
+ * A subject's name in its colour, with a matching outline and a faint fill.
+ * Colour is carried by the tag itself rather than a dot beside it. The text
+ * is mixed toward the theme's text colour so it reads in light and dark.
+ */
+export function SubjectTag({
+  subject,
+  count,
+  size = "md",
+}: {
+  subject: Pick<SubjectInfo, "name" | "colour"> | null;
+  /** Shown after the name, e.g. cards due. */
+  count?: number;
+  size?: "sm" | "md";
+}) {
+  const colour = subject?.colour;
+  return (
+    <span
+      className={
+        "inline-flex max-w-full items-center gap-1.5 rounded-md font-medium " +
+        (size === "sm" ? "px-1.5 py-px text-[12px]" : "px-2 py-0.5 text-[12.5px]")
+      }
+      style={
+        colour
+          ? {
+              color: `color-mix(in oklab, ${colour} 72%, var(--app-text))`,
+              background: `color-mix(in oklab, ${colour} 10%, transparent)`,
+              boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${colour} 55%, transparent)`,
+            }
+          : { color: "var(--app-text-muted)", boxShadow: "inset 0 0 0 1px var(--app-border-strong)" }
+      }
+    >
+      <span className="truncate">{subject?.name ?? "No subject"}</span>
+      {count !== undefined ? <span className="tabular-nums opacity-80">{count}</span> : null}
+    </span>
+  );
+}
+
 /** Mastered, still learning, not studied: the deck at a glance. */
 export function MasteryBar({ deck, height = 6 }: { deck: Pick<Deck, "cardCount" | "newCount" | "masteredCount">; height?: number }) {
   const total = Math.max(1, deck.cardCount);

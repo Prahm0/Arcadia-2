@@ -24,7 +24,7 @@ export default function ResourcesSection({
   refresh: () => Promise<void>;
   /** For a page with one of these per subject. */
   sectionId?: string;
-  title?: string;
+  title?: ReactNode;
   meta?: ReactNode;
 }) {
   const input = useRef<HTMLInputElement>(null);

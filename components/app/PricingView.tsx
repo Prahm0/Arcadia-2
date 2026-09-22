@@ -9,14 +9,20 @@ import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 
 type TierKey = "free" | "pro" | "max";
-type Interval = "month" | "year";
+type Interval = "week" | "month" | "year";
+
+interface PaidPricing {
+  /** Amount actually billed each period, in AUD. */
+  weekly: number;
+  monthly: number;
+  yearly: number;
+}
 
 interface Tier {
   key: TierKey;
   name: string;
   headline: string;
-  priceMonthly: number | null;
-  priceYearly: number | null;
+  pricing: PaidPricing | null;
   features: string[];
   highlighted?: boolean;
   badge?: string;
@@ -27,8 +33,7 @@ const TIERS: Tier[] = [
     key: "free",
     name: "Free",
     headline: "The scaffold. Get organised, on your own.",
-    priceMonthly: null,
-    priceYearly: null,
+    pricing: null,
     features: [
       "Auto-scheduled daily plan",
       "Task list + deadlines",
@@ -42,8 +47,7 @@ const TIERS: Tier[] = [
     key: "pro",
     name: "Pro",
     headline: "Arcad unlocked. Calendar synced. Notes indexed.",
-    priceMonthly: 15.99,
-    priceYearly: 149.0,
+    pricing: { weekly: 4.99, monthly: 15.99, yearly: 149 },
     features: [
       "Everything in Free",
       "Arcad, 20 messages / day",
@@ -61,8 +65,7 @@ const TIERS: Tier[] = [
     key: "max",
     name: "Max",
     headline: "Voice tutor. Exam prep. Real humans when you're stuck.",
-    priceMonthly: 39.99,
-    priceYearly: 379.0,
+    pricing: { weekly: 10.99, monthly: 39.99, yearly: 379 },
     features: [
       "Everything in Pro",
       "Arcad, 100 messages / day",
@@ -75,6 +78,25 @@ const TIERS: Tier[] = [
     ],
   },
 ];
+
+/**
+ * Turns each pricing option into a per-week rate so the headline number
+ * is comparable across intervals. Weekly billing uses its own rate as
+ * baseline; monthly divides across 4.345 weeks (365.25 ÷ 12 ÷ 7);
+ * yearly divides across 52.
+ */
+function perWeek(pricing: PaidPricing, interval: Interval): number {
+  if (interval === "week") return pricing.weekly;
+  if (interval === "month") return pricing.monthly / (365.25 / 12 / 7);
+  return pricing.yearly / 52;
+}
+
+function savingsVsWeekly(pricing: PaidPricing, interval: Interval): number {
+  if (interval === "week") return 0;
+  const baseline = pricing.weekly;
+  const rate = perWeek(pricing, interval);
+  return Math.round(((baseline - rate) / baseline) * 100);
+}
 
 export default function PricingView() {
   const router = useRouter();
@@ -226,14 +248,24 @@ function IntervalToggle({
   value: Interval;
   onChange: (v: Interval) => void;
 }) {
+  // Uses Pro's pricing to headline the savings badge because Pro is the
+  // "most popular" tier the toggle sits above. Max savings are similar
+  // enough that showing Pro's number is honest for both tiers.
+  const proPricing = TIERS.find((t) => t.key === "pro")?.pricing ?? null;
+  const monthlySavings = proPricing ? savingsVsWeekly(proPricing, "month") : 0;
+  const yearlySavings = proPricing ? savingsVsWeekly(proPricing, "year") : 0;
+
   return (
     <div className="mx-auto flex items-center gap-1 rounded-full p-1"
       style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
+      <IntervalButton active={value === "week"} onClick={() => onChange("week")}>
+        Weekly
+      </IntervalButton>
       <IntervalButton active={value === "month"} onClick={() => onChange("month")}>
-        Monthly
+        Monthly · save {monthlySavings}%
       </IntervalButton>
       <IntervalButton active={value === "year"} onClick={() => onChange("year")}>
-        Yearly · save ~22%
+        Yearly · save {yearlySavings}%
       </IntervalButton>
     </div>
   );
@@ -284,7 +316,16 @@ function TierCard({
 }) {
   const isFree = tier.key === "free";
   const isCurrent = tier.key === currentTier;
-  const priceForInterval = interval === "month" ? tier.priceMonthly : tier.priceYearly;
+  const pricing = tier.pricing;
+  const perWeekRate = pricing ? perWeek(pricing, interval) : null;
+  const billedAmount = pricing
+    ? interval === "week"
+      ? pricing.weekly
+      : interval === "month"
+      ? pricing.monthly
+      : pricing.yearly
+    : null;
+  const billedLabel = interval === "week" ? "week" : interval === "month" ? "month" : "year";
 
   return (
     <div
@@ -321,7 +362,7 @@ function TierCard({
       </div>
 
       <div>
-        {priceForInterval === null ? (
+        {pricing === null || perWeekRate === null || billedAmount === null ? (
           <div className="flex items-baseline gap-1.5">
             <span className="text-[36px] font-semibold" style={{ color: "var(--app-text)" }}>
               $0
@@ -334,17 +375,15 @@ function TierCard({
           <div>
             <div className="flex items-baseline gap-1.5">
               <span className="text-[36px] font-semibold" style={{ color: "var(--app-text)" }}>
-                ${priceForInterval.toFixed(2)}
+                ${perWeekRate.toFixed(2)}
               </span>
               <span className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
-                / {interval === "month" ? "mo" : "yr"} AUD
+                / week AUD
               </span>
             </div>
-            {interval === "year" && tier.priceMonthly ? (
-              <p className="mt-1 text-[12px]" style={{ color: "var(--app-text-faint)" }}>
-                ~${(tier.priceYearly! / 12).toFixed(2)}/mo, save ${((tier.priceMonthly * 12) - tier.priceYearly!).toFixed(0)}/yr
-              </p>
-            ) : null}
+            <p className="mt-1 text-[12px]" style={{ color: "var(--app-text-faint)" }}>
+              Billed ${billedAmount.toFixed(billedAmount % 1 === 0 ? 0 : 2)} per {billedLabel}
+            </p>
           </div>
         )}
       </div>

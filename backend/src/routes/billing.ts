@@ -56,6 +56,18 @@ billing.post("/checkout", async (c) => {
   const database = db(c.env.DB);
   const [user] = await database.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
   if (!user) return c.json({ error: "User missing." }, 404);
+  // Guest accounts use the reserved `@arcadia.local` suffix and have no
+  // way to sign back in, so subscribing one strands the customer with a
+  // paid plan they can't ever reach. Force them to convert first.
+  if (user.email.endsWith("@arcadia.local")) {
+    return c.json(
+      {
+        error: "Create a proper account before subscribing, guest accounts can't upgrade.",
+        code: "guest_cannot_upgrade",
+      },
+      403,
+    );
+  }
 
   // Reuse an existing Stripe customer if we already created one; only
   // create-and-persist on the first upgrade attempt. This avoids Stripe

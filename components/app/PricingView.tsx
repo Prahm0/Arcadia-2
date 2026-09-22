@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
+import { isGuestEmail } from "@/lib/auth/guest";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 
@@ -75,15 +77,25 @@ const TIERS: Tier[] = [
 ];
 
 export default function PricingView() {
+  const router = useRouter();
   const { data } = useDashboardData();
   const currentTier: TierKey = data?.user?.tier ?? "free";
   const hasSubscription = Boolean(data?.user?.hasSubscription);
+  const isGuest = isGuestEmail(data?.user?.email);
 
   const [interval, setInterval] = useState<Interval>("month");
   const [busyTier, setBusyTier] = useState<TierKey | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function startCheckout(plan: "pro" | "max") {
+    // Guests can't upgrade, they'd be paying for an @arcadia.local
+    // account they can never sign back into. Show them a banner
+    // instead of trying to check out. The tier card CTA also flips
+    // to "Sign up for Pro" and takes them straight to register.
+    if (isGuest) {
+      router.push("/register");
+      return;
+    }
     setBusyTier(plan);
     setError(null);
     try {
@@ -143,6 +155,29 @@ export default function PricingView() {
       />
 
       <div className="mx-auto flex w-full max-w-[1080px] flex-col gap-6 px-6 py-8 sm:px-10">
+        {isGuest ? (
+          <div
+            role="note"
+            className="flex flex-col gap-3 rounded-md px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
+            style={{
+              background: "var(--app-accent-soft)",
+              color: "var(--app-accent-strong)",
+              boxShadow: "var(--elev-1)",
+            }}
+          >
+            <div>
+              <p className="text-[13.5px] font-semibold">You&rsquo;re signed in as a guest.</p>
+              <p className="mt-0.5 text-[13px] opacity-90">
+                Guest accounts vanish when you close the tab, so we can&rsquo;t attach a
+                subscription. Create a real account to upgrade to Pro or Max.
+              </p>
+            </div>
+            <AppButton variant="primary" onClick={() => router.push("/register")}>
+              Create account
+            </AppButton>
+          </div>
+        ) : null}
+
         <IntervalToggle value={interval} onChange={setInterval} />
 
         <div className="grid gap-4 md:grid-cols-3">
@@ -153,6 +188,7 @@ export default function PricingView() {
               interval={interval}
               currentTier={currentTier}
               hasSubscription={hasSubscription}
+              isGuest={isGuest}
               loading={busyTier === tier.key}
               onUpgrade={() => {
                 if (tier.key === "free") return;
@@ -232,6 +268,7 @@ function TierCard({
   interval,
   currentTier,
   hasSubscription,
+  isGuest,
   loading,
   onUpgrade,
   onManage,
@@ -240,6 +277,7 @@ function TierCard({
   interval: Interval;
   currentTier: TierKey;
   hasSubscription: boolean;
+  isGuest: boolean;
   loading: boolean;
   onUpgrade: () => void;
   onManage: () => void;
@@ -360,7 +398,11 @@ function TierCard({
             onClick={onUpgrade}
             loading={loading}
           >
-            {hasSubscription ? `Switch to ${tier.name}` : `Start ${tier.name}`}
+            {isGuest
+              ? `Sign up for ${tier.name}`
+              : hasSubscription
+              ? `Switch to ${tier.name}`
+              : `Start ${tier.name}`}
           </AppButton>
         )}
       </div>

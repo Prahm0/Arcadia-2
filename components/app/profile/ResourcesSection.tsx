@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { ApiError, api } from "@/lib/api/client";
 import type { ProfileSubject } from "@/lib/api/profile";
 import { MATERIAL_ACCEPT, uploadMaterial } from "@/lib/api/subjectMaterials";
@@ -16,9 +16,16 @@ import { Section } from "./ui";
 export default function ResourcesSection({
   subject,
   refresh,
+  sectionId = "resources",
+  title = "Resources",
+  meta = "Textbook chapters, handouts, notes. Arcad points you to the right part.",
 }: {
   subject: ProfileSubject;
   refresh: () => Promise<void>;
+  /** For a page with one of these per subject. */
+  sectionId?: string;
+  title?: string;
+  meta?: ReactNode;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState<string | null>(null);
@@ -61,9 +68,9 @@ export default function ResourcesSection({
 
   return (
     <Section
-      id="resources"
-      title="Resources"
-      meta="Textbook chapters, handouts, notes. Arcad points you to the right part."
+      id={sectionId}
+      title={title}
+      meta={meta}
       action={
         <AppButton
           size="sm"

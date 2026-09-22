@@ -30,6 +30,18 @@ const VARIANTS: Record<Variant, string> = {
     "bg-[var(--app-surface)] text-[var(--app-danger)] shadow-[var(--elev-1)] hover:bg-[color-mix(in_oklab,var(--app-danger)_8%,var(--app-surface))] hover:shadow-[0_0_0_1px_color-mix(in_oklab,var(--app-danger)_45%,transparent)]",
 };
 
+/** The button look, for a Link that should read as a button. */
+export function appButtonClass(variant: Variant = "secondary", size: Size = "md", className?: string): string {
+  return cn(
+    "inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-md font-medium",
+    "transition-[background-color,box-shadow,color] duration-100 ease-out",
+    "active:brightness-95 disabled:pointer-events-none disabled:opacity-50",
+    SIZES[size],
+    VARIANTS[variant],
+    className,
+  );
+}
+
 export default function AppButton({
   variant = "secondary",
   size = "md",
@@ -44,14 +56,7 @@ export default function AppButton({
     <button
       {...rest}
       disabled={disabled || loading}
-      className={cn(
-        "inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-md font-medium",
-        "transition-[background-color,box-shadow,color] duration-100 ease-out",
-        "active:brightness-95 disabled:pointer-events-none disabled:opacity-50",
-        SIZES[size],
-        VARIANTS[variant],
-        className,
-      )}
+      className={appButtonClass(variant, size, className)}
     >
       {loading ? (
         <span

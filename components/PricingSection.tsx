@@ -35,36 +35,39 @@ const TIERS: Tier[] = [
   {
     key: "pro",
     name: "Pro",
-    headline: "Arcad unlocked. Calendar synced.",
-    priceLabel: "$3.99",
-    priceNote: "per week, billed monthly",
+    // Mirrors what the in-app PricingView charges. Landing quotes monthly
+    // rather than weekly so the number matches what a customer sees on
+    // their statement — no "wait, why was I charged $16?" moment.
+    headline: "Arcad turned up. Calendar synced. Notes indexed.",
+    priceLabel: "$15.99",
+    priceNote: "AUD / month · or $149 / yr (save ~22%)",
     features: [
       "Everything in Free",
-      "Unlimited Arcad — knows your week",
-      "Google / Apple / Canvas sync",
-      "Upload PDFs & notes",
-      "Shared study rooms",
-      "Full analytics + insights",
+      "20 Arcad messages / day",
+      "Google · Apple · Canvas calendar sync",
+      "Upload PDFs & notes — Arcad answers from them",
+      "Unlimited study rooms with shared timers",
+      "Full analytics — streaks, subjects, trends",
     ],
-    cta: "Get Pro at launch",
+    cta: "Start Pro",
     highlighted: true,
     badge: "Most popular",
   },
   {
     key: "max",
     name: "Max",
-    headline: "Voice tutor. Exam prep. Real humans.",
-    priceLabel: "$9.99",
-    priceNote: "per week, billed monthly",
+    headline: "Voice tutor. Exam prep. Real humans when you're stuck.",
+    priceLabel: "$39.99",
+    priceNote: "AUD / month · or $379 / yr",
     features: [
       "Everything in Pro",
-      "Voice Arcad — hands-free",
-      "Tutor mode — walkthroughs, essay feedback",
-      "1:1 human tutor bookings (soon)",
-      "Priority AI model",
-      "Group leader mode",
+      "100 Arcad messages / day",
+      "Voice Arcad — hands-free while you study",
+      "Tutor mode — step-by-step walkthroughs",
+      "1:1 human tutor bookings (coming soon)",
+      "Study group leader mode — invite up to 10",
     ],
-    cta: "Reserve Max",
+    cta: "Go Max",
   },
 ];
 
@@ -120,11 +123,10 @@ export default function PricingSection() {
 
         <FadeIn delay={0.35} className="mt-10 text-center">
           <p className="type-mono-label text-white/50">
-            Payments open at public launch ·{" "}
-            <Link href="#early-access" className="underline underline-offset-4 hover:text-white">
-              join the waitlist
-            </Link>{" "}
-            to lock in these prices
+            Cancel any time from Settings · Prices in AUD, billed via Stripe ·{" "}
+            <Link href="/refunds" className="underline underline-offset-4 hover:text-white">
+              refund policy
+            </Link>
           </p>
         </FadeIn>
       </Container>
@@ -173,7 +175,7 @@ function TierCard({ tier }: { tier: Tier }) {
             {tier.priceLabel}
           </span>
           {tier.key !== "free" ? (
-            <span className="text-[13px] text-white/45">/ week</span>
+            <span className="text-[13px] text-white/45">/ mo</span>
           ) : null}
         </div>
         <p className="mt-1 type-mono-label text-white/45">{tier.priceNote}</p>
@@ -203,7 +205,9 @@ function TierCard({ tier }: { tier: Tier }) {
         <Button
           tone="dark"
           variant={tier.highlighted ? "primary" : "secondary"}
-          href={tier.key === "free" ? "/register" : "#early-access"}
+          // Everyone goes through /register first; paid tiers surface
+          // Checkout from the in-app pricing page after signup.
+          href="/register"
           size="md"
           className="w-full"
         >

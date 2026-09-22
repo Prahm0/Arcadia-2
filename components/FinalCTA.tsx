@@ -1,5 +1,5 @@
 import Starfield from "./Starfield";
-import WaitlistForm from "./WaitlistForm";
+import Button from "./ui/Button";
 import Container from "./ui/Container";
 import FadeIn from "./ui/FadeIn";
 import RevealText from "./ui/RevealText";
@@ -36,14 +36,25 @@ export default function FinalCTA() {
           />
           <FadeIn delay={0.15}>
             <p className="type-body-lg mt-8 max-w-[560px] text-white/60">
-              Arcadia is opening to a first group of students. Put your name down and we’ll
-              email you when your invite is ready.
+              Free tier, no credit card. Two Arcad messages a day, the full
+              planner, calendar sync when you're ready. Upgrade to Pro when
+              you want more.
             </p>
           </FadeIn>
-          <FadeIn delay={0.25} className="mt-10 w-full max-w-[520px]">
-            <WaitlistForm tone="dark" />
-            <p className="type-mono-label mt-2 text-center text-white/40">
-              Early access · opening soon · Australia first
+          <FadeIn delay={0.25} className="mt-10 flex w-full max-w-[520px] flex-col items-center gap-4 sm:flex-row sm:justify-center">
+            <Button tone="dark" href="/register" className="sm:min-w-[180px]">
+              Start free
+            </Button>
+            <a
+              href="/login"
+              className="text-[14.5px] font-medium text-white/70 transition-colors duration-200 hover:text-white"
+            >
+              Already have an account? Sign in
+            </a>
+          </FadeIn>
+          <FadeIn delay={0.35}>
+            <p className="type-mono-label mt-4 text-center text-white/40">
+              Australia first · Pro from $15.99 AUD / mo · Cancel any time
             </p>
           </FadeIn>
         </div>

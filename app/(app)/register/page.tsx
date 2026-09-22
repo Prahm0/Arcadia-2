@@ -6,6 +6,7 @@ import { Suspense, useEffect, useState } from "react";
 import AuthShell from "@/components/app/AuthShell";
 import Field from "@/components/app/Field";
 import PrimaryButton from "@/components/app/PrimaryButton";
+import SocialAuthButtons from "@/components/app/SocialAuthButtons";
 import { api } from "@/lib/api/client";
 import { continueAsGuest } from "@/lib/auth/guest";
 
@@ -21,7 +22,7 @@ interface RegisterResponse {
 // own Suspense boundary per Next's rules, hence the inner component.
 export default function RegisterPage() {
   return (
-    <Suspense fallback={<RegisterInner initialToken={null} />}>
+    <Suspense fallback={<RegisterInner initialToken={null} oauthError={null} />}>
       <RegisterWithParams />
     </Suspense>
   );
@@ -29,17 +30,29 @@ export default function RegisterPage() {
 
 function RegisterWithParams() {
   const params = useSearchParams();
-  return <RegisterInner initialToken={params.get("token")} />;
+  return <RegisterInner initialToken={params.get("token")} oauthError={params.get("oauth")} />;
 }
 
-function RegisterInner({ initialToken }: { initialToken: string | null }) {
+function RegisterInner({
+  initialToken,
+  oauthError,
+}: {
+  initialToken: string | null;
+  oauthError: string | null;
+}) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RegisterResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    oauthError === "cancelled"
+      ? "Sign-up was cancelled. You can try again when you're ready."
+      : oauthError
+        ? "That sign-up did not work. Please try again or use email."
+        : null,
+  );
   const [verifying, setVerifying] = useState(Boolean(initialToken));
   const [verifyFailed, setVerifyFailed] = useState(false);
   const [guestLoading, setGuestLoading] = useState(false);
@@ -204,6 +217,7 @@ function RegisterInner({ initialToken }: { initialToken: string | null }) {
         </div>
       ) : (
         <form onSubmit={onSubmit} className="space-y-5">
+          <SocialAuthButtons from="register" />
           <Field
             label="Name"
             type="text"

@@ -37,6 +37,8 @@ export interface PlannerEvent {
   endAt: string;
   status: "planned" | "cancelled" | "completed" | "missed";
   outcome: "planned" | "completed" | "missed";
+  missReason?: MissReason | null;
+  missNote?: string | null;
   source?: string;
   editable?: boolean;
   pinned?: boolean;
@@ -47,6 +49,8 @@ export interface PlannerEvent {
   /** When the student actually started it. */
   startedAt?: string | null;
 }
+
+export type MissReason = "sick" | "tired" | "other_plans" | "forgot" | "didnt_feel_like_it" | "other";
 
 export interface SessionPlan {
   /** What the session is on, e.g. "3.2 Limiting reagents". */

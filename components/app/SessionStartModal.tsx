@@ -4,20 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
-import type { DashboardResponse, PlannerEvent } from "@/lib/api/types";
+import type { DashboardResponse, MissReason, PlannerEvent } from "@/lib/api/types";
 import AppButton from "./AppButton";
 import EventDetailSheet from "./EventDetailSheet";
-
-type MissReason = "sick" | "tired" | "other_plans" | "forgot" | "didnt_feel_like_it" | "other";
-
-const REASONS: Array<{ value: MissReason; label: string }> = [
-  { value: "sick", label: "Sick" },
-  { value: "tired", label: "Too tired" },
-  { value: "other_plans", label: "Other plans" },
-  { value: "forgot", label: "Forgot" },
-  { value: "didnt_feel_like_it", label: "Didn't feel like it" },
-  { value: "other", label: "Something else" },
-];
+import MissReasonPicker from "./MissReasonPicker";
 
 interface SessionStartModalProps {
   event: PlannerEvent | null;
@@ -28,16 +18,16 @@ interface SessionStartModalProps {
 /** A focused check-in at the moment a planned study block begins. */
 export default function SessionStartModal({ event, timezone, onClose }: SessionStartModalProps) {
   const router = useRouter();
-  const { patch, reload } = useDashboardData();
+  const { data, patch, reload } = useDashboardData();
   const [showReasons, setShowReasons] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [reason, setReason] = useState<MissReason | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!event) return null;
 
   const subject = event.subject || "your study session";
+  const hasPaidPlan = data.user.tier === "pro" || data.user.tier === "max";
 
   function startFocus() {
     if (!event) return;
@@ -50,29 +40,23 @@ export default function SessionStartModal({ event, timezone, onClose }: SessionS
     setEditing(true);
   }
 
-  async function logMiss() {
-    if (!reason) return;
+  async function logMiss(reason?: MissReason, note = "") {
     if (!event) return;
     const selectedEvent = event;
     setSaving(true);
     setError(null);
 
     try {
-      // A3 promotes this locally-captured reason into the event record. Keep
-      // it now so the student does not need to answer the same question twice.
-      try {
-        window.localStorage.setItem(`arcadia:session-start:miss-reason:${selectedEvent.id}`, reason);
-      } catch {
-        /* The outcome still matters if storage is unavailable. */
-      }
       await api(`/api/events/${encodeURIComponent(selectedEvent.id)}/outcome`, {
         method: "POST",
-        body: JSON.stringify({ outcome: "missed" }),
+        body: JSON.stringify(reason ? { outcome: "missed", missReason: reason, missNote: note } : { outcome: "missed" }),
       });
       patch((previous: DashboardResponse) => ({
         ...previous,
         events: previous.events.map((existing) =>
-          existing.id === selectedEvent.id ? { ...existing, outcome: "missed", status: "missed" } : existing,
+          existing.id === selectedEvent.id
+            ? { ...existing, outcome: "missed", status: "missed", missReason: reason ?? null, missNote: note.trim() || null }
+            : existing,
         ),
       }));
       await reload();
@@ -133,33 +117,13 @@ export default function SessionStartModal({ event, timezone, onClose }: SessionS
 
         {showReasons ? (
           <div className="mt-6">
-            <p className="text-[14px] font-medium">What got in the way?</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {REASONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setReason(option.value)}
-                  className="rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-colors"
-                  style={{
-                    background: reason === option.value ? "var(--app-accent)" : "var(--app-surface-soft)",
-                    color: reason === option.value ? "var(--app-accent-on)" : "var(--app-text)",
-                    boxShadow: reason === option.value ? undefined : "var(--elev-inset)",
-                  }}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-            {error ? <p className="mt-3 text-[13px]" style={{ color: "var(--app-danger)" }}>{error}</p> : null}
-            <div className="mt-6 flex items-center justify-between gap-3">
-              <AppButton type="button" variant="ghost" onClick={() => setShowReasons(false)} disabled={saving}>
-                Back
-              </AppButton>
-              <AppButton type="button" variant="primary" onClick={() => void logMiss()} loading={saving} disabled={!reason}>
-                Log missed session
-              </AppButton>
-            </div>
+            <MissReasonPicker
+              onSubmit={(reason, note) => void logMiss(reason, note)}
+              onBack={() => setShowReasons(false)}
+              loading={saving}
+              error={error}
+              submitLabel="Log missed session"
+            />
           </div>
         ) : (
           <div className="mt-6 flex flex-col gap-2">
@@ -171,11 +135,11 @@ export default function SessionStartModal({ event, timezone, onClose }: SessionS
             </AppButton>
             <button
               type="button"
-              onClick={() => setShowReasons(true)}
+              onClick={() => hasPaidPlan ? setShowReasons(true) : void logMiss()}
               className="mt-1 h-9 rounded-md text-[13px] font-medium"
               style={{ color: "var(--app-text-muted)" }}
             >
-              Skip and log why
+              {hasPaidPlan ? "Skip and log why" : "Mark missed"}
             </button>
           </div>
         )}

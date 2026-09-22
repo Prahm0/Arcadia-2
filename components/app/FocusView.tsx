@@ -12,6 +12,7 @@ import { formatClock as formatWallClock } from "@/lib/api/time";
 import { subjectColour } from "@/lib/app/subjectColour";
 import { useReplaceEvent, useSessionPlan } from "@/lib/app/useSessionPlan";
 import CheckoutSheet from "./CheckoutSheet";
+import EventDetailSheet from "./EventDetailSheet";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 
@@ -161,6 +162,8 @@ function FocusViewInner() {
   const replaceEvent = useReplaceEvent();
   const [doneSteps, setDoneSteps] = useState<number[]>(() => readDoneSteps(eventId));
   const [checkout, setCheckout] = useState<{ minutes: number } | null>(null);
+  const [missReasonEvent, setMissReasonEvent] = useState<PlannerEvent | null>(null);
+  const hasPaidPlan = data.user.tier === "pro" || data.user.tier === "max";
   const sessionGoal = plan?.topic ?? goal;
   const colour = linkedEvent ? subjectColour(data.subjects, linkedEvent.subject) ?? "var(--app-accent)" : null;
 
@@ -408,9 +411,14 @@ function FocusViewInner() {
   function skip() {
     if (phase === "focus") {
       // Skipping out of focus = you didn't finish. If linked, mark the block missed.
-      void logSession("focus", preset.focus - remaining, {
-        markEvent: linkedEvent ? "missed" : undefined,
-      });
+      if (linkedEvent && hasPaidPlan) {
+        void logSession("focus", preset.focus - remaining);
+        setMissReasonEvent(linkedEvent);
+      } else {
+        void logSession("focus", preset.focus - remaining, {
+          markEvent: linkedEvent ? "missed" : undefined,
+        });
+      }
       setPhase("break");
       setRemaining(preset.break);
     } else {
@@ -779,6 +787,12 @@ function FocusViewInner() {
           }}
         />
       ) : null}
+      <EventDetailSheet
+        event={missReasonEvent}
+        timezone={timezone}
+        initialMode="miss-reason"
+        onClose={() => setMissReasonEvent(null)}
+      />
     </>
   );
 }

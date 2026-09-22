@@ -237,6 +237,9 @@ export const events = sqliteTable(
     endAt: integer("end_at").notNull(),
     status: text("status").notNull().default("planned"),
     outcome: text("outcome").notNull().default("planned"),
+    // Why a study block was missed, if the student chooses to share it.
+    missReason: text("miss_reason"),
+    missNote: text("miss_note"),
     source: text("source").notNull().default("auto"),
     editable: integer("editable", { mode: "boolean" }).notNull().default(true),
     pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),

@@ -156,7 +156,7 @@ export async function dispatchPushCheckIns(env: Env, now = Date.now()): Promise<
         title: "That session slipped by",
         body: `Arcad marked ${event.title} as missed. Open your plan to recover the time.`,
         tag: `arcadia-missed-${event.id}`,
-        link: `/app?openEvent=${encodeURIComponent(event.id)}`,
+        link: `/app?openEvent=${encodeURIComponent(event.id)}&missReason=1`,
       });
     }),
   );

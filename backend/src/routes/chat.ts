@@ -6,7 +6,7 @@ import { saveMemories } from "../lib/memories";
 import { ARCAD_VOICE, PROPOSE_TOOL, REMEMBER_TOOL, complete, type ChatMessage } from "../lib/openai";
 import { replan } from "../lib/replan";
 import { subjectKey, weeklyTargetMinutes } from "../lib/scheduler";
-import { describeBrief, subjectBriefs } from "../lib/study-context";
+import { describeBrief, recentMissReasonContext, subjectBriefs } from "../lib/study-context";
 import { DAILY_MESSAGE_CAP, isValidTier, tryConsumeMessage } from "../lib/tiers";
 import { DAY, iso, parseClock } from "../lib/time";
 import type { Env, Variables } from "../types";
@@ -316,7 +316,10 @@ async function buildContext(
         .orderBy(asc(schema.memories.createdAt)),
     ]);
 
-  const briefs = await subjectBriefs(database, userId, profile?.timezone ?? "Australia/Brisbane");
+  const [briefs, missReasonContext] = await Promise.all([
+    subjectBriefs(database, userId, profile?.timezone ?? "Australia/Brisbane"),
+    recentMissReasonContext(database, userId),
+  ]);
   const memoryEnabled = profile?.memoryEnabled ?? true;
   const about = profile?.arcadAbout.trim() ?? "";
   const style = profile?.arcadStyle.trim() ?? "";
@@ -363,6 +366,14 @@ async function buildContext(
         )
       : ["- none"]),
     "",
+    ...(missReasonContext.length
+      ? [
+          "Recent self-reported reasons for missed study blocks (last 30 days):",
+          ...missReasonContext.map((pattern) => `- ${pattern}`),
+          "Use these patterns gently. Suggest adjustments or ask before changing the plan, and never shame the student for missing a block.",
+          "",
+        ]
+      : []),
     // The student wrote these about themselves. They shape tone and advice,
     // but don't override the rules at the top.
     ...(about ? ["What the student wants you to know about them:", about, ""] : []),

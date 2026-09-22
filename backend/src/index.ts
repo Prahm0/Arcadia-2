@@ -18,6 +18,7 @@ import memories from "./routes/memories";
 import onboarding from "./routes/onboarding";
 import presence from "./routes/presence";
 import profile from "./routes/profile";
+import push from "./routes/push";
 import studyRooms from "./routes/study-rooms";
 import studySessions from "./routes/study-sessions";
 import subjects from "./routes/subjects";
@@ -26,6 +27,7 @@ import tasks from "./routes/tasks";
 import uploads from "./routes/uploads";
 import waitlist from "./routes/waitlist";
 import type { Env, Variables } from "./types";
+import { dispatchPushCheckIns } from "./lib/push";
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -89,6 +91,7 @@ app.route("/api/memories", memories);
 app.route("/api/onboarding", onboarding);
 app.route("/api/presence", presence);
 app.route("/api/profile", profile);
+app.route("/api/push", push);
 app.route("/api/proposals", proposals);
 app.route("/api/study-rooms", studyRooms);
 app.route("/api/study-sessions", studySessions);
@@ -107,4 +110,9 @@ app.onError((error, c) => {
   return c.json({ error: "Something went wrong." }, 500);
 });
 
-export default app;
+export default {
+  fetch: app.fetch,
+  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(dispatchPushCheckIns(env));
+  },
+} satisfies ExportedHandler<Env>;

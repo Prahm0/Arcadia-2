@@ -62,6 +62,25 @@ export const sessions = sqliteTable(
   (t) => [index("sessions_user_idx").on(t.userId)],
 );
 
+/** One row per browser/device push subscription. The endpoint is a secret capability URL. */
+export const pushSubscriptions = sqliteTable(
+  "push_subscriptions",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").primaryKey(),
+    keysP256dh: text("keys_p256dh").notNull(),
+    keysAuth: text("keys_auth").notNull(),
+    checkinsEnabled: integer("checkins_enabled", { mode: "boolean" }).notNull().default(true),
+    sessionStartEnabled: integer("session_start_enabled", { mode: "boolean" }).notNull().default(true),
+    sessionFollowupEnabled: integer("session_followup_enabled", { mode: "boolean" }).notNull().default(true),
+    createdAt: integer("created_at").notNull().default(now),
+    updatedAt: integer("updated_at").notNull().default(now),
+  },
+  (t) => [index("push_subscriptions_user_idx").on(t.userId)],
+);
+
 export const profiles = sqliteTable("profiles", {
   userId: text("user_id")
     .primaryKey()

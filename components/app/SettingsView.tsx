@@ -18,6 +18,13 @@ import {
   showNotification,
   type NotificationPermissionState,
 } from "@/lib/app/notifications";
+import {
+  enablePushCheckins,
+  getPushSubscriptionStatus,
+  pushCheckinsSupported,
+  updatePushPreferences,
+  type PushPreferences,
+} from "@/lib/app/pushCheckins";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import { useRouter } from "next/navigation";
@@ -95,6 +102,14 @@ export default function SettingsView() {
   const tier = data.user.tier ?? "free";
   const hasPaidPlan = tier === "pro" || tier === "max";
   const hasSubscription = Boolean(data.user.hasSubscription);
+  const [pushEndpoint, setPushEndpoint] = useState<string | null>(null);
+  const [pushPreferences, setPushPreferences] = useState<PushPreferences>({
+    checkinsEnabled: true,
+    sessionStartEnabled: true,
+    sessionFollowupEnabled: true,
+  });
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushNotice, setPushNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
   const [billingBusy, setBillingBusy] = useState(false);
   const [billingNotice, setBillingNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
 
@@ -125,6 +140,47 @@ export default function SettingsView() {
   const [addingFeed, setAddingFeed] = useState(false);
   const [feedBusy, setFeedBusy] = useState<string | null>(null);
   const [feedNotice, setFeedNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
+
+  useEffect(() => {
+    if (isGuest || !hasPaidPlan || !pushCheckinsSupported()) return;
+    getPushSubscriptionStatus()
+      .then((value) => {
+        if (!value) return;
+        setPushEndpoint(value.endpoint);
+        setPushPreferences(value.preferences);
+      })
+      .catch(() => {});
+  }, [hasPaidPlan, isGuest]);
+
+  async function enablePush() {
+    setPushBusy(true);
+    setPushNotice(null);
+    try {
+      const endpoint = await enablePushCheckins();
+      setPushEndpoint(endpoint);
+      const preferences = { checkinsEnabled: true, sessionStartEnabled: true, sessionFollowupEnabled: true };
+      setPushPreferences(preferences);
+      setPushNotice({ tone: "info", text: "Check-ins enabled on this device." });
+    } catch (err) {
+      setPushNotice({ tone: "error", text: err instanceof Error ? err.message : "Couldn't enable check-ins." });
+    } finally {
+      setPushBusy(false);
+    }
+  }
+
+  async function savePushPreferences(next: PushPreferences) {
+    if (!pushEndpoint) return;
+    setPushBusy(true);
+    setPushNotice(null);
+    try {
+      await updatePushPreferences(pushEndpoint, next);
+      setPushPreferences(next);
+    } catch (err) {
+      setPushNotice({ tone: "error", text: err instanceof Error ? err.message : "Couldn't update check-ins." });
+    } finally {
+      setPushBusy(false);
+    }
+  }
 
   async function addCalendarFeed(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -718,6 +774,63 @@ export default function SettingsView() {
 
         {isGuest ? null : (
           <Card>
+            <SectionHeader label="Push check-ins" />
+            {!hasPaidPlan ? (
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-[13.5px] leading-5" style={{ color: "var(--app-text-muted)" }}>
+                  Get a check-in before a study block and follow-ups when a session needs logging. Included with Pro and Max.
+                </p>
+                <AppButton type="button" variant="secondary" onClick={() => router.push("/app/pricing")}>See plans</AppButton>
+              </div>
+            ) : !pushCheckinsSupported() ? (
+              <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
+                This browser doesn&apos;t support push check-ins. On iPhone, add Arcadia to your Home Screen first.
+              </p>
+            ) : !pushEndpoint ? (
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-[13.5px] leading-5" style={{ color: "var(--app-text-muted)" }}>
+                  Receive check-ins even when Arcadia is closed. You can choose which reminders you get after enabling it.
+                </p>
+                <AppButton type="button" variant="primary" onClick={() => void enablePush()} loading={pushBusy}>
+                  Enable check-ins
+                </AppButton>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-5">
+                <PreferenceToggle
+                  label="Enable check-ins"
+                  detail="Allow Arcad to send push notifications to this device."
+                  checked={pushPreferences.checkinsEnabled}
+                  disabled={pushBusy}
+                  onChange={(checkinsEnabled) => void savePushPreferences({ ...pushPreferences, checkinsEnabled })}
+                />
+                <div className="border-t pt-4" style={{ borderColor: "var(--app-border)" }}>
+                  <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Notification types</p>
+                  <div className="mt-3 flex flex-col gap-4">
+                    <PreferenceToggle
+                      label="Before a study block"
+                      detail="A heads-up five minutes before your next session."
+                      checked={pushPreferences.sessionStartEnabled}
+                      disabled={pushBusy || !pushPreferences.checkinsEnabled}
+                      onChange={(sessionStartEnabled) => void savePushPreferences({ ...pushPreferences, sessionStartEnabled })}
+                    />
+                    <PreferenceToggle
+                      label="Session follow-ups"
+                      detail="A nudge when a session needs an outcome, including after two hours."
+                      checked={pushPreferences.sessionFollowupEnabled}
+                      disabled={pushBusy || !pushPreferences.checkinsEnabled}
+                      onChange={(sessionFollowupEnabled) => void savePushPreferences({ ...pushPreferences, sessionFollowupEnabled })}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            <Notice notice={pushNotice} />
+          </Card>
+        )}
+
+        {isGuest ? null : (
+          <Card>
             <SectionHeader label="Plan & billing" />
             <div className="flex flex-col gap-3">
               <div className="flex items-baseline justify-between">
@@ -809,6 +922,44 @@ function SectionHeader({ label }: { label: string }) {
     <h2 className="type-eyebrow mb-4" style={{ color: "var(--app-text-muted)" }}>
       {label}
     </h2>
+  );
+}
+
+function PreferenceToggle({
+  label,
+  detail,
+  checked,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  detail: string;
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div className="min-w-0">
+        <p className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>{label}</p>
+        <p className="mt-1 text-[13px] leading-5" style={{ color: "var(--app-text-muted)" }}>{detail}</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        disabled={disabled}
+        onClick={() => onChange(!checked)}
+        className="inset-ring relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+        style={{ background: checked ? "var(--app-accent)" : "var(--app-surface-soft)" }}
+      >
+        <span
+          aria-hidden="true"
+          className="inline-block h-5 w-5 transform rounded-full surface-raised transition-transform"
+          style={{ transform: checked ? "translateX(22px)" : "translateX(2px)" }}
+        />
+      </button>
+    </div>
   );
 }
 

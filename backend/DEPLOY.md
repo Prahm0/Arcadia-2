@@ -54,6 +54,8 @@ go in the repo.
 npx wrangler secret put OPENAI_API_KEY
 npx wrangler secret put RESEND_API_KEY
 npx wrangler secret put TOKEN_ENCRYPTION_KEY
+npx wrangler secret put VAPID_PUBLIC_KEY
+npx wrangler secret put VAPID_PRIVATE_KEY
 ```
 
 - `OPENAI_API_KEY` from platform.openai.com. Arcad is the only thing that uses
@@ -65,6 +67,18 @@ npx wrangler secret put TOKEN_ENCRYPTION_KEY
 ```bash
 openssl rand -base64 32
 ```
+
+- `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` identify Arcadia to browser push
+  services. Generate this pair once and keep it for the lifetime of existing
+  subscriptions:
+
+```bash
+npx web-push generate-vapid-keys --json
+```
+
+Copy each generated value into the matching secret prompt. Rotating either
+key invalidates existing browser subscriptions, so only rotate after planning
+to have students enable push again.
 
 `APP_ORIGIN` is already set to `https://arcadiahq.app` in `wrangler.jsonc` and
 is not a secret, so it needs no command.

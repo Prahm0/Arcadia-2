@@ -112,8 +112,8 @@ export default function Hero() {
               restDelay="0.5s"
             >
               <p className="type-body-lg max-w-[640px] text-white/65">
-                Arcadia builds your study plan around classes, deadlines, training and everything
-                else in your life. Then it quietly rebuilds the plan every time something moves.
+                Add your subjects and what&rsquo;s due. Arcadia plans your whole week around
+                them, then rewrites the plan every time something moves.
               </p>
             </CopyItem>
 

@@ -4,15 +4,16 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
-import type { DashboardResponse, PlannerEvent } from "@/lib/api/types";
+import type { DashboardResponse, MissReason, PlannerEvent } from "@/lib/api/types";
 import { formatClock } from "@/lib/api/time";
 import { playCompletionTick } from "@/lib/app/completion";
 import AppButton from "./AppButton";
+import MissReasonPicker from "./MissReasonPicker";
 
 interface EventDetailSheetProps {
   event: PlannerEvent | null;
   timezone: string;
-  initialMode?: "details" | "reschedule";
+  initialMode?: "details" | "reschedule" | "miss-reason";
   onClose: () => void;
 }
 
@@ -35,6 +36,7 @@ export default function EventDetailSheet({
   const [busy, setBusy] = useState<"complete" | "miss" | "delete" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rescheduling, setRescheduling] = useState(initialMode === "reschedule");
+  const [reasoning, setReasoning] = useState(false);
   const [draftStart, setDraftStart] = useState("");
   const [savingReschedule, setSavingReschedule] = useState(false);
 
@@ -52,8 +54,11 @@ export default function EventDetailSheet({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setError(null);
     setRescheduling(initialMode === "reschedule");
+    setReasoning(
+      initialMode === "miss-reason" && (data.user.tier === "pro" || data.user.tier === "max"),
+    );
     setDraftStart(toZonedDateTimeInput(event.startAt, timezone));
-  }, [event, initialMode, timezone]);
+  }, [event, initialMode, timezone, data.user.tier]);
 
   if (!event) return null;
 
@@ -65,13 +70,17 @@ export default function EventDetailSheet({
   const isStudy = event.category === "study";
   const isEditable = event.editable !== false;
   const canReschedule = isEditable && canAct;
+  const hasPaidPlan = data.user.tier === "pro" || data.user.tier === "max";
+  const canCaptureMissReason = isStudy && hasPaidPlan;
 
-  async function markOutcome(outcome: "completed" | "missed") {
+  async function markOutcome(outcome: "completed" | "missed", missReason?: MissReason, missNote = "") {
     if (!event) return;
     setBusy(outcome === "completed" ? "complete" : "miss");
     setError(null);
     if (outcome === "completed") playCompletionTick();
     const previousOutcome = event.outcome;
+    const previousMissReason = event.missReason ?? null;
+    const previousMissNote = event.missNote ?? null;
     // Optimistic update
     patch((prev: DashboardResponse) => ({
       ...prev,
@@ -81,6 +90,8 @@ export default function EventDetailSheet({
               ...existing,
               outcome,
               status: outcome === "completed" ? "completed" : "missed",
+              missReason: outcome === "missed" ? missReason ?? existing.missReason ?? null : null,
+              missNote: outcome === "missed" ? missNote.trim() || null : null,
             }
           : existing,
       ),
@@ -88,7 +99,9 @@ export default function EventDetailSheet({
     try {
       await api(`/api/events/${encodeURIComponent(event.id)}/outcome`, {
         method: "POST",
-        body: JSON.stringify({ outcome }),
+        body: JSON.stringify(
+          missReason ? { outcome, missReason, missNote } : { outcome },
+        ),
       });
       await reload();
       onClose();
@@ -97,7 +110,13 @@ export default function EventDetailSheet({
         ...prev,
         events: prev.events.map((existing) =>
           existing.id === event.id
-            ? { ...existing, outcome: previousOutcome, status: previousOutcome }
+            ? {
+                ...existing,
+                outcome: previousOutcome,
+                status: previousOutcome,
+                missReason: previousMissReason,
+                missNote: previousMissNote,
+              }
             : existing,
         ),
       }));
@@ -321,6 +340,21 @@ export default function EventDetailSheet({
           </div>
         ) : null}
 
+        {reasoning ? (
+          <div
+            className="mt-5 rounded-md p-4"
+            style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)" }}
+          >
+            <MissReasonPicker
+              onSubmit={(reason, note) => void markOutcome("missed", reason, note)}
+              onBack={() => setReasoning(false)}
+              loading={busy === "miss"}
+              error={error}
+              submitLabel="Log missed session"
+            />
+          </div>
+        ) : null}
+
         <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             {isEditable && !isCompleted && !isMissed ? (
@@ -337,24 +371,24 @@ export default function EventDetailSheet({
             )}
           </div>
           <div className="flex items-center gap-2">
-            {canReschedule && !rescheduling ? (
+            {canReschedule && !rescheduling && !reasoning ? (
               <AppButton type="button" variant="secondary" onClick={() => setRescheduling(true)}>
                 Reschedule
               </AppButton>
             ) : null}
-            {isStudy && canAct && !rescheduling ? (
+            {isStudy && canAct && !rescheduling && !reasoning ? (
               <Link href={`/app/focus?eventId=${encodeURIComponent(event.id)}`} onClick={onClose}>
                 <AppButton type="button" variant="secondary">
                   Start focus
                 </AppButton>
               </Link>
             ) : null}
-            {canAct && !rescheduling ? (
+            {canAct && !rescheduling && !reasoning ? (
               <>
                 <AppButton
                   type="button"
                   variant="ghost"
-                  onClick={() => markOutcome("missed")}
+                  onClick={() => canCaptureMissReason ? setReasoning(true) : void markOutcome("missed")}
                   loading={busy === "miss"}
                 >
                   Missed
@@ -368,6 +402,11 @@ export default function EventDetailSheet({
                   Mark done
                 </AppButton>
               </>
+            ) : null}
+            {isMissed && canCaptureMissReason && !event.missReason && !reasoning ? (
+              <AppButton type="button" variant="secondary" onClick={() => setReasoning(true)}>
+                Add reason
+              </AppButton>
             ) : null}
           </div>
         </div>

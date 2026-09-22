@@ -20,6 +20,7 @@ import AppButton from "./AppButton";
 import CompanionCard from "./CompanionCard";
 import CompletionBurst from "./CompletionBurst";
 import DailyCheckInCard from "./DailyCheckInCard";
+import EventDetailSheet from "./EventDetailSheet";
 import NewTaskSheet from "./NewTaskSheet";
 import ProactiveArcadCards from "./ProactiveArcadCards";
 import StartNowCard from "./StartNowCard";
@@ -38,6 +39,8 @@ export default function TodayView() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [showTaskSheet, setShowTaskSheet] = useState(false);
   const [celebrateId, setCelebrateId] = useState<{ id: string; at: number } | null>(null);
+  const [openEventId, setOpenEventId] = useState<string | null>(null);
+  const [openEventForReason, setOpenEventForReason] = useState(false);
 
   // Handoff from the mobile bottom nav's +Add slot: ?new=1 auto-opens the
   // New Task sheet, then strips the query so a refresh doesn't repeat.
@@ -56,6 +59,29 @@ export default function TodayView() {
       handledNewParam.current = true;
     }
   }, []);
+
+  // A browser push notification returns here with the relevant event. Remove
+  // the parameter once it has opened so a refresh does not repeat the sheet.
+  const handledOpenEventParam = useRef(false);
+  useEffect(() => {
+    if (handledOpenEventParam.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const eventId = params.get("openEvent");
+    if (!eventId) {
+      handledOpenEventParam.current = true;
+      return;
+    }
+    handledOpenEventParam.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOpenEventId(eventId);
+    setOpenEventForReason(params.get("missReason") === "1");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("openEvent");
+    url.searchParams.delete("missReason");
+    window.history.replaceState({}, "", url.toString());
+  }, []);
+
+  const openedEvent = openEventId ? data.events.find((event) => event.id === openEventId) ?? null : null;
 
   const todaysEvents = useMemo(
     () =>
@@ -142,7 +168,10 @@ export default function TodayView() {
             hasTasks={data.tasks.length > 0}
             onNewTask={() => setShowTaskSheet(true)}
             onComplete={(event) => markOutcome(event, "completed")}
-            onMiss={(event) => markOutcome(event, "missed")}
+            onMiss={(event) => {
+              setOpenEventId(event.id);
+              setOpenEventForReason(true);
+            }}
           />
         </section>
 
@@ -155,6 +184,15 @@ export default function TodayView() {
       </div>
 
       <NewTaskSheet open={showTaskSheet} onClose={() => setShowTaskSheet(false)} />
+      <EventDetailSheet
+        event={openedEvent}
+        timezone={timezone}
+        initialMode={openEventForReason ? "miss-reason" : "details"}
+        onClose={() => {
+          setOpenEventId(null);
+          setOpenEventForReason(false);
+        }}
+      />
     </>
   );
 }

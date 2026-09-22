@@ -54,6 +54,13 @@ go in the repo.
 npx wrangler secret put OPENAI_API_KEY
 npx wrangler secret put RESEND_API_KEY
 npx wrangler secret put TOKEN_ENCRYPTION_KEY
+npx wrangler secret put VAPID_PUBLIC_KEY
+npx wrangler secret put VAPID_PRIVATE_KEY
+npx wrangler secret put GOOGLE_SIGN_IN_ENABLED
+npx wrangler secret put APPLE_CLIENT_ID
+npx wrangler secret put APPLE_TEAM_ID
+npx wrangler secret put APPLE_KEY_ID
+npx wrangler secret put APPLE_PRIVATE_KEY
 ```
 
 - `OPENAI_API_KEY` from platform.openai.com. Arcad is the only thing that uses
@@ -65,6 +72,59 @@ npx wrangler secret put TOKEN_ENCRYPTION_KEY
 ```bash
 openssl rand -base64 32
 ```
+
+- `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` identify Arcadia to browser push
+  services. Generate this pair once and keep it for the lifetime of existing
+  subscriptions:
+
+```bash
+npx web-push generate-vapid-keys --json
+```
+
+Copy each generated value into the matching secret prompt. Rotating either
+key invalidates existing browser subscriptions, so only rotate after planning
+to have students enable push again.
+
+### Social sign-in setup
+
+Google sign-in reuses the existing `GOOGLE_CLIENT_ID` and
+`GOOGLE_CLIENT_SECRET`. In the Google Cloud OAuth client, add this authorised
+redirect URI:
+
+```
+https://arcadiahq.app/api/auth/oauth/google/callback
+```
+
+After the redirect URI is saved, run the following command and enter `true`
+when prompted:
+
+```bash
+npx wrangler secret put GOOGLE_SIGN_IN_ENABLED
+```
+
+This explicit switch keeps the Google button hidden while the redirect URI is
+still being configured. The value is not sensitive, but storing it with
+Wrangler's secret command prevents future deploys from removing a dashboard-only
+variable.
+
+For Apple, create a Sign in with Apple private key and a Services ID in the
+Apple Developer portal. Configure `arcadiahq.app` as the web domain and this
+Return URL:
+
+```
+https://arcadiahq.app/api/auth/oauth/apple/callback
+```
+
+Set the four Apple secrets above as follows:
+
+- `APPLE_CLIENT_ID`: the Services ID, not the iOS bundle ID
+- `APPLE_TEAM_ID`: the 10-character Apple Developer Team ID
+- `APPLE_KEY_ID`: the ID shown for the Sign in with Apple private key
+- `APPLE_PRIVATE_KEY`: the full contents of the downloaded `.p8` file
+
+The sign-in page only shows a provider after all of its required secrets are
+present. This prevents an unfinished provider setup from creating a broken
+button in production.
 
 `APP_ORIGIN` is already set to `https://arcadiahq.app` in `wrangler.jsonc` and
 is not a secret, so it needs no command.

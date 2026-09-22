@@ -6,6 +6,7 @@ import { Suspense, useState } from "react";
 import AuthShell from "@/components/app/AuthShell";
 import Field from "@/components/app/Field";
 import PrimaryButton from "@/components/app/PrimaryButton";
+import SocialAuthButtons from "@/components/app/SocialAuthButtons";
 import { api, ApiError } from "@/lib/api/client";
 import { continueAsGuest as continueAsGuestApi } from "@/lib/auth/guest";
 
@@ -25,11 +26,17 @@ function LoginForm() {
   const [resending, setResending] = useState(false);
   const initialNotice: Notice = params.get("verified")
     ? { tone: "info", text: "Email confirmed, sign in to continue." }
+    : params.get("deleted") === "1"
+      ? { tone: "info", text: "Your account and Arcadia data have been deleted." }
     : params.get("email") === "changed"
       ? { tone: "info", text: "Email updated. Sign in with your new address." }
       : params.get("expired") === "1"
         ? { tone: "info", text: "Your session expired. Sign back in and you'll land right where you left off." }
-        : null;
+        : params.get("oauth") === "cancelled"
+          ? { tone: "info", text: "Sign-in was cancelled. You can try again when you're ready." }
+          : params.get("oauth")
+            ? { tone: "error", text: "That sign-in did not work. Please try again or use email." }
+            : null;
   const [notice, setNotice] = useState<Notice>(initialNotice);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -44,7 +51,10 @@ function LoginForm() {
       });
       const next = params.get("next");
       // Only follow `next` if it's a same-origin path, never an external URL.
-      const safe = next && next.startsWith("/") && !next.startsWith("//") ? next : "/app";
+      const safe =
+        next && next.startsWith("/") && !next.startsWith("//") && !next.includes("\\")
+          ? next
+          : "/app";
       router.push(safe);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Something went wrong.";
@@ -118,6 +128,7 @@ function LoginForm() {
       }
     >
       <form onSubmit={onSubmit} className="space-y-5">
+        <SocialAuthButtons from="login" next={params.get("next")} />
         <Field
           label="Email"
           type="email"

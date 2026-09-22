@@ -32,6 +32,7 @@ interface AnalyticsResponse {
   previousDaily: DailyBucket[];
   hourly?: Array<{ hour: number; minutes: number }>;
   subjects: SubjectBucket[];
+  missReasons: Array<{ reason: string; count: number }>;
   streaks: { current: number; longest: number };
   previous: { minutes: number; sessions: number; averageMinutes: number };
   current: { minutes: number; sessions: number; averageMinutes: number };
@@ -64,6 +65,7 @@ export default function AnalyticsView() {
   useEffect(() => { void load(); }, [load]);
 
   const totalMinutes = analytics?.current.minutes ?? 0;
+  const hasPaidPlan = data.user.tier === "pro" || data.user.tier === "max";
   const prevMinutes = analytics?.previous.minutes ?? 0;
   const delta = prevMinutes ? Math.round(((totalMinutes - prevMinutes) / prevMinutes) * 100) : null;
   const isFirstTime =
@@ -71,6 +73,7 @@ export default function AnalyticsView() {
     analytics !== null &&
     analytics.current.sessions === 0 &&
     analytics.previous.sessions === 0 &&
+    analytics.missReasons.length === 0 &&
     streak.longest === 0;
 
   return (
@@ -172,6 +175,12 @@ export default function AnalyticsView() {
         </div>
       </div>
 
+      {hasPaidPlan ? (
+        <div className="mx-auto w-full max-w-[1140px] px-6 pb-8 sm:px-10">
+          <MissReasonBreakdown reasons={analytics?.missReasons ?? []} />
+        </div>
+      ) : null}
+
       <div className="mx-auto w-full max-w-[1140px] px-6 pb-6 sm:px-10">
         <ConsistencyHeatmap />
       </div>
@@ -255,6 +264,49 @@ export default function AnalyticsView() {
       </>
       )}
     </>
+  );
+}
+
+const MISS_REASON_LABEL: Record<string, string> = {
+  sick: "Sick",
+  tired: "Too tired",
+  other_plans: "Other plans",
+  forgot: "Forgot",
+  didnt_feel_like_it: "Didn't feel like it",
+  other: "Something else",
+};
+
+function MissReasonBreakdown({ reasons }: { reasons: Array<{ reason: string; count: number }> }) {
+  const max = Math.max(1, ...reasons.map((item) => item.count));
+  return (
+    <div className="rounded-lg p-6" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
+      <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Missed session reasons</p>
+      <p className="mt-2 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
+        The reasons you logged over the last 30 days.
+      </p>
+      {reasons.length === 0 ? (
+        <p className="mt-5 text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
+          No reasons logged yet.
+        </p>
+      ) : (
+        <ul className="mt-5 flex max-w-[620px] flex-col gap-3">
+          {reasons.map((item) => (
+            <li key={item.reason}>
+              <div className="flex items-baseline justify-between gap-3 text-[13.5px]">
+                <span style={{ color: "var(--app-text)" }}>{MISS_REASON_LABEL[item.reason] ?? "Other"}</span>
+                <span className="font-mono" style={{ color: "var(--app-text-muted)" }}>{item.count}</span>
+              </div>
+              <div className="mt-1.5 h-2 overflow-hidden rounded-full" style={{ background: "var(--app-border)" }}>
+                <div
+                  className="h-full rounded-full"
+                  style={{ width: `${(item.count / max) * 100}%`, background: "var(--app-accent)" }}
+                />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

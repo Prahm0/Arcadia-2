@@ -38,19 +38,21 @@ tasks.post("/", async (c) => {
   const dueAt = Date.parse(String(body.dueAt ?? ""));
   if (Number.isNaN(dueAt)) return c.json({ error: "Give the task a due date." }, 422);
 
+  const database = db(c.env.DB);
   const id = newId("tsk");
-  await db(c.env.DB).insert(schema.tasks).values({
+  const subject = await resolveSubject(database, userId, body.subject);
+  await database.insert(schema.tasks).values({
     id,
     userId,
     title,
-    subject: body.subject ?? null,
+    subject,
     taskType: body.taskType ?? "study",
     dueAt,
     estimatedMinutes: clamp(body.estimatedMinutes, 15, 1200, 60),
     priority: clamp(body.priority, 1, 5, 2),
   });
 
-  await replan(db(c.env.DB), userId);
+  await replan(database, userId);
   return c.json({ ok: true, id }, 201);
 });
 
@@ -72,7 +74,7 @@ tasks.patch("/:id", async (c) => {
   if (typeof body.title === "string" && body.title.trim()) {
     patch.title = body.title.trim().slice(0, 200);
   }
-  if ("subject" in body) patch.subject = body.subject ?? null;
+  if ("subject" in body) patch.subject = await resolveSubject(database, userId, body.subject);
   if (typeof body.taskType === "string") patch.taskType = body.taskType;
   if (typeof body.dueAt === "string") {
     const dueAt = Date.parse(body.dueAt);
@@ -122,6 +124,24 @@ function clamp(value: unknown, min: number, max: number, fallback: number): numb
   const numeric = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(numeric)) return fallback;
   return Math.min(max, Math.max(min, Math.round(numeric)));
+}
+
+/** Canonicalise existing names and turn an inline task subject into a real subject. */
+async function resolveSubject(
+  database: ReturnType<typeof db>,
+  userId: string,
+  value: string | null | undefined,
+): Promise<string | null> {
+  const name = typeof value === "string" ? value.trim().slice(0, 80) : "";
+  if (!name) return null;
+  const subjects = await database
+    .select({ name: schema.subjects.name })
+    .from(schema.subjects)
+    .where(eq(schema.subjects.userId, userId));
+  const existing = subjects.find((subject) => subject.name.toLowerCase() === name.toLowerCase());
+  if (existing) return existing.name;
+  await database.insert(schema.subjects).values({ id: newId("sub"), userId, name });
+  return name;
 }
 
 export default tasks;

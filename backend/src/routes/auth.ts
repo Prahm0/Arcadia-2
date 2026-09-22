@@ -1,16 +1,229 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../db";
 import { sendEmail, verificationEmail } from "../lib/email";
 import { newId, newToken } from "../lib/ids";
 import { hashPassword, newSalt, passwordProblem, verifyPassword } from "../lib/password";
 import { createSession, destroySession } from "../lib/session";
+import {
+  appleRedirectUri,
+  exchangeAppleCode,
+  exchangeGoogleCode,
+  googleRedirectUri,
+  safeNext,
+  signOAuthState,
+  verifyOAuthState,
+  type SocialIdentity,
+} from "../lib/social-oauth";
 import { DAY } from "../lib/time";
 import type { Env, Variables } from "../types";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const auth = new Hono<{ Bindings: Env; Variables: Variables }>();
+
+function googleSignInConfigured(env: Env): boolean {
+  return (
+    env.GOOGLE_SIGN_IN_ENABLED === "true" &&
+    Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET && env.TOKEN_ENCRYPTION_KEY)
+  );
+}
+
+function oauthErrorUrl(env: Env, returnTo: "/login" | "/register", reason: string): string {
+  const url = new URL(returnTo, env.APP_ORIGIN);
+  url.searchParams.set("oauth", reason);
+  return url.toString();
+}
+
+async function finishSocialLogin(
+  c: Parameters<typeof createSession>[0],
+  identity: SocialIdentity,
+): Promise<void> {
+  const database = db(c.env.DB);
+  const [linked] = await database
+    .select({ userId: schema.oauthAccounts.userId })
+    .from(schema.oauthAccounts)
+    .where(
+      and(
+        eq(schema.oauthAccounts.provider, identity.provider),
+        eq(schema.oauthAccounts.providerUserId, identity.providerUserId),
+      ),
+    )
+    .limit(1);
+
+  let userId = linked?.userId;
+  if (!userId) {
+    const [existingUser] = await database
+      .select({ id: schema.users.id })
+      .from(schema.users)
+      .where(eq(schema.users.email, identity.email))
+      .limit(1);
+
+    userId = existingUser?.id;
+    if (!userId) {
+      userId = newId("usr");
+      const salt = newSalt();
+      const passwordHash = await hashPassword(newToken(48), salt);
+      await database.batch([
+        database.insert(schema.users).values({
+          id: userId,
+          email: identity.email,
+          passwordHash,
+          passwordSalt: salt,
+          name: identity.name,
+          emailVerified: true,
+          lastSignInAt: Date.now(),
+        }),
+        database.insert(schema.profiles).values({
+          userId,
+          displayName: identity.name || null,
+          timezone: "Australia/Brisbane",
+        }),
+        database.insert(schema.companions).values({ userId }),
+        database.insert(schema.oauthAccounts).values({
+          provider: identity.provider,
+          providerUserId: identity.providerUserId,
+          userId,
+        }),
+      ]);
+    } else {
+      await database.batch([
+        database
+          .update(schema.users)
+          .set({ emailVerified: true, lastSignInAt: Date.now() })
+          .where(eq(schema.users.id, userId)),
+        database.insert(schema.oauthAccounts).values({
+          provider: identity.provider,
+          providerUserId: identity.providerUserId,
+          userId,
+        }),
+      ]);
+    }
+  } else {
+    await database
+      .update(schema.users)
+      .set({ lastSignInAt: Date.now() })
+      .where(eq(schema.users.id, userId));
+  }
+
+  await createSession(c, userId);
+}
+
+function socialReturnTo(value: string | undefined): "/login" | "/register" {
+  return value === "register" ? "/register" : "/login";
+}
+
+auth.get("/oauth/config", (c) =>
+  c.json({
+    google: googleSignInConfigured(c.env),
+    apple: Boolean(
+      c.env.APPLE_CLIENT_ID &&
+        c.env.APPLE_TEAM_ID &&
+        c.env.APPLE_KEY_ID &&
+        c.env.APPLE_PRIVATE_KEY &&
+        c.env.TOKEN_ENCRYPTION_KEY,
+    ),
+  }),
+);
+
+auth.get("/oauth/google", async (c) => {
+  const returnTo = socialReturnTo(c.req.query("from"));
+  const clientId = c.env.GOOGLE_CLIENT_ID;
+  if (!googleSignInConfigured(c.env) || !clientId) {
+    return c.redirect(oauthErrorUrl(c.env, returnTo, "not_configured"));
+  }
+  const nonce = newToken(24);
+  const state = await signOAuthState(c.env, {
+    provider: "google",
+    nonce,
+    next: safeNext(c.req.query("next")),
+    returnTo,
+  });
+  const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+  url.searchParams.set("client_id", clientId);
+  url.searchParams.set("redirect_uri", googleRedirectUri(c.env));
+  url.searchParams.set("response_type", "code");
+  url.searchParams.set("scope", "openid profile email");
+  url.searchParams.set("state", state);
+  url.searchParams.set("nonce", nonce);
+  url.searchParams.set("prompt", "select_account");
+  return c.redirect(url.toString());
+});
+
+auth.get("/oauth/google/callback", async (c) => {
+  const stateToken = c.req.query("state") ?? "";
+  let returnTo: "/login" | "/register" = "/login";
+  try {
+    const state = await verifyOAuthState(c.env, stateToken, "google");
+    returnTo = state.returnTo;
+    if (c.req.query("error")) return c.redirect(oauthErrorUrl(c.env, returnTo, "cancelled"));
+    const code = c.req.query("code");
+    if (!code) return c.redirect(oauthErrorUrl(c.env, returnTo, "failed"));
+    await finishSocialLogin(c, await exchangeGoogleCode(c.env, code));
+    return c.redirect(new URL(state.next, c.env.APP_ORIGIN).toString());
+  } catch (error) {
+    console.error("[oauth] Google sign-in failed", error instanceof Error ? error.message : error);
+    return c.redirect(oauthErrorUrl(c.env, returnTo, "failed"));
+  }
+});
+
+auth.get("/oauth/apple", async (c) => {
+  const returnTo = socialReturnTo(c.req.query("from"));
+  if (
+    !c.env.APPLE_CLIENT_ID ||
+    !c.env.APPLE_TEAM_ID ||
+    !c.env.APPLE_KEY_ID ||
+    !c.env.APPLE_PRIVATE_KEY ||
+    !c.env.TOKEN_ENCRYPTION_KEY
+  ) {
+    return c.redirect(oauthErrorUrl(c.env, returnTo, "not_configured"));
+  }
+  const nonce = newToken(24);
+  const state = await signOAuthState(c.env, {
+    provider: "apple",
+    nonce,
+    next: safeNext(c.req.query("next")),
+    returnTo,
+  });
+  const url = new URL("https://appleid.apple.com/auth/authorize");
+  url.searchParams.set("client_id", c.env.APPLE_CLIENT_ID);
+  url.searchParams.set("redirect_uri", appleRedirectUri(c.env));
+  url.searchParams.set("response_type", "code id_token");
+  url.searchParams.set("response_mode", "form_post");
+  url.searchParams.set("scope", "name email");
+  url.searchParams.set("state", state);
+  url.searchParams.set("nonce", nonce);
+  return c.redirect(url.toString());
+});
+
+auth.post("/oauth/apple/callback", async (c) => {
+  const form = await c.req.formData().catch(() => null);
+  const stateToken = String(form?.get("state") ?? "");
+  let returnTo: "/login" | "/register" = "/login";
+  try {
+    const state = await verifyOAuthState(c.env, stateToken, "apple");
+    returnTo = state.returnTo;
+    if (form?.get("error")) return c.redirect(oauthErrorUrl(c.env, returnTo, "cancelled"), 303);
+    const code = String(form?.get("code") ?? "");
+    if (!code) return c.redirect(oauthErrorUrl(c.env, returnTo, "failed"), 303);
+
+    let suppliedName = "";
+    const rawUser = form?.get("user");
+    if (typeof rawUser === "string") {
+      try {
+        const user = JSON.parse(rawUser) as { name?: { firstName?: string; lastName?: string } };
+        suppliedName = [user.name?.firstName, user.name?.lastName].filter(Boolean).join(" ");
+      } catch {
+        // Apple only supplies this optional JSON on the first authorization.
+      }
+    }
+    await finishSocialLogin(c, await exchangeAppleCode(c.env, code, state.nonce, suppliedName));
+    return c.redirect(new URL(state.next, c.env.APP_ORIGIN).toString(), 303);
+  } catch (error) {
+    console.error("[oauth] Apple sign-in failed", error instanceof Error ? error.message : error);
+    return c.redirect(oauthErrorUrl(c.env, returnTo, "failed"), 303);
+  }
+});
 
 auth.post("/register", async (c) => {
   const body = await c.req.json<{ name?: string; email?: string; password?: string }>().catch(

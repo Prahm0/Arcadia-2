@@ -62,6 +62,42 @@ export const sessions = sqliteTable(
   (t) => [index("sessions_user_idx").on(t.userId)],
 );
 
+export const oauthAccounts = sqliteTable(
+  "oauth_accounts",
+  {
+    provider: text("provider").notNull(),
+    providerUserId: text("provider_user_id").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [
+    primaryKey({ columns: [t.provider, t.providerUserId] }),
+    uniqueIndex("oauth_accounts_provider_user_idx").on(t.provider, t.userId),
+    index("oauth_accounts_user_idx").on(t.userId),
+  ],
+);
+
+/** One row per browser/device push subscription. The endpoint is a secret capability URL. */
+export const pushSubscriptions = sqliteTable(
+  "push_subscriptions",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").primaryKey(),
+    keysP256dh: text("keys_p256dh").notNull(),
+    keysAuth: text("keys_auth").notNull(),
+    checkinsEnabled: integer("checkins_enabled", { mode: "boolean" }).notNull().default(true),
+    sessionStartEnabled: integer("session_start_enabled", { mode: "boolean" }).notNull().default(true),
+    sessionFollowupEnabled: integer("session_followup_enabled", { mode: "boolean" }).notNull().default(true),
+    createdAt: integer("created_at").notNull().default(now),
+    updatedAt: integer("updated_at").notNull().default(now),
+  },
+  (t) => [index("push_subscriptions_user_idx").on(t.userId)],
+);
+
 export const profiles = sqliteTable("profiles", {
   userId: text("user_id")
     .primaryKey()
@@ -201,6 +237,9 @@ export const events = sqliteTable(
     endAt: integer("end_at").notNull(),
     status: text("status").notNull().default("planned"),
     outcome: text("outcome").notNull().default("planned"),
+    // Why a study block was missed, if the student chooses to share it.
+    missReason: text("miss_reason"),
+    missNote: text("miss_note"),
     source: text("source").notNull().default("auto"),
     editable: integer("editable", { mode: "boolean" }).notNull().default(true),
     pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),

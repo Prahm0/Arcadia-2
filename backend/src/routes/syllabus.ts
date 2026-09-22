@@ -12,6 +12,7 @@ import {
   readSyllabus,
   type AssessmentKind,
 } from "../lib/syllabus";
+import { getUserTier, isPaidTier } from "../lib/tiers";
 import { HOUR, iso, localDateKey, startOfLocalDay } from "../lib/time";
 import type { Env, Variables } from "../types";
 
@@ -90,6 +91,14 @@ export const subjectMaterials: App = new Hono();
 
 subjectMaterials.post("/:id/files", async (c) => {
   const { userId } = c.get("session");
+  // File uploads are a paid feature, same as /api/uploads. Topics and
+  // assessments can still be added by hand on any plan.
+  if (!isPaidTier(await getUserTier(db(c.env.DB), userId))) {
+    return c.json(
+      { error: "Syllabus and resource uploads are on Pro and Max. You can still add topics yourself.", code: "upgrade_required" },
+      402,
+    );
+  }
   const subjectId = c.req.param("id");
   const kind = c.req.query("kind") === "syllabus" ? "syllabus" : "resource";
   const filename = clip(c.req.query("filename") || "upload", 200) || "upload";

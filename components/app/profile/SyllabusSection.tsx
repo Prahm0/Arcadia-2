@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState } from "react";
-import { api } from "@/lib/api/client";
+import { ApiError, api } from "@/lib/api/client";
 import type { AssessmentKind, ProfileSubject, SubjectAssessment, SubjectTopic } from "@/lib/api/profile";
 import { MATERIAL_ACCEPT, formatDateSpan, uploadMaterial } from "@/lib/api/subjectMaterials";
 import AppButton from "../AppButton";
@@ -33,7 +34,7 @@ export default function SyllabusSection({
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const [notice, setNotice] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
+  const [notice, setNotice] = useState<{ tone: "ok" | "error"; text: string; upgrade?: boolean } | null>(null);
   const [topicSheet, setTopicSheet] = useState<SubjectTopic | "new" | null>(null);
   const [assessmentSheet, setAssessmentSheet] = useState<SubjectAssessment | "new" | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -50,7 +51,11 @@ export default function SyllabusSection({
           : { tone: "error", text: result.message ?? "Arcad couldn't read that one." },
       );
     } catch (err) {
-      setNotice({ tone: "error", text: err instanceof Error ? err.message : "Upload failed." });
+      setNotice({
+        tone: "error",
+        text: err instanceof Error ? err.message : "Upload failed.",
+        upgrade: err instanceof ApiError && err.status === 402,
+      });
     } finally {
       setUploading(false);
       if (input.current) input.current.value = "";
@@ -176,6 +181,14 @@ export default function SyllabusSection({
           style={{ color: notice.tone === "error" ? "var(--app-danger)" : "var(--app-success)" }}
         >
           {notice.text}
+          {notice.upgrade ? (
+            <>
+              {" "}
+              <Link href="/app/pricing" className="underline" style={{ color: "var(--app-accent-strong)" }}>
+                See plans
+              </Link>
+            </>
+          ) : null}
         </p>
       ) : null}
 

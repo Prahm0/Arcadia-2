@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState } from "react";
-import { api } from "@/lib/api/client";
+import { ApiError, api } from "@/lib/api/client";
 import type { ProfileSubject } from "@/lib/api/profile";
 import { MATERIAL_ACCEPT, uploadMaterial } from "@/lib/api/subjectMaterials";
 import AppButton from "../AppButton";
@@ -23,15 +24,23 @@ export default function ResourcesSection({
   const [uploading, setUploading] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [upgrade, setUpgrade] = useState(false);
 
   async function upload(files: FileList) {
     setError(null);
+    setUpgrade(false);
     for (const file of Array.from(files)) {
       setUploading(file.name);
       try {
         const result = await uploadMaterial(subject.id, file, "resource");
         if (!result.read && result.message) setError(`${file.name}: ${result.message}`);
       } catch (err) {
+        if (err instanceof ApiError && err.status === 402) {
+          // Paid feature: one message is enough, not one per file.
+          setError(err.message);
+          setUpgrade(true);
+          break;
+        }
         setError(`${file.name}: ${err instanceof Error ? err.message : "upload failed"}`);
       }
     }
@@ -135,6 +144,14 @@ export default function ResourcesSection({
       {error ? (
         <p role="alert" className="mt-2 text-[12.5px]" style={{ color: "var(--app-danger)" }}>
           {error}
+          {upgrade ? (
+            <>
+              {" "}
+              <Link href="/app/pricing" className="underline" style={{ color: "var(--app-accent-strong)" }}>
+                See plans
+              </Link>
+            </>
+          ) : null}
         </p>
       ) : null}
     </Section>

@@ -55,7 +55,7 @@ export const PROPOSE_TOOL = {
               estimatedMinutes: { type: "number" },
               priority: { type: "number" },
               category: { type: "string" },
-              recurrence: { type: "string", enum: ["none", "daily", "weekly"] },
+              recurrence: { type: "string", enum: ["none", "daily", "weekly", "weekdays"] },
               weekday: { type: "number" },
               startTime: { type: "string", description: "HH:MM" },
               endTime: { type: "string", description: "HH:MM" },
@@ -69,10 +69,38 @@ export const PROPOSE_TOOL = {
   },
 };
 
+/**
+ * Saves lasting facts about the student, the way ChatGPT's memory does.
+ * Unlike plan changes this needs no approval: memories only shape how Arcad
+ * talks and plans, and the student can see and delete every one on their
+ * profile. Only offered when the student has memory switched on.
+ */
+export const REMEMBER_TOOL = {
+  type: "function" as const,
+  function: {
+    name: "remember",
+    description:
+      "Save facts about the student that will still matter in future chats: study preferences, strengths and weak spots, goals, how their week works, how they like to be spoken to. Don't save one-off requests, anything already in the context, or sensitive details (health, family matters, passwords, addresses). Still reply to the student normally.",
+    parameters: {
+      type: "object",
+      properties: {
+        facts: {
+          type: "array",
+          description: "Each fact is one short sentence about the student, in the third person.",
+          items: { type: "string" },
+        },
+      },
+      required: ["facts"],
+    },
+  },
+};
+
+export type Tool = typeof PROPOSE_TOOL | typeof REMEMBER_TOOL;
+
 export async function complete(
   env: Env,
   messages: ChatMessage[],
-  useTools = true,
+  tools: Tool[] = [PROPOSE_TOOL],
 ): Promise<Completion> {
   if (!env.OPENAI_API_KEY) {
     throw new Error("The assistant is not configured yet.");
@@ -89,7 +117,7 @@ export async function complete(
       messages,
       temperature: 0.4,
       max_tokens: 700,
-      ...(useTools ? { tools: [PROPOSE_TOOL], tool_choice: "auto" } : {}),
+      ...(tools.length > 0 ? { tools, tool_choice: "auto" } : {}),
     }),
   });
 

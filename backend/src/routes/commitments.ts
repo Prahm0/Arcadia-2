@@ -8,7 +8,8 @@ import { parseClock } from "../lib/time";
 import type { Env, Variables } from "../types";
 
 const CATEGORIES = ["school", "sport", "extracurricular", "study", "sleep", "other"];
-const RECURRENCES = ["none", "daily", "weekly"];
+// "weekdays" is Mon–Fri, the shape most school timetables take.
+const RECURRENCES = ["none", "daily", "weekly", "weekdays"];
 
 interface CommitmentBody {
   title?: string;

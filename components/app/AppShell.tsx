@@ -18,6 +18,7 @@ import NotificationCentre from "./NotificationCentre";
 import PageMount from "./PageMount";
 import ShortcutsDialog from "./ShortcutsDialog";
 import Logo from "@/components/ui/Logo";
+import { Avatar } from "./profile/ui";
 import { isGuestEmail } from "@/lib/auth/guest";
 
 interface AppShellProps {
@@ -60,7 +61,7 @@ const NAV_GROUPS: NavGroup[] = [
     icon: icon(<path d="M4 5h12v9H8l-4 3V5z" />),
     items: [
       { label: "Chat", href: "/app/arcad", icon: icon(<path d="M4 5h12v9H8l-4 3V5z" />) },
-      { label: "Knowledge", href: "/app/knowledge", icon: icon(<><path d="M5 4h9l2 2v10H5z" strokeLinejoin="round" /><path d="M14 4v3h3M8 10h5M8 13h5" /></>) },
+      { label: "What Arcad knows", href: "/app/profile#arcad", icon: icon(<><circle cx="10" cy="8" r="3" /><path d="M4.5 16.5c1-2.6 3.1-4 5.5-4s4.5 1.4 5.5 4" /></>) },
     ],
   },
   {
@@ -70,7 +71,6 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "Schedule", href: "/app/schedule", icon: icon(<><rect x="3" y="4" width="14" height="13" rx="2" /><path d="M3 8h14M7 2v4M13 2v4" /></>) },
       { label: "Deadlines", href: "/app/deadlines", icon: icon(<><circle cx="10" cy="10" r="7" /><path d="M10 6v4l3 2" /></>) },
-      { label: "Commitments", href: "/app/commitments", icon: icon(<><path d="M3 9h14M10 3v14M3 6a3 3 0 013-3h8a3 3 0 013 3v8a3 3 0 01-3 3H6a3 3 0 01-3-3V6z" /></>) },
     ],
   },
   {
@@ -371,21 +371,32 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
                 style={{ borderColor: "var(--app-border)" }}
               >
                 <Link
-                  href="/app/settings"
-                  aria-label={`Open settings for ${user.name}`}
+                  href="/app/profile"
+                  aria-label={`Open your profile, ${user.name}`}
+                  aria-current={pathname.startsWith("/app/profile") ? "page" : undefined}
                   className="ui-hover flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-1.5 py-1"
+                  style={{ background: pathname.startsWith("/app/profile") ? ACTIVE_BG : undefined }}
                 >
-                  <div
-                    aria-hidden="true"
-                    className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[12px] font-semibold"
-                    style={{ background: "var(--app-accent-soft)", color: "var(--app-accent-strong)" }}
-                  >
-                    {user.name.slice(0, 1).toUpperCase()}
-                  </div>
+                  <Avatar name={user.name} colour={user.avatarColour} size={28} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-medium" style={{ color: "var(--app-text)" }}>{user.name}</p>
-                    <p className="truncate text-[11.5px]" style={{ color: "var(--app-text-muted)" }}>{isGuestEmail(user.email) ? "Guest account" : user.email}</p>
+                    <p className="truncate text-[11.5px]" style={{ color: "var(--app-text-muted)" }}>{isGuestEmail(user.email) ? "Guest account" : "Your profile"}</p>
                   </div>
+                </Link>
+                <Link
+                  href="/app/settings"
+                  aria-label="Settings"
+                  aria-current={pathname.startsWith("/app/settings") ? "page" : undefined}
+                  className="grid h-8 w-8 place-items-center rounded-md transition-colors ui-hover"
+                  style={{
+                    color: pathname.startsWith("/app/settings") ? "var(--app-text)" : "var(--app-text-muted)",
+                    background: pathname.startsWith("/app/settings") ? ACTIVE_BG : undefined,
+                  }}
+                >
+                  <svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="10" cy="10" r="2.5" />
+                    <path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4" />
+                  </svg>
                 </Link>
                 <button
                   onClick={signOut}

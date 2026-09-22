@@ -57,6 +57,9 @@ function commitmentSlots(commitment: Commitment, from: number, to: number, tz: s
   for (let day = startOfLocalDay(from, tz); day < to; day = nextLocalDay(day, tz)) {
     if (commitment.recurrence === "weekly") {
       if (commitment.weekday === null || localWeekday(day, tz) !== commitment.weekday) continue;
+    } else if (commitment.recurrence === "weekdays") {
+      const weekday = localWeekday(day, tz);
+      if (weekday === 0 || weekday === 6) continue;
     } else if (commitment.recurrence === "none") {
       if (!commitment.startDate) continue;
       const target = Date.parse(`${commitment.startDate}T00:00:00Z`);
@@ -120,12 +123,12 @@ export function weeklyBudget(profile: Profile, subjects: Subject[]): WeeklyBudge
   };
 }
 
-function subjectKey(name: string | null | undefined): string {
+export function subjectKey(name: string | null | undefined): string {
   return (name ?? "").trim().toLowerCase();
 }
 
 /** Same-named subjects (e.g. onboarding run twice) plan as one. */
-function uniqueSubjects(subjects: Subject[]): Subject[] {
+export function uniqueSubjects(subjects: Subject[]): Subject[] {
   const seen = new Set<string>();
   return subjects.filter((subject) => {
     const key = subjectKey(subject.name);

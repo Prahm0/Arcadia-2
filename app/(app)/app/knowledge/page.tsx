@@ -1,7 +1,6 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import KnowledgeView from "@/components/app/KnowledgeView";
-
+// Subjects, their notes and what Arcad knows now live on the profile.
 export default function KnowledgePage() {
-  return <KnowledgeView />;
+  redirect("/app/profile#subjects");
 }

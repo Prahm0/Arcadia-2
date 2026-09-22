@@ -71,9 +71,9 @@ export default function MenuBar({
         { kind: "item", label: "New task…", shortcut: ["N"], onSelect: onNewTask },
         { kind: "item", label: "New study room…", onSelect: () => go("/app/rooms") },
         { kind: "item", label: "Start focus session", onSelect: () => go("/app/focus") },
-        { kind: "item", label: "Upload to Knowledge…", onSelect: () => go("/app/knowledge") },
         { kind: "separator" },
-        { kind: "item", label: "Account settings", shortcut: ["G", ","], onSelect: () => go("/app/settings") },
+        { kind: "item", label: "Your profile", shortcut: ["G", "P"], onSelect: () => go("/app/profile") },
+        { kind: "item", label: "Settings", shortcut: ["G", ","], onSelect: () => go("/app/settings") },
         { kind: "separator" },
         { kind: "item", label: "Sign out", onSelect: onSignOut },
       ],
@@ -81,9 +81,10 @@ export default function MenuBar({
     {
       label: "Edit",
       entries: [
-        { kind: "item", label: "Commitments…", onSelect: () => go("/app/commitments") },
+        { kind: "item", label: "Subjects…", onSelect: () => go("/app/profile#subjects") },
+        { kind: "item", label: "Co-curriculars…", onSelect: () => go("/app/profile#cocurriculars") },
         { kind: "item", label: "Deadlines…", onSelect: () => go("/app/deadlines") },
-        { kind: "item", label: "Subjects & preferences…", onSelect: () => go("/app/settings") },
+        { kind: "item", label: "Study routine…", onSelect: () => go("/app/profile#routine") },
       ],
     },
     {

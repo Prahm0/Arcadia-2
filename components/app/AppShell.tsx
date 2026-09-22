@@ -8,6 +8,7 @@ import type { AuthUser } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { useStreak } from "@/lib/app/useStreak";
 import { useSessionReminders } from "@/lib/app/useSessionReminders";
+import { useSessionStartWatcher } from "@/lib/app/useSessionStartWatcher";
 import { useAppShortcuts } from "@/lib/app/useAppShortcuts";
 import ArcadFloatingButton from "./ArcadFloatingButton";
 import GuestBanner from "./GuestBanner";
@@ -17,6 +18,7 @@ import NewTaskSheet from "./NewTaskSheet";
 import NotificationCentre from "./NotificationCentre";
 import PageMount from "./PageMount";
 import ShortcutsDialog from "./ShortcutsDialog";
+import SessionStartModal from "./SessionStartModal";
 import Logo from "@/components/ui/Logo";
 import { Avatar } from "./profile/ui";
 import { isGuestEmail } from "@/lib/auth/guest";
@@ -98,6 +100,7 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
   const router = useRouter();
   const streakSummary = useStreak();
   useSessionReminders();
+  const sessionStart = useSessionStartWatcher();
   const streak = streakSummary.current;
   const [signingOut, setSigningOut] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(readSidebarPref);
@@ -441,6 +444,11 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
       <MobileBottomNav />
       <NewTaskSheet open={newTaskOpen} onClose={() => setNewTaskOpen(false)} />
       <ShortcutsDialog open={shortcutsOpen} onClose={closeShortcuts} />
+      <SessionStartModal
+        event={sessionStart.event}
+        timezone={sessionStart.timezone}
+        onClose={sessionStart.dismiss}
+      />
     </div>
   );
 }

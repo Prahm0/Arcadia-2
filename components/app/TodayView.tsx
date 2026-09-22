@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import { CATEGORY_COLOR } from "@/lib/app/categoryColors";
+import { openArcad } from "@/lib/app/commands";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import type { PlannerEvent } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
@@ -214,7 +215,7 @@ function TodayCard(props: TodayCardProps) {
           {studyBlocks.length === 0
             ? hasTasks
               ? "Nothing scheduled today, the plan is clear."
-              : "Add your first task to build a plan."
+              : "Let's build your first week. Pick where you want to start."
             : (
               <>
                 {remainingCount === 0
@@ -233,10 +234,16 @@ function TodayCard(props: TodayCardProps) {
         </p>
       </div>
 
-      {studyBlocks.length === 0 ? (
+      {studyBlocks.length === 0 && !hasTasks ? (
+        // Fresh account, no tasks, no schedule. Offer three concrete
+        // starting points instead of one bare button, so the page
+        // doesn't feel empty. The three actions cover the main ways to
+        // seed a plan: manual task, ask Arcad, or pull in real events.
+        <FirstRunActions onNewTask={onNewTask} />
+      ) : studyBlocks.length === 0 ? (
         <div className="px-5 pb-6 pt-6 sm:px-6">
           <AppButton variant="secondary" onClick={onNewTask}>
-            Add your first task
+            Add a task
           </AppButton>
         </div>
       ) : (
@@ -566,4 +573,108 @@ function clampWeekProgress(now: Date): number {
   const dayOfWeekMon = (day + 6) % 7;
   const hour = now.getHours() + now.getMinutes() / 60;
   return Math.min(1, (dayOfWeekMon * 24 + hour) / (7 * 24));
+}
+
+/**
+ * Three-way empty-state on Today for a fresh account (no tasks, no
+ * events yet). Each row is a real starting path, not a link to a
+ * "getting started" doc: add a task inline, open Arcad with a starter
+ * prompt, or head to Settings for calendar sync. Compact enough that
+ * the "Later today" strip below stays visible on a phone.
+ */
+function FirstRunActions({ onNewTask }: { onNewTask: () => void }) {
+  return (
+    <div className="px-5 pb-6 pt-4 sm:px-6">
+      <ul className="flex flex-col divide-y" style={{ borderColor: "var(--app-border)" }}>
+        <FirstRunRow
+          onClick={onNewTask}
+          icon={
+            <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+              <path d="M10 4v12M4 10h12" />
+            </svg>
+          }
+          title="Add your first task"
+          hint="Type a name and a due date. Arcadia plans the time for you."
+        />
+        <FirstRunRow
+          onClick={openArcad}
+          icon={
+            <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 5h12v9H8l-4 3z" />
+            </svg>
+          }
+          title="Ask Arcad to plan your week"
+          hint="Tell it what's coming up. It builds the plan around you."
+        />
+        <FirstRunRow
+          href="/app/settings"
+          icon={
+            <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="5" width="14" height="12" rx="2" />
+              <path d="M3 9h14M8 3v4M12 3v4" />
+            </svg>
+          }
+          title="Connect your calendar"
+          hint="Google, Apple or Canvas. Events land straight in your schedule."
+        />
+      </ul>
+    </div>
+  );
+}
+
+function FirstRunRow({
+  icon,
+  title,
+  hint,
+  onClick,
+  href,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  hint: string;
+  onClick?: () => void;
+  href?: string;
+}) {
+  const inner = (
+    <>
+      <span
+        aria-hidden="true"
+        className="grid size-9 shrink-0 place-items-center rounded-lg"
+        style={{ background: "var(--app-accent-soft)", color: "var(--app-accent-strong)" }}
+      >
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[14px] font-semibold" style={{ color: "var(--app-text)" }}>
+          {title}
+        </span>
+        <span className="mt-0.5 block text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
+          {hint}
+        </span>
+      </span>
+      <span aria-hidden="true" className="shrink-0 opacity-60">
+        <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M7 5l5 5-5 5" />
+        </svg>
+      </span>
+    </>
+  );
+  const className =
+    "flex items-center gap-3.5 py-3.5 text-left transition-colors ui-hover rounded-md -mx-1 px-1";
+  if (href) {
+    return (
+      <li>
+        <Link href={href} className={className}>
+          {inner}
+        </Link>
+      </li>
+    );
+  }
+  return (
+    <li>
+      <button type="button" onClick={onClick} className={cn(className, "w-full")}>
+        {inner}
+      </button>
+    </li>
+  );
 }

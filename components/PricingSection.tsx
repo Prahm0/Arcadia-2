@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import Container from "./ui/Container";
 import FadeIn from "./ui/FadeIn";
@@ -5,12 +8,19 @@ import RevealText from "./ui/RevealText";
 import SectionLabel from "./ui/SectionLabel";
 import Button from "./ui/Button";
 
+type Interval = "week" | "month" | "year";
+
+interface PaidPricing {
+  weekly: number;
+  monthly: number;
+  yearly: number;
+}
+
 interface Tier {
   key: "free" | "pro" | "max";
   name: string;
   headline: string;
-  priceLabel: string;
-  priceNote: string;
+  pricing: PaidPricing | null;
   features: string[];
   cta: string;
   highlighted?: boolean;
@@ -22,8 +32,7 @@ const TIERS: Tier[] = [
     key: "free",
     name: "Free",
     headline: "Get organised, on your own.",
-    priceLabel: "$0",
-    priceNote: "Forever free.",
+    pricing: null,
     features: [
       "Auto-scheduled daily plan",
       "Tasks & deadlines",
@@ -35,12 +44,8 @@ const TIERS: Tier[] = [
   {
     key: "pro",
     name: "Pro",
-    // Mirrors what the in-app PricingView charges. Landing quotes monthly
-    // rather than weekly so the number matches what a customer sees on
-    // their statement, no "wait, why was I charged $16?" moment.
     headline: "Arcad turned up. Calendar synced. Notes indexed.",
-    priceLabel: "$15.99",
-    priceNote: "AUD / month · or $149 / yr (save ~22%)",
+    pricing: { weekly: 4.99, monthly: 15.99, yearly: 149 },
     features: [
       "Everything in Free",
       "20 Arcad messages / day",
@@ -57,8 +62,7 @@ const TIERS: Tier[] = [
     key: "max",
     name: "Max",
     headline: "Voice tutor. Exam prep. Real humans when you're stuck.",
-    priceLabel: "$39.99",
-    priceNote: "AUD / month · or $379 / yr",
+    pricing: { weekly: 10.99, monthly: 39.99, yearly: 379 },
     features: [
       "Everything in Pro",
       "100 Arcad messages / day",
@@ -71,7 +75,28 @@ const TIERS: Tier[] = [
   },
 ];
 
+/**
+ * Turns each pricing option into a per-week rate so the headline number
+ * is comparable across intervals. Monthly divides across 4.345 weeks
+ * (365.25 ÷ 12 ÷ 7); yearly divides across 52.
+ */
+function perWeek(pricing: PaidPricing, interval: Interval): number {
+  if (interval === "week") return pricing.weekly;
+  if (interval === "month") return pricing.monthly / (365.25 / 12 / 7);
+  return pricing.yearly / 52;
+}
+
+function savingsVsWeekly(pricing: PaidPricing, interval: Interval): number {
+  if (interval === "week") return 0;
+  return Math.round(((pricing.weekly - perWeek(pricing, interval)) / pricing.weekly) * 100);
+}
+
 export default function PricingSection() {
+  const [interval, setInterval] = useState<Interval>("month");
+  const proPricing = TIERS.find((t) => t.key === "pro")?.pricing ?? null;
+  const monthlySavings = proPricing ? savingsVsWeekly(proPricing, "month") : 0;
+  const yearlySavings = proPricing ? savingsVsWeekly(proPricing, "year") : 0;
+
   return (
     <section
       id="pricing"
@@ -105,7 +130,7 @@ export default function PricingSection() {
           <div className="col-span-12 lg:col-span-5 lg:col-start-8 lg:self-end">
             <FadeIn delay={0.2}>
               <p className="type-body-lg max-w-[440px] text-white/60">
-                Start free, you'll feel it in your first week. When you're ready,
+                Start free, you&rsquo;ll feel it in your first week. When you&rsquo;re ready,
                 Pro turns Arcad into a proper study partner. Max adds a voice tutor
                 and, soon, real humans.
               </p>
@@ -113,10 +138,19 @@ export default function PricingSection() {
           </div>
         </div>
 
-        <div className="mt-14 grid gap-5 md:grid-cols-3 lg:mt-20">
+        <FadeIn delay={0.25} className="mt-12 flex justify-center lg:mt-16">
+          <IntervalToggle
+            value={interval}
+            onChange={setInterval}
+            monthlySavings={monthlySavings}
+            yearlySavings={yearlySavings}
+          />
+        </FadeIn>
+
+        <div className="mt-8 grid gap-5 md:grid-cols-3 lg:mt-12">
           {TIERS.map((tier, i) => (
             <FadeIn key={tier.key} delay={0.1 + i * 0.08}>
-              <TierCard tier={tier} />
+              <TierCard tier={tier} interval={interval} />
             </FadeIn>
           ))}
         </div>
@@ -134,7 +168,71 @@ export default function PricingSection() {
   );
 }
 
-function TierCard({ tier }: { tier: Tier }) {
+function IntervalToggle({
+  value,
+  onChange,
+  monthlySavings,
+  yearlySavings,
+}: {
+  value: Interval;
+  onChange: (v: Interval) => void;
+  monthlySavings: number;
+  yearlySavings: number;
+}) {
+  return (
+    <div
+      className="flex items-center gap-1 rounded-full p-1"
+      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+    >
+      <IntervalButton active={value === "week"} onClick={() => onChange("week")}>
+        Weekly
+      </IntervalButton>
+      <IntervalButton active={value === "month"} onClick={() => onChange("month")}>
+        Monthly · save {monthlySavings}%
+      </IntervalButton>
+      <IntervalButton active={value === "year"} onClick={() => onChange("year")}>
+        Yearly · save {yearlySavings}%
+      </IntervalButton>
+    </div>
+  );
+}
+
+function IntervalButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-full px-4 py-1.5 text-[12.5px] font-semibold whitespace-nowrap transition-colors"
+      style={{
+        background: active ? "rgb(124,92,255)" : "transparent",
+        color: active ? "white" : "rgba(255,255,255,0.7)",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function TierCard({ tier, interval }: { tier: Tier; interval: Interval }) {
+  const pricing = tier.pricing;
+  const perWeekRate = pricing ? perWeek(pricing, interval) : null;
+  const billedAmount = pricing
+    ? interval === "week"
+      ? pricing.weekly
+      : interval === "month"
+      ? pricing.monthly
+      : pricing.yearly
+    : null;
+  const billedLabel = interval === "week" ? "week" : interval === "month" ? "month" : "year";
+
   return (
     <div
       className="relative flex h-full flex-col gap-6 rounded-2xl p-7"
@@ -170,15 +268,27 @@ function TierCard({ tier }: { tier: Tier }) {
       </div>
 
       <div>
-        <div className="flex items-baseline gap-2">
-          <span className="text-[38px] font-medium tracking-[-0.02em] text-white">
-            {tier.priceLabel}
-          </span>
-          {tier.key !== "free" ? (
-            <span className="text-[13px] text-white/45">/ mo</span>
-          ) : null}
-        </div>
-        <p className="mt-1 type-mono-label text-white/45">{tier.priceNote}</p>
+        {pricing === null || perWeekRate === null || billedAmount === null ? (
+          <>
+            <div className="flex items-baseline gap-2">
+              <span className="text-[38px] font-medium tracking-[-0.02em] text-white">$0</span>
+              <span className="text-[13px] text-white/45">/ week</span>
+            </div>
+            <p className="mt-1 type-mono-label text-white/45">Forever free.</p>
+          </>
+        ) : (
+          <>
+            <div className="flex items-baseline gap-2">
+              <span className="text-[38px] font-medium tracking-[-0.02em] text-white">
+                ${perWeekRate.toFixed(2)}
+              </span>
+              <span className="text-[13px] text-white/45">/ week</span>
+            </div>
+            <p className="mt-1 type-mono-label text-white/45">
+              Billed ${billedAmount.toFixed(billedAmount % 1 === 0 ? 0 : 2)} AUD per {billedLabel}
+            </p>
+          </>
+        )}
       </div>
 
       <ul className="flex flex-col gap-2.5">
@@ -205,8 +315,6 @@ function TierCard({ tier }: { tier: Tier }) {
         <Button
           tone="dark"
           variant={tier.highlighted ? "primary" : "secondary"}
-          // Everyone goes through /register first; paid tiers surface
-          // Checkout from the in-app pricing page after signup.
           href="/register"
           size="md"
           className="w-full"

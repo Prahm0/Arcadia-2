@@ -14,24 +14,40 @@ import type { Env, Variables } from "../types";
 const billing = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 type Plan = "pro" | "max";
-type Interval = "month" | "year";
+type Interval = "week" | "month" | "year";
 
 /**
  * Returns the price ID for the {plan, interval} combo from the Worker's
  * env. Wrangler carries these as vars so switching sandbox → live is a
- * config change, not a redeploy of the code.
+ * config change, not a redeploy of the code. Empty string means the
+ * interval hasn't been set up in Stripe yet, treated as null.
  */
 function priceIdFor(env: Env, plan: Plan, interval: Interval): string | null {
-  if (plan === "pro" && interval === "month") return env.STRIPE_PRICE_PRO_MONTHLY;
-  if (plan === "pro" && interval === "year") return env.STRIPE_PRICE_PRO_YEARLY;
-  if (plan === "max" && interval === "month") return env.STRIPE_PRICE_MAX_MONTHLY;
-  if (plan === "max" && interval === "year") return env.STRIPE_PRICE_MAX_YEARLY;
-  return null;
+  const lookup: Record<string, string | undefined> = {
+    "pro:week": env.STRIPE_PRICE_PRO_WEEKLY,
+    "pro:month": env.STRIPE_PRICE_PRO_MONTHLY,
+    "pro:year": env.STRIPE_PRICE_PRO_YEARLY,
+    "max:week": env.STRIPE_PRICE_MAX_WEEKLY,
+    "max:month": env.STRIPE_PRICE_MAX_MONTHLY,
+    "max:year": env.STRIPE_PRICE_MAX_YEARLY,
+  };
+  const value = lookup[`${plan}:${interval}`];
+  return value && value.length > 0 ? value : null;
 }
 
 function tierForPriceId(env: Env, priceId: string): "pro" | "max" | null {
-  if (priceId === env.STRIPE_PRICE_PRO_MONTHLY || priceId === env.STRIPE_PRICE_PRO_YEARLY) return "pro";
-  if (priceId === env.STRIPE_PRICE_MAX_MONTHLY || priceId === env.STRIPE_PRICE_MAX_YEARLY) return "max";
+  const proIds = [
+    env.STRIPE_PRICE_PRO_WEEKLY,
+    env.STRIPE_PRICE_PRO_MONTHLY,
+    env.STRIPE_PRICE_PRO_YEARLY,
+  ].filter((id) => id.length > 0);
+  const maxIds = [
+    env.STRIPE_PRICE_MAX_WEEKLY,
+    env.STRIPE_PRICE_MAX_MONTHLY,
+    env.STRIPE_PRICE_MAX_YEARLY,
+  ].filter((id) => id.length > 0);
+  if (proIds.includes(priceId)) return "pro";
+  if (maxIds.includes(priceId)) return "max";
   return null;
 }
 
@@ -47,11 +63,19 @@ billing.post("/checkout", async (c) => {
   if (plan !== "pro" && plan !== "max") {
     return c.json({ error: "Pick a Pro or Max plan." }, 400);
   }
-  if (interval !== "month" && interval !== "year") {
-    return c.json({ error: "Interval must be month or year." }, 400);
+  if (interval !== "week" && interval !== "month" && interval !== "year") {
+    return c.json({ error: "Interval must be week, month, or year." }, 400);
   }
   const priceId = priceIdFor(c.env, plan, interval);
-  if (!priceId) return c.json({ error: "That plan isn't set up yet." }, 500);
+  if (!priceId) {
+    return c.json(
+      {
+        error: `${plan === "pro" ? "Pro" : "Max"} isn't available on the ${interval}ly plan yet.`,
+        code: "interval_not_configured",
+      },
+      400,
+    );
+  }
 
   const database = db(c.env.DB);
   const [user] = await database.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);

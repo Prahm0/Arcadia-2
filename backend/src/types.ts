@@ -6,8 +6,10 @@ export interface Env {
   APP_ORIGIN: string;
   MAIL_FROM: string;
   OPENAI_MODEL: string;
+  STRIPE_PRICE_PRO_WEEKLY: string;
   STRIPE_PRICE_PRO_MONTHLY: string;
   STRIPE_PRICE_PRO_YEARLY: string;
+  STRIPE_PRICE_MAX_WEEKLY: string;
   STRIPE_PRICE_MAX_MONTHLY: string;
   STRIPE_PRICE_MAX_YEARLY: string;
 

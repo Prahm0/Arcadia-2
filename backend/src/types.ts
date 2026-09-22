@@ -1,11 +1,15 @@
 export interface Env {
   DB: D1Database;
-  UPLOADS: R2Bucket;
+  // Optional until R2 is enabled on the account; uploads work without it,
+  // they just don't keep the original file.
+  UPLOADS?: R2Bucket;
 
   // vars (wrangler.jsonc)
   APP_ORIGIN: string;
   MAIL_FROM: string;
   OPENAI_MODEL: string;
+  // Local dev only: point Arcad at a stand-in server instead of OpenAI.
+  OPENAI_BASE_URL?: string;
   STRIPE_PRICE_PRO_WEEKLY: string;
   STRIPE_PRICE_PRO_MONTHLY: string;
   STRIPE_PRICE_PRO_YEARLY: string;

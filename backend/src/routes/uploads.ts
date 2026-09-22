@@ -59,6 +59,7 @@ uploads.post("/", async (c) => {
   const id = newId("upl");
   const key = `${userId}/${id}`;
 
+  if (!c.env.UPLOADS) return c.json({ error: "File storage isn't switched on yet." }, 503);
   await c.env.UPLOADS.put(key, file.stream(), {
     httpMetadata: { contentType },
   });
@@ -86,7 +87,7 @@ uploads.get("/:id", async (c) => {
     .limit(1);
   if (!row) return c.json({ error: "Not found." }, 404);
 
-  const object = await c.env.UPLOADS.get(row.key);
+  const object = c.env.UPLOADS ? await c.env.UPLOADS.get(row.key) : null;
   if (!object) return c.json({ error: "Not found." }, 404);
 
   return new Response(object.body, {
@@ -110,7 +111,7 @@ uploads.delete("/:id", async (c) => {
     .limit(1);
   if (!row) return c.json({ error: "Not found." }, 404);
 
-  await c.env.UPLOADS.delete(row.key);
+  await c.env.UPLOADS?.delete(row.key);
   await database.delete(schema.uploads).where(eq(schema.uploads.id, id));
 
   return c.json({ ok: true });

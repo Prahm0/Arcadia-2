@@ -56,6 +56,7 @@ npx wrangler secret put RESEND_API_KEY
 npx wrangler secret put TOKEN_ENCRYPTION_KEY
 npx wrangler secret put VAPID_PUBLIC_KEY
 npx wrangler secret put VAPID_PRIVATE_KEY
+npx wrangler secret put GOOGLE_SIGN_IN_ENABLED
 npx wrangler secret put APPLE_CLIENT_ID
 npx wrangler secret put APPLE_TEAM_ID
 npx wrangler secret put APPLE_KEY_ID
@@ -94,14 +95,17 @@ redirect URI:
 https://arcadiahq.app/api/auth/oauth/google/callback
 ```
 
-After the redirect URI is saved, add this plain Worker variable and redeploy:
+After the redirect URI is saved, run the following command and enter `true`
+when prompted:
 
-```
-GOOGLE_SIGN_IN_ENABLED = true
+```bash
+npx wrangler secret put GOOGLE_SIGN_IN_ENABLED
 ```
 
 This explicit switch keeps the Google button hidden while the redirect URI is
-still being configured. It is not a secret.
+still being configured. The value is not sensitive, but storing it with
+Wrangler's secret command prevents future deploys from removing a dashboard-only
+variable.
 
 For Apple, create a Sign in with Apple private key and a Services ID in the
 Apple Developer portal. Configure `arcadiahq.app` as the web domain and this

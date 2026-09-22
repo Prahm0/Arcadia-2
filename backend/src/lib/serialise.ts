@@ -43,6 +43,8 @@ export function serialiseEvent(event: EventRow) {
     endAt: iso(event.endAt),
     status: event.status as "planned" | "cancelled" | "completed" | "missed",
     outcome: event.outcome as "planned" | "completed" | "missed",
+    missReason: event.missReason,
+    missNote: event.missNote,
     source: event.source,
     editable: event.editable,
     pinned: event.pinned,

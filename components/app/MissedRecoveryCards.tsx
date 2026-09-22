@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
-import type { DashboardResponse, PlannerEvent } from "@/lib/api/types";
+import type { DashboardResponse, MissReason, PlannerEvent } from "@/lib/api/types";
 import { formatClock } from "@/lib/api/time";
 import AppButton from "./AppButton";
+import MissReasonPicker from "./MissReasonPicker";
 
 const STORAGE_PREFIX = "arcadia:missed:snoozed:";
 /** Only surface blocks that ended in the last 24 hours. Older ones belong in a weekly review. */
@@ -33,6 +34,7 @@ export default function MissedRecoveryCards() {
   const timezone = data.profile?.timezone || data.user.timezone || "Australia/Sydney";
   const [states, setStates] = useState<Record<string, RecoveryState>>({});
   const [snoozed, setSnoozed] = useState<Set<string>>(() => new Set());
+  const hasPaidPlan = data.user.tier === "pro" || data.user.tier === "max";
 
   const candidates = useMemo(() => findRecoveryCandidates(data.events), [data.events]);
   const visible = candidates.filter((event) => !snoozed.has(event.id));
@@ -76,6 +78,10 @@ export default function MissedRecoveryCards() {
   }
 
   async function respond(event: PlannerEvent, outcome: "completed" | "missed") {
+    if (outcome === "missed" && hasPaidPlan) {
+      setState(event.id, { step: "why", resolution: "missed", saving: false, error: null });
+      return;
+    }
     setState(event.id, { saving: true, error: null });
     // Optimistic
     patch((prev: DashboardResponse) => ({
@@ -98,7 +104,7 @@ export default function MissedRecoveryCards() {
       await reload();
       setState(event.id, {
         saving: false,
-        step: outcome === "missed" ? "why" : "resolved",
+        step: "resolved",
         resolution: outcome === "completed" ? "done" : "missed",
       });
     } catch (err) {
@@ -115,6 +121,28 @@ export default function MissedRecoveryCards() {
         saving: false,
         error: err instanceof Error ? err.message : "Couldn't save.",
       });
+    }
+  }
+
+  async function saveMissReason(event: PlannerEvent, missReason: MissReason, missNote: string) {
+    setState(event.id, { saving: true, error: null });
+    try {
+      await api(`/api/events/${encodeURIComponent(event.id)}/outcome`, {
+        method: "POST",
+        body: JSON.stringify({ outcome: "missed", missReason, missNote }),
+      });
+      patch((prev: DashboardResponse) => ({
+        ...prev,
+        events: prev.events.map((existing) =>
+          existing.id === event.id
+            ? { ...existing, outcome: "missed", status: "missed", missReason, missNote: missNote.trim() || null }
+            : existing,
+        ),
+      }));
+      await reload();
+      setState(event.id, { saving: false, step: "resolved", resolution: "missed" });
+    } catch (err) {
+      setState(event.id, { saving: false, error: err instanceof Error ? err.message : "Couldn't save." });
     }
   }
 
@@ -155,7 +183,7 @@ export default function MissedRecoveryCards() {
                   </p>
                 ) : state.step === "why" ? (
                   <p className="mt-1.5 text-[14.5px] leading-snug" style={{ color: "var(--app-text)" }}>
-                    Marked missed. The plan's re-checked around it. What got in the way?
+                    No problem. What got in the way?
                   </p>
                 ) : (
                   <p className="mt-1.5 text-[14.5px] leading-snug" style={{ color: "var(--app-text)" }}>
@@ -203,47 +231,15 @@ export default function MissedRecoveryCards() {
                   </AppButton>
                 </>
               ) : state.step === "why" ? (
-                <>
-                  {REASONS.map((reason) => (
-                    <button
-                      key={reason}
-                      type="button"
-                      onClick={() => {
-                        // Reasons are logged locally for now, the outcome endpoint
-                        // doesn't accept them yet. Backend enhancement later.
-                        try {
-                          window.localStorage.setItem(
-                            `${STORAGE_PREFIX}reason:${event.id}`,
-                            reason,
-                          );
-                        } catch {
-                          /* ignore */
-                        }
-                        setState(event.id, { step: "resolved" });
-                        snooze(event.id);
-                      }}
-                      className="rounded-full px-3 py-1.5 text-[12.5px] font-medium"
-                      style={{
-                        border: "1px solid var(--app-border-strong)",
-                        color: "var(--app-text)",
-                        background: "transparent",
-                      }}
-                    >
-                      {reason}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setState(event.id, { step: "resolved" });
-                      snooze(event.id);
-                    }}
-                    className="ml-1 text-[12.5px] underline underline-offset-4"
-                    style={{ color: "var(--app-text-muted)" }}
-                  >
-                    Skip
-                  </button>
-                </>
+                <div className="w-full">
+                  <MissReasonPicker
+                    onSubmit={(reason, note) => void saveMissReason(event, reason, note)}
+                    onBack={() => setState(event.id, { step: "ask", resolution: null, error: null })}
+                    loading={state.saving}
+                    error={state.error}
+                    submitLabel="Log missed session"
+                  />
+                </div>
               ) : (
                 <>
                   <Link
@@ -271,13 +267,6 @@ export default function MissedRecoveryCards() {
     </div>
   );
 }
-
-const REASONS = [
-  "Wasn't ready",
-  "Got interrupted",
-  "Ran out of time",
-  "Something else",
-] as const;
 
 function findRecoveryCandidates(events: PlannerEvent[]): PlannerEvent[] {
   const nowMs = Date.now();

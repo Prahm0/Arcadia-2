@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, gte } from "drizzle-orm";
 import { schema, type Database } from "../db";
 import { subjectKey } from "./scheduler";
 import { currentTopic } from "./syllabus";
@@ -6,6 +6,15 @@ import { localDateKey } from "./time";
 
 type Topic = typeof schema.subjectTopics.$inferSelect;
 type Assessment = typeof schema.subjectAssessments.$inferSelect;
+
+const MISS_REASON_LABEL: Record<string, string> = {
+  sick: "sick",
+  tired: "tired",
+  other_plans: "other plans",
+  forgot: "forgot",
+  didnt_feel_like_it: "didn't feel like it",
+  other: "another reason",
+};
 
 export interface SubjectBrief {
   subjectId: string;
@@ -84,4 +93,61 @@ export function describeBrief(brief: SubjectBrief | undefined): string {
     parts.push(`Resources: ${brief.resources.map((file) => `${file.filename}: ${file.summary}`).join(" | ")}`);
   }
   return parts.join(". ");
+}
+
+/**
+ * A compact, recent pattern summary for Arcad. It deliberately describes
+ * observed blocks rather than diagnosing the student or treating one miss as
+ * a lasting preference.
+ */
+export async function recentMissReasonContext(database: Database, userId: string): Promise<string[]> {
+  const since = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const rows = await database
+    .select({
+      subject: schema.events.subject,
+      missReason: schema.events.missReason,
+      missNote: schema.events.missNote,
+      endAt: schema.events.endAt,
+    })
+    .from(schema.events)
+    .where(
+      and(
+        eq(schema.events.userId, userId),
+        eq(schema.events.category, "study"),
+        eq(schema.events.outcome, "missed"),
+        gte(schema.events.endAt, since),
+      ),
+    );
+
+  const grouped = new Map<string, { subject: string; reason: string; count: number; latestNote: string | null; latestAt: number }>();
+  for (const row of rows) {
+    const label = row.missReason ? MISS_REASON_LABEL[row.missReason] : null;
+    if (!label) continue;
+    const subject = row.subject?.trim() || "General study";
+    const key = `${subjectKey(subject)}:${row.missReason}`;
+    const current = grouped.get(key);
+    if (current) {
+      current.count += 1;
+      if (row.missNote && row.endAt >= current.latestAt) {
+        current.latestNote = row.missNote;
+        current.latestAt = row.endAt;
+      }
+    } else {
+      grouped.set(key, {
+        subject,
+        reason: label,
+        count: 1,
+        latestNote: row.missNote,
+        latestAt: row.endAt,
+      });
+    }
+  }
+
+  return [...grouped.values()]
+    .sort((a, b) => b.count - a.count || b.latestAt - a.latestAt)
+    .slice(0, 8)
+    .map((pattern) => {
+      const note = pattern.latestNote ? ` Latest note: ${pattern.latestNote.slice(0, 160)}` : "";
+      return `${pattern.subject}: ${pattern.reason} for ${pattern.count} missed ${pattern.count === 1 ? "block" : "blocks"}.${note}`;
+    });
 }

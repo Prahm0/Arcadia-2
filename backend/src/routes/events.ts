@@ -3,11 +3,17 @@ import { Hono } from "hono";
 import { db, schema, type Database } from "../db";
 import { serialiseEvent } from "../lib/serialise";
 import { planSession, type Checkout } from "../lib/session-plan";
+import { isPaidTier, isValidTier } from "../lib/tiers";
 import { MINUTE } from "../lib/time";
 import type { Env, Variables } from "../types";
 
 type EventRow = typeof schema.events.$inferSelect;
 type Outcome = "completed" | "missed" | "planned";
+type MissReason = "sick" | "tired" | "other_plans" | "forgot" | "didnt_feel_like_it" | "other";
+
+const MISS_REASONS = new Set<MissReason>([
+  "sick", "tired", "other_plans", "forgot", "didnt_feel_like_it", "other",
+]);
 
 const events = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -35,6 +41,10 @@ async function applyOutcome(database: Database, event: EventRow, outcome: Outcom
     .update(schema.events)
     .set({
       ...extra,
+      // A new outcome supersedes an earlier explanation. Missed outcomes only
+      // retain a reason when the paid follow-up explicitly supplies one.
+      missReason: outcome === "missed" ? extra.missReason ?? event.missReason : null,
+      missNote: outcome === "missed" ? extra.missNote ?? event.missNote : null,
       outcome,
       status: outcome === "planned" ? "planned" : outcome,
       pinned: outcome !== "planned" || Boolean(event.startedAt),
@@ -58,9 +68,33 @@ async function applyOutcome(database: Database, event: EventRow, outcome: Outcom
     .where(eq(schema.tasks.id, task.id));
 }
 
+async function missReasonAccess(database: Database, userId: string) {
+  const [user] = await database
+    .select({ email: schema.users.email, tier: schema.users.tier })
+    .from(schema.users)
+    .where(eq(schema.users.id, userId))
+    .limit(1);
+  if (user?.email.endsWith("@arcadia.local")) {
+    return { allowed: false as const, error: "Guest accounts cannot save miss reasons.", code: "guest_cannot_use" };
+  }
+  const tier = isValidTier(user?.tier) ? user.tier : "free";
+  if (!isPaidTier(tier)) {
+    return { allowed: false as const, error: "Miss reasons are available on Pro and Max.", code: "tier_required" };
+  }
+  return { allowed: true as const };
+}
+
+function readMissReason(value: unknown): MissReason | null {
+  return typeof value === "string" && MISS_REASONS.has(value as MissReason) ? value as MissReason : null;
+}
+
+function readMissNote(value: unknown): string | null {
+  return typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, 280) || null : null;
+}
+
 events.post("/:id/outcome", async (c) => {
   const { userId } = c.get("session");
-  const body = await c.req.json<{ outcome?: string }>().catch(() => null);
+  const body = await c.req.json<{ outcome?: string; missReason?: unknown; missNote?: unknown }>().catch(() => null);
   const outcome = body?.outcome;
   if (outcome !== "completed" && outcome !== "missed" && outcome !== "planned") {
     return c.json({ error: "Unknown outcome." }, 422);
@@ -70,17 +104,49 @@ events.post("/:id/outcome", async (c) => {
   const event = await ownedEvent(database, userId, c.req.param("id"));
   if (!event) return c.json({ error: "Event not found." }, 404);
 
-  await applyOutcome(database, event, outcome);
+  const includesReason = Boolean(body && ("missReason" in body || "missNote" in body));
+  if (includesReason) {
+    const access = await missReasonAccess(database, userId);
+    if (!access.allowed) return c.json({ error: access.error, code: access.code }, 403);
+    if (outcome !== "missed" || event.category !== "study") {
+      return c.json({ error: "Miss reasons only apply to missed study blocks." }, 422);
+    }
+    const missReason = readMissReason(body?.missReason);
+    if (!missReason) return c.json({ error: "Choose a miss reason." }, 422);
+    await applyOutcome(database, event, outcome, { missReason, missNote: readMissNote(body?.missNote) });
+  } else {
+    await applyOutcome(database, event, outcome);
+  }
   return c.json({ ok: true, event: await reread(database, event.id) });
 });
 
 /** Moving a block (drag on the Schedule). A moved block is pinned where it's put. */
 events.patch("/:id", async (c) => {
   const { userId } = c.get("session");
-  const body = await c.req.json<{ startAt?: string; endAt?: string }>().catch(() => null);
+  const body = await c.req
+    .json<{ startAt?: string; endAt?: string; missReason?: unknown; missNote?: unknown }>()
+    .catch(() => null);
   const database = db(c.env.DB);
   const event = await ownedEvent(database, userId, c.req.param("id"));
   if (!event) return c.json({ error: "Event not found." }, 404);
+
+  const includesReason = Boolean(body && ("missReason" in body || "missNote" in body));
+  const includesTime = Boolean(body && ("startAt" in body || "endAt" in body));
+  if (includesReason && !includesTime) {
+    const access = await missReasonAccess(database, userId);
+    if (!access.allowed) return c.json({ error: access.error, code: access.code }, 403);
+    if (event.category !== "study" || event.outcome !== "missed") {
+      return c.json({ error: "Miss reasons only apply to missed study blocks." }, 422);
+    }
+    const missReason = readMissReason(body?.missReason);
+    if (!missReason) return c.json({ error: "Choose a miss reason." }, 422);
+    await database
+      .update(schema.events)
+      .set({ missReason, missNote: readMissNote(body?.missNote) })
+      .where(eq(schema.events.id, event.id));
+    return c.json({ ok: true, event: await reread(database, event.id) });
+  }
+
   if (!event.editable) return c.json({ error: "Change this one on your profile instead." }, 409);
 
   const startAt = Date.parse(String(body?.startAt ?? ""));

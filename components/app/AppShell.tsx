@@ -456,6 +456,7 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
       <ShortcutsDialog open={shortcutsOpen} onClose={closeShortcuts} />
       <PushCheckInPrompt />
       <SessionStartModal
+        key={sessionStart.event?.id ?? "none"}
         event={sessionStart.event}
         timezone={sessionStart.timezone}
         onClose={sessionStart.dismiss}

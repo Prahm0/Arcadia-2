@@ -17,13 +17,14 @@
     "OPENAI_MODEL": "gpt-4o-mini",
     // Stripe price IDs — not secret. Replace the sandbox ids with live
     // ones when we flip the account out of test mode.
-    // Weekly price IDs go here once created in Stripe. Empty strings
-    // are treated as "not set up yet", so the checkout route rejects
-    // the interval instead of hitting Stripe with a missing price.
-    "STRIPE_PRICE_PRO_WEEKLY": "",
-    "STRIPE_PRICE_PRO_MONTHLY": "price_1UI5LT8lZVee1v52pbvvdSpq",
-    "STRIPE_PRICE_PRO_YEARLY": "price_1UI5L78lZVee1v520txjo42s",
-    "STRIPE_PRICE_MAX_WEEKLY": "",
+    // Six sandbox price IDs: Pro/Max × weekly/monthly/yearly. Pro
+    // price IDs are fresh (weekly, monthly, yearly all created 22 Sep).
+    // Max weekly is new; Max monthly and yearly reuse the pre-existing
+    // IDs, whose amounts were updated in place to the new numbers.
+    "STRIPE_PRICE_PRO_WEEKLY": "price_1UINLB8lZVee1v52hY2P2rtE",
+    "STRIPE_PRICE_PRO_MONTHLY": "price_1UINMI8lZVee1v52dZS4Zy6Q",
+    "STRIPE_PRICE_PRO_YEARLY": "price_1UINMe8lZVee1v52QcbNvH8v",
+    "STRIPE_PRICE_MAX_WEEKLY": "price_1UINN68lZVee1v522FLDudzY",
     "STRIPE_PRICE_MAX_MONTHLY": "price_1UI5Mk8lZVee1v52Rh8eLzF2",
     "STRIPE_PRICE_MAX_YEARLY": "price_1UI5MR8lZVee1v52a1pvfRDO"
   },

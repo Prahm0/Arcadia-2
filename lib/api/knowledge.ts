@@ -15,7 +15,7 @@ export async function saveSubjectContext(
 /**
  * Upload a file to a subject's knowledge base. The backend expects the raw
  * bytes as the request body, filename via query string, and content-type
- * via header — that's why this needs its own helper rather than going
+ * via header, that's why this needs its own helper rather than going
  * through the JSON-oriented `api` wrapper.
  */
 export async function uploadSubjectFile(

@@ -11,7 +11,7 @@ import Logo from "./ui/Logo";
 
 // Order matches the vertical order of the sections on the page so clicking
 // any link always scrolls in the same direction as the reader is already
-// travelling — never sends them back up the page mid-scroll.
+// travelling, never sends them back up the page mid-scroll.
 const links = [
   { label: "How it works", href: "#how-it-works" },
   { label: "Product", href: "#today" },
@@ -60,7 +60,7 @@ export default function Navbar() {
           <Link
             href="#top"
             className="flex items-center gap-2.5 text-white"
-            aria-label="Arcadia — back to top"
+            aria-label="Arcadia, back to top"
             onClick={() => setMenuOpen(false)}
           >
             <Logo size={22} className="text-accent-200" />

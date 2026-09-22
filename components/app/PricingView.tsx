@@ -31,9 +31,9 @@ const TIERS: Tier[] = [
       "Auto-scheduled daily plan",
       "Task list + deadlines",
       "Focus timer (Classic 25/5)",
-      "Arcad — 2 messages / day",
+      "Arcad, 2 messages / day",
       "Today's focus minutes",
-      "Weekly review — text summary",
+      "Weekly review, text summary",
     ],
   },
   {
@@ -44,11 +44,11 @@ const TIERS: Tier[] = [
     priceYearly: 149.0,
     features: [
       "Everything in Free",
-      "Arcad — 20 messages / day",
+      "Arcad, 20 messages / day",
       "Google / Apple / Canvas calendar sync",
-      "Upload PDFs & notes — Arcad answers from them",
+      "Upload PDFs & notes, Arcad answers from them",
       "Study rooms (unlimited) with shared timers",
-      "Full analytics — subject breakdown, streaks, trends",
+      "Full analytics, subject breakdown, streaks, trends",
       "Custom focus presets",
       "Deeper weekly review with insights",
     ],
@@ -63,13 +63,13 @@ const TIERS: Tier[] = [
     priceYearly: 379.0,
     features: [
       "Everything in Pro",
-      "Arcad — 100 messages / day",
-      "Voice Arcad — talk while you study, hands-free",
-      "Arcad tutor mode — step-by-step problem walkthroughs",
+      "Arcad, 100 messages / day",
+      "Voice Arcad, talk while you study, hands-free",
+      "Arcad tutor mode, step-by-step problem walkthroughs",
       "Exam-style practice + essay feedback",
       "1:1 human tutor bookings (coming soon)",
-      "Priority AI — the smartest model, first in the queue",
-      "Study group leader mode — invite up to 10",
+      "Priority AI, the smartest model, first in the queue",
+      "Study group leader mode, invite up to 10",
     ],
   },
 ];
@@ -108,7 +108,7 @@ export default function PricingView() {
   }
 
   async function openPortal() {
-    setBusyTier("free"); // placeholder — reuses the loading spinner slot
+    setBusyTier("free"); // placeholder, reuses the loading spinner slot
     setError(null);
     try {
       const response = await api<{ url: string }>("/api/billing/portal", {
@@ -304,7 +304,7 @@ function TierCard({
             </div>
             {interval === "year" && tier.priceMonthly ? (
               <p className="mt-1 text-[12px]" style={{ color: "var(--app-text-faint)" }}>
-                ~${(tier.priceYearly! / 12).toFixed(2)}/mo — save ${((tier.priceMonthly * 12) - tier.priceYearly!).toFixed(0)}/yr
+                ~${(tier.priceYearly! / 12).toFixed(2)}/mo, save ${((tier.priceMonthly * 12) - tier.priceYearly!).toFixed(0)}/yr
               </p>
             ) : null}
           </div>
@@ -385,7 +385,7 @@ function Faq() {
       />
       <FaqItem
         q="Student discount?"
-        a="Arcadia is already built for students. Prices are set to sit under the cost of a coffee per week — no separate student tier."
+        a="Arcadia is already built for students. Prices are set to sit under the cost of a coffee per week, no separate student tier."
       />
     </div>
   );

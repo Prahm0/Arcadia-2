@@ -16,7 +16,7 @@ export interface DayConsistency {
   actualMinutes: number;
   ratio: number;
   consistent: boolean;
-  /** True while the day is still in progress — protects it from breaking a streak. */
+  /** True while the day is still in progress, protects it from breaking a streak. */
   isInProgress: boolean;
   /** Set when the day had a plan but fell short, phrased for direct display. */
   missReason?: string;
@@ -31,7 +31,7 @@ export interface StreakSummary {
   nextMilestone: number | null;
   /** How many more consistent days to reach that next milestone. */
   daysToNext: number | null;
-  /** Most recent day that had a plan — used to surface "why" a streak broke. */
+  /** Most recent day that had a plan, used to surface "why" a streak broke. */
   lastPlannedDay: DayConsistency | null;
   /** Full window, oldest → newest. */
   history: DayConsistency[];
@@ -89,7 +89,7 @@ export function computeConsistency(
 /**
  * Walk backwards from today to build the current consistent-day streak.
  *
- * The current in-progress day is treated as a "grace day" — it can't break a
+ * The current in-progress day is treated as a "grace day", it can't break a
  * streak yet, but it does extend it once its ratio crosses the threshold.
  * Days without any planned study are transparent: the walk passes over them.
  */
@@ -113,13 +113,13 @@ export function computeStreak(
       if (day.consistent) {
         current += 1;
       } else if (day.isInProgress) {
-        // Today hasn't ruled itself out yet — skip it and keep walking backwards.
+        // Today hasn't ruled itself out yet, skip it and keep walking backwards.
       } else if (day.plannedMinutes > 0) {
-        // A planned day that fell short — the streak stops here.
+        // A planned day that fell short, the streak stops here.
         break;
       }
       // A planned-but-empty day (planned: 0) can't happen because we require
-      // planned>0 to make it into `history` with any signal — but if it does,
+      // planned>0 to make it into `history` with any signal, but if it does,
       // treat as neutral and continue.
     }
     cursor = shiftKey(cursor, -1);
@@ -142,7 +142,7 @@ export function computeStreak(
   const nextMilestone = nextMilestoneAbove(current);
   const daysToNext = nextMilestone === null ? null : nextMilestone - current;
 
-  // "Why" — the most recent planned day that isn't in progress, whether or not
+  // "Why", the most recent planned day that isn't in progress, whether or not
   // it was consistent. Callers use it to explain a broken streak, or to
   // celebrate a fresh win when it IS consistent.
   const lastPlannedDay =

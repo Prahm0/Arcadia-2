@@ -3,13 +3,13 @@
 import type { ReactNode } from "react";
 
 interface EmptyStateProps {
-  /** Optional icon element — falls back to the constellation glyph. */
+  /** Optional icon element, falls back to the constellation glyph. */
   icon?: ReactNode;
   /** Short headline. */
   title: ReactNode;
   /** One or two sentence explanation of what this page is for. */
   body: string;
-  /** Optional preview mockup — a faded, non-interactive glimpse of what the page will look like once used. */
+  /** Optional preview mockup, a faded, non-interactive glimpse of what the page will look like once used. */
   example?: ReactNode;
   /** Primary action row (put your CTA button here). */
   action?: ReactNode;

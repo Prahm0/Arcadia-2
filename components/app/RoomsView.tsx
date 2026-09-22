@@ -175,7 +175,7 @@ export default function RoomsView() {
                     <ExampleRow title="You" meta="Idle · 40m today" bar="var(--app-text-faint)" />
                   </>
                 }
-                hint="No chat, no notifications — just who's working."
+                hint="No chat, no notifications, just who's working."
               />
             </div>
           ) : (

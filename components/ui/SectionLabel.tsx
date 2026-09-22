@@ -35,7 +35,7 @@ export default function SectionLabel({
     >
       {dot && <ArcadiaMark size={10} className={tone === "dark" ? "text-accent-200" : "text-accent"} />}
       {index && <span>{index}</span>}
-      {index && (children || time) && <span aria-hidden="true">—</span>}
+      {index && (children || time) && <span aria-hidden="true">,</span>}
       {time && (
         <time className={tone === "dark" ? "text-accent-200" : "text-accent"}>{time}</time>
       )}

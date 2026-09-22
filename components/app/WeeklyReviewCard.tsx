@@ -14,7 +14,7 @@ import { formatDurationMinutes } from "@/lib/api/time";
 interface WeeklyReviewCardProps {
   /**
    * "previous" (default) reviews the most recent completed week.
-   * "current" reviews the in-progress week — used for the /app/review page
+   * "current" reviews the in-progress week, used for the /app/review page
    * when today is late in the week.
    */
   window?: "previous" | "current";
@@ -55,7 +55,7 @@ export default function WeeklyReviewCard({
           {which === "current" ? "This week" : "Last week"} · {review.window.label}
         </p>
         <p className="mt-2 text-[14px]" style={{ color: "var(--app-text-muted)" }}>
-          No study blocks landed in that window yet — nothing to review.
+          No study blocks landed in that window yet, nothing to review.
         </p>
       </div>
     );
@@ -109,12 +109,12 @@ export default function WeeklyReviewCard({
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
         <LabeledLine
           label="Win"
-          message={review.win?.message ?? "Small progress — worth noting anyway."}
+          message={review.win?.message ?? "Small progress, worth noting anyway."}
           tone="success"
         />
         <LabeledLine
           label="Adjustment"
-          message={review.adjustment?.message ?? "Nothing obvious to change — hold the pattern."}
+          message={review.adjustment?.message ?? "Nothing obvious to change, hold the pattern."}
           tone="warn"
         />
         <LabeledLine
@@ -123,7 +123,7 @@ export default function WeeklyReviewCard({
             streak.current > 0
               ? `${streak.current} consistent ${streak.current === 1 ? "day" : "days"} · longest ${streak.longest}`
               : streak.lastPlannedDay?.missReason
-                ? `Reset — ${streak.lastPlannedDay.missReason}.`
+                ? `Reset, ${streak.lastPlannedDay.missReason}.`
                 : `Longest ${streak.longest} ${streak.longest === 1 ? "day" : "days"}`
           }
           tone="accent"

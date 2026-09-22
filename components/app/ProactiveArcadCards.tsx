@@ -13,12 +13,12 @@ const STORAGE_PREFIX = "arcadia:proactive:dismissed:";
 interface ProactiveArcadCardsProps {
   /** Cap for the number of cards to render at once. Default 2 so we never spam. */
   limit?: number;
-  /** Compact variant tucks the orb tighter — used inside chat panels. */
+  /** Compact variant tucks the orb tighter, used inside chat panels. */
   compact?: boolean;
 }
 
 /**
- * Proactive Arcad notifications — deadline-in-24h, streak milestone, quiet
+ * Proactive Arcad notifications, deadline-in-24h, streak milestone, quiet
  * week. Each card is stable-id'd; a dismissed card stays dismissed forever
  * for its event (task-id, milestone value, or week key), so once you've seen
  * "3-day streak" celebrated, hitting 3 again after a reset shows it again but

@@ -5,7 +5,7 @@ const SOUND_KEY = "arcadia:sound:enabled";
 /**
  * Whether the celebratory tick sound should play. Users opt out in Settings.
  * Default is on. Reads directly from localStorage so it stays in sync without
- * a subscription — mutations from the settings toggle are one-off events.
+ * a subscription, mutations from the settings toggle are one-off events.
  */
 export function isSoundEnabled(): boolean {
   if (typeof window === "undefined") return false;
@@ -31,7 +31,7 @@ export function setSoundEnabled(value: boolean): void {
  * Very quiet, very short "did a thing" tick. Uses Web Audio directly so we
  * don't need to ship an audio file. Silent when the user has opted out or
  * when the browser hasn't unlocked audio yet (no user gesture, autoplay
- * policy) — both are fine to swallow.
+ * policy), both are fine to swallow.
  */
 export function playCompletionTick(): void {
   if (typeof window === "undefined") return;
@@ -45,7 +45,7 @@ export function playCompletionTick(): void {
   try {
     const ctx = new Ctor();
     // A small ascending C major arpeggio (C5 → G5 → C6). Triangle waves have
-    // more character than pure sines but still stay well-mannered — this is
+    // more character than pure sines but still stay well-mannered, this is
     // a task-completion cue, not a game achievement. Each note overlaps the
     // next slightly to feel like one continuous flourish rather than three
     // separate beeps.
@@ -74,6 +74,6 @@ export function playCompletionTick(): void {
     // Let the context be garbage-collected once the last note finishes.
     setTimeout(() => { void ctx.close(); }, 700);
   } catch {
-    /* audio unlocked check failed — ignore */
+    /* audio unlocked check failed, ignore */
   }
 }

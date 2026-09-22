@@ -38,7 +38,7 @@ export default function LiveNow({ className, dot = true }: LiveNowProps) {
     <span className={cn("type-eyebrow inline-flex items-center gap-3", className)}>
       {dot && <ArcadiaMark size={10} animate="twinkle" className="text-accent-200" />}
       <time suppressHydrationWarning dateTime={now ? new Date().toISOString() : undefined}>
-        {now ?? "— — · —:—"}
+        {now ?? ",, · ,:,"}
       </time>
     </span>
   );

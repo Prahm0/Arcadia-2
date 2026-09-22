@@ -213,7 +213,7 @@ function TodayCard(props: TodayCardProps) {
         <p className="mt-2 text-[15px]" style={{ color: "var(--app-text-muted)" }}>
           {studyBlocks.length === 0
             ? hasTasks
-              ? "Nothing scheduled today — the plan is clear."
+              ? "Nothing scheduled today, the plan is clear."
               : "Add your first task to build a plan."
             : (
               <>
@@ -461,7 +461,7 @@ function StreakCard() {
       >
         <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Streak</p>
         <p className="mt-2 text-[15px] leading-snug" style={{ color: "var(--app-text)" }}>
-          Reset — {streak.lastPlannedDay.missReason}.
+          Reset, {streak.lastPlannedDay.missReason}.
         </p>
         <p className="mt-1.5 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
           Hit 70% of planned study time in a day and it starts counting again.

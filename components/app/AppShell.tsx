@@ -145,7 +145,7 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
         onSignOut={() => void signOut()}
       />
 
-      {/* Mobile top bar — brand + streak chip. Nav lives at the bottom. */}
+      {/* Mobile top bar, brand + streak chip. Nav lives at the bottom. */}
       <div
         className="lg:hidden sticky top-0 z-30 flex h-12 items-center justify-between border-b pl-4 pr-14"
         style={{ background: "var(--app-surface)", borderColor: "var(--app-border)" }}
@@ -165,7 +165,7 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
       <NotificationCentre briefing={briefing} />
 
       <div className="flex">
-        {/* Sidebar — desktop only. Mobile uses MobileBottomNav + MobileMoreSheet. */}
+        {/* Sidebar, desktop only. Mobile uses MobileBottomNav + MobileMoreSheet. */}
         <aside
           className={cn(
             "hidden lg:sticky lg:top-10 lg:h-[calc(100svh-2.5rem)] lg:w-[232px] lg:shrink-0 lg:flex-col lg:overflow-y-auto",
@@ -317,7 +317,7 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
                   Streak reset
                 </p>
                 <p className="mt-1.5 text-[12.5px] leading-snug" style={{ color: "var(--app-text-soft)" }}>
-                  {streakSummary.lastPlannedDay.missReason} — 70% locks the day in.
+                  {streakSummary.lastPlannedDay.missReason}, 70% locks the day in.
                 </p>
               </div>
             ) : null}
@@ -457,7 +457,7 @@ function writeSidebarPref(open: boolean) {
 
 function BrandMark() {
   return (
-    <Link href="/app" aria-label="Arcadia — go to Today" title="Arcadia" className="grid h-8 w-8 place-items-center rounded-md">
+    <Link href="/app" aria-label="Arcadia, go to Today" title="Arcadia" className="grid h-8 w-8 place-items-center rounded-md">
       <span
         aria-hidden="true"
         className="grid h-6 w-6 place-items-center rounded-md"

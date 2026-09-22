@@ -28,15 +28,15 @@ export default function TodayDemo() {
             <RevealText
               id="today-heading"
               as="h2"
-              lines={["Three things.", "That’s it."]}
-              accent="That’s it."
+              lines={["Only what", "matters today."]}
+              accent="matters today."
               className="type-display mt-8 text-day-text"
               delay={0.1}
             />
             <FadeIn delay={0.25}>
               <p className="type-body-lg mt-8 max-w-[460px] text-day-text/60">
-                Arcadia picks what actually needs you today and how long it&rsquo;ll take. No
-                rebuilding your day every morning.
+                Arcadia picks what actually needs you today, and how long it&rsquo;ll take.
+                You don&rsquo;t rebuild your day every morning. It&rsquo;s already there.
               </p>
             </FadeIn>
           </div>

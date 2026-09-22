@@ -25,7 +25,7 @@ export default function ArcadOrb({ state = "idle", size = 40, className }: Arcad
       style={{ width: size, height: size }}
       aria-hidden="true"
     >
-      {/* Aurora ring — a soft radial glow that breathes with the pulse class. */}
+      {/* Aurora ring, a soft radial glow that breathes with the pulse class. */}
       <span
         className={pulseClass}
         style={{
@@ -37,7 +37,7 @@ export default function ArcadOrb({ state = "idle", size = 40, className }: Arcad
           opacity: ringOpacity,
         }}
       />
-      {/* Core disc — subtle but distinct so the star reads on any surface. */}
+      {/* Core disc, subtle but distinct so the star reads on any surface. */}
       <span
         style={{
           position: "absolute",

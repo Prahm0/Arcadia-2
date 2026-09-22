@@ -13,7 +13,7 @@ const THROTTLE_MS = 12_000;
  * fires this after a schedule-changing action). Throttled so a burst of
  * events only round-trips once.
  *
- * Mount once from AppShell — no return value.
+ * Mount once from AppShell, no return value.
  */
 export function useDashboardAutoRefresh(reload: () => Promise<void> | void): void {
   const lastRefreshRef = useRef(0);
@@ -32,7 +32,7 @@ export function useDashboardAutoRefresh(reload: () => Promise<void> | void): voi
       try {
         void reloadRef.current();
       } catch {
-        /* swallow — a background refresh should never surface an error */
+        /* swallow, a background refresh should never surface an error */
       }
       // Uncomment for local debugging:
       // console.debug("[arcadia] dashboard refresh", reason);
@@ -55,7 +55,7 @@ export function useDashboardAutoRefresh(reload: () => Promise<void> | void): voi
 }
 
 /**
- * Broadcast a "refresh dashboard" hint from anywhere in the app — used by the
+ * Broadcast a "refresh dashboard" hint from anywhere in the app, used by the
  * Arcad chat after a message whose response mutated the schedule so a Schedule
  * tab that's already open updates without a manual reload.
  */

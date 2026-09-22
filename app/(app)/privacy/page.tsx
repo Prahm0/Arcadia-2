@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import LegalPage from "@/components/LegalPage";
 
 export const metadata: Metadata = {
-  title: "Privacy — Arcadia",
+  title: "Privacy · Arcadia",
   description: "How Arcadia handles your personal information.",
 };
 
@@ -20,18 +20,18 @@ export default function PrivacyPage() {
       <h2>1. What we collect</h2>
       <p>When you sign up and use Arcadia, we collect:</p>
       <ul>
-        <li><strong>Account details</strong> — your email address, a hashed password,
+        <li><strong>Account details</strong>, your email address, a hashed password,
           your display name and (optionally) grade level and timezone.</li>
-        <li><strong>Plan content you create</strong> — subjects, tasks, deadlines,
+        <li><strong>Plan content you create</strong>, subjects, tasks, deadlines,
           study sessions, focus timer runs, and chat messages you send to Arcad.</li>
-        <li><strong>Calendar data you choose to sync</strong> — event titles, times
+        <li><strong>Calendar data you choose to sync</strong>, event titles, times
           and locations from Google Calendar, Apple, Canvas or any .ics feed you
           add. We import; we don&rsquo;t write back to your calendar.</li>
-        <li><strong>Files you upload</strong> — PDFs or notes you attach to the
+        <li><strong>Files you upload</strong>, PDFs or notes you attach to the
           Knowledge tab, so Arcad can answer questions from them.</li>
-        <li><strong>Billing information</strong> — handled by Stripe. We see your
+        <li><strong>Billing information</strong>, handled by Stripe. We see your
           plan and status, but not your card number.</li>
-        <li><strong>Basic usage telemetry</strong> — page views, error reports and
+        <li><strong>Basic usage telemetry</strong>, page views, error reports and
           performance metrics, used to keep Arcadia stable.</li>
       </ul>
 
@@ -56,15 +56,15 @@ export default function PrivacyPage() {
         processes data only on our instructions and under their own privacy terms:
       </p>
       <ul>
-        <li><strong>Cloudflare</strong> — hosting, edge database, R2 storage.</li>
-        <li><strong>Stripe</strong> — subscription payments and invoicing.</li>
-        <li><strong>OpenAI</strong> — Arcad&rsquo;s language model. We send the chat
+        <li><strong>Cloudflare</strong>, hosting, edge database, R2 storage.</li>
+        <li><strong>Stripe</strong>, subscription payments and invoicing.</li>
+        <li><strong>OpenAI</strong>, Arcad&rsquo;s language model. We send the chat
           history and a compact snapshot of your plan so Arcad can answer
           contextually. OpenAI does not train on data sent through their API.</li>
-        <li><strong>Resend</strong> — transactional email delivery.</li>
-        <li><strong>Google</strong> — only if you connect Google Calendar. OAuth
+        <li><strong>Resend</strong>, transactional email delivery.</li>
+        <li><strong>Google</strong>, only if you connect Google Calendar. OAuth
           tokens are stored encrypted and used solely to read calendar events.</li>
-        <li><strong>Sentry</strong> — error tracking, so we can fix crashes quickly.</li>
+        <li><strong>Sentry</strong>, error tracking, so we can fix crashes quickly.</li>
       </ul>
 
       <h2>4. Cookies and local storage</h2>
@@ -86,9 +86,9 @@ export default function PrivacyPage() {
       <h2>6. Your rights</h2>
       <p>You can, at any time:</p>
       <ul>
-        <li><strong>Access</strong> your data — export tasks and plans from Settings,
+        <li><strong>Access</strong> your data, export tasks and plans from Settings,
           or ask us for a full copy.</li>
-        <li><strong>Correct</strong> anything that&rsquo;s wrong — edit it in-app or
+        <li><strong>Correct</strong> anything that&rsquo;s wrong, edit it in-app or
           email us.</li>
         <li><strong>Delete</strong> your account and content from Settings.</li>
         <li><strong>Withdraw</strong> a consent you gave (e.g. disconnect Google).</li>
@@ -101,7 +101,7 @@ export default function PrivacyPage() {
         Passwords are hashed with PBKDF2-SHA256. Sensitive tokens (like Google
         OAuth refresh tokens) are encrypted at rest with AES-GCM. All traffic
         between your device and Arcadia is over HTTPS. We take security seriously,
-        but no service can promise perfect security — please keep your password
+        but no service can promise perfect security, please keep your password
         safe and enable device-level protection.
       </p>
       <p>

@@ -3,7 +3,7 @@ import Link from "next/link";
 import LegalPage from "@/components/LegalPage";
 
 export const metadata: Metadata = {
-  title: "Terms — Arcadia",
+  title: "Terms · Arcadia",
   description: "Terms of service for using Arcadia.",
 };
 
@@ -71,7 +71,7 @@ export default function TermsPage() {
       <h2>5. Arcad and AI-generated content</h2>
       <p>
         Arcad is an AI assistant. Its suggestions are for planning and study
-        support only — they&rsquo;re not professional advice (educational, legal,
+        support only, they&rsquo;re not professional advice (educational, legal,
         medical or otherwise). Arcad can make mistakes; check anything important
         before acting on it.
       </p>

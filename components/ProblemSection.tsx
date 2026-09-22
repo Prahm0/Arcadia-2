@@ -29,8 +29,8 @@ export default function ProblemSection() {
           <div className="col-span-12 mt-10 sm:col-span-8 sm:col-start-5 lg:col-span-5 lg:col-start-8 lg:mt-0 lg:self-end">
             <FadeIn delay={0.15}>
               <p className="type-body-lg max-w-[480px] text-white/60">
-                Your timetable is the only part of your week that stays put. Everything else
-                moves. And somewhere under all of it, there’s a Methods test on Friday.
+                Classes stay the same. Everything else doesn&rsquo;t. Training runs late, an
+                assignment moves, a friend cancels. And you&rsquo;ve still got a test on Friday.
               </p>
             </FadeIn>
           </div>
@@ -46,7 +46,7 @@ export default function ProblemSection() {
           <div className="col-span-12 lg:col-span-6">
             <FadeIn delay={0.05} y={28} duration={0.9}>
               <p className="type-body-lg max-w-[520px] text-white/60">
-                A normal planner expects you to fix all of this yourself. Every single night.
+                A normal planner sits there until you rebuild it. Every night. On your own.
               </p>
             </FadeIn>
           </div>

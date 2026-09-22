@@ -211,7 +211,7 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
           {currentStep.key === "you" && "Your name goes on greetings and streak nudges. Grade helps set expectations."}
           {currentStep.key === "subjects" && "Pick everything you'd want a study block for. You can add and remove any of these later."}
           {currentStep.key === "life" && "Study never gets scheduled outside these hours, so sleep stays real."}
-          {currentStep.key === "focus" && "The Focus timer uses these as its default preset — always adjustable per session."}
+          {currentStep.key === "focus" && "The Focus timer uses these as its default preset, always adjustable per session."}
         </p>
       </div>
 

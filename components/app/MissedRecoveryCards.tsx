@@ -25,7 +25,7 @@ interface RecoveryState {
 /**
  * Zero or more "did you get to it?" cards for study blocks that ended in the
  * last 24h and are still marked planned. Cards appear at the top of the Arcad
- * chat surface — this is what the plan calls "Arcad DM-ing you" without the
+ * chat surface, this is what the plan calls "Arcad DM-ing you" without the
  * dishonesty of injecting a fake AI message.
  */
 export default function MissedRecoveryCards() {
@@ -151,7 +151,7 @@ export default function MissedRecoveryCards() {
                 {state.step === "ask" ? (
                   <p className="mt-1.5 text-[14.5px] leading-snug" style={{ color: "var(--app-text)" }}>
                     <span className="font-medium">{subject}</span> at{" "}
-                    <span className="font-mono">{startClock}–{endClock}</span> — did you get to it?
+                    <span className="font-mono">{startClock}–{endClock}</span>, did you get to it?
                   </p>
                 ) : state.step === "why" ? (
                   <p className="mt-1.5 text-[14.5px] leading-snug" style={{ color: "var(--app-text)" }}>
@@ -209,7 +209,7 @@ export default function MissedRecoveryCards() {
                       key={reason}
                       type="button"
                       onClick={() => {
-                        // Reasons are logged locally for now — the outcome endpoint
+                        // Reasons are logged locally for now, the outcome endpoint
                         // doesn't accept them yet. Backend enhancement later.
                         try {
                           window.localStorage.setItem(

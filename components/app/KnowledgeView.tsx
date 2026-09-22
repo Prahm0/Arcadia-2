@@ -253,7 +253,7 @@ function SubjectRow({
                 if (notesDirty) void saveNotes();
               }}
               rows={4}
-              placeholder="Anything you'd want a tutor to know before helping — key topics, textbook, teacher's style."
+              placeholder="Anything you'd want a tutor to know before helping, key topics, textbook, teacher's style."
               className="mt-2 w-full resize-y rounded-md px-3 py-2.5 text-[13.5px] outline-none"
               style={{
                 background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)",

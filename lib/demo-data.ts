@@ -16,7 +16,7 @@ export interface FocusItem {
 export const today = {
   date: "Tuesday, September 8",
   greeting: "Good morning.",
-  summary: "3 things to focus on today.",
+  summary: "What matters today.",
   weekProgress: 0.42,
   focus: [
     { id: "methods", subject: "Mathematical Methods", task: "Complex Numbers Practice", minutes: 45, due: "Test Fri", progress: 0.3 },

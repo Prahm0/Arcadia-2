@@ -9,7 +9,7 @@ export type ProactiveTone = "info" | "celebrate" | "warn";
 export interface ProactiveAction {
   label: string;
   href?: string;
-  /** Message to send to Arcad via /app/arcad?prompt=… — used when there is no href. */
+  /** Message to send to Arcad via /app/arcad?prompt=…, used when there is no href. */
   arcadPrompt?: string;
   /** Optional tone override; primary defaults to accent. */
   variant?: "primary" | "ghost";
@@ -67,7 +67,7 @@ export function buildProactiveCards(
       eyebrow: "Deadline · close",
       title:
         hoursOut <= 6
-          ? `${soonest.title} — ${hoursOut} hr out, ${soonest.remainingMinutes} min still to do.`
+          ? `${soonest.title}, ${hoursOut} hr out, ${soonest.remainingMinutes} min still to do.`
           : `${soonest.title} lands tomorrow with ${soonest.remainingMinutes} min left. Squeeze one in tonight?`,
       actions: [
         {
@@ -96,7 +96,7 @@ export function buildProactiveCards(
           ? "30 days. That's a habit now, not a streak."
           : currentMilestone === 7
             ? "A full week. This one's stuck."
-            : "Three in a row — you've got a streak.",
+            : "Three in a row, you've got a streak.",
       actions: [
         { label: "See it", href: "/app/analytics", variant: "primary" },
       ],
@@ -114,7 +114,7 @@ export function buildProactiveCards(
     const currentReview = buildWeeklyReview(data.events, currentWindow, timezone);
     const previousReview = buildWeeklyReview(data.events, previousWindow, timezone);
     // Trigger when this week has less than 60 min done AND last week was
-    // meaningfully higher (>180 min) — so a naturally light studier isn't
+    // meaningfully higher (>180 min), so a naturally light studier isn't
     // constantly nagged.
     if (currentReview.totalDone < 60 && previousReview.totalDone > 180) {
       const weekKey = currentWindow.startKey;
@@ -123,7 +123,7 @@ export function buildProactiveCards(
         kind: "low-week",
         tone: "info",
         eyebrow: "Check-in",
-        title: `Quiet week — ${currentReview.totalDone} of ${currentReview.totalPlanned} planned min. Want to shift anything?`,
+        title: `Quiet week, ${currentReview.totalDone} of ${currentReview.totalPlanned} planned min. Want to shift anything?`,
         actions: [
           {
             label: "Talk it over",

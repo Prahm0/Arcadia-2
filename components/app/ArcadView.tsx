@@ -49,7 +49,7 @@ interface ChatState {
 
 type Tab = "chat" | "context" | "history";
 
-// Starters are built from live plan data in buildContextualStarters —
+// Starters are built from live plan data in buildContextualStarters ,
 // this ArcadView doesn't ship any static prompt list.
 
 export default function ArcadView() {
@@ -90,7 +90,7 @@ export default function ArcadView() {
         });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't load the chat — try again in a moment?");
+      setError(err instanceof Error ? err.message : "Couldn't load the chat, try again in a moment?");
     } finally {
       setLoading(false);
     }
@@ -191,7 +191,7 @@ export default function ArcadView() {
               }));
               if (event.schedule || event.action) scheduleTouched = true;
             } else if (event.type === "error") {
-              setError(event.message || "Something went sideways — try that again?");
+              setError(event.message || "Something went sideways, try that again?");
             }
           } catch {
             /* skip malformed */
@@ -505,7 +505,7 @@ function MessageBubble({ message }: { message: Message }) {
 
 /**
  * The empty-state hero at the top of Arcad chat. Warmer than "Ask anything"
- * — reads the live plan and speaks in first person, with starter chips built
+ *, reads the live plan and speaks in first person, with starter chips built
  * from real subjects, deadlines and streaks.
  */
 function ArcadHero({
@@ -579,7 +579,7 @@ function ContextPanel({ data }: { data: DashboardResponse }) {
     <div className="rounded-lg p-6" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
       <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>What Arcad knows</p>
       <p className="mt-2 text-[14px]" style={{ color: "var(--app-text-muted)" }}>
-        Every message is sent with this context so Arcad can plan around your real life — nothing generic.
+        Every message is sent with this context so Arcad can plan around your real life, nothing generic.
       </p>
 
       <div className="mt-6 space-y-6">
@@ -638,8 +638,8 @@ function ContextPanel({ data }: { data: DashboardResponse }) {
         <ContextRow label="Assistant">
           <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>
             {data.assistant?.providerConfigured
-              ? "OpenAI connected — Arcad interprets open-ended messages."
-              : "Local mode — Arcad handles structured requests without a provider key."}
+              ? "OpenAI connected, Arcad interprets open-ended messages."
+              : "Local mode, Arcad handles structured requests without a provider key."}
           </p>
         </ContextRow>
       </div>

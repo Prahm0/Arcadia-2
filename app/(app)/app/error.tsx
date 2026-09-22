@@ -16,7 +16,7 @@ export default function AppErrorBoundary({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Keep a copy in the console for debugging — Next.js already logs, but the
+    // Keep a copy in the console for debugging, Next.js already logs, but the
     // digest makes it easier to correlate with a server log line if we ever
     // pipe them together.
     console.error("Arcadia app error boundary", error);
@@ -47,7 +47,7 @@ export default function AppErrorBoundary({
           Something went <span className="accent-serif">sideways</span>.
         </h1>
         <p className="mt-2.5 text-[14px]" style={{ color: "var(--app-text-muted)" }}>
-          Give it a moment and try again. If it happens again, hop into Settings and sign out — that usually clears it.
+          Give it a moment and try again. If it happens again, hop into Settings and sign out, that usually clears it.
         </p>
         {error?.digest ? (
           <p className="mt-2 type-mono-label" style={{ color: "var(--app-text-faint)" }}>

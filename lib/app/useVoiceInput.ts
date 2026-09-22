@@ -54,7 +54,7 @@ interface VoiceInputHandle {
 }
 
 /**
- * Web Speech API wrapper. Deliberately thin — surfaces support, listening
+ * Web Speech API wrapper. Deliberately thin, surfaces support, listening
  * state and a live transcript so callers can wire it into an existing
  * textarea. Handles the webkit prefix (Chrome, Safari) and gracefully
  * reports "unsupported" on Firefox / older browsers so the mic button can

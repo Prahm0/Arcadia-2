@@ -83,7 +83,7 @@ export const TOURS: Record<TourId, Tour> = {
         title: "Today's focus list",
         body: "Focus lists the study blocks Arcadia planned for today: what each one is for, how long it takes and when it starts.",
         visual: (
-          <Window width={300} title="Focus · 3 things to focus on today">
+          <Window width={300} title="Focus · what matters today">
             <Row bar={CAT.study} title="Kinematics review" meta="Physics · 4:00pm" right={<Mono>50m</Mono>} />
             <Row bar={CAT.study} title="Lab report draft" meta="Chemistry · 6:30pm" right={<Mono>1h</Mono>} />
             <Row bar={CAT.study} title="Essay plan" meta="English · 8:00pm" right={<Mono>30m</Mono>} />

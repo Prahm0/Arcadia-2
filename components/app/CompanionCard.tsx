@@ -46,7 +46,7 @@ export default function CompanionCard() {
               {profile.name}
             </p>
             <p className="mt-0.5 type-mono-label" style={{ color: "var(--app-text-muted)" }}>
-              {state === "recovering" ? "Recovering — one session resets it." : formatMinutesLine(focusedMinutes)}
+              {state === "recovering" ? "Recovering, one session resets it." : formatMinutesLine(focusedMinutes)}
             </p>
           </div>
         </div>

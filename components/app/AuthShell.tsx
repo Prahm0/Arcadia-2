@@ -11,7 +11,7 @@ interface AuthShellProps {
 }
 
 /**
- * The auth frame used to be its own world — black, white and a 900-star
+ * The auth frame used to be its own world, black, white and a 900-star
  * Starfield borrowed from the marketing page, with none of the --app-* tokens.
  * It now uses the same flat surfaces as the rest of the product, so signing in
  * looks like the thing you are signing in to.

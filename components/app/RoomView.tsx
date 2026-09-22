@@ -29,7 +29,7 @@ interface RoomViewProps {
 
 /**
  * A study room's live dashboard: who's studying, on what, for how long, and
- * how much they've done today. Status comes from each member's focus timer —
+ * how much they've done today. Status comes from each member's focus timer ,
  * nothing to set here. Read-only polling; viewing a room never writes.
  */
 export default function RoomView({ code }: RoomViewProps) {
@@ -360,7 +360,7 @@ function MemberCard({
             className="font-mono text-[22px] tabular-nums tracking-[-0.01em]"
             style={{ color: member.activity === "idle" ? "var(--app-text-faint)" : "var(--app-text)" }}
           >
-            {member.activity === "idle" ? "—" : formatClock(elapsed)}
+            {member.activity === "idle" ? "," : formatClock(elapsed)}
           </p>
         </div>
         <div className="text-right">

@@ -35,6 +35,10 @@ function gridPosition(block: ScheduleBlock) {
   return {
     top: `${((block.start - WEEK_VIEW.start) / SPAN) * 100}%`,
     height: `${((block.end - block.start) / SPAN) * 100}%`,
+    // Floor short blocks so the title stays readable at any container
+    // height. Otherwise a 35 min event on a narrow layout can render
+    // ~15 px tall and truncate mid line.
+    minHeight: "26px",
     left: `${dayIndex * 20}%`,
     width: "20%",
   };

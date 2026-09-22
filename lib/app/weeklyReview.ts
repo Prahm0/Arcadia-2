@@ -70,7 +70,7 @@ export function weekWindowContaining(now: Date, timezone: string): WeekWindow {
 
   const startKey = mondayAnchor.toISOString().slice(0, 10);
   const endKey = sundayAnchor.toISOString().slice(0, 10);
-  // Bracket the window generously — we filter events by their dateKey afterwards.
+  // Bracket the window generously, we filter events by their dateKey afterwards.
   const startMs = Date.parse(`${startKey}T00:00:00Z`) - 24 * 60 * 60 * 1000;
   const endMs = Date.parse(`${endKey}T23:59:59Z`) + 24 * 60 * 60 * 1000;
 
@@ -93,7 +93,7 @@ export function previousWeekWindow(now: Date, timezone: string): WeekWindow {
 
 /**
  * Roll planner events for the given week into a review summary.
- * Only study-category events count — school/sport/sleep are ignored here.
+ * Only study-category events count, school/sport/sleep are ignored here.
  */
 export function buildWeeklyReview(
   events: PlannerEvent[],
@@ -186,13 +186,13 @@ function pickWin(subjects: SubjectSlice[], overallRatio: number): WinNote | null
     return {
       kind: "subject",
       subject: contender.subject,
-      message: `${contender.subject} held together — ${Math.round(contender.ratio * 100)}% of planned time.`,
+      message: `${contender.subject} held together, ${Math.round(contender.ratio * 100)}% of planned time.`,
     };
   }
   if (overallRatio >= 0.5) {
     return {
       kind: "steady",
-      message: "You still moved the needle — over half the plan landed.",
+      message: "You still moved the needle, over half the plan landed.",
     };
   }
   return null;
@@ -209,13 +209,13 @@ function pickAdjustment(subjects: SubjectSlice[], overallRatio: number): Adjustm
     return {
       kind: "subject-slip",
       subject: worst.subject,
-      message: `${worst.subject} slipped by ${Math.round(missedMin)} min — worth pinning first this week.`,
+      message: `${worst.subject} slipped by ${Math.round(missedMin)} min, worth pinning first this week.`,
     };
   }
   if (overallRatio < 0.5) {
     return {
       kind: "volume-low",
-      message: "Volume was low overall — even a couple of focused blocks reset the pattern.",
+      message: "Volume was low overall, even a couple of focused blocks reset the pattern.",
     };
   }
   return null;

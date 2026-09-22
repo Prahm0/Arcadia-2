@@ -11,7 +11,7 @@ export function isGuestEmail(email: string | null | undefined): boolean {
 }
 
 /**
- * Spins up a throwaway account and signs in. One click, no email — the
+ * Spins up a throwaway account and signs in. One click, no email, the
  * backend recognises `@arcadia.local` addresses and marks them verified on
  * insert, so login goes straight through. Guest rows accumulate in the DB;
  * that's the trade-off for zero-friction demos.

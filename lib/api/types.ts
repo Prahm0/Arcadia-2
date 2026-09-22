@@ -3,6 +3,8 @@ export interface AuthUser {
   email: string;
   name: string;
   grade?: string | null;
+  /** Background of the initials avatar; null picks one from the name. */
+  avatarColour?: string | null;
   timezone?: string;
   onboardingComplete?: boolean;
   tier?: "free" | "pro" | "max";
@@ -60,26 +62,6 @@ export interface CompanionProfile {
   accessory: CompanionAccessory;
 }
 
-export interface SubjectFile {
-  id: string;
-  subjectId: string;
-  filename: string;
-  contentType: string;
-  sizeBytes: number;
-  textExcerpt?: string;
-  createdAt: string;
-}
-
-export interface SubjectContext {
-  subjectId: string;
-  subjectName: string;
-  color?: string | null;
-  notes: string;
-  includeInArcad: boolean;
-  updatedAt?: string | null;
-  files: SubjectFile[];
-}
-
 export interface DashboardResponse {
   user: AuthUser;
   profile: PlannerProfile | null;
@@ -92,8 +74,11 @@ export interface DashboardResponse {
     weeklyMinutes?: number;
     /** True when weeklyMinutes is the year-level default, not the student's pick. */
     weeklyMinutesSuggested?: boolean;
+    /** The grade the student is aiming for, as they wrote it. */
+    targetGrade?: string | null;
+    /** The student's note for Arcad about this subject. */
+    notes?: string;
   }>;
-  subjectContexts?: SubjectContext[];
   tasks: PlannerTask[];
   commitments: Array<Record<string, unknown>>;
   range: { start: string; end: string };

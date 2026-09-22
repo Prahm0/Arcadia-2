@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 const now = sql`(unixepoch() * 1000)`;
 
@@ -76,7 +76,46 @@ export const profiles = sqliteTable("profiles", {
   maxDailyStudyMinutes: integer("max_daily_study_minutes").notNull().default(180),
   preferredSessionMinutes: integer("preferred_session_minutes").notNull().default(50),
   breakMinutes: integer("break_minutes").notNull().default(15),
+  // Profile header. The avatar is initials on this colour for now.
+  state: text("state"),
+  school: text("school"),
+  avatarColour: text("avatar_colour"),
+  atarTarget: real("atar_target"),
+  // Arcad personalisation: "what should Arcad know about you" and "how
+  // should Arcad respond", plus whether it may save memories from chats.
+  arcadAbout: text("arcad_about").notNull().default(""),
+  arcadStyle: text("arcad_style").notNull().default(""),
+  memoryEnabled: integer("memory_enabled", { mode: "boolean" }).notNull().default(true),
 });
+
+export const goals = sqliteTable(
+  "goals",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    done: integer("done", { mode: "boolean" }).notNull().default(false),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [index("goals_user_idx").on(t.userId)],
+);
+
+/** Facts Arcad saved from chats (source "chat") or the student added ("manual"). */
+export const memories = sqliteTable(
+  "memories",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    source: text("source").notNull().default("chat"),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [index("memories_user_idx").on(t.userId, t.createdAt)],
+);
 
 export const subjects = sqliteTable(
   "subjects",
@@ -91,6 +130,10 @@ export const subjects = sqliteTable(
     // Weekly study target in minutes. NULL = the year-level default the
     // scheduler suggests; 0 = no maintenance blocks for this subject.
     weeklyMinutes: integer("weekly_minutes"),
+    // The grade the student is aiming for, free text ("A", "B+", "85%").
+    targetGrade: text("target_grade"),
+    // What Arcad should keep in mind for this subject.
+    notes: text("notes").notNull().default(""),
     createdAt: integer("created_at").notNull().default(now),
   },
   (t) => [index("subjects_user_idx").on(t.userId)],

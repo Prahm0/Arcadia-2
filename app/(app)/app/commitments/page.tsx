@@ -1,7 +1,6 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import CommitmentsView from "@/components/app/CommitmentsView";
-
+// Co-curriculars and school hours now live on the profile.
 export default function CommitmentsPage() {
-  return <CommitmentsView />;
+  redirect("/app/profile#cocurriculars");
 }

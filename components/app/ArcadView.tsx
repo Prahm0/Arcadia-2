@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
@@ -22,6 +23,8 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   createdAt: string;
+  /** Facts Arcad saved to memory on this reply. Only on replies from this visit. */
+  remembered?: string[];
 }
 
 interface Proposal {
@@ -186,7 +189,13 @@ export default function ArcadView() {
               setState((prev) => ({
                 ...prev,
                 conversationId: event.conversationId || prev.conversationId,
-                messages: [...prev.messages, event.message as Message],
+                messages: [
+                  ...prev.messages,
+                  {
+                    ...(event.message as Message),
+                    remembered: Array.isArray(event.remembered) ? event.remembered : undefined,
+                  },
+                ],
                 proposals: event.proposal ? [...prev.proposals, event.proposal as Proposal] : prev.proposals,
               }));
               if (event.schedule || event.action) scheduleTouched = true;
@@ -492,6 +501,20 @@ function MessageBubble({ message }: { message: Message }) {
         >
           {message.content}
         </div>
+        {message.remembered?.length ? (
+          <Link
+            href="/app/profile#arcad"
+            title={message.remembered.join("\n")}
+            className="mt-1.5 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] ui-hover"
+            style={{ color: "var(--app-arcad-strong)" }}
+          >
+            <svg viewBox="0 0 20 20" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 10.5l4 4 8-9" />
+            </svg>
+            Saved to memory
+            <span style={{ color: "var(--app-text-muted)" }}>· Manage</span>
+          </Link>
+        ) : null}
         <span
           className="mt-1 px-1 text-[10.5px] font-mono opacity-0 transition-opacity group-hover:opacity-100"
           style={{ color: "var(--app-text-faint)" }}

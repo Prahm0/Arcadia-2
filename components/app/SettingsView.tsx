@@ -37,10 +37,6 @@ export default function SettingsView() {
   const router = useRouter();
   const { data, patch, reload } = useDashboardData();
   const { mode, setMode } = useTheme();
-  const [name, setName] = useState(data.user.name);
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [profileNotice, setProfileNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
-
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
@@ -295,21 +291,6 @@ export default function SettingsView() {
     });
   }
 
-  async function saveProfile(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSavingProfile(true);
-    setProfileNotice(null);
-    try {
-      await api("/api/account", { method: "PATCH", body: JSON.stringify({ name }) });
-      setProfileNotice({ tone: "info", text: "Saved." });
-      await reload();
-    } catch (err) {
-      setProfileNotice({ tone: "error", text: err instanceof Error ? err.message : "Failed." });
-    } finally {
-      setSavingProfile(false);
-    }
-  }
-
   async function changePassword(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSavingPassword(true);
@@ -379,11 +360,8 @@ export default function SettingsView() {
 
       <div className="mx-auto flex w-full max-w-[720px] flex-col gap-6 px-6 py-8 sm:px-10">
         <Card>
-          <SectionHeader label="Profile" />
-          <form onSubmit={saveProfile} className="flex flex-col gap-4">
-            <Field label="Display name">
-              <Input value={name} onChange={setName} />
-            </Field>
+          <SectionHeader label="Account" />
+          <div className="flex flex-col gap-4">
             <Field label="Email">
               <Input value={isGuest ? "" : data.user.email} onChange={() => {}} disabled />
               <Hint>
@@ -392,11 +370,18 @@ export default function SettingsView() {
                   : "Email changes go through verification, use the change-email flow."}
               </Hint>
             </Field>
-            <div className="flex items-center justify-between pt-2">
-              <Notice notice={profileNotice} />
-              <AppButton type="submit" variant="primary" loading={savingProfile}>Save</AppButton>
+            <div
+              className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"
+              style={{ borderColor: "var(--app-border)" }}
+            >
+              <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>
+                Your name, subjects, goals and what Arcad knows about you are on your profile.
+              </p>
+              <AppButton variant="secondary" onClick={() => router.push("/app/profile")}>
+                Open profile
+              </AppButton>
             </div>
-          </form>
+          </div>
         </Card>
 
         <Card>

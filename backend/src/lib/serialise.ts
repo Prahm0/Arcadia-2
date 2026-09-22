@@ -74,6 +74,8 @@ export function serialiseSubject(subject: SubjectRow, grade: string | null | und
     colour: subject.colour,
     weeklyMinutes: subject.weeklyMinutes ?? defaultWeeklyMinutes(grade),
     weeklyMinutesSuggested: subject.weeklyMinutes === null,
+    targetGrade: subject.targetGrade,
+    notes: subject.notes,
   };
 }
 
@@ -84,6 +86,7 @@ export function serialiseUser(user: UserRow, profile: ProfileRow | null) {
     email: user.email,
     name: profile?.displayName || user.name,
     grade: profile?.grade ?? null,
+    avatarColour: profile?.avatarColour ?? null,
     timezone: profile?.timezone ?? "Australia/Brisbane",
     onboardingComplete: profile?.onboardingComplete ?? false,
     tier: (user.tier === "pro" || user.tier === "max" ? user.tier : "free") as

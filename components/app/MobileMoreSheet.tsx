@@ -19,13 +19,12 @@ function icon(path: ReactNode) {
 }
 
 const ITEMS: MoreItem[] = [
+  { label: "Profile",     href: "/app/profile",     icon: icon(<><circle cx="10" cy="8" r="3" /><path d="M4.5 16.5c1-2.6 3.1-4 5.5-4s4.5 1.4 5.5 4" /></>) },
   { label: "Deadlines",   href: "/app/deadlines",   icon: icon(<><circle cx="10" cy="10" r="7" /><path d="M10 6v4l3 2" /></>) },
-  { label: "Commitments", href: "/app/commitments", icon: icon(<><path d="M3 9h14M10 3v14M3 6a3 3 0 013-3h8a3 3 0 013 3v8a3 3 0 01-3 3H6a3 3 0 01-3-3V6z" /></>) },
   { label: "Focus",       href: "/app/focus",       icon: icon(<><circle cx="10" cy="10" r="7" /><circle cx="10" cy="10" r="3" /></>) },
   { label: "Analytics",   href: "/app/analytics",   icon: icon(<><path d="M4 15v-4M9 15V7M14 15v-6" /><path d="M2 17h16" /></>) },
   { label: "Review",      href: "/app/review",      icon: icon(<><path d="M4 5h12M4 10h8M4 15h12" /><circle cx="15" cy="10" r="1" fill="currentColor" /></>) },
   { label: "Rooms",       href: "/app/rooms",       icon: icon(<><circle cx="6" cy="8" r="2" /><circle cx="14" cy="8" r="2" /><path d="M3 16c0-2 1.5-4 3-4M17 16c0-2-1.5-4-3-4M10 17v-1" /></>) },
-  { label: "Knowledge",   href: "/app/knowledge",   icon: icon(<><path d="M5 4h9l2 2v10H5z" strokeLinejoin="round" /><path d="M14 4v3h3M8 10h5M8 13h5" /></>) },
   { label: "Settings",    href: "/app/settings",    icon: icon(<><circle cx="10" cy="10" r="2.5" /><path d="M10 3v2M10 15v2M3 10h2M15 10h2M4.9 4.9l1.4 1.4M13.7 13.7l1.4 1.4M4.9 15.1l1.4-1.4M13.7 6.3l1.4-1.4" /></>) },
 ];
 

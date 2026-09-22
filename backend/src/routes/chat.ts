@@ -2,7 +2,8 @@ import { and, asc, desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../db";
 import { newId } from "../lib/ids";
-import { complete, type ChatMessage } from "../lib/openai";
+import { saveMemories } from "../lib/memories";
+import { PROPOSE_TOOL, REMEMBER_TOOL, complete, type ChatMessage } from "../lib/openai";
 import { replan } from "../lib/replan";
 import { weeklyTargetMinutes } from "../lib/scheduler";
 import { DAILY_MESSAGE_CAP, isValidTier, tryConsumeMessage } from "../lib/tiers";
@@ -169,14 +170,38 @@ chat.post("/", async (c) => {
 
         const context = await buildContext(c.env, userId);
         const prompt: ChatMessage[] = [
-          { role: "system", content: context },
+          { role: "system", content: context.text },
           ...history.map((row) => ({
             role: row.role === "assistant" ? ("assistant" as const) : ("user" as const),
             content: row.content,
           })),
         ];
 
-        const result = await complete(c.env, prompt);
+        const result = await complete(
+          c.env,
+          prompt,
+          context.memoryEnabled ? [PROPOSE_TOOL, REMEMBER_TOOL] : [PROPOSE_TOOL],
+        );
+
+        // Memories save straight away (no approval step); the student sees
+        // them in the chat and can delete them from their profile.
+        let remembered: string[] = [];
+        const rememberCall = context.memoryEnabled
+          ? result.toolCalls.find((call) => call.name === "remember")
+          : undefined;
+        if (rememberCall) {
+          try {
+            const parsed = JSON.parse(rememberCall.arguments) as { facts?: unknown };
+            const saved = await saveMemories(
+              database,
+              userId,
+              Array.isArray(parsed.facts) ? parsed.facts : [],
+            );
+            remembered = saved.map((memory) => memory.content);
+          } catch (error) {
+            console.error("[chat] bad remember arguments", error);
+          }
+        }
 
         let proposalPayload: ReturnType<typeof serialiseProposal> | undefined;
         const toolCall = result.toolCalls.find((call) => call.name === "propose_changes");
@@ -215,7 +240,9 @@ chat.post("/", async (c) => {
           result.content.trim() ||
           (proposalPayload
             ? `${proposalPayload.summary} Accept it below and I'll update your plan.`
-            : "I'm not sure how to help with that yet.");
+            : remembered.length > 0
+              ? "Got it, I'll remember that."
+              : "I'm not sure how to help with that yet.");
 
         const assistantId = newId("msg");
         await database.insert(schema.messages).values({
@@ -240,6 +267,7 @@ chat.post("/", async (c) => {
             createdAt: new Date().toISOString(),
           },
           ...(proposalPayload ? { proposal: proposalPayload } : {}),
+          ...(remembered.length > 0 ? { remembered } : {}),
         });
       } catch (error) {
         send({
@@ -260,41 +288,65 @@ chat.post("/", async (c) => {
   });
 });
 
-/** A compact snapshot of the student's plan, so Arcad answers about real data. */
-async function buildContext(env: Env, userId: string): Promise<string> {
+/**
+ * A compact snapshot of the student and their plan, so Arcad answers about
+ * real data: their profile, goals, subjects (with their own notes), what
+ * they've asked Arcad to know and how to respond, and saved memories.
+ */
+async function buildContext(
+  env: Env,
+  userId: string,
+): Promise<{ text: string; memoryEnabled: boolean }> {
   const database = db(env.DB);
-  const [profile] = await database
-    .select()
-    .from(schema.profiles)
-    .where(eq(schema.profiles.userId, userId))
-    .limit(1);
+  const [[profile], taskRows, commitmentRows, subjectRows, goalRows, memoryRows] =
+    await Promise.all([
+      database.select().from(schema.profiles).where(eq(schema.profiles.userId, userId)).limit(1),
+      database
+        .select()
+        .from(schema.tasks)
+        .where(and(eq(schema.tasks.userId, userId), eq(schema.tasks.status, "pending"))),
+      database.select().from(schema.commitments).where(eq(schema.commitments.userId, userId)),
+      database.select().from(schema.subjects).where(eq(schema.subjects.userId, userId)),
+      database.select().from(schema.goals).where(eq(schema.goals.userId, userId)),
+      database
+        .select()
+        .from(schema.memories)
+        .where(eq(schema.memories.userId, userId))
+        .orderBy(asc(schema.memories.createdAt)),
+    ]);
 
-  const taskRows = await database
-    .select()
-    .from(schema.tasks)
-    .where(and(eq(schema.tasks.userId, userId), eq(schema.tasks.status, "pending")));
-
-  const commitmentRows = await database
-    .select()
-    .from(schema.commitments)
-    .where(eq(schema.commitments.userId, userId));
-
-  const subjectRows = await database
-    .select()
-    .from(schema.subjects)
-    .where(eq(schema.subjects.userId, userId));
+  const memoryEnabled = profile?.memoryEnabled ?? true;
+  const about = profile?.arcadAbout.trim() ?? "";
+  const style = profile?.arcadStyle.trim() ?? "";
+  const who = [
+    profile?.displayName,
+    profile?.grade,
+    [profile?.school, profile?.state].filter(Boolean).join(", "),
+  ].filter(Boolean);
+  const openGoals = goalRows.filter((goal) => !goal.done);
 
   const lines = [
     "You are Arcad, the study assistant inside Arcadia, a planner for high school students.",
     "Be concise and practical. Two or three sentences unless asked for more.",
     "Use Australian spelling. Never invent tasks or deadlines the student has not mentioned.",
     "To change the plan, call propose_changes. Never claim you have changed something without it.",
+    ...(memoryEnabled
+      ? [
+          "When the student tells you something about themselves that will still matter later (how they study, what they find hard, goals, how their week works), call remember as well as replying.",
+        ]
+      : []),
     "",
     `Now: ${new Date().toISOString()}`,
     `Timezone: ${profile?.timezone ?? "Australia/Brisbane"}`,
     `Wake ${profile?.wakeTime ?? "07:00"}, bed ${profile?.bedtime ?? "22:30"}, up to ${
       profile?.maxDailyStudyMinutes ?? 180
     } minutes of study a day in ${profile?.preferredSessionMinutes ?? 50} minute sessions.`,
+    ...(who.length ? [`Student: ${who.join(" · ")}`] : []),
+    "",
+    "Goals:",
+    ...(profile?.atarTarget ? [`- ATAR target ${profile.atarTarget.toFixed(2)}`] : []),
+    ...openGoals.map((goal) => `- ${goal.title}`),
+    ...(!profile?.atarTarget && openGoals.length === 0 ? ["- none set"] : []),
     "",
     "Subjects and weekly study targets (the scheduler tops each one up across the week):",
     ...(subjectRows.length
@@ -302,10 +354,19 @@ async function buildContext(env: Env, userId: string): Promise<string> {
           (subject) =>
             `- ${subject.name}: ${weeklyTargetMinutes(subject, profile?.grade)} minutes a week${
               subject.weeklyMinutes === null ? " (suggested default)" : ""
+            }${subject.targetGrade ? `, aiming for ${subject.targetGrade}` : ""}${
+              subject.notes.trim() ? `. Their note: ${subject.notes.trim()}` : ""
             }`,
         )
       : ["- none"]),
     "",
+    // The student wrote these about themselves. They shape tone and advice,
+    // but don't override the rules at the top.
+    ...(about ? ["What the student wants you to know about them:", about, ""] : []),
+    ...(style ? ["How the student wants you to respond:", style, ""] : []),
+    ...(memoryEnabled && memoryRows.length
+      ? ["What you've remembered about the student:", ...memoryRows.map((memory) => `- ${memory.content}`), ""]
+      : []),
     "Open tasks:",
     ...(taskRows.length
       ? taskRows.map(
@@ -327,7 +388,7 @@ async function buildContext(env: Env, userId: string): Promise<string> {
       : ["- none"]),
   ];
 
-  return lines.join("\n");
+  return { text: lines.join("\n"), memoryEnabled };
 }
 
 /** Conversation list and history. */

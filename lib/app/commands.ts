@@ -31,13 +31,12 @@ export const GO_TARGETS: GoTarget[] = [
   { label: "Today", href: "/app", key: "t" },
   { label: "Schedule", href: "/app/schedule", key: "s" },
   { label: "Deadlines", href: "/app/deadlines", key: "d" },
-  { label: "Commitments", href: "/app/commitments", key: "c" },
   { label: "Focus", href: "/app/focus", key: "f" },
   { label: "Rooms", href: "/app/rooms", key: "r" },
   { label: "Analytics", href: "/app/analytics", key: "a" },
   { label: "Weekly review", href: "/app/review", key: "w" },
   { label: "Arcad", href: "/app/arcad", key: "h" },
-  { label: "Knowledge", href: "/app/knowledge", key: "k" },
+  { label: "Profile", href: "/app/profile", key: "p" },
   { label: "Settings", href: "/app/settings", key: "," },
 ];
 

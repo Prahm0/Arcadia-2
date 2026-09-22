@@ -5,7 +5,6 @@ import {
   Bubble,
   CAT,
   Chip,
-  FileRow,
   Heatmap,
   Meter,
   MockButton,
@@ -58,10 +57,9 @@ export interface Tour {
 export type TourId =
   | "today"
   | "arcad"
-  | "knowledge"
+  | "profile"
   | "schedule"
   | "deadlines"
-  | "commitments"
   | "focus"
   | "rooms"
   | "analytics"
@@ -211,7 +209,7 @@ export const TOURS: Record<TourId, Tour> = {
       },
       {
         title: "It knows your context",
-        body: "Arcad sees today's plan, your open tasks, subjects and streak, plus any Knowledge files you let it read.",
+        body: "Arcad sees today's plan, your open tasks, subjects and streak, plus your profile: goals, subject notes and anything it has remembered.",
         visual: (
           <Window width={300} title="What Arcad knows">
             <div className="grid grid-cols-2 gap-1.5">
@@ -226,58 +224,44 @@ export const TOURS: Record<TourId, Tour> = {
     ],
   },
 
-  knowledge: {
-    title: "Knowledge",
+  profile: {
+    title: "Profile",
     steps: [
       {
-        title: "A shelf for every subject",
-        body: "Each subject you study gets its own space for files and notes. New subjects appear as soon as you add a task for them.",
+        title: "Everything Arcad plans around",
+        body: "Your subjects, co-curriculars, goals and study routine live here. Change any of them and your week replans.",
         visual: (
-          <Window width={280}>
+          <Window width={280} title="Profile">
             <Stack gap={2}>
-              <Row bar={CAT.school} title="Physics" meta="3 files · notes" right={<Chip tone="accent">Arcad reads</Chip>} />
-              <Row bar={CAT.rose} title="Chemistry" meta="1 file" />
-              <Row bar={CAT.extra} title="English" meta="No files yet" />
+              <Row bar={CAT.school} title="Literature" meta="3h a week · 1h 30m done" />
+              <Row bar={CAT.rose} title="Mathematical Methods" meta="3h a week · aiming for A" />
+              <Row bar={CAT.sport} title="Basketball" meta="Every Wed · 4pm–6pm" />
             </Stack>
           </Window>
         ),
       },
       {
-        title: "Upload your material",
-        body: "Add lecture slides, handouts and notes: PDF, Word, Pages, RTF, text or Markdown, up to 10 MB per file.",
+        title: "Tell each subject what matters",
+        body: "Open a subject to set its weekly time, the grade you're aiming for, and a note Arcad reads every time it plans or talks about it.",
         visual: (
-          <Window width={280} title="Physics · Files">
-            <FileRow name="Week 6 – Momentum.pdf" meta="2.4 MB · uploaded today" />
-            <FileRow name="Formula sheet.docx" meta="180 KB" />
-            <FileRow name="Prac notes.md" meta="12 KB" />
-            <div className="mt-1.5 flex justify-end">
-              <MockButton size="sm">Upload file</MockButton>
-            </div>
-          </Window>
-        ),
-      },
-      {
-        title: "Leave notes for a tutor",
-        body: "Write down what anyone helping you should know: key topics, your textbook, how your teacher marks.",
-        visual: (
-          <Window width={280} title="Physics · Notes">
+          <Window width={280} title="Literature · Note for Arcad">
             <MockInput
               multiline
               focused
-              value="Exam covers momentum + energy. Textbook: Jacaranda Physics 12. Teacher wants full working."
+              value="Weakest on unseen texts. Prefer essay practice on weekends. Our exam text is Hamlet."
             />
           </Window>
         ),
       },
       {
-        title: "You decide what Arcad reads",
-        body: "Turn on Let Arcad read this and Arcad uses that subject's files and notes when you ask it about the subject.",
+        title: "Make Arcad yours",
+        body: "Write what Arcad should know about you and how it should talk to you. It also remembers things from your chats, and you can delete any of them.",
         visual: (
           <Window width={260}>
             <Stack gap={10}>
-              <Toggle on label="Let Arcad read this" />
-              <Bubble from="you">Explain impulse like my notes do</Bubble>
-              <Bubble from="arcad">From “Week 6 – Momentum”: impulse is…</Bubble>
+              <Toggle on label="Memory" />
+              <Bubble from="you">I study best after dinner</Bubble>
+              <Bubble from="arcad">Got it, I&apos;ll plan your sessions for the evening.</Bubble>
             </Stack>
           </Window>
         ),
@@ -414,60 +398,6 @@ export const TOURS: Record<TourId, Tour> = {
               <Bubble from="arcad">Added “Chemistry lab report” and booked Wed 6–7:30pm for it.</Bubble>
             </Stack>
           </Window>
-        ),
-      },
-    ],
-  },
-
-  commitments: {
-    title: "Commitments",
-    steps: [
-      {
-        title: "The fixed parts of your week",
-        body: "School hours, training, lessons: anything that happens at a set time and isn't up for negotiation.",
-        visual: (
-          <Window width={280} title="Commitments">
-            <Row bar={CAT.school} title="School" meta="Mon–Fri · 8:30am–3:15pm" />
-            <Row bar={CAT.sport} title="Training" meta="Tue, Thu · 6:00pm–7:30pm" />
-            <Row bar={CAT.extra} title="Music lesson" meta="Sat · 10:00am–11:00am" />
-          </Window>
-        ),
-      },
-      {
-        title: "Add it once",
-        body: "Set the days and times once and it repeats automatically. Choose Weekly, Weekdays, or One-off for a single date.",
-        visual: (
-          <Window width={280} title="New commitment">
-            <Stack>
-              <MockInput label="Title" value="Basketball training" />
-              <div>
-                <p className="mb-1 text-[9.5px] font-medium" style={{ color: "var(--app-text-soft)" }}>Repeats</p>
-                <div className="flex gap-1.5">
-                  <Chip tone="accent">Weekly</Chip>
-                  <Chip>Weekdays (Mon–Fri)</Chip>
-                  <Chip>One-off</Chip>
-                </div>
-              </div>
-            </Stack>
-          </Window>
-        ),
-      },
-      {
-        title: "Study fits around them",
-        body: "Arcadia only schedules study in the gaps your commitments leave, so the plan always fits your real week.",
-        visual: (
-          <WeekGrid
-            blocks={[
-              { day: 0, start: 0, length: 4, color: CAT.school, label: "School" },
-              { day: 1, start: 0, length: 4, color: CAT.school, label: "School" },
-              { day: 1, start: 6, length: 2, color: CAT.sport, label: "Training" },
-              { day: 3, start: 6, length: 2, color: CAT.sport, label: "Training" },
-              { day: 0, start: 5, length: 2, color: CAT.study, label: "Study" },
-              { day: 1, start: 4, length: 1, color: CAT.study, label: "Study" },
-              { day: 3, start: 4, length: 2, color: CAT.study, label: "Study" },
-              { day: 5, start: 1, length: 1, color: CAT.extra, label: "Music" },
-            ]}
-          />
         ),
       },
     ],

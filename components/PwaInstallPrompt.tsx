@@ -15,6 +15,8 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { SplashScreen } from "@capacitor/splash-screen";
+import { hidePwaBanner } from "@/lib/capacitor/platform";
 
 const DISMISS_KEY = "arcadia:pwa-prompt-dismissed-at";
 const DISMISS_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -31,6 +33,7 @@ export default function PwaInstallPrompt() {
   const pathname = usePathname();
   const [mode, setMode] = useState<Mode>("hidden");
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
+  const nativeShell = hidePwaBanner();
 
   // Only show inside the product itself. On the landing the banner
   // competes with the primary Get Started CTA, especially on phones
@@ -39,9 +42,17 @@ export default function PwaInstallPrompt() {
   const isInApp = pathname?.startsWith("/app");
 
   useEffect(() => {
+    if (!nativeShell) return;
+    // The native shell deliberately owns launch timing. Once the remote page
+    // hydrates, it is safe to reveal the real UI beneath the branded splash.
+    void SplashScreen.hide().catch(() => {});
+  }, [nativeShell]);
+
+  useEffect(() => {
     // Guard everything behind window checks so nothing runs during SSR
     // or in the pre-hydration snapshot.
     if (typeof window === "undefined") return;
+    if (nativeShell) return;
     if (!isInApp) return;
 
     // Already installed, nothing to prompt.
@@ -83,7 +94,7 @@ export default function PwaInstallPrompt() {
     };
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
-  }, [isInApp]);
+  }, [isInApp, nativeShell]);
 
   function dismiss() {
     setMode("hidden");
@@ -105,7 +116,7 @@ export default function PwaInstallPrompt() {
     dismiss();
   }
 
-  if (mode === "hidden") return null;
+  if (nativeShell || mode === "hidden") return null;
 
   return (
     <div

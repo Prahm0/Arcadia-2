@@ -45,7 +45,7 @@ const TIERS: Tier[] = [
     key: "pro",
     name: "Pro",
     headline: "Arcad turned up. Calendar synced. Notes indexed.",
-    pricing: { weekly: 4.99, monthly: 15.99, yearly: 149 },
+    pricing: { weekly: 4.95, monthly: 12.82, yearly: 49.4 },
     features: [
       "Everything in Free",
       "20 Arcad messages / day",
@@ -62,7 +62,7 @@ const TIERS: Tier[] = [
     key: "max",
     name: "Max",
     headline: "Voice tutor. Exam prep. Real humans when you're stuck.",
-    pricing: { weekly: 10.99, monthly: 39.99, yearly: 379 },
+    pricing: { weekly: 9.95, monthly: 34.54, yearly: 205.4 },
     features: [
       "Everything in Pro",
       "100 Arcad messages / day",

@@ -18,6 +18,7 @@ import NewTaskSheet from "./NewTaskSheet";
 import NotificationCentre from "./NotificationCentre";
 import PageMount from "./PageMount";
 import ShortcutsDialog from "./ShortcutsDialog";
+import PushCheckInPrompt from "./PushCheckInPrompt";
 import SessionStartModal from "./SessionStartModal";
 import Logo from "@/components/ui/Logo";
 import { Avatar } from "./profile/ui";
@@ -453,6 +454,7 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
       <MobileBottomNav />
       <NewTaskSheet open={newTaskOpen} onClose={() => setNewTaskOpen(false)} />
       <ShortcutsDialog open={shortcutsOpen} onClose={closeShortcuts} />
+      <PushCheckInPrompt />
       <SessionStartModal
         event={sessionStart.event}
         timezone={sessionStart.timezone}

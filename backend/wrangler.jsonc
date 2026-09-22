@@ -44,5 +44,11 @@
       "binding": "UPLOADS",
       "bucket_name": "arcadia-uploads"
     }
-  ]
+  ],
+
+  // Browser push delivery. VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY are
+  // secrets, never values in this file.
+  "triggers": {
+    "crons": ["* * * * *"]
+  }
 }

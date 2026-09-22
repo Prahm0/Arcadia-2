@@ -31,6 +31,23 @@ export function isValidTier(value: string | null | undefined): value is Tier {
   return value === "free" || value === "pro" || value === "max";
 }
 
+export function isPaidTier(tier: Tier): boolean {
+  return tier === "pro" || tier === "max";
+}
+
+export async function getUserTier(
+  database: ReturnType<typeof makeDb>,
+  userId: string,
+): Promise<Tier> {
+  const [user] = await database
+    .select({ tier: schema.users.tier })
+    .from(schema.users)
+    .where(eq(schema.users.id, userId))
+    .limit(1);
+
+  return isValidTier(user?.tier) ? user.tier : "free";
+}
+
 export interface CapCheckResult {
   allowed: boolean;
   tier: Tier;

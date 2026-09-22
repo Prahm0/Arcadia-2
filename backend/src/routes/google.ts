@@ -13,6 +13,7 @@ import {
   verifyState,
 } from "../lib/google-oauth";
 import { newId } from "../lib/ids";
+import { getUserTier, isPaidTier } from "../lib/tiers";
 import { DAY } from "../lib/time";
 import type { Env, Variables } from "../types";
 
@@ -31,6 +32,13 @@ const REFRESH_THRESHOLD_MS = 60 * 1000;
  */
 google.get("/connect", async (c) => {
   const { userId } = c.get("session");
+  const tier = await getUserTier(db(c.env.DB), userId);
+  if (!isPaidTier(tier)) {
+    return c.json(
+      { error: "Google Calendar sync is available on Pro and Max.", code: "upgrade_required" },
+      402,
+    );
+  }
   if (!c.env.GOOGLE_CLIENT_ID || !c.env.GOOGLE_CLIENT_SECRET) {
     return c.json({ error: "Google Calendar isn't set up yet." }, 503);
   }
@@ -61,6 +69,11 @@ google.get("/callback", async (c) => {
   const userId = state ? await verifyState(c.env, state) : null;
   if (!userId) {
     return c.redirect(`${settingsUrl}?google=denied`);
+  }
+
+  const tier = await getUserTier(db(c.env.DB), userId);
+  if (!isPaidTier(tier)) {
+    return c.redirect(`${settingsUrl}?google=upgrade`);
   }
 
   try {
@@ -114,6 +127,13 @@ google.get("/callback", async (c) => {
 google.post("/sync", async (c) => {
   const { userId } = c.get("session");
   const database = db(c.env.DB);
+  const tier = await getUserTier(database, userId);
+  if (!isPaidTier(tier)) {
+    return c.json(
+      { error: "Google Calendar sync is available on Pro and Max.", code: "upgrade_required" },
+      402,
+    );
+  }
 
   const [row] = await database
     .select()

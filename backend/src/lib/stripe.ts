@@ -165,6 +165,23 @@ export async function retrieveSubscription(env: Env, id: string): Promise<Stripe
   return stripeCall<StripeSubscription>(env, `/subscriptions/${encodeURIComponent(id)}`);
 }
 
+/** Immediately stops billing. Stripe retains the customer and invoices for accounting. */
+export async function cancelSubscription(env: Env, id: string): Promise<void> {
+  await stripeCall<StripeSubscription>(env, `/subscriptions/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+/** Lists a customer's subscriptions so deletion remains safe even if a webhook is delayed. */
+export async function listCustomerSubscriptions(
+  env: Env,
+  customerId: string,
+): Promise<StripeSubscription[]> {
+  const query = new URLSearchParams({ customer: customerId, status: "all", limit: "100" });
+  const result = await stripeCall<{ data: StripeSubscription[] }>(env, `/subscriptions?${query}`);
+  return result.data;
+}
+
 // ────────── Webhook signature verification ──────────
 
 /**

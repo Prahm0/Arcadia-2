@@ -33,7 +33,7 @@ interface MenuBarProps {
 
 /**
  * The desktop menu bar: File / Edit / View / Go / Help, the way real software
- * does it. Every entry does something — no decorative Undo/Redo. Keyboard
+ * does it. Every entry does something, no decorative Undo/Redo. Keyboard
  * behaviour follows the WAI-ARIA menubar pattern.
  */
 export default function MenuBar({
@@ -262,10 +262,10 @@ export default function MenuBar({
       className="sticky top-0 z-40 hidden h-10 items-center gap-1 border-b pl-3 pr-14 lg:flex"
       style={{ background: "var(--app-surface)", borderColor: "var(--app-border)" }}
     >
-      {/* Logo only — the placeholder until the final mark lands. */}
+      {/* Logo only, the placeholder until the final mark lands. */}
       <Link
         href="/app"
-        aria-label="Arcadia — go to Today"
+        aria-label="Arcadia, go to Today"
         title="Arcadia"
         className="mr-1.5 grid h-7 w-7 place-items-center rounded-md ui-hover"
       >

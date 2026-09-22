@@ -35,7 +35,7 @@ export default function PwaInstallPrompt() {
     // or in the pre-hydration snapshot.
     if (typeof window === "undefined") return;
 
-    // Already installed — nothing to prompt.
+    // Already installed, nothing to prompt.
     const isStandalone =
       window.matchMedia?.("(display-mode: standalone)").matches ||
       // Older Safari flag.
@@ -51,7 +51,7 @@ export default function PwaInstallPrompt() {
       const dismissedAt = Number(window.localStorage.getItem(DISMISS_KEY) ?? "0");
       if (Number.isFinite(dismissedAt) && Date.now() - dismissedAt < DISMISS_MS) return;
     } catch {
-      /* private mode — ignore */
+      /* private mode, ignore */
     }
 
     const ua = window.navigator.userAgent;
@@ -63,7 +63,7 @@ export default function PwaInstallPrompt() {
       return () => window.clearTimeout(timer);
     }
 
-    // Android / desktop Chrome path — wait for the browser to say the
+    // Android / desktop Chrome path, wait for the browser to say the
     // app meets install criteria (served from HTTPS, has manifest, has
     // service worker or valid icons). Only then show.
     const handler = (event: Event) => {
@@ -90,7 +90,7 @@ export default function PwaInstallPrompt() {
       await deferred.prompt();
       await deferred.userChoice;
     } catch {
-      /* user cancelled — nothing to do */
+      /* user cancelled, nothing to do */
     }
     dismiss();
   }

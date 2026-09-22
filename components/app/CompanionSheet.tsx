@@ -41,8 +41,8 @@ interface CompanionSheetProps {
 }
 
 /**
- * Modal for customising the student's companion — name, form, palette,
- * accessory — with a live preview so every change is visible before Save.
+ * Modal for customising the student's companion, name, form, palette,
+ * accessory, with a live preview so every change is visible before Save.
  * Optimistic: the dashboard cache updates immediately, rolls back on error.
  */
 export default function CompanionSheet({ open, onClose, initial }: CompanionSheetProps) {

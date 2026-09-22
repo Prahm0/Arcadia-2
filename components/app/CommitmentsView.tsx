@@ -101,7 +101,7 @@ export default function CommitmentsView() {
         ) : commitments.length === 0 ? (
           <EmptyState
             title={<>Where your <span className="accent-serif">week</span> already lives.</>}
-            body="Commitments are the fixed things — school hours, training, work shifts. Add them and Arcadia stops planning study on top of them."
+            body="Commitments are the fixed things, school hours, training, work shifts. Add them and Arcadia stops planning study on top of them."
             example={
               <>
                 <ExampleRow title="School" meta="Mon–Fri · 8:30am–3:15pm" bar={categoryColor("school")} />
@@ -122,7 +122,7 @@ export default function CommitmentsView() {
                 Add your first commitment
               </AppButton>
             }
-            hint="You can add these once — they repeat every week automatically."
+            hint="You can add these once, they repeat every week automatically."
           />
         ) : (
           Object.entries(grouped).map(([category, list]) => (

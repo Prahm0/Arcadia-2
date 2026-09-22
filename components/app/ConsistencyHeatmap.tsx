@@ -143,7 +143,7 @@ export default function ConsistencyHeatmap() {
                             onMouseLeave={() => setHovered(null)}
                             onFocus={() => setHovered(cell)}
                             onBlur={() => setHovered(null)}
-                            aria-label={`${cell.date} — ${cell.minutes} min, ${cell.sessions} sessions`}
+                            aria-label={`${cell.date}, ${cell.minutes} min, ${cell.sessions} sessions`}
                             className="block h-[12px] w-[12px] rounded-[2.5px] transition-transform hover:scale-[1.35] focus:scale-[1.35]"
                             style={{ background: colorForLevel(level) }}
                           />

@@ -105,7 +105,7 @@ export default function AnalyticsView() {
         <div className="mx-auto w-full max-w-[820px] px-6 py-8 sm:px-10">
           <EmptyState
             title={<>Nothing to <span className="accent-serif">measure</span> yet.</>}
-            body="Analytics fills up once you log study time. Mark a study block done or use the Focus timer for a session — you'll see minutes, subjects, and a 90-day heatmap start to grow."
+            body="Analytics fills up once you log study time. Mark a study block done or use the Focus timer for a session, you'll see minutes, subjects, and a 90-day heatmap start to grow."
             action={
               <>
                 <Link href="/app/focus">
@@ -247,7 +247,7 @@ export default function AnalyticsView() {
                 color: "var(--app-text-soft)",
               }}
             >
-              Streak reset — {streak.lastPlannedDay.missReason}.
+              Streak reset, {streak.lastPlannedDay.missReason}.
             </p>
           ) : null}
         </div>

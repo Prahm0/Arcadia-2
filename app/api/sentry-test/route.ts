@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
  * Throws an uncaught error so Sentry's `onRequestError` hook fires and a
  * server issue appears in the dashboard. Guarded by a shared token so it
  * can't be used to spam the ingest quota. Also refuses to run at all
- * unless SENTRY_DSN is configured — no point failing on demand otherwise.
+ * unless SENTRY_DSN is configured, no point failing on demand otherwise.
  */
 export async function GET(request: Request) {
   if (!process.env.SENTRY_DSN) {
@@ -34,5 +34,5 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, reason: "Bad token." }, { status: 401 });
   }
 
-  throw new Error("Sentry test error — if you can see this in Sentry, wiring works.");
+  throw new Error("Sentry test error, if you can see this in Sentry, wiring works.");
 }

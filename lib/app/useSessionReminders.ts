@@ -19,7 +19,7 @@ const RESCHEDULE_INTERVAL_MS = 60 * 1000;
 
 /**
  * Schedules local browser notifications (`Notification` API) for the user's
- * upcoming study blocks. Runs entirely in the tab — no service worker — so
+ * upcoming study blocks. Runs entirely in the tab, no service worker, so
  * reminders only fire while the app is open somewhere. That's the common
  * case for a student who leaves Arcadia open in a background tab; a proper
  * push-when-closed pipeline needs a service worker + backend cron and is a
@@ -36,7 +36,7 @@ export function useSessionReminders(): void {
     if (!isReminderEnabled()) return;
 
     function scheduleUpcoming() {
-      // Cancel any previously-scheduled timers before installing new ones —
+      // Cancel any previously-scheduled timers before installing new ones ,
       // this covers reschedules, event mutations, and general drift.
       for (const id of timersRef.current) window.clearTimeout(id);
       timersRef.current = [];

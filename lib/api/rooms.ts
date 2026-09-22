@@ -31,7 +31,7 @@ export interface StudyRoomMember {
   todaySeconds: number;
 }
 
-/** What someone who isn't in the room yet gets back — enough to say "Join X?". */
+/** What someone who isn't in the room yet gets back, enough to say "Join X?". */
 export interface RoomPreview {
   code: string;
   name: string;

@@ -6,7 +6,7 @@
  * surfaces. They share this module now.
  *
  * The category hues are CSS variables, not hexes, because no single mid-tone
- * clears 3:1 against both the light paper and the dark grey ground — so
+ * clears 3:1 against both the light paper and the dark grey ground, so
  * globals.css defines a darker light-mode value and a lighter dark-mode one
  * for each.
  */

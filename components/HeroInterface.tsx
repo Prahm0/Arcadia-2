@@ -39,6 +39,10 @@ function blockStyle(block: ScheduleBlock): React.CSSProperties {
   return {
     top: `${((block.start - WEEK_VIEW.start) / SPAN) * 100}%`,
     height: `${((block.end - block.start) / SPAN) * 100}%`,
+    // Floor short blocks so the title stays readable on the tighter
+    // hero canvas. Without this, a 35 min event on a 300 px column
+    // ends up ~11 px tall and the label gets cut mid letter.
+    minHeight: "22px",
     left: `${dayIndex * 20}%`,
     width: "20%",
   };

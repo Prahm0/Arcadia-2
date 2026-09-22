@@ -23,7 +23,7 @@ interface ProposalPreviewProps {
  * Each row is a compact bar chart of the affected day around the change, so
  * "move Chemistry to Wednesday afternoon" is visible, not just described.
  * Falls back to a compact text line for anything the previewer can't parse
- * (unknown shape, missing timestamps) — better a legible line than a broken
+ * (unknown shape, missing timestamps), better a legible line than a broken
  * chart.
  */
 export default function ProposalPreview({ operations }: ProposalPreviewProps) {

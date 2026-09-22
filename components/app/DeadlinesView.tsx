@@ -81,12 +81,12 @@ export default function DeadlinesView() {
                 Add your first task
               </AppButton>
             }
-            hint="You can also just tell Arcad in chat — it'll add and schedule for you."
+            hint="You can also just tell Arcad in chat, it'll add and schedule for you."
           />
         ) : total === 0 ? (
           <EmptyState
             title={<>All <span className="accent-serif">caught up</span>.</>}
-            body="Nothing open right now. Add the next thing whenever it appears — Arcadia will slot it in."
+            body="Nothing open right now. Add the next thing whenever it appears, Arcadia will slot it in."
             action={
               <AppButton variant="secondary" onClick={() => { setEditing(null); setSheetOpen(true); }}>
                 Add a task

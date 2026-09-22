@@ -24,7 +24,7 @@ function LoginForm() {
   const [needsVerification, setNeedsVerification] = useState<string | null>(null);
   const [resending, setResending] = useState(false);
   const initialNotice: Notice = params.get("verified")
-    ? { tone: "info", text: "Email confirmed — sign in to continue." }
+    ? { tone: "info", text: "Email confirmed, sign in to continue." }
     : params.get("email") === "changed"
       ? { tone: "info", text: "Email updated. Sign in with your new address." }
       : params.get("expired") === "1"
@@ -43,7 +43,7 @@ function LoginForm() {
         body: JSON.stringify({ email, password }),
       });
       const next = params.get("next");
-      // Only follow `next` if it's a same-origin path — never an external URL.
+      // Only follow `next` if it's a same-origin path, never an external URL.
       const safe = next && next.startsWith("/") && !next.startsWith("//") ? next : "/app";
       router.push(safe);
     } catch (error) {
@@ -74,7 +74,7 @@ function LoginForm() {
       });
       setNotice({
         tone: "info",
-        text: "Fresh verification link sent — check your inbox (and spam folder).",
+        text: "Fresh verification link sent, check your inbox (and spam folder).",
       });
       setNeedsVerification(null);
     } catch (error) {
@@ -195,7 +195,7 @@ function LoginForm() {
           {guestLoading ? "Setting up a guest account…" : "Continue as guest"}
         </button>
         <p className="text-center text-[12px]" style={{ color: "var(--app-text-faint)" }}>
-          Skips sign-up with a throwaway account — nothing saves after you close the tab.
+          Skips sign-up with a throwaway account, nothing saves after you close the tab.
         </p>
       </form>
     </AuthShell>

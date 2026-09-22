@@ -4,7 +4,7 @@ const KEY = "arcadia:time-format";
 
 /**
  * Whether to render clock times in 24-hour form (13:45) rather than 12-hour
- * (1:45pm). Users flip this in Settings — useful for night workers and
+ * (1:45pm). Users flip this in Settings, useful for night workers and
  * anyone who reads schedules across midnight.
  *
  * Reads localStorage on every call so formatters stay in sync without a

@@ -84,7 +84,7 @@ export default function ArcadFloatingButton() {
   });
 
   if (pathname?.startsWith("/app/arcad")) return null;
-  // Hide during onboarding — the floating orb overlaps the Continue
+  // Hide during onboarding, the floating orb overlaps the Continue
   // button on mobile, and Arcad can't help before there's a plan anyway.
   if (!data.user.onboardingComplete) return null;
 
@@ -347,7 +347,7 @@ export default function ArcadFloatingButton() {
                 className="mt-5 block rounded-md px-3.5 py-3 text-[12.5px] font-medium"
                 style={{ background: "var(--app-arcad-soft)", color: "var(--app-arcad-strong)" }}
               >
-                Arcad has a plan change ready — review it in full chat
+                Arcad has a plan change ready, review it in full chat
               </Link>
             ) : null}
 

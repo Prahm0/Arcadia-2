@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useVoiceInput } from "@/lib/app/useVoiceInput";
 
 interface MicButtonProps {
-  /** Current textarea value — the mic appends to it as speech transcribes. */
+  /** Current textarea value, the mic appends to it as speech transcribes. */
   value: string;
   onChange: (next: string) => void;
   /** Ref to the textarea so we can focus + move the caret after transcription. */
@@ -58,7 +58,7 @@ export default function MicButton({ value, onChange, targetRef, compact = false 
       onClick={toggle}
       aria-pressed={listening}
       aria-label={listening ? "Stop voice input" : "Start voice input"}
-      title={error ?? (listening ? "Listening — tap to stop" : "Voice input")}
+      title={error ?? (listening ? "Listening, tap to stop" : "Voice input")}
       className="grid place-items-center rounded-full transition-colors"
       style={{
         width: size,

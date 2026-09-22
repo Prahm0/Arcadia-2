@@ -1,32 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
   <!--
-    Rounded-square app icon. Kept the black-on-violet contrast Parham
-    supplied — reads confidently in the browser tab, on the notification
-    tray and as an installed PWA icon.
+    Canonical Arcadia mark. Exact same path and proportions as
+    components/ui/Logo.tsx so the favicon, PWA icon, and every in-app
+    reference render identically at any size. Dark rounded background
+    matches the app-shell surface tone.
   -->
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#1a1225" />
-      <stop offset="100%" stop-color="#0a0714" />
-    </linearGradient>
-  </defs>
-
-  <rect width="512" height="512" rx="88" fill="url(#bg)" />
-
-  <!--
-    The Arcadia mark, centred. Compound path with evenodd:
-      1) big outer triangle — the "A" silhouette
-      2) big inner triangle — the counter (subtracted)
-      3) small triangle — the marker inside the counter (added back)
-  -->
-  <g transform="translate(256 256)" fill="#7c5cff">
-    <path
-      fill-rule="evenodd"
-      d="
-        M 0 -204 L 224 240 L -224 240 Z
-        M 0 -60  L 128 172  L -128 172 Z
-        M 0 68   L 56 156   L -56 156  Z
-      "
-    />
-  </g>
+  <rect width="128" height="128" rx="22" fill="#0a0714" />
+  <path
+    fill="#7c5cff"
+    fill-rule="evenodd"
+    d="M64 8 L124 120 L4 120 Z M64 44 L96 108 L32 108 Z M64 76 L78 98 L50 98 Z"
+  />
 </svg>

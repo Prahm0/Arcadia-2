@@ -38,7 +38,7 @@ export default function ThinkingVisual({ stage, reduced, className }: ThinkingVi
       aria-hidden="true"
       role="presentation"
     >
-      {/* System boundary — appears when Arcadia understands the whole picture. */}
+      {/* System boundary, appears when Arcadia understands the whole picture. */}
       <motion.circle
         cx={VIEW / 2}
         cy={VIEW / 2}
@@ -52,7 +52,7 @@ export default function ThinkingVisual({ stage, reduced, className }: ThinkingVi
         transition={slow}
       />
 
-      {/* Column labels — the plan takes the shape of a week. */}
+      {/* Column labels, the plan takes the shape of a week. */}
       {COLUMN_LABELS.map((label, i) => (
         <motion.text
           key={label}

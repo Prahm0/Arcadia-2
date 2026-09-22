@@ -1,7 +1,7 @@
 import { cn } from "@/lib/cn";
 
 interface LogoProps {
-  /** Rendered pixel size. The SVG scales — 12 to 512 all look sharp. */
+  /** Rendered pixel size. The SVG scales, 12 to 512 all look sharp. */
   size?: number;
   className?: string;
 }
@@ -10,7 +10,7 @@ interface LogoProps {
  * The Arcadia mark: a bold triangular "A" silhouette with an inset counter
  * and a small floating triangle marker inside. Rendered as one compound path
  * with `fill-rule="evenodd"` so the counter reads as background and the inner
- * marker reads as filled — three crossings brings us back to fill.
+ * marker reads as filled, three crossings brings us back to fill.
  *
  * Fills with `currentColor`, so callers tint it via CSS.
  */

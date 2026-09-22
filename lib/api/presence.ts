@@ -15,6 +15,6 @@ export interface PresenceState {
  */
 export function setPresence(state: PresenceState): void {
   void api("/api/presence", { method: "PUT", body: JSON.stringify(state) }).catch(() => {
-    /* swallow — rooms are a nicety, the timer is the truth */
+    /* swallow, rooms are a nicety, the timer is the truth */
   });
 }

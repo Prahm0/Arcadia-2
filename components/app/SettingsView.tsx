@@ -344,7 +344,7 @@ export default function SettingsView() {
         meta={
           account
             ? isGuest
-              ? "Guest session — nothing you do here is saved after you sign out."
+              ? "Guest session, nothing you do here is saved after you sign out."
               : `Signed in as ${account.email}`
             : undefined
         }
@@ -386,7 +386,7 @@ export default function SettingsView() {
               <Hint>
                 {isGuest
                   ? "Guest accounts have no email. Create an account to add one and save your progress."
-                  : "Email changes go through verification — use the change-email flow."}
+                  : "Email changes go through verification, use the change-email flow."}
               </Hint>
             </Field>
             <div className="flex items-center justify-between pt-2">
@@ -459,7 +459,7 @@ export default function SettingsView() {
                 {google.connected
                   ? google.lastSyncAt
                     ? `Last sync ${relativeTime(google.lastSyncAt)}. Imported events show as fixed on Schedule; study blocks Arcadia creates are written to a dedicated Arcadia calendar.`
-                    : "Just connected. First sync is running in the background — refresh in a minute."
+                    : "Just connected. First sync is running in the background, refresh in a minute."
                   : "Import school, work, and personal events so Arcadia plans study around them. Arcadia writes generated study blocks to its own Arcadia calendar; nothing else is changed."}
               </p>
             </div>
@@ -503,8 +503,8 @@ export default function SettingsView() {
         <Card>
           <SectionHeader label="Calendar subscriptions" />
           <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-            Paste any calendar URL — Apple, Canvas, Outlook, or a per-calendar
-            Google link — and Arcadia will pull its events in as fixed blocks on
+            Paste any calendar URL, Apple, Canvas, Outlook, or a per-calendar
+            Google link, and Arcadia will pull its events in as fixed blocks on
             Schedule. Read-only, so nothing is written back.
           </p>
 
@@ -709,7 +709,7 @@ export default function SettingsView() {
                   {permission === "granted"
                     ? "Browser: allowed"
                     : permission === "denied"
-                      ? "Browser: blocked — enable notifications in your browser settings for this site"
+                      ? "Browser: blocked, enable notifications in your browser settings for this site"
                       : permission === "unsupported"
                         ? "Browser: unsupported"
                         : "Browser: not asked yet"}

@@ -7,13 +7,13 @@ export interface Starter {
   label: string;
   /** The actual message sent to Arcad on click. */
   message: string;
-  /** Optional tone for chip styling — accent for the primary suggestion. */
+  /** Optional tone for chip styling, accent for the primary suggestion. */
   tone?: "default" | "accent";
 }
 
 /**
  * Contextual starters built from the student's live plan. These reference
- * real subjects, real tasks, real gaps — so tapping a starter doesn't feel
+ * real subjects, real tasks, real gaps, so tapping a starter doesn't feel
  * like a GPT-demo prompt, it feels like Arcad already knows what to do.
  */
 export function buildContextualStarters(
@@ -27,7 +27,7 @@ export function buildContextualStarters(
 
   const out: Starter[] = [];
 
-  // 1. Missed sessions in the last 24 hours — top priority.
+  // 1. Missed sessions in the last 24 hours, top priority.
   const missedRecently = data.events.filter((event) => {
     if (event.category !== "study") return false;
     if (event.outcome !== "planned") return false;
@@ -38,12 +38,12 @@ export function buildContextualStarters(
     const subject = missedRecently[0].subject || "study block";
     out.push({
       label: `Recover ${subject}`,
-      message: `I missed ${subject} — what's the best way to catch up before the deadline?`,
+      message: `I missed ${subject}, what's the best way to catch up before the deadline?`,
       tone: "accent",
     });
   }
 
-  // 2. A concrete "next study block" nudge — reference today's next planned session.
+  // 2. A concrete "next study block" nudge, reference today's next planned session.
   const nextStudy = data.events
     .filter((event) => event.category === "study" && event.outcome === "planned")
     .filter((event) => Date.parse(event.startAt) >= nowMs)
@@ -58,7 +58,7 @@ export function buildContextualStarters(
     });
   }
 
-  // 3. Nearest deadline — talk about it.
+  // 3. Nearest deadline, talk about it.
   const nearest = data.focusTasks[0] ?? null;
   if (nearest) {
     out.push({
@@ -76,17 +76,17 @@ export function buildContextualStarters(
   } else if (streak.longest > 0) {
     out.push({
       label: "Reset the streak",
-      message: "My streak broke — what's the smallest thing I can do today to restart it?",
+      message: "My streak broke, what's the smallest thing I can do today to restart it?",
     });
   }
 
-  // 5. Sunday review — surface it explicitly on Sunday.
+  // 5. Sunday review, surface it explicitly on Sunday.
   const isSunday =
     new Intl.DateTimeFormat("en-AU", { timeZone: timezone, weekday: "short" }).format(now) === "Sun";
   if (isSunday) {
     out.push({
       label: "Review last week",
-      message: "Give me a review of last week — what went well, what didn't.",
+      message: "Give me a review of last week, what went well, what didn't.",
     });
   }
 
@@ -101,7 +101,7 @@ export function buildContextualStarters(
   // 7. Always-available add-something starter.
   out.push({
     label: "Add a task",
-    message: "Add a task — I'll tell you what it is, when it's due, and how long.",
+    message: "Add a task, I'll tell you what it is, when it's due, and how long.",
   });
 
   // De-dup by label and cap.
@@ -118,7 +118,7 @@ export function buildContextualStarters(
 
 /**
  * A warm one-line greeting for the top of the Arcad panel. Reads the plan the
- * same way Arcad does — no generic "Ask anything" prompt.
+ * same way Arcad does, no generic "Ask anything" prompt.
  */
 export function buildGreeting(
   data: DashboardResponse,
@@ -143,8 +143,8 @@ export function buildGreeting(
   if (missedRecently > 0) {
     secondary =
       missedRecently === 1
-        ? "One session slipped — want to fix it?"
-        : `${missedRecently} sessions slipped — let's clean them up.`;
+        ? "One session slipped, want to fix it?"
+        : `${missedRecently} sessions slipped, let's clean them up.`;
   } else if (remaining > 0) {
     secondary =
       remaining === 1
@@ -153,11 +153,11 @@ export function buildGreeting(
   } else if (todaysStudy.length > 0) {
     secondary = "Today's done. Want to look at the rest of the week?";
   } else if (data.tasks.length === 0) {
-    secondary = "Nothing on the plan yet — tell me what's coming up.";
+    secondary = "Nothing on the plan yet, tell me what's coming up.";
   } else if (streak.current >= 3) {
     secondary = `${streak.current} consistent days deep. What's next?`;
   } else if (streak.current > 0) {
-    secondary = "Streak's alive — what's on your mind?";
+    secondary = "Streak's alive, what's on your mind?";
   } else {
     secondary = "Ready when you are.";
   }

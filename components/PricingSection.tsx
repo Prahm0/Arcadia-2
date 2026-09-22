@@ -37,7 +37,7 @@ const TIERS: Tier[] = [
     name: "Pro",
     // Mirrors what the in-app PricingView charges. Landing quotes monthly
     // rather than weekly so the number matches what a customer sees on
-    // their statement — no "wait, why was I charged $16?" moment.
+    // their statement, no "wait, why was I charged $16?" moment.
     headline: "Arcad turned up. Calendar synced. Notes indexed.",
     priceLabel: "$15.99",
     priceNote: "AUD / month · or $149 / yr (save ~22%)",
@@ -45,9 +45,9 @@ const TIERS: Tier[] = [
       "Everything in Free",
       "20 Arcad messages / day",
       "Google · Apple · Canvas calendar sync",
-      "Upload PDFs & notes — Arcad answers from them",
+      "Upload PDFs & notes, Arcad answers from them",
       "Unlimited study rooms with shared timers",
-      "Full analytics — streaks, subjects, trends",
+      "Full analytics, streaks, subjects, trends",
     ],
     cta: "Start Pro",
     highlighted: true,
@@ -62,10 +62,10 @@ const TIERS: Tier[] = [
     features: [
       "Everything in Pro",
       "100 Arcad messages / day",
-      "Voice Arcad — hands-free while you study",
-      "Tutor mode — step-by-step walkthroughs",
+      "Voice Arcad, hands-free while you study",
+      "Tutor mode, step-by-step walkthroughs",
       "1:1 human tutor bookings (coming soon)",
-      "Study group leader mode — invite up to 10",
+      "Study group leader mode, invite up to 10",
     ],
     cta: "Go Max",
   },
@@ -105,7 +105,7 @@ export default function PricingSection() {
           <div className="col-span-12 lg:col-span-5 lg:col-start-8 lg:self-end">
             <FadeIn delay={0.2}>
               <p className="type-body-lg max-w-[440px] text-white/60">
-                Start free — you'll feel it in your first week. When you're ready,
+                Start free, you'll feel it in your first week. When you're ready,
                 Pro turns Arcad into a proper study partner. Max adds a voice tutor
                 and, soon, real humans.
               </p>

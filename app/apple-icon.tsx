@@ -1,10 +1,9 @@
 import { ImageResponse } from "next/og";
 
-// iOS home-screen icon. Safari ignores manifest icons and looks for
-// this specific route (Next.js maps /apple-icon → apple-touch-icon).
-// Rendered at 180×180 which is the size iOS actually pins to the grid;
-// matches the design in app/icon.svg — violet mark on the same dark
-// gradient — but PNG for iOS compatibility (Safari doesn't do SVG here).
+// iOS home-screen icon at 180x180. Uses the same 128-unit path as the
+// shared Logo component and the favicon so every rendering of the mark
+// (browser tab, home screen, in-app corner) reads as the same shape,
+// just at different sizes.
 
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
@@ -16,22 +15,17 @@ export default function AppleIcon() {
         style={{
           width: "100%",
           height: "100%",
-          background:
-            "linear-gradient(to bottom, #1a1225 0%, #0a0714 100%)",
+          background: "#0a0714",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
         }}
       >
-        <svg width="140" height="140" viewBox="-224 -204 448 444">
+        <svg width="128" height="128" viewBox="0 0 128 128">
           <path
             fill="#7c5cff"
             fillRule="evenodd"
-            d="
-              M 0 -204 L 224 240 L -224 240 Z
-              M 0 -60  L 128 172  L -128 172 Z
-              M 0 68   L 56 156   L -56 156  Z
-            "
+            d="M64 8 L124 120 L4 120 Z M64 44 L96 108 L32 108 Z M64 76 L78 98 L50 98 Z"
           />
         </svg>
       </div>

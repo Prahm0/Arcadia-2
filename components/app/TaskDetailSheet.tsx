@@ -318,7 +318,7 @@ export default function TaskDetailSheet({ task, timezone, onClose, onEdit }: Tas
               if (dirtyNotes) void saveNotes();
             }}
             rows={3}
-            placeholder="Anything to remember about this task — links, page numbers, why it matters."
+            placeholder="Anything to remember about this task, links, page numbers, why it matters."
             className="mt-2 w-full resize-y rounded-md px-3 py-2.5 text-[13.5px] outline-none"
             style={{
               background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)",

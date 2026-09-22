@@ -12,7 +12,7 @@ const STORAGE_PREFIX = "arcadia:checkin:dismissed:";
 /**
  * A once-a-day recap card shown at the top of Today.
  *
- * Only appears when yesterday actually had study blocks in the plan — nothing
+ * Only appears when yesterday actually had study blocks in the plan, nothing
  * to check in on for a fresh account. Dismissal is remembered per-day in
  * localStorage so a page refresh doesn't bring it back.
  */
@@ -202,11 +202,11 @@ function uniqueSubjects(events: PlannerEvent[]): string[] {
 function streakSentence(currentStreak: number, summary: Summary): string | null {
   if (summary.cleanSlate && summary.totalCount > 0) {
     if (currentStreak >= 3) return `That's ${currentStreak} consistent days in a row.`;
-    if (currentStreak === 2) return "Two in a row — one more locks a 3-day streak.";
-    if (currentStreak === 1) return "Nice — that's day one of a new streak.";
+    if (currentStreak === 2) return "Two in a row, one more locks a 3-day streak.";
+    if (currentStreak === 1) return "Nice, that's day one of a new streak.";
   }
   if (!summary.cleanSlate && summary.completedCount > 0) {
-    return "Not everything, but something — that still counts.";
+    return "Not everything, but something, that still counts.";
   }
   return null;
 }

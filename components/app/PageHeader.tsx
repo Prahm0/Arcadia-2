@@ -7,7 +7,7 @@ interface PageHeaderProps {
   eyebrow?: string;
   /** The page's name. Explanations of how it works belong in its tour. */
   title: ReactNode;
-  /** Live facts about the page's data — counts, dates, totals. */
+  /** Live facts about the page's data, counts, dates, totals. */
   meta?: string;
   action?: ReactNode;
   /** The page's "How it works" tour: auto-opens on first visit. */
@@ -16,7 +16,7 @@ interface PageHeaderProps {
 
 /**
  * The top of every page: where you are, what this is, and the page's actions
- * on the right. Deliberately static — a tool's chrome shouldn't animate in.
+ * on the right. Deliberately static, a tool's chrome shouldn't animate in.
  */
 export default function PageHeader({ eyebrow, title, meta, action, tour }: PageHeaderProps) {
   return (

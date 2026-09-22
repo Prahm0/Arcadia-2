@@ -249,7 +249,7 @@ function WeekGrid({
   const HEIGHT = 720;
   const canvasRef = useRef<HTMLDivElement>(null);
 
-  // Drag state — tracked in a ref so pointermove listeners don't force React re-renders.
+  // Drag state, tracked in a ref so pointermove listeners don't force React re-renders.
   const dragRef = useRef<{
     eventId: string;
     startMs: number;
@@ -261,7 +261,7 @@ function WeekGrid({
 
   const beginDrag = useCallback(
     (event: PlannerEvent, e: React.PointerEvent) => {
-      // Only study blocks are draggable — school/sport/sleep/extracurricular
+      // Only study blocks are draggable, school/sport/sleep/extracurricular
       // are usually driven by commitments, so moving them from here would
       // desync the source.
       if (event.category !== "study") return;
@@ -520,7 +520,7 @@ function positionFor(event: PlannerEvent, days: DayColumn[], timezone: string) {
   if (dayIndex === -1) return { dayIndex: 0, top: 0, height: 0, visible: false };
 
   // All-day events from external calendars (Google, Apple, Canvas, …) don't
-  // belong on the time grid — Google Calendar itself pins them to a strip
+  // belong on the time grid, Google Calendar itself pins them to a strip
   // at the top of the day. We approximate that here: a short 4%-tall chip
   // anchored to the top of the day column, out of the way of study blocks.
   if (event.kind === "all-day") {
@@ -598,7 +598,7 @@ function formatHourLabel(hour: number): string {
 }
 
 function localTimezoneOffset(_timezone: string, _dateKey: string): string {
-  // The event startAt values are already ISO strings — day boundaries use the
+  // The event startAt values are already ISO strings, day boundaries use the
   // client's own timezone here just to bracket the week, which is fine for filtering.
   const offsetMinutes = new Date().getTimezoneOffset();
   const sign = offsetMinutes <= 0 ? "+" : "-";

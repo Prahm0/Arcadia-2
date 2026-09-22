@@ -162,7 +162,7 @@ function FocusViewInner() {
   }, [loadRecents]);
 
   // If the ?eventId= arrives after mount (rare but possible with client-side nav),
-  // sync the visible fields once — do not clobber values the user already edited.
+  // sync the visible fields once, do not clobber values the user already edited.
   const hasHydrated = useRef(false);
   useEffect(() => {
     if (hasHydrated.current) return;
@@ -267,7 +267,7 @@ function FocusViewInner() {
         ]),
       });
     } catch {
-      /* swallow — the local timer stays truthful even if the log fails */
+      /* swallow, the local timer stays truthful even if the log fails */
     }
 
     if (linkedEvent && opts.markEvent) {
@@ -424,7 +424,7 @@ function FocusViewInner() {
                 {phase === "break" ? "Break" : phase === "focus" ? "Focus" : "Ready"}
               </span>
               {/* Keyed on the minute so the digits give one beat per minute
-                  elapsed — enough to read as live without being a distraction. */}
+                  elapsed, enough to read as live without being a distraction. */}
               <span
                 key={Math.floor(remaining / 60)}
                 className={cn(
@@ -748,7 +748,7 @@ function RecentSessions({
   );
 }
 
-/** Seconds in, shortest readable unit out — a skipped block is seconds long,
+/** Seconds in, shortest readable unit out, a skipped block is seconds long,
  *  not "0m". */
 function formatDuration(seconds: number): string {
   if (seconds < 60) return `${Math.max(1, Math.round(seconds))}s`;

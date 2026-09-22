@@ -30,7 +30,7 @@ const PALETTES: Record<CompanionPalette, { core: string; halo: string; accent: s
  * backend companion profile; level scales the surrounding star density and
  * state ("recovering") mutes the whole glyph so a rough week reads honestly.
  *
- * Deterministic — no randomness in placement, so the companion looks the same
+ * Deterministic, no randomness in placement, so the companion looks the same
  * on every render. Reduced-motion viewers get a static image (animation lives
  * in a global keyframe that opts out).
  */
@@ -194,7 +194,7 @@ interface StarSpec {
   size: number;
 }
 
-/** Deterministic star ring around the core — density scales with level. */
+/** Deterministic star ring around the core, density scales with level. */
 function starPositions(level: number, scale: number = 1): StarSpec[] {
   const count = Math.min(12, 2 + level * 2);
   const stars: StarSpec[] = [];

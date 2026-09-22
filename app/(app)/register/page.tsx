@@ -18,7 +18,7 @@ interface RegisterResponse {
 // want to consume that token immediately and bounce them to /login with the
 // success banner, not drop them back on a blank register form. Everything
 // else on this page depends on client state, but useSearchParams needs its
-// own Suspense boundary per Next's rules — hence the inner component.
+// own Suspense boundary per Next's rules, hence the inner component.
 export default function RegisterPage() {
   return (
     <Suspense fallback={<RegisterInner initialToken={null} />}>
@@ -124,7 +124,7 @@ function RegisterInner({ initialToken }: { initialToken: string | null }) {
     <AuthShell
       eyebrow="Create account"
       title="Start planning like it matters."
-      subtitle="Set up your account in seconds. We'll email a verification link — click it to activate."
+      subtitle="Set up your account in seconds. We'll email a verification link, click it to activate."
       footer={
         <>
           Already have an account?{" "}
@@ -267,7 +267,7 @@ function RegisterInner({ initialToken }: { initialToken: string | null }) {
             {guestLoading ? "Setting up a guest account…" : "Continue as guest"}
           </button>
           <p className="text-center text-[12px]" style={{ color: "var(--app-text-faint)" }}>
-            Skips sign-up with a throwaway account — nothing saves after you close the tab.
+            Skips sign-up with a throwaway account, nothing saves after you close the tab.
           </p>
         </form>
       )}

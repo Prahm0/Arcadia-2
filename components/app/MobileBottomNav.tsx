@@ -23,8 +23,8 @@ function icon(path: ReactNode) {
 }
 
 /**
- * Fixed bottom navigation for mobile. Five slots — Today, Schedule, Add, Arcad,
- * More — sized to the platform tap target (56 px column, min 44 px control).
+ * Fixed bottom navigation for mobile. Five slots, Today, Schedule, Add, Arcad,
+ * More, sized to the platform tap target (56 px column, min 44 px control).
  * Respects the iOS home-indicator safe area via env(safe-area-inset-bottom).
  */
 export default function MobileBottomNav() {
@@ -73,7 +73,7 @@ export default function MobileBottomNav() {
 
   function trigger(slot: Slot) {
     if (slot.key === "add") {
-      // Handoff to Today — TodayView reads ?new=1 and opens New Task on mount.
+      // Handoff to Today, TodayView reads ?new=1 and opens New Task on mount.
       router.push("/app?new=1");
       return;
     }

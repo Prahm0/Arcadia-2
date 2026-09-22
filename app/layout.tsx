@@ -3,7 +3,7 @@ import { DM_Sans, Inter, Instrument_Serif, JetBrains_Mono } from "next/font/goog
 import PwaInstallPrompt from "@/components/PwaInstallPrompt";
 import "./globals.css";
 
-// DM Sans replaces Inter as the primary sans — warmer letterforms, no
+// DM Sans replaces Inter as the primary sans, warmer letterforms, no
 // stylistic sets to fight, pairs better with the Instrument Serif italic
 // accents. The CSS var name stays `--font-inter` for backward compatibility
 // with the tokens already referencing it.
@@ -37,9 +37,9 @@ const ui = Inter({
   display: "swap",
 });
 
-const title = "Arcadia — Your week just changed. Your plan already knows.";
+const title = "Arcadia · Your week just changed. Your plan already knows.";
 const description =
-  "Arcadia builds a study plan around your classes, deadlines, training and the rest of your life — then quietly rebuilds it every time something moves.";
+  "Arcadia builds a study plan around your classes, deadlines, training and the rest of your life, then quietly rebuilds it every time something moves.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://arcadiahq.app"),
@@ -78,7 +78,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  // Matches the manifest's theme_color / background — sets the iOS status
+  // Matches the manifest's theme_color / background, sets the iOS status
   // bar tint when installed as a PWA and the Android URL bar tint in
   // Chrome. Kept as the deep-night background rather than pure black so
   // the tint blends with the app's own surface rather than punching a
@@ -103,7 +103,7 @@ export default function RootLayout({
     >
       {/* The night background and white text are already set on `body` in
           globals.css @layer base. Repeating them as utilities here put them in
-          @layer utilities, which outranks every layered rule — including the
+          @layer utilities, which outranks every layered rule, including the
           product's own `html[data-app-theme] body` override, so the app shell
           was sitting on a black body in both themes. */}
       <body className="min-h-full">

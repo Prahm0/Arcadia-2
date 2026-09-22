@@ -30,6 +30,7 @@ import AppButton from "./AppButton";
 import { useRouter } from "next/navigation";
 import { isGuestEmail } from "@/lib/auth/guest";
 import DeleteAccountModal from "./DeleteAccountModal";
+import { isNative } from "@/lib/capacitor/platform";
 
 interface AccountResponse {
   account: {
@@ -103,6 +104,7 @@ export default function SettingsView() {
   const tier = data.user.tier ?? "free";
   const hasPaidPlan = tier === "pro" || tier === "max";
   const hasSubscription = Boolean(data.user.hasSubscription);
+  const nativeShell = isNative();
   const [pushEndpoint, setPushEndpoint] = useState<string | null>(null);
   const [pushPreferences, setPushPreferences] = useState<PushPreferences>({
     checkinsEnabled: true,
@@ -390,6 +392,14 @@ export default function SettingsView() {
               : `Signed in as ${account.email}`
             : undefined
         }
+        action={nativeShell ? (
+          <span
+            className="rounded-full px-2.5 py-1 text-[11px] font-medium"
+            style={{ background: "var(--app-accent-soft)", color: "var(--app-accent-strong)" }}
+          >
+            Arcadia iOS
+          </span>
+        ) : undefined}
       />
 
       {isGuest ? (

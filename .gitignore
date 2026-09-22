@@ -47,3 +47,10 @@ next-env.d.ts
 # open-next / cloudflare build output
 /.open-next/
 .wrangler/
+
+# Xcode local outputs. Keep the project and shared configuration committed.
+ios/App/App.xcworkspace/xcuserdata/
+ios/App/App.xcodeproj/xcuserdata/
+ios/App/Pods/
+ios/DerivedData/
+ios/build/

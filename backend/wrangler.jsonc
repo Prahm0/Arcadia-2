@@ -36,11 +36,13 @@
     }
   ],
 
-  // R2 is off until it's enabled on the account (Cloudflare dashboard > R2,
-  // which asks for a payment method). Syllabus and resource uploads work
-  // without it: Arcad reads each file and keeps what it found in D1; only the
-  // original file isn't kept. To keep originals too, enable R2, run
-  //   npx wrangler r2 bucket create arcadia-uploads
-  // and set this to [{ "binding": "UPLOADS", "bucket_name": "arcadia-uploads" }].
-  "r2_buckets": []
+  // R2 bucket for user-uploaded syllabus PDFs and resources. Arcad still
+  // reads each file and persists what it found to D1 regardless; the bucket
+  // is what lets us keep the original around so users can re-download it.
+  "r2_buckets": [
+    {
+      "binding": "UPLOADS",
+      "bucket_name": "arcadia-uploads"
+    }
+  ]
 }

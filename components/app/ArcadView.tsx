@@ -16,12 +16,14 @@ import MonthPlanPanel from "./MonthPlanPanel";
 import ProactiveArcadCards from "./ProactiveArcadCards";
 import PageTour from "./tour/PageTour";
 import ChangeCard from "./arcad/ChangeCard";
-import ChatRail from "./arcad/ChatRail";
+import ChatRail, { PANEL_ICON } from "./arcad/ChatRail";
 import Composer, { type ComposerHandle } from "./arcad/Composer";
 import { MessageRow, ThinkingRow } from "./arcad/ChatMessage";
 import type { ChatMessage, Conversation, Proposal, SendError } from "./arcad/types";
 
 type View = "chat" | "month";
+
+const RAIL_KEY = "arcadia:arcad-rail";
 
 /**
  * Arcad's page, laid out like a chat app: past chats down the left, the
@@ -64,6 +66,14 @@ function ArcadPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [revealId, setRevealId] = useState<string | null>(null);
   const [railOpen, setRailOpen] = useState(false);
+  /** Wide screens only: the chats column tucked away to give the thread the room. */
+  const [railCollapsed, setRailCollapsed] = useState(() => {
+    try {
+      return window.localStorage.getItem(RAIL_KEY) === "collapsed";
+    } catch {
+      return false;
+    }
+  });
   const [atBottom, setAtBottom] = useState(true);
   const [focusRequest, setFocusRequest] = useState(0);
 
@@ -380,8 +390,24 @@ function ArcadPage() {
       : conversations.find((c) => c.id === conversationId)?.title || (messages[0]?.content.slice(0, 60) ?? "New chat");
   const empty = view === "chat" && !loadingThread && messages.length === 0;
 
-  const rail = (
+  function setCollapsed(collapsed: boolean) {
+    setRailCollapsed(collapsed);
+    try {
+      window.localStorage.setItem(RAIL_KEY, collapsed ? "collapsed" : "open");
+    } catch {
+      /* stays as chosen for this visit */
+    }
+  }
+
+  /** The column on wide screens, the drawer on anything smaller. */
+  function showChats() {
+    if (window.matchMedia("(min-width: 1280px)").matches) setCollapsed(false);
+    else setRailOpen(true);
+  }
+
+  const rail = (inDrawer: boolean) => (
     <ChatRail
+      onHide={inDrawer ? () => setRailOpen(false) : () => setCollapsed(true)}
       conversations={conversations}
       activeId={conversationId}
       view={view}
@@ -401,11 +427,12 @@ function ArcadPage() {
     <div className="flex h-[calc(100svh-3rem-72px-env(safe-area-inset-bottom,0px))] min-h-[420px] lg:h-[calc(100svh-2.5rem)]">
       {/* Past chats: a column on wide screens, a drawer otherwise. */}
       <aside
-        className="hidden w-[256px] shrink-0 xl:block"
-        style={{ borderRight: "1px solid var(--app-border)" }}
+        className="hidden shrink-0 overflow-hidden transition-[width] duration-200 ease-out motion-reduce:transition-none xl:block"
+        style={{ width: railCollapsed ? 0 : 256, borderRight: railCollapsed ? undefined : "1px solid var(--app-border)" }}
         aria-label="Arcad chats"
+        inert={railCollapsed}
       >
-        {rail}
+        <div className="h-full w-[256px]">{rail(false)}</div>
       </aside>
       {railOpen ? (
         <div className="fixed inset-0 z-50 xl:hidden" role="dialog" aria-modal="true" aria-label="Arcad chats">
@@ -420,21 +447,21 @@ function ArcadPage() {
             className="absolute inset-y-0 left-0 w-[288px] max-w-[85vw]"
             style={{ background: "var(--app-bg)", boxShadow: "0 0 0 1px var(--app-border), 0 20px 50px rgba(0,0,0,0.3)" }}
           >
-            {rail}
+            {rail(true)}
           </div>
         </div>
       ) : null}
 
       <section className="relative flex min-w-0 flex-1 flex-col">
         <header className="flex h-12 shrink-0 items-center gap-1 px-2 sm:px-3">
-          <IconButton label="Chats" className="xl:hidden" onClick={() => setRailOpen(true)}>
-            <path d="M3.5 5h13M3.5 10h13M3.5 15h8" />
+          <IconButton label="Show chats" className={railCollapsed ? undefined : "xl:hidden"} onClick={showChats}>
+            <path d={PANEL_ICON} />
           </IconButton>
           <p className="min-w-0 flex-1 truncate px-1.5 text-[14px] font-medium" style={{ color: "var(--app-text)" }}>
             {activeTitle}
           </p>
           <PageTour id="arcad" />
-          <IconButton label="New chat" className="xl:hidden" onClick={() => startNewChat()}>
+          <IconButton label="New chat" className={railCollapsed ? undefined : "xl:hidden"} onClick={() => startNewChat()}>
             <path d="M14.5 3.5l2 2-8 8H6.5v-2l8-8zM9 4H5a1.5 1.5 0 00-1.5 1.5v9A1.5 1.5 0 005 16h9a1.5 1.5 0 001.5-1.5V11" />
           </IconButton>
         </header>

@@ -550,7 +550,7 @@ function FocusViewInner() {
             <button
               type="button"
               onClick={() => setDistractions((d) => d + 1)}
-              className="ui-pressable mt-6 rounded-full px-4 py-2 text-[12.5px] font-medium"
+              className="ui-pressable mt-6 rounded-md px-4 py-2 text-[12.5px] font-medium"
               style={{ border: "1px dashed var(--app-border-strong)", color: "var(--app-text-muted)" }}
             >
               Distraction ·{" "}

@@ -165,12 +165,9 @@ export default function ScheduleView() {
               <span className="text-[13px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>{week[0].label} – {week[6].label}</span>
             </div>
             <div className="hidden lg:flex items-center gap-2 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
-              <span
-                aria-hidden="true"
-                className="size-1.5 rounded-full"
-                style={{ background: upToDate ? "var(--app-success)" : "var(--app-text-faint)" }}
-              />
-              <span>Live · {upToDate ? "Up to date" : "Historical"}</span>
+              <span style={{ color: upToDate ? "var(--app-success)" : undefined }}>
+                {upToDate ? "Up to date" : "Historical"}
+              </span>
             </div>
           </div>
 

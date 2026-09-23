@@ -293,7 +293,7 @@ function IntervalButton({
     <button
       type="button"
       onClick={onClick}
-      className="rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors"
+      className="rounded-md px-4 py-1.5 text-[13px] font-semibold transition-colors"
       style={{
         background: active ? "var(--app-accent)" : "transparent",
         color: active ? "var(--app-accent-on)" : "var(--app-text-muted)",
@@ -351,7 +351,7 @@ function TierCard({
     >
       {tier.badge ? (
         <div
-          className="absolute -top-3 right-6 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]"
+          className="absolute -top-3 right-6 rounded-md px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]"
           style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}
         >
           {tier.badge}

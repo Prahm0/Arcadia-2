@@ -197,7 +197,7 @@ export default function RoomsView() {
                     </div>
                     {room.studyingCount > 0 ? (
                       <span
-                        className="rounded-full px-2.5 py-0.5 text-[11.5px] font-medium"
+                        className="rounded-md px-2.5 py-0.5 text-[11.5px] font-medium"
                         style={{
                           background: "color-mix(in oklab, var(--app-accent) 15%, transparent)",
                           color: "var(--app-accent-strong)",

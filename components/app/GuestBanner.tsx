@@ -45,7 +45,6 @@ export default function GuestBanner() {
         color: "var(--app-text-soft)",
       }}
     >
-      <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: "var(--app-accent)" }} />
       <p className="min-w-0 flex-1 truncate">
         <span className="font-medium" style={{ color: "var(--app-text)" }}>Guest account.</span>{" "}
         Nothing you do here is saved after you close the tab.

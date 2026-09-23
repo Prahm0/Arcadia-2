@@ -218,7 +218,7 @@ export default function EventDetailSheet({
                 {CATEGORY_LABEL[event.category] ?? "Event"}
               </p>
               <span
-                className="rounded-full px-1.5 py-0.5 text-[10.5px] font-medium"
+                className="rounded-md px-1.5 py-0.5 text-[10.5px] font-medium"
                 style={{
                   background:
                     stateChip.tone === "success"
@@ -238,7 +238,7 @@ export default function EventDetailSheet({
               </span>
               {event.source === "google" ? (
                 <span
-                  className="rounded-full px-1.5 py-0.5 text-[10.5px] font-medium"
+                  className="rounded-md px-1.5 py-0.5 text-[10.5px] font-medium"
                   style={{
                     background: "var(--app-surface-soft)",
                     color: "var(--app-text-muted)",

@@ -330,7 +330,7 @@ export default function ArcadView() {
                   key={starter.label}
                   type="button"
                   onClick={() => send(starter.message)}
-                  className="rounded-full px-2.5 py-1 text-[11.5px] font-medium transition-colors"
+                  className="rounded-md px-2.5 py-1 text-[11.5px] font-medium transition-colors"
                   style={{
                     background: "transparent",
                     color: "var(--app-text-muted)",
@@ -568,7 +568,7 @@ function ArcadHero({
                 key={starter.label}
                 type="button"
                 onClick={() => onSend(starter.message)}
-                className="rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-colors"
+                className="rounded-md px-3 py-1.5 text-[12.5px] font-medium transition-colors"
                 style={
                   isAccent
                     ? {
@@ -619,7 +619,7 @@ function ContextPanel({ data }: { data: DashboardResponse }) {
             {data.subjects.map((s) => (
               <span
                 key={s.id}
-                className="rounded-full px-2.5 py-1 text-[12px]"
+                className="rounded-md px-2.5 py-1 text-[12px]"
                 style={{
                   border: `1px solid ${s.colour || "var(--app-border)"}55`,
                   background: `${s.colour || "var(--app-border)"}0f`,

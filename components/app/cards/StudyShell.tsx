@@ -54,7 +54,7 @@ export default function StudyShell({
             </p>
           </div>
           <div
-            className="mt-1.5 h-1 overflow-hidden rounded-full"
+            className="mt-1.5 h-1 overflow-hidden rounded-[1px]"
             style={{ background: "var(--app-surface-soft)" }}
             role="progressbar"
             aria-valuemin={0}
@@ -63,7 +63,7 @@ export default function StudyShell({
             aria-label="Progress"
           >
             <div
-              className="h-full rounded-full transition-[width] duration-300 ease-out"
+              className="h-full transition-[width] duration-300 ease-out"
               style={{ width: `${Math.min(100, progress * 100)}%`, background: "var(--app-accent)" }}
             />
           </div>

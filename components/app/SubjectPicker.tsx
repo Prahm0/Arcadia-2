@@ -54,20 +54,13 @@ export default function SubjectPicker({ subjects, value, onChange }: SubjectPick
     <div>
       <div className="sm:hidden">
         <div className="relative">
-          {selected ? (
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute left-3 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full"
-              style={{ background: colourFor(subjects, selected) }}
-            />
-          ) : null}
           <select
             value={showCustomInput ? NEW_SUBJECT : value ?? ""}
             onChange={(event) => {
               if (event.target.value === NEW_SUBJECT) startCustom();
               else choose(event.target.value || null);
             }}
-            className="w-full rounded-md py-2.5 pl-8 pr-3 text-[15px] outline-none"
+            className="w-full rounded-md px-3 py-2.5 text-[15px] outline-none"
             style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
           >
             <option value="">No subject</option>
@@ -89,11 +82,11 @@ export default function SubjectPicker({ subjects, value, onChange }: SubjectPick
           style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
         >
           <span
-            aria-hidden="true"
-            className="h-2.5 w-2.5 shrink-0 rounded-full"
-            style={{ background: selected ? colourFor(subjects, selected) : "var(--app-text-faint)" }}
-          />
-          <span className="min-w-0 flex-1 truncate">{selectedLabel}</span>
+            className="min-w-0 flex-1 truncate"
+            style={{ color: selected ? `color-mix(in oklab, ${colourFor(subjects, selected)} 70%, var(--app-text))` : "var(--app-text-muted)" }}
+          >
+            {selectedLabel}
+          </span>
           <svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.7">
             <path d="m5 7 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -161,12 +154,9 @@ function Option({
       className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-[13.5px] ui-hover"
       style={{ color: "var(--app-text)", background: selected ? "var(--app-accent-soft)" : "transparent" }}
     >
-      <span
-        aria-hidden="true"
-        className="h-2.5 w-2.5 shrink-0 rounded-full"
-        style={{ background: colour ?? "var(--app-text-faint)" }}
-      />
-      <span className="min-w-0 flex-1 truncate">{label}</span>
+      <span className="min-w-0 flex-1 truncate" style={{ color: colour ? `color-mix(in oklab, ${colour} 70%, var(--app-text))` : undefined }}>
+        {label}
+      </span>
       {selected ? <span aria-hidden="true" style={{ color: "var(--app-accent-strong)" }}>✓</span> : null}
     </button>
   );

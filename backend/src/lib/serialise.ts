@@ -82,11 +82,32 @@ export function serialiseCommitment(commitment: CommitmentRow) {
  * `weeklyMinutesSuggested` says it's the year-level default rather than a
  * number the student picked.
  */
+/**
+ * Subject colours saved from palettes the app no longer uses, mapped to the
+ * nearest current swatch (lib/app/categoryColors.ts) so old subjects don't
+ * keep the earthy or neon look.
+ */
+const RETIRED_COLOURS: Record<string, string> = {
+  "#b4623c": "#e8603c", // terracotta -> orange
+  "#5e7a8c": "#2f7cf6", // denim -> blue
+  "#6f7d4e": "#23a35a", // olive -> green
+  "#a87b3a": "#d49b00", // ochre -> yellow
+  "#8a6b7c": "#d9468f", // mauve -> pink
+  "#6b7f6a": "#14a0b4", // sage -> teal
+  "#38bdf8": "#2f7cf6", // sky -> blue
+  "#34d399": "#23a35a", // emerald -> green
+  "#f59e0b": "#d49b00", // amber -> yellow
+};
+
+function currentColour(colour: string | null): string | null {
+  return colour ? (RETIRED_COLOURS[colour.toLowerCase()] ?? colour) : null;
+}
+
 export function serialiseSubject(subject: SubjectRow, grade: string | null | undefined) {
   return {
     id: subject.id,
     name: subject.name,
-    colour: subject.colour,
+    colour: currentColour(subject.colour),
     weeklyMinutes: subject.weeklyMinutes ?? defaultWeeklyMinutes(grade),
     weeklyMinutesSuggested: subject.weeklyMinutes === null,
     targetGrade: subject.targetGrade,

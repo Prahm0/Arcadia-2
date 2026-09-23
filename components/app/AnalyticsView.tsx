@@ -164,8 +164,8 @@ export default function AnalyticsView() {
                       <span style={{ color: "var(--app-text)" }}>{s.subject}</span>
                       <span className="tabular-nums" style={{ color: "var(--app-text-muted)" }}>{formatMinutes(s.minutes)}</span>
                     </div>
-                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full" style={{ background: "var(--app-border)" }}>
-                      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "var(--app-accent)" }} />
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-[1px]" style={{ background: "var(--app-border)" }}>
+                      <div className="h-full" style={{ width: `${pct}%`, background: "var(--app-accent)" }} />
                     </div>
                   </li>
                 );
@@ -221,7 +221,7 @@ export default function AnalyticsView() {
                 return (
                   <li
                     key={m}
-                    className="flex items-center gap-1.5 rounded-full px-3 py-1 text-[12.5px] font-medium"
+                    className="flex items-center gap-1.5 rounded-md px-3 py-1 text-[12.5px] font-medium"
                     style={{
                       background: active
                         ? "var(--app-accent)"
@@ -296,9 +296,9 @@ function MissReasonBreakdown({ reasons }: { reasons: Array<{ reason: string; cou
                 <span style={{ color: "var(--app-text)" }}>{MISS_REASON_LABEL[item.reason] ?? "Other"}</span>
                 <span className="tabular-nums" style={{ color: "var(--app-text-muted)" }}>{item.count}</span>
               </div>
-              <div className="mt-1.5 h-2 overflow-hidden rounded-full" style={{ background: "var(--app-border)" }}>
+              <div className="mt-1.5 h-2 overflow-hidden rounded-[1px]" style={{ background: "var(--app-border)" }}>
                 <div
-                  className="h-full rounded-full"
+                  className="h-full"
                   style={{ width: `${(item.count / max) * 100}%`, background: "var(--app-accent)" }}
                 />
               </div>

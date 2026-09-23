@@ -95,12 +95,12 @@ function CompanionSection() {
             </span>
           </span>
           <span
-            className="mt-2.5 block h-[3px] overflow-hidden rounded-full"
+            className="mt-2.5 block h-[3px] overflow-hidden rounded-[1px]"
             style={{ background: "var(--app-border)" }}
             aria-hidden="true"
           >
             <span
-              className="block h-full rounded-full"
+              className="block h-full"
               style={{ width: `${Math.max(2, progress * 100)}%`, background: "var(--app-text)", transition: "width 0.5s var(--ease-out-expo)" }}
             />
           </span>
@@ -130,7 +130,7 @@ function WeekSection({ days, todayMinutes }: { days: Array<{ date: string; minut
             <div key={day.date} className="flex h-full flex-1 flex-col items-center justify-end gap-1.5">
               <div className="flex w-full flex-1 items-end">
                 <div
-                  className="w-full rounded-[3px]"
+                  className="w-full rounded-t-[2px]"
                   style={{
                     height: day.minutes > 0 ? `${Math.max(6, (day.minutes / max) * 100)}%` : 3,
                     background: isToday ? "var(--app-text)" : day.minutes > 0 ? "var(--app-text-faint)" : "var(--app-border)",
@@ -179,8 +179,8 @@ function StreakSection() {
             : "Past every milestone"}
       </p>
       {streak.current > 0 && streak.nextMilestone ? (
-        <span className="mt-2 block h-[3px] overflow-hidden rounded-full" style={{ background: "var(--app-border)" }} aria-hidden="true">
-          <span className="block h-full rounded-full" style={{ width: `${pct * 100}%`, background: "var(--app-text)" }} />
+        <span className="mt-2 block h-[3px] overflow-hidden rounded-[1px]" style={{ background: "var(--app-border)" }} aria-hidden="true">
+          <span className="block h-full" style={{ width: `${pct * 100}%`, background: "var(--app-text)" }} />
         </span>
       ) : null}
     </Section>

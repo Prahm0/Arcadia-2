@@ -148,17 +148,19 @@ function DeadlineRow({
         className={cn("group flex w-full items-center gap-4 rounded-md px-4 py-4 text-left transition-colors ui-hover")}
         style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
       >
-        <span
-          aria-hidden="true"
-          className="h-10 w-1 shrink-0 rounded-full"
-          style={{ background: color || "var(--app-accent)" }}
-        />
         <div className="min-w-0 flex-1">
           <p className="text-[15px] font-medium tracking-[-0.005em]" style={{ color: "var(--app-text)" }}>
             {task.title}
           </p>
           <p className="mt-1 text-[12.5px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
-            {task.subject ? `${task.subject} · ` : ""}
+            {task.subject ? (
+              <>
+                <span className="font-medium" style={{ color: color ? `color-mix(in oklab, ${color} 70%, var(--app-text))` : "var(--app-text-soft)" }}>
+                  {task.subject}
+                </span>
+                {" · "}
+              </>
+            ) : null}
             {formatDueSoon(task.dueAt, timezone)} · {formatDurationMinutes(task.remainingMinutes)}
           </p>
         </div>

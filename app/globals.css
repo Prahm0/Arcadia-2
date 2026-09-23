@@ -72,7 +72,7 @@
   --app-accent-strong: #45423b;   /* hover on ink fills; 10:1 as text */
   --app-accent-on: #fbfaf7;       /* text/icons sitting ON --app-accent */
   --app-danger: #b03030;
-  --app-success: #4a6b33;         /* sage */
+  --app-success: #1f8a4c;
   --app-warning: #8a5a0b;         /* amber, for things that need a decision */
   --app-warning-soft: rgba(196, 138, 30, 0.14);
   --app-arcad: #6a49f5;           /* reserved for Arcad, the AI companion */
@@ -82,11 +82,11 @@
 
   /* Event categories. Mid-tones read under 3:1 on white, so light mode gets
      the darker end of each hue and dark mode the lighter. */
-  --app-cat-school: #5b7683;      /* dusty blue */
-  --app-cat-sport: #6b7a4c;       /* olive */
-  --app-cat-extra: #966a2b;       /* ochre */
-  --app-cat-rose: #8f5560;
-  --app-cat-plum: #6e6182;
+  --app-cat-school: #5f6875;      /* slate: school sits back */
+  --app-cat-sport: #1f8a4c;       /* green */
+  --app-cat-extra: #c65a12;       /* orange */
+  --app-cat-rose: #c7356a;
+  --app-cat-plum: #7a4fd0;
 }
 
 /* Elevation. Borders are drawn as a 1px box-shadow ring so switching a
@@ -106,38 +106,41 @@
   --elev-inset-strong: inset 0 0 0 1px var(--app-border-strong);
 }
 
-/* Dark theme: the same warm greys, flattened, for long sessions.
+/* Dark theme: neutral near-black, not the warm brown-grey every AI chat
+   app ships. Surfaces get lighter as they rise (never darker), hairlines
+   and secondary text are white at an opacity so they sit on any layer, and
+   the only colour left is what carries meaning.
    Applied via [data-app-theme="dark"] on <html>. */
 [data-app-theme="dark"] {
   --shadow-rgb: 0, 0, 0;
-  --app-bg: #1c1b19;              /* warm grey, not black and not blue */
-  --app-surface: #232220;
-  --app-surface-soft: #191816;
-  --app-elev: #2a2926;
-  --app-border: #34322e;
-  --app-border-strong: #48453f;
-  --app-text: #f6f3ec;
-  --app-text-soft: #d9d3c7;
-  --app-text-muted: #a39c8e;
-  --app-text-faint: #736c60;
-  --app-accent: #f1ede4;          /* paper-white ink on the warm grey */
-  --app-accent-soft: rgba(241, 237, 228, 0.1);
-  --app-accent-strong: #d6d0c4;
-  --app-accent-on: #1c1b19;
-  --app-danger: #e8877a;
-  --app-success: #a3b884;
-  --app-warning: #e3b563;
-  --app-warning-soft: rgba(227, 181, 99, 0.16);
+  --app-bg: #09090a;
+  --app-surface: #161618;         /* cards: a clear step up from the page */
+  --app-surface-soft: #1d1d20;    /* insets, input fills, sidebar */
+  --app-elev: #202023;            /* menus, sheets, dialogs */
+  --app-border: rgba(255, 255, 255, 0.075);
+  --app-border-strong: rgba(255, 255, 255, 0.14);
+  --app-text: #f5f5f7;
+  --app-text-soft: rgba(235, 235, 245, 0.82);
+  --app-text-muted: rgba(235, 235, 245, 0.6);
+  --app-text-faint: rgba(235, 235, 245, 0.32);
+  --app-accent: #f5f5f7;
+  --app-accent-soft: rgba(255, 255, 255, 0.08);
+  --app-accent-strong: #ffffff;
+  --app-accent-on: #09090a;
+  --app-danger: #ff6961;
+  --app-success: #4cc97a;
+  --app-warning: #ffb340;
+  --app-warning-soft: rgba(255, 179, 64, 0.14);
   --app-arcad: #b3a1ff;
   --app-arcad-soft: rgba(179, 161, 255, 0.16);
   --app-arcad-strong: #c9bcff;
   --app-arcad-on: #1a1330;
 
-  --app-cat-school: #9db6c0;
-  --app-cat-sport: #a8b785;
-  --app-cat-extra: #d6a967;
-  --app-cat-rose: #c08d97;
-  --app-cat-plum: #a297b8;
+  --app-cat-school: #9ba3af;
+  --app-cat-sport: #4cc97a;
+  --app-cat-extra: #ff9f43;
+  --app-cat-rose: #ff6b9a;
+  --app-cat-plum: #b99aff;
 }
 
 /* Everything the product needs that the landing must not inherit. The selector

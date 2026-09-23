@@ -41,7 +41,7 @@ export default function MissReasonPicker({
             key={option.value}
             type="button"
             onClick={() => setReason(option.value)}
-            className="rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-colors"
+            className="rounded-md px-3 py-1.5 text-[12.5px] font-medium transition-colors"
             style={{
               background: reason === option.value ? "var(--app-accent)" : "var(--app-surface-soft)",
               color: reason === option.value ? "var(--app-accent-on)" : "var(--app-text)",

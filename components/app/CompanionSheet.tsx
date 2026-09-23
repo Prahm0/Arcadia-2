@@ -225,7 +225,7 @@ export default function CompanionSheet({ open, onClose, initial }: CompanionShee
                 key={option.key}
                 type="button"
                 onClick={() => setProfile((prev) => ({ ...prev, palette: option.key }))}
-                className="flex items-center gap-2 rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-colors"
+                className="flex items-center gap-2 rounded-md px-3 py-1.5 text-[12.5px] font-medium transition-colors"
                 style={{
                   background: profile.palette === option.key ? "var(--app-arcad-soft)" : "transparent",
                   color: profile.palette === option.key ? "var(--app-arcad-strong)" : "var(--app-text-soft)",
@@ -253,7 +253,7 @@ export default function CompanionSheet({ open, onClose, initial }: CompanionShee
                 key={option.key}
                 type="button"
                 onClick={() => setProfile((prev) => ({ ...prev, accessory: option.key }))}
-                className="rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-colors"
+                className="rounded-md px-3 py-1.5 text-[12.5px] font-medium transition-colors"
                 style={{
                   background: profile.accessory === option.key ? "var(--app-arcad-soft)" : "transparent",
                   color: profile.accessory === option.key ? "var(--app-arcad-strong)" : "var(--app-text-soft)",

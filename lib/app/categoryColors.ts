@@ -52,28 +52,39 @@ export function categoryBlock(category: string): CategoryBlockStyle {
   return hueBlock(categoryColor(category));
 }
 
-/** The same block treatment for any hue, e.g. a subject's own colour. */
+/**
+ * The same block treatment for any hue, e.g. a subject's own colour: one flat
+ * tint and text in the hue. No outline on top of the fill, which doubled
+ * every colour.
+ */
 export function hueBlock(hue: string): CategoryBlockStyle {
   return {
-    bg: `color-mix(in oklab, ${hue} 16%, var(--app-surface))`,
-    text: "var(--app-text)",
-    border: `color-mix(in oklab, ${hue} 45%, transparent)`,
+    bg: `color-mix(in oklab, ${hue} 15%, var(--app-surface))`,
+    text: hueInk(hue),
+    border: "transparent",
   };
+}
+
+/** A hue as text: pulled toward the text colour so it reads on either theme. */
+export function hueInk(hue: string): string {
+  return `color-mix(in oklab, ${hue} 70%, var(--app-text))`;
 }
 
 /**
  * Swatches offered when a student picks a colour for a subject.
  *
- * These stay literal hexes: Onboarding persists the chosen value to the
- * backend as `subject.color`, so it has to survive outside this stylesheet and
- * cannot be a per-theme variable. Each one clears 3:1 against both the light
- * and dark card surfaces.
+ * Clean, saturated hues rather than the earthy terracotta-sage-ochre set,
+ * which is the stock "tasteful" palette of generated UIs. They're only ever
+ * used small: a tag's text and a faint wash, a calendar block's tint. Literal
+ * hexes because the pick is saved on the subject; the backend maps colours
+ * saved from the old palette onto these (see serialiseSubject).
  */
 export const SUBJECT_COLORS = [
-  "#b4623c", // terracotta
-  "#5e7a8c", // denim
-  "#6f7d4e", // olive
-  "#a87b3a", // ochre
-  "#8a6b7c", // mauve
-  "#6b7f6a", // sage
+  "#2f7cf6", // blue
+  "#e8603c", // orange
+  "#23a35a", // green
+  "#d9468f", // pink
+  "#14a0b4", // teal
+  "#d49b00", // yellow
+  "#8a5cf0", // purple
 ];

@@ -1,0 +1,40 @@
+import posthog from "posthog-js";
+
+// Thin, typed wrapper over PostHog so components never touch the SDK directly
+// and the funnel event names live in exactly one place. Every call is a no-op
+// on the server and before PostHog has started (e.g. local dev), so callers
+// never need to guard.
+
+function ready(): boolean {
+  return typeof window !== "undefined" && posthog.__loaded === true;
+}
+
+/** Tie subsequent events to a known user. Call right after login/session load. */
+export function identifyUser(userId: string, props?: Record<string, unknown>): void {
+  if (!ready()) return;
+  posthog.identify(userId, props);
+}
+
+/** Clear identity on logout so the next person on the device is separate. */
+export function resetAnalytics(): void {
+  if (!ready()) return;
+  posthog.reset();
+}
+
+function track(event: string, props?: Record<string, unknown>): void {
+  if (!ready()) return;
+  posthog.capture(event, props);
+}
+
+/** The acquisition-to-revenue funnel, named once. */
+export const analytics = {
+  signupStarted: () => track("signup_started"),
+  signupCompleted: () => track("signup_completed"),
+  emailVerified: () => track("email_verified"),
+  onboardingCompleted: (subjectCount: number, taskCount: number) =>
+    track("onboarding_completed", { subjectCount, taskCount }),
+  checkoutStarted: (plan: string, interval: string) =>
+    track("checkout_started", { plan, interval }),
+  subscriptionActivated: (tier: string) => track("subscription_activated", { tier }),
+  arcadMessageSent: () => track("arcad_message_sent"),
+};

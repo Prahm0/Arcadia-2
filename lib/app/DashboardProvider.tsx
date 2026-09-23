@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useContext, useEffect, useMemo } from "react";
 import { useDashboard } from "@/lib/api/dashboard";
+import { identifyUser } from "@/lib/analytics/events";
 import type { DashboardResponse } from "@/lib/api/types";
 
 interface DashboardContextValue {
@@ -21,6 +22,15 @@ interface ProviderProps {
 
 export function DashboardDataProvider({ data, reload, patch, children }: ProviderProps) {
   const value = useMemo(() => ({ data, reload, patch }), [data, reload, patch]);
+  // Tie analytics events and session replays to the signed-in user. We send
+  // no name or email, only the id plus non-identifying attributes, so the
+  // data stays privacy-minimal for a young audience.
+  const userId = data.user?.id;
+  const tier = data.user?.tier;
+  const isGuest = data.user?.email?.endsWith("@arcadia.local") ?? false;
+  useEffect(() => {
+    if (userId) identifyUser(userId, { tier, isGuest });
+  }, [userId, tier, isGuest]);
   return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>;
 }
 

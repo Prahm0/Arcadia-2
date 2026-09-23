@@ -38,13 +38,17 @@ const ui = Inter({
   display: "swap",
 });
 
-const title = "Arcadia · Your week just changed. Your plan already knows.";
+// The tab reads "Today · Arcadia" inside the app: every page sets a short
+// title and the template adds the brand. The landing keeps the default, and
+// link previews keep the tagline.
+const title = "Arcadia · AI study planner";
+const tagline = "Arcadia · Your week just changed. Your plan already knows.";
 const description =
   "Arcadia builds a study plan around your classes, deadlines, training and the rest of your life, then quietly rebuilds it every time something moves.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://arcadiahq.app"),
-  title,
+  title: { default: title, template: "%s · Arcadia" },
   description,
   applicationName: "Arcadia",
   // PWA install hints. iOS Safari uses its own set of tags for
@@ -64,13 +68,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "Arcadia",
-    title,
+    title: tagline,
     description,
     locale: "en_AU",
   },
   twitter: {
     card: "summary_large_image",
-    title,
+    title: tagline,
     description,
   },
   robots: { index: true, follow: true },

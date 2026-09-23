@@ -1,9 +1,9 @@
-"use client";
-
-import { use } from "react";
+import type { Metadata } from "next";
 import SubjectView from "@/components/app/profile/SubjectView";
 
-export default function SubjectPage({ params }: { params: Promise<{ subjectId: string }> }) {
-  const { subjectId } = use(params);
+export const metadata: Metadata = { title: "Subject" };
+
+export default async function SubjectPage({ params }: { params: Promise<{ subjectId: string }> }) {
+  const { subjectId } = await params;
   return <SubjectView subjectId={decodeURIComponent(subjectId)} />;
 }

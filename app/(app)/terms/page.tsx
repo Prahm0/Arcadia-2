@@ -3,7 +3,7 @@ import Link from "next/link";
 import LegalPage from "@/components/LegalPage";
 
 export const metadata: Metadata = {
-  title: "Terms · Arcadia",
+  title: "Terms of service",
   description: "Terms of service for using Arcadia.",
 };
 

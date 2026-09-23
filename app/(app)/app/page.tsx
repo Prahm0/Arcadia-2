@@ -1,26 +1,9 @@
 "use client";
 
-import Onboarding from "@/components/app/Onboarding";
 import TodayView from "@/components/app/TodayView";
-import { useDashboardData } from "@/lib/app/DashboardProvider";
 
+// Onboarding (and its paywall) is gated in app/(app)/app/layout.tsx, so this
+// page only renders once onboarding is complete.
 export default function AppPage() {
-  const { data, reload } = useDashboardData();
-
-  if (!data.user.onboardingComplete) {
-    return (
-      <Onboarding
-        defaultName={data.user.name}
-        defaultTimezone={
-          data.profile?.timezone ||
-          (typeof Intl !== "undefined"
-            ? Intl.DateTimeFormat().resolvedOptions().timeZone
-            : "Australia/Sydney")
-        }
-        onComplete={() => reload()}
-      />
-    );
-  }
-
   return <TodayView />;
 }

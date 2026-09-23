@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import AppShell from "@/components/app/AppShell";
+import Onboarding from "@/components/app/Onboarding";
 import { DashboardDataProvider, useDashboard } from "@/lib/app/DashboardProvider";
 import { useDashboardAutoRefresh } from "@/lib/app/useDashboardAutoRefresh";
 
@@ -61,13 +62,29 @@ function Gate({ children }: { children: ReactNode }) {
     );
   }
 
-  const notices = state.data.user.onboardingComplete ? (state.data.notices ?? []) : [];
+  const { user, profile } = state.data;
+  const notices = user.onboardingComplete ? (state.data.notices ?? []) : [];
 
   return (
     <DashboardDataProvider data={state.data} reload={reload} patch={patch}>
-      <AppShell user={state.data.user} notices={notices}>
-        {children}
-      </AppShell>
+      {user.onboardingComplete ? (
+        <AppShell user={user} notices={notices}>
+          {children}
+        </AppShell>
+      ) : (
+        // Until onboarding (and its paywall) finishes, the whole app is the
+        // onboarding flow: no sidebar, no nav, no other routes reachable.
+        <Onboarding
+          defaultName={user.name}
+          defaultTimezone={
+            profile?.timezone ||
+            (typeof Intl !== "undefined"
+              ? Intl.DateTimeFormat().resolvedOptions().timeZone
+              : "Australia/Sydney")
+          }
+          onComplete={() => reload()}
+        />
+      )}
     </DashboardDataProvider>
   );
 }

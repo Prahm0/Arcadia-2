@@ -26,6 +26,10 @@
     "STRIPE_PRICE_MAX_WEEKLY": "price_1UImh99e8rebDtOcRg3WSl9V",
     "STRIPE_PRICE_MAX_MONTHLY": "price_1UImhN9e8rebDtOckTgt2JRz",
     "STRIPE_PRICE_MAX_YEARLY": "price_1UImhc9e8rebDtOc6mo8AfL0",
+    // Coupon applied to the onboarding win-back offer (41% off Pro monthly).
+    // Create a 41%-off coupon in Stripe and paste its id here. Empty = no
+    // discount (the offer still works, just at full price).
+    "STRIPE_WINBACK_COUPON_ID": "",
     // RevenueCat entitlement identifiers. Product identifiers and public SDK
     // keys live in the iOS/web build environment, while the secret API key
     // below is set with `wrangler secret put`.

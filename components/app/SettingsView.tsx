@@ -860,7 +860,7 @@ export default function SettingsView() {
         )}
 
         {isGuest ? null : (
-          <Card>
+          <Card id="billing" className="scroll-mt-24">
             <SectionHeader label="Plan & billing" />
             <div className="flex flex-col gap-3">
               <div className="flex items-baseline justify-between">
@@ -875,7 +875,7 @@ export default function SettingsView() {
                       ? "2 Arcad messages per day. Upgrade any time."
                       : tier === "pro"
                       ? "20 Arcad messages per day, calendar sync, uploads."
-                      : "100 Arcad messages per day, voice mode, tutor mode."}
+                      : "100 Arcad messages per day, unlimited flashcard decks."}
                   </p>
                 </div>
               </div>
@@ -965,10 +965,19 @@ export default function SettingsView() {
   );
 }
 
-function Card({ children }: { children: React.ReactNode }) {
+function Card({
+  children,
+  id,
+  className,
+}: {
+  children: React.ReactNode;
+  id?: string;
+  className?: string;
+}) {
   return (
     <div
-      className="rounded-lg p-6"
+      id={id}
+      className={`rounded-lg p-6${className ? ` ${className}` : ""}`}
       style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
     >
       {children}

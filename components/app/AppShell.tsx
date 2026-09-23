@@ -186,7 +186,17 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
               <span>day{streak === 1 ? "" : "s"}</span>
             </div>
           ) : null}
-          {user?.tier === "pro" || user?.tier === "max" ? null : (
+          {user?.tier === "pro" || user?.tier === "max" ? (
+            <Link
+              href="/app/settings#billing"
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-semibold transition-opacity hover:opacity-90"
+              style={{ background: "var(--app-arcad-soft)", color: "var(--app-arcad-strong)" }}
+              aria-label={`Arcadia ${user.tier === "max" ? "Max" : "Pro"}, manage subscription`}
+            >
+              <span aria-hidden="true">✦</span>
+              {user.tier === "max" ? "Max" : "Pro"}
+            </Link>
+          ) : (
             <Link
               href="/app/pricing"
               className="flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-[14px] font-semibold"
@@ -314,7 +324,49 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
           </nav>
 
           <div className="mt-auto flex flex-col gap-1 px-2 pb-3 pt-4">
-            {user?.tier === "pro" || user?.tier === "max" ? null : (
+            {user?.tier === "pro" || user?.tier === "max" ? (
+              <Link
+                href="/app/settings#billing"
+                className="flex items-center justify-between gap-2 rounded-lg px-3.5 py-2.5 transition-opacity hover:opacity-90"
+                style={{ background: "var(--app-arcad-soft)" }}
+                aria-label={`Arcadia ${user.tier === "max" ? "Max" : "Pro"}, manage subscription`}
+              >
+                <span className="flex items-center gap-2">
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 20 20"
+                    width="15"
+                    height="15"
+                    fill="currentColor"
+                    style={{ color: "var(--app-arcad-strong)" }}
+                  >
+                    <path d="M10 2.5l1.15 4.15L15.5 8l-4.35 1.35L10 13.5 8.85 9.35 4.5 8l4.35-1.35L10 2.5z" />
+                  </svg>
+                  <span className="flex flex-col leading-tight">
+                    <span className="text-[13px] font-semibold" style={{ color: "var(--app-arcad-strong)" }}>
+                      Arcadia {user.tier === "max" ? "Max" : "Pro"}
+                    </span>
+                    <span className="text-[11px]" style={{ color: "var(--app-text-muted)" }}>
+                      Manage subscription
+                    </span>
+                  </span>
+                </span>
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 20 20"
+                  width="13"
+                  height="13"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ color: "var(--app-text-faint)" }}
+                >
+                  <path d="M7 4l6 6-6 6" />
+                </svg>
+              </Link>
+            ) : (
               <Link
                 href="/app/pricing"
                 className="flex h-10 items-center justify-center gap-2 rounded-lg px-3.5 text-[14px] font-semibold transition-opacity hover:opacity-90"

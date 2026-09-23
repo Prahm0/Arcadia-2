@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api/client";
 import { analytics } from "@/lib/analytics/events";
@@ -116,6 +116,20 @@ export default function PricingView() {
   const [interval, setInterval] = useState<Interval>("month");
   const [busyTier, setBusyTier] = useState<TierKey | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Stripe sends a cancelled checkout back here with ?upgrade=cancelled. Read
+  // it in the initialiser (this subtree only mounts on the client, behind the
+  // dashboard gate) so the effect just strips the param and never sets state.
+  const [cancelled, setCancelled] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("upgrade") === "cancelled";
+  });
+  useEffect(() => {
+    if (!cancelled) return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("upgrade") !== "cancelled") return;
+    url.searchParams.delete("upgrade");
+    window.history.replaceState({}, "", url.toString());
+  }, [cancelled]);
 
   async function startCheckout(plan: "pro" | "max") {
     // Guests can't upgrade, they'd be paying for an @arcadia.local
@@ -206,6 +220,25 @@ export default function PricingView() {
             <AppButton variant="primary" onClick={() => router.push("/register")}>
               Create account
             </AppButton>
+          </div>
+        ) : null}
+
+        {cancelled ? (
+          <div
+            role="status"
+            className="flex items-center justify-between gap-3 rounded-md px-4 py-3 text-[13.5px]"
+            style={{ background: "var(--app-surface-soft)", color: "var(--app-text-soft)" }}
+          >
+            <span>Checkout cancelled, no charge was made. Upgrade whenever you&rsquo;re ready.</span>
+            <button
+              type="button"
+              onClick={() => setCancelled(false)}
+              aria-label="Dismiss"
+              className="shrink-0 text-[16px] leading-none"
+              style={{ color: "var(--app-text-faint)" }}
+            >
+              ×
+            </button>
           </div>
         ) : null}
 

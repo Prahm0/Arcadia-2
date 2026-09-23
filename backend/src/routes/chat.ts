@@ -14,6 +14,7 @@ import type { Env, Variables } from "../types";
 const chat = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 const PROPOSAL_TTL = 2 * DAY;
+const MAX_MESSAGE_LENGTH = 16_000;
 
 function serialiseMessage(row: typeof schema.messages.$inferSelect) {
   return {
@@ -88,7 +89,15 @@ chat.post("/", async (c) => {
 
   const text = String(body?.message ?? "").trim();
   if (!text) return c.json({ error: "Say something first." }, 422);
-  if (text.length > 4000) return c.json({ error: "That message is too long." }, 422);
+  if (text.length > MAX_MESSAGE_LENGTH) {
+    return c.json(
+      {
+        error:
+          "That message is very long. Try pasting a smaller section and Arcad will work through it.",
+      },
+      422,
+    );
+  }
 
   const database = db(c.env.DB);
 

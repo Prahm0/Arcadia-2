@@ -1,6 +1,8 @@
 import { sql } from "drizzle-orm";
 import { schema, type Database } from "../db";
+import { completeJson, type ContentPart } from "./openai";
 import { DAY, iso, startOfLocalDay } from "./time";
+import type { Env } from "../types";
 
 type CardRow = typeof schema.cards.$inferSelect;
 
@@ -9,6 +11,69 @@ export const FRONT_MAX = 500;
 export const BACK_MAX = 1000;
 export const MAX_CARDS = 500;
 export const MAX_DECKS = 200;
+
+interface GeneratedCardsReply {
+  cards: Array<{ front: string; back: string }>;
+}
+
+const GENERATED_CARDS_SCHEMA = {
+  name: "flashcard_deck",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["cards"],
+    properties: {
+      cards: {
+        type: "array",
+        minItems: 8,
+        maxItems: 20,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["front", "back"],
+          properties: {
+            front: { type: "string" },
+            back: { type: "string" },
+          },
+        },
+      },
+    },
+  },
+};
+
+/**
+ * Makes a compact first deck from one topic or an existing subject resource.
+ * The route validates and stores the cards after this returns, so a malformed
+ * model answer can never create an empty or partial deck.
+ */
+export async function generateFlashcards(
+  env: Env,
+  source: { label: string; content: ContentPart[] },
+): Promise<Array<{ front: string; back: string }> | null> {
+  const reply = await completeJson<GeneratedCardsReply>(
+    env,
+    [
+      {
+        role: "system",
+        content: [
+          "You create concise, useful study flashcards for a high school student.",
+          "Make 8 to 20 cards based only on the supplied topic or resource.",
+          "Each front is a clear retrieval question or term. Each back is a short, accurate answer.",
+          "Cover the important ideas before minor details. Avoid duplicate cards, vague prompts, and study advice.",
+          "Use plain text. Keep each side short enough to review quickly.",
+        ].join("\n"),
+      },
+      {
+        role: "user",
+        content: [{ type: "text", text: `Create a flashcard deck from: ${source.label}` }, ...source.content],
+      },
+    ],
+    GENERATED_CARDS_SCHEMA,
+    1600,
+  );
+
+  return reply?.cards ?? null;
+}
 
 /** Days until a card comes round again, by box. Box 0 is learning: due now. */
 export const BOX_DAYS = [0, 1, 3, 7, 16, 35];

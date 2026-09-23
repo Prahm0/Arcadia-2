@@ -53,6 +53,15 @@ export function createDeck(body: {
   return api<DeckWithCards>("/api/decks", { method: "POST", body: JSON.stringify(body) });
 }
 
+export function generateDeck(body: {
+  title?: string;
+  subjectId?: string | null;
+  topic?: string;
+  subjectFileId?: string;
+}): Promise<DeckWithCards> {
+  return api<DeckWithCards>("/api/decks/generate", { method: "POST", body: JSON.stringify(body) });
+}
+
 export function updateDeck(
   id: string,
   body: Partial<{ title: string; subjectId: string | null; topicId: string | null }>,

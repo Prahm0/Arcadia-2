@@ -110,7 +110,7 @@ const RESOURCE_SCHEMA = {
 };
 
 /** The file as a message part the model can read. */
-function filePart(bytes: ArrayBuffer, contentType: string, filename: string): ContentPart {
+export function filePart(bytes: ArrayBuffer, contentType: string, filename: string): ContentPart {
   const kind = MATERIAL_TYPES[contentType];
   if (kind === "text") {
     return { type: "text", text: new TextDecoder().decode(bytes).slice(0, 60_000) };

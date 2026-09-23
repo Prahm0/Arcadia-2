@@ -10,6 +10,7 @@ import {
   countCards,
   deckCounts,
   deleteCards,
+  generateFlashcards,
   insertCards,
   runBatch,
   serialiseCard,
@@ -19,8 +20,10 @@ import {
   type Statement,
 } from "../lib/cards";
 import { newId } from "../lib/ids";
+import type { ContentPart } from "../lib/openai";
+import { MATERIAL_TYPES, filePart } from "../lib/syllabus";
 import { iso } from "../lib/time";
-import { DECK_LIMIT, getUserTier } from "../lib/tiers";
+import { DECK_LIMIT, getUserTier, isPaidTier, type Tier } from "../lib/tiers";
 import type { Env, Variables } from "../types";
 
 type App = Hono<{ Bindings: Env; Variables: Variables }>;
@@ -41,6 +44,13 @@ interface CardInput {
   id?: string;
   front?: string;
   back?: string;
+}
+
+interface GenerateDeckBody {
+  title?: string;
+  subjectId?: string | null;
+  topic?: string;
+  subjectFileId?: string;
 }
 
 const cleanTitle = (value: unknown) => String(value ?? "").replace(/\s+/g, " ").trim().slice(0, TITLE_MAX);
@@ -127,6 +137,29 @@ async function checkLinks(
   return null;
 }
 
+function deckLimitMessage(tier: Tier): string {
+  return tier === "free"
+    ? "Free includes 1 flashcard deck. Upgrade to Pro for 3, or Max for unlimited decks."
+    : tier === "pro"
+      ? "Pro includes 3 flashcard decks. Upgrade to Max for unlimited decks."
+      : "That's a lot of decks. Delete an old one first.";
+}
+
+/** Kept in one place so manual and Arcad-created decks have identical limits. */
+async function deckLimitError(database: Database, userId: string, tier: Tier) {
+  const [{ count }] = await database
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.decks)
+    .where(eq(schema.decks.userId, userId));
+  return Number(count) >= DECK_LIMIT[tier]
+    ? { error: deckLimitMessage(tier), code: "deck_limit_reached" as const }
+    : null;
+}
+
+function titleFromFilename(filename: string): string {
+  return cleanTitle(filename.replace(/\.[^.]+$/, ""));
+}
+
 
 async function timezoneOf(database: Database, userId: string): Promise<string> {
   const [row] = await database
@@ -172,21 +205,9 @@ decks.post("/", async (c) => {
   const linkError = await checkLinks(database, userId, subjectId, topicId);
   if (linkError) return c.json({ error: linkError }, 422);
 
-  const [{ count }] = await database
-    .select({ count: sql<number>`count(*)` })
-    .from(schema.decks)
-    .where(eq(schema.decks.userId, userId));
   const tier = await getUserTier(database, userId);
-  const limit = DECK_LIMIT[tier];
-  if (Number(count) >= limit) {
-    const message =
-      tier === "free"
-        ? "Free includes 1 flashcard deck. Upgrade to Pro for 3, or Max for unlimited decks."
-        : tier === "pro"
-          ? "Pro includes 3 flashcard decks. Upgrade to Max for unlimited decks."
-          : "That's a lot of decks. Delete an old one first.";
-    return c.json({ error: message, code: "deck_limit_reached" }, 422);
-  }
+  const limitError = await deckLimitError(database, userId, tier);
+  if (limitError) return c.json(limitError, 422);
 
   const id = newId("deck");
   const source = SOURCES.includes(body.source as (typeof SOURCES)[number]) ? body.source! : "manual";
@@ -202,6 +223,110 @@ decks.post("/", async (c) => {
       ),
     );
   }
+  await runBatch(c.env.DB, writes);
+
+  const row = await ownedDeck(database, userId, id);
+  const cards = await deckCards(database, id);
+  const now = Date.now();
+  return c.json(
+    { deck: serialiseDeck(row.deck, countCards(cards, now), row.topicTitle), cards: cards.map((card) => serialiseCard(card, now)) },
+    201,
+  );
+});
+
+/** Creates a paid, Arcad-generated deck from a topic or an existing subject file. */
+decks.post("/generate", async (c) => {
+  const { userId } = c.get("session");
+  const body = await c.req.json<GenerateDeckBody>().catch(() => null);
+  if (!body) return c.json({ error: "Invalid request." }, 400);
+
+  const topic = String(body.topic ?? "").replace(/\s+/g, " ").trim();
+  const subjectFileId = typeof body.subjectFileId === "string" ? body.subjectFileId.trim() : "";
+  if (Boolean(topic) === Boolean(subjectFileId)) {
+    return c.json({ error: "Choose a topic or an uploaded file." }, 422);
+  }
+  if (topic.length > 2_000) return c.json({ error: "Keep the topic under 2,000 characters." }, 422);
+
+  const database = db(c.env.DB);
+  const [user] = await database
+    .select({ email: schema.users.email })
+    .from(schema.users)
+    .where(eq(schema.users.id, userId))
+    .limit(1);
+  if (user?.email.endsWith("@arcadia.local")) {
+    return c.json({ error: "Guest accounts cannot generate flashcards.", code: "guest_cannot_use" }, 403);
+  }
+
+  const tier = await getUserTier(database, userId);
+  if (!isPaidTier(tier)) {
+    return c.json({ error: "Upgrade to generate flashcards.", code: "upgrade_required" }, 403);
+  }
+  const limitError = await deckLimitError(database, userId, tier);
+  if (limitError) return c.json(limitError, 422);
+
+  let subjectId = body.subjectId || null;
+  let sourceLabel: string;
+  let sourceContent: ContentPart[];
+  let fallbackTitle: string;
+
+  if (subjectFileId) {
+    const [file] = await database
+      .select()
+      .from(schema.subjectFiles)
+      .where(and(eq(schema.subjectFiles.id, subjectFileId), eq(schema.subjectFiles.userId, userId)))
+      .limit(1);
+    if (!file) return c.json({ error: "Uploaded file not found." }, 404);
+    if (!file.storageKey || !c.env.UPLOADS || !MATERIAL_TYPES[file.contentType]) {
+      return c.json({ error: "This file is not available to generate from. Try a topic instead." }, 422);
+    }
+
+    const object = await c.env.UPLOADS.get(file.storageKey);
+    if (!object) return c.json({ error: "This file is not available to generate from. Try a topic instead." }, 422);
+    const [subject] = await database
+      .select({ name: schema.subjects.name })
+      .from(schema.subjects)
+      .where(and(eq(schema.subjects.id, file.subjectId), eq(schema.subjects.userId, userId)))
+      .limit(1);
+    subjectId = file.subjectId;
+    sourceLabel = `${subject?.name ?? "Subject"} resource: ${file.filename}`;
+    sourceContent = [filePart(await object.arrayBuffer(), file.contentType, file.filename)];
+    fallbackTitle = titleFromFilename(file.filename);
+  } else {
+    const linkError = await checkLinks(database, userId, subjectId, null);
+    if (linkError) return c.json({ error: linkError }, 422);
+    sourceLabel = `Topic: ${topic}`;
+    sourceContent = [{ type: "text", text: topic }];
+    fallbackTitle = cleanTitle(topic);
+  }
+
+  let generated: Awaited<ReturnType<typeof generateFlashcards>>;
+  try {
+    generated = await generateFlashcards(c.env, { label: sourceLabel, content: sourceContent });
+  } catch (error) {
+    console.error("[cards] generation failed", error);
+    return c.json({ error: "Arcad couldn't make a deck right now. Try again in a moment." }, 502);
+  }
+  const cleaned = cleanCards(generated);
+  if (!generated || "error" in cleaned || cleaned.cards.length < 8 || cleaned.cards.length > 20) {
+    console.error("[cards] unusable generated deck", "error" in cleaned ? cleaned.error : "wrong card count");
+    return c.json({ error: "Arcad couldn't make a usable deck. Try a clearer topic or resource." }, 502);
+  }
+
+  // Generation can take a moment. Check again just before writing so a deck
+  // made in another tab while Arcad was working cannot push the tier over.
+  const postGenerationLimitError = await deckLimitError(database, userId, tier);
+  if (postGenerationLimitError) return c.json(postGenerationLimitError, 422);
+
+  const id = newId("deck");
+  const title = cleanTitle(body.title) || fallbackTitle || "Arcad flashcards";
+  const writes: Statement[] = [
+    database.insert(schema.decks).values({ id, userId, subjectId, title, source: "arcad" }),
+    insertCards(
+      userId,
+      id,
+      cleaned.cards.map((card, position) => ({ id: newId("card"), front: card.front, back: card.back, position })),
+    ),
+  ];
   await runBatch(c.env.DB, writes);
 
   const row = await ownedDeck(database, userId, id);

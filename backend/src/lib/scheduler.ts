@@ -1,11 +1,14 @@
-import { and, eq, gte, inArray, lt, lte } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lt, lte } from "drizzle-orm";
 import type { Database } from "../db";
 import { schema } from "../db";
 import { newId } from "./ids";
+import type { MonthPlan } from "./month-plan";
+import { inTerm } from "./terms";
 import {
   DAY,
   HOUR,
   MINUTE,
+  localDateKey,
   localWeekday,
   nextLocalDay,
   parseClock,
@@ -47,8 +50,17 @@ function subtract(free: Slot[], busy: Slot): Slot[] {
   return out;
 }
 
-/** Concrete occurrences of a commitment inside [from, to). */
-function commitmentSlots(commitment: Commitment, from: number, to: number, tz: string): Slot[] {
+/**
+ * Concrete occurrences of a commitment inside [from, to). School hours are
+ * skipped in the holidays when the student's state calendar is known.
+ */
+function commitmentSlots(
+  commitment: Commitment,
+  from: number,
+  to: number,
+  tz: string,
+  state: string | null,
+): Slot[] {
   const startMinutes = parseClock(commitment.startTime);
   const endMinutes = parseClock(commitment.endTime);
   if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) return [];
@@ -66,6 +78,7 @@ function commitmentSlots(commitment: Commitment, from: number, to: number, tz: s
       if (Math.abs(startOfLocalDay(target, tz) - day) > HALF_DAY) continue;
     }
     // "daily" falls through and matches every day
+    if (commitment.category === "school" && inTerm(state, localDateKey(day, tz)) === false) continue;
     slots.push({
       start: day + startMinutes * MINUTE,
       end: day + endMinutes * MINUTE,
@@ -219,6 +232,28 @@ function evenSession(total: number, sessionLength: number, floor: number): numbe
   return Math.max(floor, Math.round(total / sessions / (5 * MINUTE)) * 5 * MINUTE);
 }
 
+/**
+ * The newest month plan as minutes per subject per week, keyed by the
+ * week's Monday (YYYY-MM-DD) then subjectKey, plus the weekly targets it was
+ * made against. Null when there's no plan or it can't be read.
+ */
+function readMonthPlan(raw: string | undefined) {
+  if (!raw) return null;
+  try {
+    const plan = JSON.parse(raw) as MonthPlan;
+    const weeks = new Map<string, Map<string, number>>();
+    for (const week of plan.weeks ?? []) {
+      weeks.set(
+        week.weekOf,
+        new Map((week.subjects ?? []).map((entry) => [subjectKey(entry.name), Number(entry.minutes) || 0])),
+      );
+    }
+    return { weeks, base: plan.base ?? {} };
+  } catch {
+    return null;
+  }
+}
+
 /** Two rows describe the same block, so an unchanged block keeps its id. */
 function signature(row: EventRow | EventSelect): string {
   return [
@@ -278,7 +313,7 @@ export async function rebuildSchedule(
   const now = Date.now();
   const weekStart = startOfLocalWeek(Math.max(from, now), tz);
 
-  const [existing, commitmentRows, taskRows, subjectRows, earlierThisWeek, sessionRows] =
+  const [existing, commitmentRows, taskRows, subjectRows, earlierThisWeek, sessionRows, [planRow]] =
     await Promise.all([
       database
         .select()
@@ -320,6 +355,12 @@ export async function rebuildSchedule(
             gte(schema.studySessions.endedAt, weekStart),
           ),
         ),
+      database
+        .select({ plan: schema.monthPlans.plan })
+        .from(schema.monthPlans)
+        .where(eq(schema.monthPlans.userId, userId))
+        .orderBy(desc(schema.monthPlans.createdAt))
+        .limit(1),
     ]);
 
   // Every source we re-materialise below has to be listed here, or the old
@@ -344,7 +385,7 @@ export async function rebuildSchedule(
   const busy: Slot[] = [];
 
   for (const commitment of commitmentRows) {
-    for (const slot of commitmentSlots(commitment, from, to, tz)) {
+    for (const slot of commitmentSlots(commitment, from, to, tz, profile.state)) {
       busy.push(slot);
       planned.push({
         id: newId("evt"),
@@ -498,13 +539,22 @@ export async function rebuildSchedule(
   }
 
   const subjects = uniqueSubjects(subjectRows);
-  const budget = weeklyBudget(profile, subjects);
-  // Targets that add up to more than the cap allows all shrink by the same
-  // share, rather than the last subjects in the week missing out.
-  const scale =
-    budget.targetMinutes > budget.capacityMinutes && budget.targetMinutes > 0
-      ? budget.capacityMinutes / budget.targetMinutes
-      : 1;
+  const monthPlan = readMonthPlan(planRow?.plan);
+  const capacity = Math.max(0, profile.maxDailyStudyMinutes) * 7;
+
+  /**
+   * A subject's minutes in one week. The month plan moves time between
+   * weeks (more before a deadline, less after). It's stored against the
+   * targets at the time, so a target changed since scales the plan with it.
+   */
+  const targetFor = (subject: Subject, week: number) => {
+    const target = weeklyTargetMinutes(subject, profile.grade);
+    const key = subjectKey(subject.name);
+    const planned = monthPlan?.weeks.get(localDateKey(week, tz))?.get(key);
+    const base = monthPlan?.base[key];
+    if (planned === undefined || !base) return target;
+    return (target * planned) / base;
+  };
 
   const weeks = new Map<number, PlanDay[]>();
   for (const day of days) weeks.set(day.weekStart, [...(weeks.get(day.weekStart) ?? []), day]);
@@ -515,10 +565,14 @@ export async function rebuildSchedule(
     // next week's first days only get their share rather than all of it.
     const span = 7 - first;
 
+    // Targets that add up to more than the cap allows all shrink by the same
+    // share, rather than the last subjects in the week missing out.
+    const wanted = subjects.reduce((sum, subject) => sum + targetFor(subject, start), 0);
+    const scale = wanted > capacity && wanted > 0 ? capacity / wanted : 1;
+
     const needs = subjects
       .map((subject) => {
-        const target =
-          Math.round((weeklyTargetMinutes(subject, profile.grade) * scale) / 5) * 5 * MINUTE;
+        const target = Math.round((targetFor(subject, start) * scale) / 5) * 5 * MINUTE;
         const covered = credit.get(`${start}|${subjectKey(subject.name)}`);
         const need = Math.max(
           0,

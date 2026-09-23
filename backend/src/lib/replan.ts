@@ -3,7 +3,14 @@ import { schema, type Database } from "../db";
 import { rebuildSchedule } from "./scheduler";
 import { DAY, startOfLocalDay } from "./time";
 
-/** Re-plans the current 7-day window for one user. */
+/**
+ * How far ahead the plan is laid out. Four weeks, so the month plan made at
+ * onboarding shows up on the Schedule straight away; the dashboard only
+ * refreshes the first week on each load, and any edit refreshes all of it.
+ */
+export const PLAN_DAYS = 28;
+
+/** Re-plans the next four weeks for one user. */
 export async function replan(database: Database, userId: string): Promise<void> {
   const [profile] = await database
     .select()
@@ -13,5 +20,5 @@ export async function replan(database: Database, userId: string): Promise<void> 
   if (!profile?.onboardingComplete) return;
 
   const start = startOfLocalDay(Date.now(), profile.timezone);
-  await rebuildSchedule(database, userId, start, start + 7 * DAY);
+  await rebuildSchedule(database, userId, start, start + PLAN_DAYS * DAY);
 }

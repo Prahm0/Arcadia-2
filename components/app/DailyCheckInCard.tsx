@@ -99,7 +99,7 @@ export default function DailyCheckInCard() {
         ) : null}
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <Link
-            href="/app/arcad"
+            href="/app/arcad?tab=chat"
             className="rounded-md px-3 py-1.5 text-[12.5px] font-medium transition-colors"
             style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}
             onClick={dismiss}

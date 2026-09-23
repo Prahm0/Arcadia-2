@@ -165,6 +165,17 @@ export const TOURS: Record<TourId, Tour> = {
     title: "Arcad",
     steps: [
       {
+        title: "Your month, planned",
+        body: "Arcad splits your study time across the next four weeks: more before a deadline, extra for subjects you find hard, and room in the holidays. Replan whenever things change.",
+        visual: (
+          <Window width={290} title="Your month">
+            <Row bar={CAT.study} title="This week · School holidays" meta="12h 30m" />
+            <Row bar={CAT.study} title="Next week · Prac report due Thu" meta="Chemistry +1h 30m" />
+            <Row bar={CAT.study} title="Week of 12 Oct · Term 4, week 2" meta="12h 30m" />
+          </Window>
+        ),
+      },
+      {
         title: "Plan by talking",
         body: "Tell Arcad what's going on in plain words: a test that moved, a busy night, a new assignment.",
         visual: (

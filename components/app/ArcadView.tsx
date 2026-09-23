@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import type { DashboardResponse } from "@/lib/api/types";
@@ -12,6 +13,7 @@ import AppButton from "./AppButton";
 import ArcadOrb from "./ArcadOrb";
 import MicButton from "./MicButton";
 import MissedRecoveryCards from "./MissedRecoveryCards";
+import MonthPlanPanel from "./MonthPlanPanel";
 import ProactiveArcadCards from "./ProactiveArcadCards";
 import ProposalPreview from "./ProposalPreview";
 import { useStreak } from "@/lib/app/useStreak";
@@ -50,13 +52,33 @@ interface ChatState {
   proposals: Proposal[];
 }
 
-type Tab = "chat" | "context" | "history";
+type Tab = "month" | "chat" | "context" | "history";
+const TABS: { key: Tab; label: string }[] = [
+  { key: "month", label: "Month" },
+  { key: "chat", label: "Chat" },
+  { key: "context", label: "Context" },
+  { key: "history", label: "History" },
+];
 
 // Starters are built from live plan data in buildContextualStarters ,
 // this ArcadView doesn't ship any static prompt list.
 
+/**
+ * Arcad's page. It opens on the month plan, since planning is Arcad's main
+ * job; links that are about chatting (?tab=chat, or a ?prompt= to send) open
+ * on Chat instead.
+ */
 export default function ArcadView() {
+  return (
+    <Suspense fallback={null}>
+      <ArcadPage />
+    </Suspense>
+  );
+}
+
+function ArcadPage() {
   const { data, reload } = useDashboardData();
+  const params = useSearchParams();
   const streak = useStreak();
   const [state, setState] = useState<ChatState>({ conversationId: null, messages: [], proposals: [] });
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -64,7 +86,9 @@ export default function ArcadView() {
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("chat");
+  const [tab, setTab] = useState<Tab>(() =>
+    params.get("tab") === "chat" || params.get("prompt") ? "chat" : "month",
+  );
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -254,8 +278,8 @@ export default function ArcadView() {
     <>
       <PageHeader width={1140}
         eyebrow="Arcad"
-        title="Chat"
-        meta={activeConversationTitle}
+        title={tab === "month" ? "Your month" : "Chat"}
+        meta={tab === "month" ? "What Arcad has planned for the next four weeks" : activeConversationTitle}
         tour="arcad"
         action={
           <AppButton
@@ -275,21 +299,21 @@ export default function ArcadView() {
             style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)" }}
             role="tablist"
           >
-            {(["chat", "context", "history"] as Tab[]).map((t) => (
+            {TABS.map((t) => (
               <button
-                key={t}
+                key={t.key}
                 type="button"
                 role="tab"
-                aria-selected={tab === t}
-                onClick={() => setTab(t)}
-                className="rounded-sm px-3.5 py-1.5 text-[13px] font-medium capitalize transition-colors"
+                aria-selected={tab === t.key}
+                onClick={() => setTab(t.key)}
+                className="rounded-sm px-3.5 py-1.5 text-[13px] font-medium transition-colors"
                 style={{
-                  background: tab === t ? "var(--app-surface)" : "transparent",
-                  color: tab === t ? "var(--app-text)" : "var(--app-text-muted)",
-                  boxShadow: tab === t ? "var(--elev-1)" : "none",
+                  background: tab === t.key ? "var(--app-surface)" : "transparent",
+                  color: tab === t.key ? "var(--app-text)" : "var(--app-text-muted)",
+                  boxShadow: tab === t.key ? "var(--elev-1)" : "none",
                 }}
               >
-                {t}
+                {t.label}
               </button>
             ))}
           </div>
@@ -311,6 +335,7 @@ export default function ArcadView() {
               />
             </>
           )}
+          {tab === "month" && <MonthPlanPanel />}
           {tab === "context" && <ContextPanel data={data} />}
           {tab === "history" && (
             <HistoryPanel

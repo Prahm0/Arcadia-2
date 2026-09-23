@@ -549,3 +549,20 @@ export const userPresence = sqliteTable("user_presence", {
   durationSeconds: integer("duration_seconds"),
   updatedAt: integer("updated_at").notNull().default(now),
 });
+
+// Arcad's plan for the next four weeks, JSON (see lib/month-plan.ts). Only
+// the newest row per user is kept.
+export const monthPlans = sqliteTable(
+  "month_plans",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    startsOn: text("starts_on").notNull(),
+    endsOn: text("ends_on").notNull(),
+    plan: text("plan").notNull(),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [index("month_plans_user_idx").on(t.userId, t.createdAt)],
+);

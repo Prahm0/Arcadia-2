@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { showContextMenu } from "../ContextMenu";
 import type { Conversation } from "./types";
 
 /**
@@ -248,8 +249,30 @@ function ConversationRow({
     );
   }
 
+  const startRename = () => {
+    setDraft(conversation.title ?? "");
+    setMode("rename");
+  };
+
   return (
-    <li ref={rowRef} className="group relative">
+    <li
+      ref={rowRef}
+      className="group relative"
+      onContextMenu={(event) => {
+        // One menu at a time: the right-click one replaces the "…" one.
+        setMode("idle");
+        showContextMenu(
+          event,
+          [
+            { kind: "item", label: "Open", onSelect },
+            { kind: "item", label: "Rename", onSelect: startRename },
+            { kind: "separator" },
+            { kind: "item", label: "Delete…", danger: true, onSelect: () => setMode("confirm") },
+          ],
+          title,
+        );
+      }}
+    >
       <button
         type="button"
         onClick={onSelect}
@@ -290,10 +313,7 @@ function ConversationRow({
           <button
             type="button"
             role="menuitem"
-            onClick={() => {
-              setDraft(conversation.title ?? "");
-              setMode("rename");
-            }}
+            onClick={startRename}
             className="flex w-full items-center rounded-[4px] px-2.5 py-1.5 text-left text-[13px] ui-hover"
             style={{ color: "var(--app-text)" }}
           >

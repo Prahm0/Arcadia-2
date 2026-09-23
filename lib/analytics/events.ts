@@ -37,4 +37,11 @@ export const analytics = {
     track("checkout_started", { plan, interval }),
   subscriptionActivated: (tier: string) => track("subscription_activated", { tier }),
   arcadMessageSent: () => track("arcad_message_sent"),
+  /**
+   * The core USP loop: a student told Arcad life changed and the plan reflowed.
+   * `moved` is how many sessions it rearranged; `onboarding` marks the first-run
+   * wow. This is the metric that says whether the magic is actually landing.
+   */
+  recoveryUsed: (reason: string, moved: number, onboarding = false) =>
+    track("recovery_used", { reason, moved, onboarding }),
 };

@@ -14,6 +14,7 @@ import { useSessionStartWatcher } from "@/lib/app/useSessionStartWatcher";
 import { useAppShortcuts } from "@/lib/app/useAppShortcuts";
 import { dateKey, formatClock, formatDurationMinutes } from "@/lib/api/time";
 import ArcadFloatingButton from "./ArcadFloatingButton";
+import ContextMenuHost from "./ContextMenu";
 import GuestBanner from "./GuestBanner";
 import MenuBar from "./MenuBar";
 import MobileBottomNav from "./MobileBottomNav";
@@ -466,6 +467,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
       <MobileBottomNav />
       <NewTaskSheet open={newTaskOpen} onClose={() => setNewTaskOpen(false)} />
       <ShortcutsDialog open={shortcutsOpen} onClose={closeShortcuts} />
+      <ContextMenuHost />
       <PushCheckInPrompt />
       <SessionStartModal
         key={sessionStart.event?.id ?? "none"}

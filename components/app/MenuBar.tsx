@@ -9,14 +9,8 @@ import { GO_TARGETS, openArcad, openPageTour } from "@/lib/app/commands";
 import { useTheme, type ThemeMode } from "@/lib/app/theme";
 import { is24Hour, set24Hour } from "@/lib/app/timeFormat";
 import { requestDashboardRefresh } from "@/lib/app/useDashboardAutoRefresh";
-import Kbd from "./Kbd";
+import { MenuRow, menuItems, moveInMenu, type MenuEntry } from "./Menu";
 import { getActiveTour, subscribeActiveTour } from "./tour/tours";
-
-type MenuEntry =
-  | { kind: "item"; label: string; shortcut?: string[]; disabled?: boolean; onSelect: () => void }
-  | { kind: "check"; label: string; checked: boolean; shortcut?: string[]; onSelect: () => void }
-  | { kind: "separator" }
-  | { kind: "label"; label: string };
 
 interface Menu {
   label: string;
@@ -158,17 +152,11 @@ export default function MenuBar({
 
   useEffect(() => {
     if (openIndex === null || !focusOnOpen.current) return;
-    const items = Array.from(
-      menuRef.current?.querySelectorAll<HTMLElement>('[role^="menuitem"]:not([aria-disabled="true"])') ?? [],
-    );
+    const items = menuItems(menuRef.current);
     const target = focusOnOpen.current === "first" ? items[0] : items[items.length - 1];
     focusOnOpen.current = null;
     target?.focus();
   }, [openIndex]);
-
-  function menuItems(): HTMLElement[] {
-    return Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role^="menuitem"]:not([aria-disabled="true"])') ?? []);
-  }
 
   function openMenu(index: number, focus: "first" | "last" | null) {
     const wrapped = (index + menus.length) % menus.length;
@@ -206,33 +194,8 @@ export default function MenuBar({
   }
 
   function onMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
-    if (openIndex === null) return;
-    const items = menuItems();
-    const current = items.indexOf(document.activeElement as HTMLElement);
+    if (openIndex === null || moveInMenu(event, menuRef.current)) return;
     switch (event.key) {
-      case "ArrowDown":
-        event.preventDefault();
-        items[(current + 1) % items.length]?.focus();
-        break;
-      case "ArrowUp":
-        event.preventDefault();
-        items[(current - 1 + items.length) % items.length]?.focus();
-        break;
-      case "Enter":
-      case " ":
-        // Handled here rather than left to the button's default activation,
-        // which some browsers fire on keypress/keyup instead.
-        event.preventDefault();
-        items[current]?.click();
-        break;
-      case "Home":
-        event.preventDefault();
-        items[0]?.focus();
-        break;
-      case "End":
-        event.preventDefault();
-        items[items.length - 1]?.focus();
-        break;
       case "ArrowRight":
         event.preventDefault();
         openMenu(openIndex + 1, "first");
@@ -328,41 +291,5 @@ export default function MenuBar({
         })}
       </div>
     </div>
-  );
-}
-
-function MenuRow({ entry, onSelect }: { entry: MenuEntry; onSelect: () => void }) {
-  if (entry.kind === "separator") {
-    return <div role="separator" className="mx-1 my-1 h-px" style={{ background: "var(--app-border)" }} />;
-  }
-  if (entry.kind === "label") {
-    return (
-      <div className="px-2 pb-1 pt-1.5 text-[11.5px] font-medium" style={{ color: "var(--app-text-faint)" }}>
-        {entry.label}
-      </div>
-    );
-  }
-  const checkable = entry.kind === "check";
-  return (
-    <button
-      type="button"
-      role={checkable ? "menuitemcheckbox" : "menuitem"}
-      aria-checked={checkable ? entry.checked : undefined}
-      tabIndex={-1}
-      aria-disabled={entry.kind === "item" && entry.disabled ? true : undefined}
-      onClick={onSelect}
-      className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-[13px] outline-none hover:bg-[var(--app-accent-soft)] focus:bg-[var(--app-accent-soft)] aria-disabled:cursor-default aria-disabled:opacity-45 aria-disabled:hover:bg-transparent"
-      style={{ color: "var(--app-text)" }}
-    >
-      <span aria-hidden="true" className="grid w-4 shrink-0 place-items-center" style={{ color: "var(--app-accent-strong)" }}>
-        {checkable && entry.checked ? (
-          <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 8.5l3 3 7-7" />
-          </svg>
-        ) : null}
-      </span>
-      <span className="flex-1 truncate">{entry.label}</span>
-      {entry.shortcut ? <Kbd keys={entry.shortcut} /> : null}
-    </button>
   );
 }

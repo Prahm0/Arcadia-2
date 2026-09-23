@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
+import { analytics } from "@/lib/analytics/events";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import AppButton from "./AppButton";
 
@@ -117,6 +118,7 @@ export default function LifeHappened({
       }
       const res = await api<RecoveryResult>("/api/plan/recover", { method: "POST", body: JSON.stringify(body) });
       setResult(res);
+      analytics.recoveryUsed(r, res.moved ?? 0);
       void reload();
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : "Couldn't update your plan. Try again.");

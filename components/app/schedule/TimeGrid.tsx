@@ -18,6 +18,7 @@ import {
   type PlacedBlock,
 } from "./calendar";
 import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
+import { showContextMenu, type ContextMenuEntry } from "../ContextMenu";
 
 const HOUR_PX = 52;
 const GUTTER = 60;
@@ -51,6 +52,14 @@ interface TimeGridProps {
   habitsRow?: (day: DayColumn) => React.ReactNode;
   /** Shown over the grid, e.g. the first-deadline prompt. */
   overlay?: React.ReactNode;
+  /** Right-click menus for a block, a deadline, and a day's empty space. */
+  menus?: ScheduleMenus;
+}
+
+export interface ScheduleMenus {
+  event: (event: PlannerEvent) => ContextMenuEntry[];
+  task: (task: PlannerTask) => ContextMenuEntry[];
+  day: (dayKey: string) => ContextMenuEntry[];
 }
 
 interface DragState {
@@ -87,6 +96,7 @@ export default function TimeGrid({
   onMoveTask,
   habitsRow,
   overlay,
+  menus,
 }: TimeGridProps) {
   const [dropDay, setDropDay] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -167,6 +177,11 @@ export default function TimeGrid({
     };
   }, [days.length, single, onReschedule]);
 
+  const eventMenu = (event: PlannerEvent) =>
+    menus ? (e: React.MouseEvent) => showContextMenu(e, menus.event(event), event.category === "study" ? studyTitle(event) : event.title) : undefined;
+  const dayMenu = (day: DayColumn) =>
+    menus ? (e: React.MouseEvent) => showContextMenu(e, menus.day(day.key), `${day.weekday} ${day.label}`) : undefined;
+
   const dueRows = days.map((day) => [...(due.get(day.key) ?? []).map((task) => ({ task })), ...allDayEvents(events, day).map((event) => ({ event }))]);
   // With deadlines movable the row is always there, so any day can take a drop.
   const hasDueRow = Boolean(onMoveTask) || dueRows.some((row) => row.length > 0);
@@ -204,13 +219,14 @@ export default function TimeGrid({
                   key={day.key}
                   type="button"
                   onClick={() => onOpenDay(day.key)}
+                  onContextMenu={dayMenu(day)}
                   className="ui-hover flex flex-col items-center rounded-md py-2"
                   aria-label={`Open ${day.weekday} ${day.label}`}
                 >
                   {header}
                 </button>
               ) : (
-                <div key={day.key} className={cn("flex flex-col py-2", single ? "items-start pl-3" : "items-center")}>{header}</div>
+                <div key={day.key} onContextMenu={dayMenu(day)} className={cn("flex flex-col py-2", single ? "items-start pl-3" : "items-center")}>{header}</div>
               );
             })}
           </div>
@@ -240,6 +256,7 @@ export default function TimeGrid({
                         : undefined
                     }
                     onDragLeave={() => setDropDay((current) => (current === days[index].key ? null : current))}
+                    onContextMenu={dayMenu(days[index])}
                     onDrop={
                       onMoveTask
                         ? (event) => {
@@ -261,6 +278,7 @@ export default function TimeGrid({
                           subjects={subjects}
                           onOpen={() => onOpenTask(item.task)}
                           onToggle={onToggleTask ? () => onToggleTask(item.task) : undefined}
+                          onContextMenu={menus ? (e) => showContextMenu(e, menus.task(item.task), item.task.title) : undefined}
                           draggable={Boolean(onMoveTask) && item.task.status !== "complete"}
                         />
                       ) : (
@@ -268,6 +286,7 @@ export default function TimeGrid({
                           key={item.event.id}
                           type="button"
                           onClick={() => onSelectEvent(item.event)}
+                          onContextMenu={eventMenu(item.event)}
                           className="truncate rounded-[4px] px-1.5 py-0.5 text-left text-[11.5px] font-medium"
                           style={{ background: "var(--app-surface-soft)", color: "var(--app-text-soft)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
                         >
@@ -352,6 +371,8 @@ export default function TimeGrid({
                   }}
                   onAddDeadline={() => onAddDeadline(day.key)}
                   onToggleDone={onToggleDone}
+                  eventMenu={eventMenu}
+                  dayMenu={dayMenu(day)}
                 />
               ))}
             </div>
@@ -396,6 +417,8 @@ function DayColumnView({
   onSelectEvent,
   onAddDeadline,
   onToggleDone,
+  eventMenu,
+  dayMenu,
 }: {
   day: DayColumn;
   dayIndex: number;
@@ -413,6 +436,8 @@ function DayColumnView({
   onSelectEvent: (event: PlannerEvent) => void;
   onAddDeadline: () => void;
   onToggleDone?: (event: PlannerEvent) => void;
+  eventMenu: (event: PlannerEvent) => ((e: React.MouseEvent) => void) | undefined;
+  dayMenu?: (e: React.MouseEvent) => void;
 }) {
   const asleepBands = bed > wake ? [[0, wake], [bed, 24]] : [[bed, wake]];
   return (
@@ -446,6 +471,7 @@ function DayColumnView({
         }}
         onMouseLeave={() => onHover(null)}
         onClick={onAddDeadline}
+        onContextMenu={dayMenu}
       />
       {hoverHour !== null && !drag ? (
         <div
@@ -468,6 +494,7 @@ function DayColumnView({
           key={`${block.event.id}-sleep`}
           type="button"
           onClick={() => onSelectEvent(block.event)}
+          onContextMenu={eventMenu(block.event)}
           className="absolute inset-x-0 z-[1] flex items-start justify-end px-2 pt-1 text-[10.5px]"
           style={{
             top: block.start * HOUR_PX,
@@ -494,6 +521,7 @@ function DayColumnView({
             offsetDays={moving ? drag.days : 0}
             onPointerDown={(e) => onBeginDrag(block.event, dayIndex, e)}
             onClick={() => onSelectEvent(block.event)}
+            onContextMenu={eventMenu(block.event)}
             onToggleDone={onToggleDone && block.event.category === "study" && !moving ? () => onToggleDone(block.event) : undefined}
           />
         );
@@ -511,6 +539,7 @@ function Block({
   offsetDays,
   onPointerDown,
   onClick,
+  onContextMenu,
   onToggleDone,
 }: {
   block: PlacedBlock;
@@ -521,6 +550,7 @@ function Block({
   offsetDays: number;
   onPointerDown: (e: React.PointerEvent) => void;
   onClick: () => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
   onToggleDone?: () => void;
 }) {
   const { event } = block;
@@ -540,6 +570,7 @@ function Block({
 
   return (
     <div
+      onContextMenu={onContextMenu}
       className={cn("group/block absolute px-[3px]", moving ? "z-30" : "z-10")}
       style={{
         top: block.start * HOUR_PX + 1 + (offsetMinutes / 60) * HOUR_PX,
@@ -636,12 +667,14 @@ function DueChip({
   subjects,
   onOpen,
   onToggle,
+  onContextMenu,
   draggable,
 }: {
   task: PlannerTask;
   subjects: Subjects;
   onOpen: () => void;
   onToggle?: () => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
   draggable: boolean;
 }) {
   const index = subjects.findIndex((s) => s.name.toLowerCase() === (task.subject ?? "").toLowerCase());
@@ -652,6 +685,7 @@ function DueChip({
   return (
     <div
       draggable={draggable}
+      onContextMenu={onContextMenu}
       onDragStart={(event) => {
         event.dataTransfer.setData(TASK_DRAG, task.id);
         event.dataTransfer.effectAllowed = "move";

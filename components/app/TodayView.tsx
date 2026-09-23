@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import { CATEGORY_COLOR } from "@/lib/app/categoryColors";
@@ -17,6 +18,7 @@ import {
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import CompletionBurst from "./CompletionBurst";
+import { showContextMenu } from "./ContextMenu";
 import DailyCheckInCard from "./DailyCheckInCard";
 import EventDetailSheet from "./EventDetailSheet";
 import LifeHappened from "./LifeHappened";
@@ -31,6 +33,8 @@ import { playCompletionTick } from "@/lib/app/completion";
 
 const CATEGORY_BAR = CATEGORY_COLOR;
 
+type EventSheetMode = "details" | "reschedule" | "miss-reason";
+
 export default function TodayView() {
   const { data, patch } = useDashboardData();
   const timezone = data.profile?.timezone || data.user.timezone || "Australia/Sydney";
@@ -42,7 +46,7 @@ export default function TodayView() {
   const [lifeAutoReason, setLifeAutoReason] = useState<string | null>(null);
   const [celebrateId, setCelebrateId] = useState<{ id: string; at: number } | null>(null);
   const [openEventId, setOpenEventId] = useState<string | null>(null);
-  const [openEventForReason, setOpenEventForReason] = useState(false);
+  const [openEventMode, setOpenEventMode] = useState<EventSheetMode>("details");
 
   // Handoff from the mobile bottom nav's +Add slot: ?new=1 auto-opens the
   // New Task sheet, then strips the query so a refresh doesn't repeat.
@@ -76,7 +80,7 @@ export default function TodayView() {
     handledOpenEventParam.current = true;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setOpenEventId(eventId);
-    setOpenEventForReason(params.get("missReason") === "1");
+    setOpenEventMode(params.get("missReason") === "1" ? "miss-reason" : "details");
     const url = new URL(window.location.href);
     url.searchParams.delete("openEvent");
     url.searchParams.delete("missReason");
@@ -194,7 +198,11 @@ export default function TodayView() {
             onComplete={(event) => markOutcome(event, "completed")}
             onMiss={(event) => {
               setOpenEventId(event.id);
-              setOpenEventForReason(true);
+              setOpenEventMode("miss-reason");
+            }}
+            onOpen={(event, mode) => {
+              setOpenEventId(event.id);
+              setOpenEventMode(mode);
             }}
           />
         </section>
@@ -214,10 +222,10 @@ export default function TodayView() {
       <EventDetailSheet
         event={openedEvent}
         timezone={timezone}
-        initialMode={openEventForReason ? "miss-reason" : "details"}
+        initialMode={openEventMode}
         onClose={() => {
           setOpenEventId(null);
-          setOpenEventForReason(false);
+          setOpenEventMode("details");
         }}
       />
     </>
@@ -239,13 +247,14 @@ interface TodayCardProps {
   onNewTask: () => void;
   onComplete: (event: PlannerEvent) => void;
   onMiss: (event: PlannerEvent) => void;
+  onOpen: (event: PlannerEvent, mode: EventSheetMode) => void;
 }
 
 function TodayCard(props: TodayCardProps) {
   const {
     date, weekProgress, totalMinutes, remainingCount, completedCount,
     studyBlocks, laterEvents, busyId, celebrate, timezone, hasTasks,
-    onNewTask, onComplete, onMiss,
+    onNewTask, onComplete, onMiss, onOpen,
   } = props;
 
   return (
@@ -325,6 +334,7 @@ function TodayCard(props: TodayCardProps) {
               celebrateTrigger={celebrate?.id === event.id ? celebrate.at : 0}
               onComplete={() => onComplete(event)}
               onMiss={() => onMiss(event)}
+              onOpen={(mode) => onOpen(event, mode)}
             />
           ))}
         </ul>
@@ -335,7 +345,24 @@ function TodayCard(props: TodayCardProps) {
           <p className="text-[12px] font-medium" style={{ color: "var(--app-text-muted)" }}>Later today</p>
           <ul className="mt-3 flex flex-col gap-2">
             {laterEvents.map((event) => (
-              <li key={event.id} className="flex items-center gap-4 text-[13.5px]">
+              <li
+                key={event.id}
+                className="flex items-center gap-4 text-[13.5px]"
+                onContextMenu={(e) =>
+                  showContextMenu(
+                    e,
+                    [
+                      { kind: "item", label: "Details", onSelect: () => onOpen(event, "details") },
+                      event.editable !== false && event.outcome === "planned" && {
+                        kind: "item",
+                        label: "Reschedule…",
+                        onSelect: () => onOpen(event, "reschedule"),
+                      },
+                    ],
+                    event.title,
+                  )
+                }
+              >
                 <span
                   className="tabular-nums w-[80px] shrink-0"
                   style={{ color: "var(--app-text-muted)" }}
@@ -353,7 +380,7 @@ function TodayCard(props: TodayCardProps) {
 }
 
 function FocusRow({
-  event, timezone, busy, celebrateTrigger, onComplete, onMiss,
+  event, timezone, busy, celebrateTrigger, onComplete, onMiss, onOpen,
 }: {
   event: PlannerEvent;
   timezone: string;
@@ -361,8 +388,10 @@ function FocusRow({
   celebrateTrigger: number;
   onComplete: () => void;
   onMiss: () => void;
+  onOpen: (mode: EventSheetMode) => void;
 }) {
   const { subjects } = useDashboardData().data;
+  const router = useRouter();
   const isDone = event.outcome === "completed";
   const isMissed = event.outcome === "missed";
   const isActionable = !isDone && !isMissed;
@@ -422,6 +451,21 @@ function FocusRow({
   return (
     <li
       className="group flex items-center gap-1 rounded-md pr-2 transition-colors duration-200 hover:bg-[color:var(--app-surface-soft)]"
+      onContextMenu={(e) =>
+        showContextMenu(
+          e,
+          [
+            isActionable && { kind: "item", label: "Start focus", onSelect: () => router.push(focusHref) },
+            isActionable && { kind: "item", label: "Open in new tab", onSelect: () => window.open(focusHref, "_blank", "noopener") },
+            { kind: "item", label: "Session details", onSelect: () => onOpen("details") },
+            { kind: "separator" },
+            isActionable && !busy && { kind: "item", label: "Mark done", onSelect: onComplete },
+            isActionable && !busy && { kind: "item", label: "Missed…", onSelect: onMiss },
+            isActionable && event.editable !== false && { kind: "item", label: "Reschedule…", onSelect: () => onOpen("reschedule") },
+          ],
+          title ?? event.subject ?? event.title,
+        )
+      }
     >
       {isActionable ? (
         <Link

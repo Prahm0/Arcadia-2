@@ -27,6 +27,9 @@ export interface Planner {
   moveEvent: (event: PlannerEvent, startMs: number) => Promise<void>;
   setTaskDone: (task: PlannerTask, done: boolean) => Promise<void>;
   moveTask: (task: PlannerTask, dueKey: string) => Promise<void>;
+  removeEvent: (event: PlannerEvent) => Promise<void>;
+  /** Deletes the task and its study blocks. */
+  removeTask: (task: PlannerTask) => Promise<void>;
 }
 
 /**
@@ -47,6 +50,8 @@ export function usePlanner(period: { start: string; end: string }, timezone: str
   const [allTasks, setAllTasks] = useState<PlannerTask[] | null>(null);
   const [eventOverrides, setEventOverrides] = useState<Record<string, Override<PlannerEvent>>>({});
   const [taskOverrides, setTaskOverrides] = useState<Record<string, Override<PlannerTask>>>({});
+  // Deleted here; hidden at once, before the fetches catch up.
+  const [removed, setRemoved] = useState<ReadonlySet<string>>(() => new Set());
   const [version, setVersion] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const errorTimer = useRef<number | null>(null);
@@ -103,9 +108,10 @@ export function usePlanner(period: { start: string; end: string }, timezone: str
         })
       : [];
     return [...live, ...stored]
+      .filter((event) => !removed.has(event.id) && !(event.taskId && removed.has(event.taskId)))
       .map((event) => (eventOverrides[event.id] ? { ...event, ...eventOverrides[event.id].patch } : event))
       .sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt));
-  }, [data.events, fetched, rangeKey, fromMs, toMs, dashStart, dashEnd, eventOverrides]);
+  }, [data.events, fetched, rangeKey, fromMs, toMs, dashStart, dashEnd, eventOverrides, removed]);
 
   const tasks = useMemo(() => {
     const byId = new Map<string, PlannerTask>();
@@ -113,9 +119,10 @@ export function usePlanner(period: { start: string; end: string }, timezone: str
     // The dashboard's pending tasks are the freshest copy of those.
     for (const task of data.tasks) byId.set(task.id, task);
     return [...byId.values()]
+      .filter((task) => !removed.has(task.id))
       .map((task) => (taskOverrides[task.id] ? { ...task, ...taskOverrides[task.id].patch } : task))
       .sort((a, b) => Date.parse(a.dueAt) - Date.parse(b.dueAt));
-  }, [allTasks, data.tasks, taskOverrides]);
+  }, [allTasks, data.tasks, taskOverrides, removed]);
 
   const fail = useCallback((message: string) => {
     setError(message);
@@ -249,6 +256,49 @@ export function usePlanner(period: { start: string; end: string }, timezone: str
     [overrideTask, confirm, fail, settle, timezone],
   );
 
+  const hide = useCallback((id: string, hidden: boolean) => {
+    setRemoved((current) => {
+      const next = new Set(current);
+      if (hidden) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const removeEvent = useCallback(
+    async (event: PlannerEvent) => {
+      hide(event.id, true);
+      try {
+        await api(`/api/events/${encodeURIComponent(event.id)}`, { method: "DELETE" });
+        patch((prev: DashboardResponse) => ({ ...prev, events: prev.events.filter((existing) => existing.id !== event.id) }));
+      } catch (err) {
+        hide(event.id, false);
+        fail(err instanceof Error ? err.message : "Couldn't remove that block.");
+      }
+      await settle();
+    },
+    [hide, patch, fail, settle],
+  );
+
+  const removeTask = useCallback(
+    async (task: PlannerTask) => {
+      hide(task.id, true);
+      try {
+        await api(`/api/tasks/${encodeURIComponent(task.id)}`, { method: "DELETE" });
+        patch((prev: DashboardResponse) => ({
+          ...prev,
+          tasks: prev.tasks.filter((existing) => existing.id !== task.id),
+          events: prev.events.filter((event) => event.taskId !== task.id),
+        }));
+      } catch (err) {
+        hide(task.id, false);
+        fail(err instanceof Error ? err.message : "Couldn't delete that deadline.");
+      }
+      await settle();
+    },
+    [hide, patch, fail, settle],
+  );
+
   return {
     events,
     tasks,
@@ -258,6 +308,8 @@ export function usePlanner(period: { start: string; end: string }, timezone: str
     moveEvent,
     setTaskDone,
     moveTask,
+    removeEvent,
+    removeTask,
   };
 }
 

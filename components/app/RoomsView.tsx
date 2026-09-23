@@ -7,6 +7,7 @@ import { createRoom, joinRoom, listRooms, type StudyRoom } from "@/lib/api/rooms
 import { ROOM_COLOURS, roomColour } from "@/lib/app/roomColours";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
+import { copyText, showContextMenu } from "./ContextMenu";
 import EmptyState, { ExampleRow } from "./EmptyState";
 
 export default function RoomsView() {
@@ -200,7 +201,23 @@ export default function RoomsView() {
           ) : (
             <ul className="mt-3 flex flex-col gap-2">
               {rooms.map((room) => (
-                <li key={room.id}>
+                <li
+                  key={room.id}
+                  onContextMenu={(event) => {
+                    const href = `/app/rooms/${room.code}`;
+                    showContextMenu(
+                      event,
+                      [
+                        { kind: "item", label: "Open", onSelect: () => router.push(href) },
+                        { kind: "item", label: "Open in new tab", onSelect: () => window.open(href, "_blank", "noopener") },
+                        { kind: "separator" },
+                        { kind: "item", label: "Copy invite link", onSelect: () => void copyText(`${window.location.origin}${href}`, "Link copied") },
+                        { kind: "item", label: "Copy room code", onSelect: () => void copyText(room.code, "Code copied") },
+                      ],
+                      room.name,
+                    );
+                  }}
+                >
                   <Link
                     href={`/app/rooms/${room.code}`}
                     className="group flex items-center gap-4 rounded-md px-4 py-4 transition-colors ui-hover"

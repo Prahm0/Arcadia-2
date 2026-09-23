@@ -9,6 +9,8 @@ import { SubjectTag } from "../cards/shared";
 import { addDays, blockStyle, eventMinutes, eventStatus, isDraggable, isExam, shortDate, shortMinutes, startOfDayMs, taskStatus } from "./calendar";
 import { Bar, ExamWord, PanelTitle, StatusWord, Tick } from "./bits";
 import type { SubjectInfo } from "./ContextPanel";
+import { showContextMenu } from "../ContextMenu";
+import type { ScheduleMenus } from "./TimeGrid";
 
 interface DayPanelProps {
   day: string;
@@ -26,6 +28,7 @@ interface DayPanelProps {
   onMoveEvent: (event: PlannerEvent, startMs: number) => void;
   onSetTaskDone: (task: PlannerTask, done: boolean) => void;
   onMoveTask: (task: PlannerTask, dueKey: string) => void;
+  menus?: ScheduleMenus;
 }
 
 /**
@@ -48,6 +51,7 @@ export default function DayPanel({
   onMoveEvent,
   onSetTaskDone,
   onMoveTask,
+  menus,
 }: DayPanelProps) {
   const study = events.filter((event) => event.category === "study");
   const fixed = events.filter((event) => event.category !== "study" && event.category !== "sleep" && event.kind !== "all-day");
@@ -60,6 +64,10 @@ export default function DayPanel({
   const items = study.length + dueToday.length;
   const itemsDone = study.filter((event) => event.outcome === "completed").length + dueToday.filter((task) => task.status === "complete").length;
   const colourOf = (name: string | null | undefined) => subjects.find((subject) => subject.name.toLowerCase() === (name ?? "").toLowerCase())?.colour ?? "";
+  const eventMenu = (event: PlannerEvent) =>
+    menus ? (e: React.MouseEvent) => showContextMenu(e, menus.event(event), event.category === "study" ? studyTitle(event) : event.title) : undefined;
+  const taskMenu = (task: PlannerTask) =>
+    menus ? (e: React.MouseEvent) => showContextMenu(e, menus.task(task), task.title) : undefined;
 
   return (
     <aside
@@ -86,7 +94,7 @@ export default function DayPanel({
       {overdue.length ? (
         <Section title="Overdue" count={overdue.length}>
           {overdue.map((task) => (
-            <TaskRow key={task.id} task={task} nowMs={nowMs} today={today} colour={colourOf(task.subject)} onOpen={onOpenTask} onDone={onSetTaskDone} onMove={onMoveTask} />
+            <TaskRow key={task.id} task={task} nowMs={nowMs} today={today} colour={colourOf(task.subject)} onOpen={onOpenTask} onDone={onSetTaskDone} onMove={onMoveTask} onContextMenu={taskMenu(task)} />
           ))}
         </Section>
       ) : null}
@@ -102,6 +110,7 @@ export default function DayPanel({
                 onToggle={() => onSetEventDone(event, event.outcome !== "completed")}
                 label={studyTitle(event)}
                 onOpen={() => onOpenEvent(event)}
+                onContextMenu={eventMenu(event)}
                 meta={
                   <>
                     <span className="tabular-nums">{formatClock(event.startAt, timezone)}–{formatClock(event.endAt, timezone)}</span>
@@ -121,7 +130,7 @@ export default function DayPanel({
       <Section title="Due" count={dueToday.length}>
         {dueToday.length ? (
           dueToday.map((task) => (
-            <TaskRow key={task.id} task={task} nowMs={nowMs} today={today} colour={colourOf(task.subject)} onOpen={onOpenTask} onDone={onSetTaskDone} onMove={onMoveTask} />
+            <TaskRow key={task.id} task={task} nowMs={nowMs} today={today} colour={colourOf(task.subject)} onOpen={onOpenTask} onDone={onSetTaskDone} onMove={onMoveTask} onContextMenu={taskMenu(task)} />
           ))
         ) : (
           <Empty>Nothing due.</Empty>
@@ -131,10 +140,10 @@ export default function DayPanel({
       {fixed.length || allDay.length ? (
         <Section title="Classes and commitments" count={fixed.length + allDay.length}>
           {allDay.map((event) => (
-            <FixedRow key={event.id} event={event} time="All day" data={data} onOpen={onOpenEvent} />
+            <FixedRow key={event.id} event={event} time="All day" data={data} onOpen={onOpenEvent} onContextMenu={eventMenu(event)} />
           ))}
           {fixed.map((event) => (
-            <FixedRow key={event.id} event={event} time={`${formatClock(event.startAt, timezone)}–${formatClock(event.endAt, timezone)}`} data={data} onOpen={onOpenEvent} />
+            <FixedRow key={event.id} event={event} time={`${formatClock(event.startAt, timezone)}–${formatClock(event.endAt, timezone)}`} data={data} onOpen={onOpenEvent} onContextMenu={eventMenu(event)} />
           ))}
         </Section>
       ) : null}
@@ -168,6 +177,7 @@ function Row({
   onToggle,
   label,
   onOpen,
+  onContextMenu,
   meta,
   status,
   move,
@@ -177,6 +187,7 @@ function Row({
   onToggle: () => void;
   label: string;
   onOpen: () => void;
+  onContextMenu?: (event: React.MouseEvent) => void;
   meta: React.ReactNode;
   status: ReturnType<typeof eventStatus>;
   move: Move | null;
@@ -184,7 +195,7 @@ function Row({
 }) {
   const [moving, setMoving] = useState(false);
   return (
-    <li className="group -mx-2 rounded-md px-2 py-1.5 ui-hover">
+    <li className="group -mx-2 rounded-md px-2 py-1.5 ui-hover" onContextMenu={onContextMenu}>
       <div className="flex items-start gap-2.5">
         <span className="pt-px">
           <Tick checked={done} onChange={onToggle} label={done ? `Mark ${label} not done` : `Mark ${label} done`} />
@@ -272,6 +283,7 @@ function TaskRow({
   onOpen,
   onDone,
   onMove,
+  onContextMenu,
 }: {
   task: PlannerTask;
   nowMs: number;
@@ -280,6 +292,7 @@ function TaskRow({
   onOpen: (task: PlannerTask) => void;
   onDone: (task: PlannerTask, done: boolean) => void;
   onMove: (task: PlannerTask, dueKey: string) => void;
+  onContextMenu?: (event: React.MouseEvent) => void;
 }) {
   const done = task.status === "complete";
   return (
@@ -288,6 +301,7 @@ function TaskRow({
       onToggle={() => onDone(task, !done)}
       label={task.title}
       onOpen={() => onOpen(task)}
+      onContextMenu={onContextMenu}
       prefix={isExam(task) ? <ExamWord /> : null}
       meta={
         <>
@@ -301,10 +315,22 @@ function TaskRow({
   );
 }
 
-function FixedRow({ event, time, data, onOpen }: { event: PlannerEvent; time: string; data: DashboardResponse; onOpen: (event: PlannerEvent) => void }) {
+function FixedRow({
+  event,
+  time,
+  data,
+  onOpen,
+  onContextMenu,
+}: {
+  event: PlannerEvent;
+  time: string;
+  data: DashboardResponse;
+  onOpen: (event: PlannerEvent) => void;
+  onContextMenu?: (event: React.MouseEvent) => void;
+}) {
   const style = blockStyle(event, data.subjects);
   return (
-    <li>
+    <li onContextMenu={onContextMenu}>
       <button type="button" onClick={() => onOpen(event)} className="ui-hover -mx-2 flex w-[calc(100%+1rem)] items-center gap-3 rounded-md px-2 py-1.5 text-left">
         <span className="w-[92px] shrink-0 text-[11.5px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>{time}</span>
         <span className="min-w-0 truncate text-[13px]" style={{ color: style.text }}>{event.title}</span>

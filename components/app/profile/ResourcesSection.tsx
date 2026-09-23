@@ -6,6 +6,7 @@ import { ApiError, api } from "@/lib/api/client";
 import type { ProfileSubject } from "@/lib/api/profile";
 import { MATERIAL_ACCEPT, uploadMaterial } from "@/lib/api/subjectMaterials";
 import AppButton from "../AppButton";
+import { showContextMenu } from "../ContextMenu";
 import { PlusIcon } from "./SubjectsSection";
 import { Section } from "./ui";
 
@@ -117,48 +118,63 @@ export default function ResourcesSection({
         </div>
       ) : (
         <ul className="flex flex-col">
-          {subject.resources.map((file) => (
-            <li
-              key={file.id}
-              className="group flex items-start gap-3 border-b py-2.5 last:border-b-0"
-              style={{ borderColor: "var(--app-border)" }}
-            >
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[14px] font-medium" style={{ color: "var(--app-text)" }}>
-                  {file.filename}
-                </span>
-                <span
-                  className="mt-0.5 line-clamp-2 block text-[12.5px] leading-snug"
-                  style={{ color: file.read ? "var(--app-text-muted)" : "var(--app-danger)" }}
-                >
-                  {file.read ? file.summary : "Arcad couldn't read this one."}
-                </span>
-              </span>
-              {file.stored ? (
-                <a
-                  href={`/api/subject-files/${encodeURIComponent(file.id)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="shrink-0 rounded-md px-2 py-1 text-[12.5px] ui-hover"
-                  style={{ color: "var(--app-text-soft)" }}
-                >
-                  Open
-                </a>
-              ) : null}
-              <button
-                type="button"
-                disabled={busy === file.id}
-                onClick={() => void remove(file.id)}
-                aria-label={`Remove ${file.filename}`}
-                className="grid h-7 w-7 shrink-0 place-items-center rounded-md opacity-60 ui-hover group-hover:opacity-100"
-                style={{ color: "var(--app-text-muted)" }}
+          {subject.resources.map((file) => {
+            const href = `/api/subject-files/${encodeURIComponent(file.id)}`;
+            return (
+              <li
+                key={file.id}
+                className="group flex items-start gap-3 border-b py-2.5 last:border-b-0"
+                style={{ borderColor: "var(--app-border)" }}
+                onContextMenu={(event) =>
+                  showContextMenu(
+                    event,
+                    [
+                      file.stored && { kind: "item", label: "Open", onSelect: () => window.open(href, "_blank", "noopener") },
+                      file.stored && { kind: "item", label: "Download", onSelect: () => download(href, file.filename) },
+                      { kind: "separator" },
+                      { kind: "item", label: "Remove", danger: true, disabled: busy === file.id, onSelect: () => void remove(file.id) },
+                    ],
+                    file.filename,
+                  )
+                }
               >
-                <svg viewBox="0 0 20 20" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
-                  <path d="M5 5l10 10M15 5L5 15" strokeLinecap="round" />
-                </svg>
-              </button>
-            </li>
-          ))}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[14px] font-medium" style={{ color: "var(--app-text)" }}>
+                    {file.filename}
+                  </span>
+                  <span
+                    className="mt-0.5 line-clamp-2 block text-[12.5px] leading-snug"
+                    style={{ color: file.read ? "var(--app-text-muted)" : "var(--app-danger)" }}
+                  >
+                    {file.read ? file.summary : "Arcad couldn't read this one."}
+                  </span>
+                </span>
+                {file.stored ? (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="shrink-0 rounded-md px-2 py-1 text-[12.5px] ui-hover"
+                    style={{ color: "var(--app-text-soft)" }}
+                  >
+                    Open
+                  </a>
+                ) : null}
+                <button
+                  type="button"
+                  disabled={busy === file.id}
+                  onClick={() => void remove(file.id)}
+                  aria-label={`Remove ${file.filename}`}
+                  className="grid h-7 w-7 shrink-0 place-items-center rounded-md opacity-60 ui-hover group-hover:opacity-100"
+                  style={{ color: "var(--app-text-muted)" }}
+                >
+                  <svg viewBox="0 0 20 20" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+                    <path d="M5 5l10 10M15 5L5 15" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
       {error ? (
@@ -176,4 +192,11 @@ export default function ResourcesSection({
       ) : null}
     </Section>
   );
+}
+
+function download(href: string, filename: string) {
+  const link = document.createElement("a");
+  link.href = href;
+  link.download = filename;
+  link.click();
 }

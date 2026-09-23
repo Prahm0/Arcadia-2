@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api/client";
+import { analytics } from "@/lib/analytics/events";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import AppButton from "./AppButton";
 
@@ -27,7 +28,10 @@ const EXAMPLES: { key: Reason; label: string }[] = [
 
 /** A date N days out, "YYYY-MM-DD". Module-level so it isn't a render-time call. */
 function inDays(n: number): string {
-  return new Date(Date.now() + n * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  // Local calendar date, "YYYY-MM-DD". toISOString would use UTC and read a
+  // day early in the morning, so build it from the local date parts.
+  const d = new Date(Date.now() + n * 24 * 60 * 60 * 1000);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function timeLabel(iso: string, tz: string): string {
@@ -61,6 +65,7 @@ export default function OnboardingWow({ onContinue }: { onContinue: () => void }
       }
       const res = await api<RecoveryResult>("/api/plan/recover", { method: "POST", body: JSON.stringify(body) });
       setResult(res);
+      analytics.recoveryUsed(reason, res.moved ?? 0, true);
       void reload();
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : "Couldn't reach Arcad. You can try this any time from Today.");

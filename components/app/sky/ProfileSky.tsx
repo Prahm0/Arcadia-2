@@ -32,8 +32,8 @@ export default function ProfileSky() {
   const showcase = sky?.preferences.showcase.map((id) => sky.cards.find((card) => card.id === id)).filter((card): card is SkyCard => !!card && card.earnedAt !== null) || [];
   return <Section id="sky" title="Your sky" meta="Choose the parts of your journey that feel like you. Only visible to you." action={<AppButton disabled={!sky} onClick={() => setEditing(true)}>Customise appearance</AppButton>}>
     {error && <p role="alert" className="mb-3 text-[13px]">{error} <button className="underline" onClick={() => void refresh()}>Try again</button></p>}
-    {showcase.length ? <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">{showcase.map((card) => <Link key={card.id} href="/app/sky#collection" className={styles.cardButton}><ConstellationCard card={card} featured={sky?.preferences.featured === card.id} /></Link>)}</div> : <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-text-muted)" }}>{sky ? "Your collected constellations can become a personal showcase. Add up to three, in your own order." : "Reading your collection…"}</p>}
-    <Link href="/app/sky#collection" className={`${appButtonClass("ghost")} mt-4`}>Open collection →</Link>
+    {showcase.length ? <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">{showcase.map((card) => <Link key={card.id} href="/app/streaks#constellations" className={styles.cardButton}><ConstellationCard card={card} featured={sky?.preferences.featured === card.id} /></Link>)}</div> : <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-text-muted)" }}>{sky ? "Your collected constellations can become a personal showcase. Add up to three, in your own order." : "Reading your collection…"}</p>}
+    <Link href="/app/streaks#constellations" className={`${appButtonClass("ghost")} mt-4`}>Open collection →</Link>
     {editing && sky && <AppearanceEditor initial={sky.preferences} cards={sky.cards} onClose={() => setEditing(false)} />}
   </Section>;
 }

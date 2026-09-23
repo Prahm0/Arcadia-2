@@ -6,6 +6,10 @@ const nextConfig: NextConfig = {
   // output into a Worker. Set explicitly so `next build` and the OpenNext
   // bundling step can run as two separate commands.
   output: "standalone",
+  // Study Sky merged into Streaks; old links and bookmarks land there.
+  async redirects() {
+    return [{ source: "/app/sky", destination: "/app/streaks", permanent: true }];
+  },
 };
 
 // withSentryConfig adds a few build-time behaviours (tunnel route to bypass

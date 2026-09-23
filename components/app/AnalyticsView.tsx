@@ -6,7 +6,7 @@ import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import PageHeader from "./PageHeader";
 import ConsistencyHeatmap from "./ConsistencyHeatmap";
-import { formatMinutes } from "./StudySky";
+import { formatMinutes } from "@/lib/api/time";
 
 interface DailyBucket {
   date: string;

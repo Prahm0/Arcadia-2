@@ -1,58 +1,63 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { useStreak } from "@/lib/app/useStreak";
+import { useStudySky } from "@/lib/app/StudySkyProvider";
 import type { StreakSummary } from "@/lib/app/streaks";
 import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
 import { dateKey } from "@/lib/api/time";
 import PageHeader from "./PageHeader";
-import StudySky, { type SkyTotals } from "./StudySky";
 import AppButton from "./AppButton";
 import ShareCard from "./ShareCard";
+import StreakChain from "./streaks/StreakChain";
+import YourSky, { type FocusTotals } from "./sky/YourSky";
 
-interface SkyResponse {
-  sky: SkyTotals;
-  daily: Array<{ date: string; sessions: number }>;
+interface AnalyticsResponse {
+  sky: FocusTotals;
   current: { minutes: number; sessions: number };
 }
 
 /**
- * The motivating side of progress: the study sky, its milestones and the
- * plan streak (days you did at least 70% of what you planned).
- * Analytics keeps the plain numbers and charts.
+ * The motivating side of progress, in one place. On top, the streak: days
+ * you did at least 70% of what you planned, drawn as a chain of stars. Under
+ * it, your sky: constellations lit by every minute of focus, which stay lit
+ * even when a streak breaks. Analytics keeps the plain numbers and charts.
  */
 export default function StreaksView() {
   const { data } = useDashboardData();
   const streak = useStreak();
-  const [response, setResponse] = useState<SkyResponse | null>(null);
+  const { sky } = useStudySky();
+  const [response, setResponse] = useState<AnalyticsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    // The sky is all-time, so the period doesn't matter.
-    api<SkyResponse>("/api/analytics?period=week")
+    // All-time totals come with any period; "week" also gives the share recap.
+    api<AnalyticsResponse>("/api/analytics?period=week")
       .then((value) => { if (!cancelled) setResponse(value); })
       .catch((err: unknown) => { if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load."); });
     return () => { cancelled = true; };
   }, []);
 
   const loading = !response && !error;
-  const sky = response?.sky ?? { sessions: 0, minutes: 0, subjects: [] };
+  const totals = response?.sky ?? { sessions: 0, minutes: 0, subjects: [] };
   const timezone = data.profile?.timezone || data.user.timezone || "Australia/Sydney";
   const today = dateKey(new Date().toISOString(), timezone);
-  // Focus sessions, including a free-timer block with no scheduled event,
-  // are the stars. The dashboard remains the source of the plan streak.
-  const todayStars = response?.daily.find((bucket) => bucket.date === today)?.sessions ?? 0;
   const subjectColours = new Map(
     data.subjects.map((subject, index) => [subject.name, subject.colour || SUBJECT_COLORS[index % SUBJECT_COLORS.length]]),
   );
   const weekly = response?.current ?? { minutes: 0, sessions: 0 };
   const recoveries = useMemo(() => recoveriesThisWeek(streak, today), [streak, today]);
+  const collected = sky?.cards.filter((card) => card.earnedAt !== null).length;
   const canShareWeek = !loading && weekly.minutes > 0 && weekly.sessions > 0;
+  const meta = [
+    streak.current > 0 ? `${streak.current}-day streak` : "No streak yet",
+    streak.longest > 0 ? `best ${streak.longest}` : null,
+    collected === undefined ? null : `${collected} ${collected === 1 ? "constellation" : "constellations"} collected`,
+  ].filter(Boolean).join(" · ");
 
   return (
     <>
@@ -60,37 +65,21 @@ export default function StreaksView() {
         width={1140}
         eyebrow="Progress"
         title="Streaks"
-        meta={`${streak.current}-day streak · longest ${streak.longest}`}
+        meta={meta}
         tour="streaks"
+        action={canShareWeek ? (
+          <AppButton onClick={() => setShareOpen(true)} icon={<ShareIcon />}>Share my week</AppButton>
+        ) : undefined}
       />
 
-      {error ? (
-        <p className="mx-auto w-full max-w-[1140px] px-6 pt-4 text-[13px] sm:px-10" style={{ color: "var(--app-danger)" }}>{error}</p>
-      ) : null}
-
-      <StudySky sky={sky} streak={streak} loading={loading} subjectColours={subjectColours} todayStars={todayStars} />
-
-      <div className="mx-auto w-full max-w-[1140px] px-6 pt-6 text-center sm:px-10">
-        <Link href="/app/sky" className="text-[13px] font-medium underline underline-offset-4" style={{ color: "var(--app-accent)" }}>
-          Explore Constellation Cards
-        </Link>
+      <div className="mx-auto w-full max-w-[1140px] px-6 pb-16 pt-6 sm:px-10">
+        {error ? (
+          <p className="mb-4 text-[13px]" style={{ color: "var(--app-danger)" }}>{error}</p>
+        ) : null}
+        <StreakChain streak={streak} today={today} />
+        <YourSky totals={totals} totalsLoading={loading} subjectColours={subjectColours} />
       </div>
-      {canShareWeek ? (
-        <div className="mx-auto flex w-full max-w-[1140px] flex-wrap items-center justify-between gap-3 px-6 pt-4 sm:px-10">
-          <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-            Your week is worth sharing.
-          </p>
-          <AppButton
-            variant="secondary"
-            onClick={() => setShareOpen(true)}
-            icon={<ShareIcon />}
-          >
-            Share my week
-          </AppButton>
-        </div>
-      ) : null}
 
-      <div className="pb-16" />
       {shareOpen ? (
         <ShareCard
           recap={{
@@ -98,7 +87,7 @@ export default function StreaksView() {
             sessions: weekly.sessions,
             streak: streak.current,
             recoveries,
-            starsLit: sky.sessions,
+            starsLit: totals.sessions,
           }}
           onClose={() => setShareOpen(false)}
         />

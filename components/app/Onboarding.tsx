@@ -3,9 +3,9 @@
 import { useMemo, useState } from "react";
 import { api } from "@/lib/api/client";
 import { analytics } from "@/lib/analytics/events";
-import { AU_STATES } from "@/lib/api/profile";
 import AppButton from "@/components/app/AppButton";
 import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
+import { AU_STATES, countryOptions, guessCountry } from "@/lib/app/countries";
 import { fittedWeeklyMinutes, formatWeekly } from "@/lib/app/studyTargets";
 import { WEEKDAYS } from "./CommitmentSheet";
 import OnboardingBuild from "./OnboardingBuild";
@@ -68,20 +68,6 @@ const SUBJECT_SUGGESTIONS = [
 
 // Same list as the profile header, so what's picked here shows there.
 const YEAR_LEVELS = ["Year 10", "Year 11", "Year 12", "First year uni", "Second year+"] as const;
-
-/** A best guess at the state from the device's timezone; the student can change it. */
-const STATE_BY_ZONE: Record<string, string> = {
-  "Australia/Brisbane": "QLD",
-  "Australia/Lindeman": "QLD",
-  "Australia/Sydney": "NSW",
-  "Australia/Broken_Hill": "NSW",
-  "Australia/Melbourne": "VIC",
-  "Australia/Adelaide": "SA",
-  "Australia/Perth": "WA",
-  "Australia/Hobart": "TAS",
-  "Australia/Darwin": "NT",
-  "Australia/Canberra": "ACT",
-};
 
 type StepKey = "you" | "subjects" | "going" | "goals" | "week" | "routine" | "deadlines" | "hours" | "arcad";
 const STEPS: { key: StepKey; label: string }[] = [
@@ -176,7 +162,10 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
   // You
   const [name, setName] = useState(defaultName);
   const [grade, setGrade] = useState<string>("Year 12");
-  const [state, setState] = useState<string>(STATE_BY_ZONE[defaultTimezone] ?? "");
+  const [country, setCountry] = useState(() => guessCountry(defaultTimezone));
+  // Australian state, for school term dates. Only asked for in Australia.
+  const [state, setState] = useState("");
+  const countries = useMemo(() => countryOptions(), []);
   const [school, setSchool] = useState("");
 
   // Subjects
@@ -217,7 +206,9 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
   const [memoryEnabled, setMemoryEnabled] = useState(true);
 
   const currentStep = STEPS[step];
-  const seniorYears = grade === "Year 10" || grade === "Year 11" || grade === "Year 12";
+  const australia = country === "AU";
+  // An ATAR is Australian, so it's only asked for there, in the senior years.
+  const seniorYears = australia && (grade === "Year 10" || grade === "Year 11" || grade === "Year 12");
 
   const suggestedWeekly = fittedWeeklyMinutes(grade, selectedSubjects.length, maxDaily);
   const weeklyFor = (subject: string) => weeklyOverrides[subject] ?? suggestedWeekly;
@@ -363,7 +354,8 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
     return {
       name: name.trim(),
       grade,
-      state: state || null,
+      country: country || null,
+      state: australia ? state || null : null,
       school: school.trim() || null,
       timezone: defaultTimezone,
       atarTarget: seniorYears && atar.trim() ? atarNumber : null,
@@ -460,7 +452,7 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
           {currentStep.key === "arcad" && <>Anything else Arcad should <span className="accent-serif">know</span>?</>}
         </h1>
         <p className="mt-3 text-[15px]" style={{ color: "var(--app-text-muted)" }}>
-          {currentStep.key === "you" && "Your state sets the school terms and holidays your plan follows."}
+          {currentStep.key === "you" && "You can change any of this later on your profile."}
           {currentStep.key === "subjects" && "Pick everything you'd want study time for. You can change these any time on your profile."}
           {currentStep.key === "going" && "Subjects you're finding hard get more time. All optional."}
           {currentStep.key === "goals" && "Arcad keeps these in mind when it plans. Skip anything you haven't thought about yet."}
@@ -487,17 +479,32 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
                 ))}
               </div>
             </Field>
-            <Field label="State or territory">
-              <div className="flex flex-wrap gap-2">
-                {AU_STATES.map((option) => (
-                  <Chip key={option} active={state === option} onClick={() => setState(state === option ? "" : option)}>
-                    {option}
-                  </Chip>
+            <Label text="Country">
+              <Select value={country} onChange={setCountry}>
+                <option value="">Choose your country</option>
+                {countries.map((option) => (
+                  <option key={option.code} value={option.code}>
+                    {option.name}
+                  </option>
                 ))}
-              </div>
-            </Field>
+              </Select>
+            </Label>
+            {australia ? (
+              <Field label="State or territory">
+                <div className="flex flex-wrap gap-2">
+                  {AU_STATES.map((option) => (
+                    <Chip key={option} active={state === option} onClick={() => setState(state === option ? "" : option)}>
+                      {option}
+                    </Chip>
+                  ))}
+                </div>
+                <div className="mt-2">
+                  <Hint>Your plan follows your state&apos;s school terms and holidays.</Hint>
+                </div>
+              </Field>
+            ) : null}
             <Label text="School (optional)">
-              <TextInput value={school} onChange={setSchool} placeholder="e.g. Brisbane State High School" maxLength={120} />
+              <TextInput value={school} onChange={setSchool} placeholder="Your school's name" maxLength={120} />
             </Label>
           </div>
         ) : null}
@@ -661,7 +668,7 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
                       }
                     }}
                     maxLength={160}
-                    placeholder={goals.length ? "Add another…" : "e.g. Get into Engineering at UQ"}
+                    placeholder={goals.length ? "Add another…" : "e.g. Get into engineering at uni"}
                     className="flex-1 rounded-md px-3 py-2.5 text-[14.5px] outline-none"
                     style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
                   />
@@ -699,7 +706,7 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
                     </Label>
                   </div>
                   <Hint>
-                    {state
+                    {australia && state
                       ? "Include getting there and back if it takes a while. Holidays are left free automatically."
                       : "Include getting there and back if it takes a while."}
                   </Hint>

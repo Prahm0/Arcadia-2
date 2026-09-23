@@ -75,7 +75,7 @@ function Instructions({
           onChange={setAbout}
           maxLength={LIMIT}
           rows={4}
-          placeholder="e.g. I'm aiming for Engineering at UQ. I work Saturday mornings. Chemistry calculations are my weak spot and I lose focus after about 40 minutes."
+          placeholder="e.g. I'm aiming for engineering at uni. I work Saturday mornings. Chemistry calculations are my weak spot and I lose focus after about 40 minutes."
         />
       </Label>
       <Label text="How should Arcad respond?" hint={`${style.length}/${LIMIT}`}>

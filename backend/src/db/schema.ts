@@ -113,6 +113,9 @@ export const profiles = sqliteTable("profiles", {
   preferredSessionMinutes: integer("preferred_session_minutes").notNull().default(50),
   breakMinutes: integer("break_minutes").notNull().default(15),
   // Profile header. The avatar is initials on this colour for now.
+  // ISO 3166 alpha-2 country. `state` is only used for Australia, where it
+  // picks the school term dates.
+  country: text("country"),
   state: text("state"),
   school: text("school"),
   avatarColour: text("avatar_colour"),

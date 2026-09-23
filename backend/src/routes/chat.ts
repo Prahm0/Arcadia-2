@@ -326,7 +326,7 @@ async function buildContext(
   const who = [
     profile?.displayName,
     profile?.grade,
-    [profile?.school, profile?.state].filter(Boolean).join(", "),
+    [profile?.school, profile?.state, profile?.country].filter(Boolean).join(", "),
   ].filter(Boolean);
   const openGoals = goalRows.filter((goal) => !goal.done);
 

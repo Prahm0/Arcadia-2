@@ -100,6 +100,9 @@ export interface ProfileResponse {
     name: string;
     email: string;
     grade: string | null;
+    /** ISO 3166 alpha-2, e.g. "AU". */
+    country: string | null;
+    /** Australian state; null elsewhere. */
     state: string | null;
     school: string | null;
     avatarColour: string | null;
@@ -129,6 +132,7 @@ export interface ProfileResponse {
 export type ProfilePatch = Partial<{
   name: string;
   grade: string | null;
+  country: string | null;
   state: string | null;
   school: string | null;
   avatarColour: string | null;
@@ -139,7 +143,7 @@ export type ProfilePatch = Partial<{
 }> &
   Partial<ProfileRoutine>;
 
-export const AU_STATES = ["QLD", "NSW", "VIC", "SA", "WA", "TAS", "ACT", "NT"] as const;
+export { AU_STATES } from "@/lib/app/countries";
 
 export function updateProfile(patch: ProfilePatch): Promise<ProfileResponse> {
   return api<ProfileResponse>("/api/profile", { method: "PATCH", body: JSON.stringify(patch) });

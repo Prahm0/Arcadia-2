@@ -12,6 +12,12 @@ import { serialiseAssessment, serialiseFile, serialiseTopic } from "./syllabus";
 import type { Env, Variables } from "../types";
 
 export const AU_STATES = ["ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA"];
+
+/** A two-letter country code, uppercased, or null if it isn't one. */
+export function countryCode(value: unknown): string | null {
+  const code = typeof value === "string" ? value.trim().toUpperCase() : "";
+  return /^[A-Z]{2}$/.test(code) ? code : null;
+}
 const TEXT_LIMIT = 1500;
 
 const profile = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -100,6 +106,7 @@ export async function buildProfile(database: Database, userId: string) {
       name: row.displayName || user.name,
       email: user.email,
       grade: row.grade,
+      country: row.country,
       state: row.state,
       school: row.school,
       avatarColour: row.avatarColour,
@@ -174,6 +181,7 @@ profile.get("/", async (c) => {
 interface ProfileBody {
   name?: string;
   grade?: string | null;
+  country?: string | null;
   state?: string | null;
   school?: string | null;
   avatarColour?: string | null;
@@ -205,7 +213,25 @@ profile.patch("/", async (c) => {
     patch.displayName = name;
   }
   if (body.grade !== undefined) patch.grade = optionalText(body.grade, 32);
-  if (body.state !== undefined) {
+  if (body.country !== undefined) {
+    const country = countryCode(body.country);
+    if (body.country && !country) return c.json({ error: "Unknown country." }, 422);
+    patch.country = country;
+    // States only mean something in Australia.
+    if (country !== "AU") patch.state = null;
+  }
+  // A state is kept for Australia, or while no country is set (accounts from
+  // before countries existed were all Australian).
+  const stateAllowed = async () => {
+    if (body.country !== undefined) return patch.country === "AU";
+    const [saved] = await database
+      .select({ country: schema.profiles.country })
+      .from(schema.profiles)
+      .where(eq(schema.profiles.userId, userId))
+      .limit(1);
+    return !saved?.country || saved.country === "AU";
+  };
+  if (body.state !== undefined && (body.state === null || (await stateAllowed()))) {
     const state = optionalText(body.state, 8)?.toUpperCase() ?? null;
     if (state && !AU_STATES.includes(state)) return c.json({ error: "Pick an Australian state or territory." }, 422);
     patch.state = state;

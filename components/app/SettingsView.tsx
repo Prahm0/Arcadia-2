@@ -527,7 +527,7 @@ export default function SettingsView() {
           </div>
         </Card>
 
-        <Card>
+        <Card id="calendars" className="scroll-mt-24">
           <SectionHeader label="Google Calendar" />
           {!hasPaidPlan ? <PlanGate onUpgrade={() => router.push("/app/pricing")} /> : null}
           <div className="flex flex-wrap items-start justify-between gap-4">

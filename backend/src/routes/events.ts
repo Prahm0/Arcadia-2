@@ -1,10 +1,10 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, gte, lt } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema, type Database } from "../db";
 import { serialiseEvent } from "../lib/serialise";
 import { planIsCurrent, planSession, type Checkout, type SessionPlan } from "../lib/session-plan";
 import { effectiveTier, isPaidTier } from "../lib/tiers";
-import { MINUTE } from "../lib/time";
+import { DAY, MINUTE } from "../lib/time";
 import type { Env, Variables } from "../types";
 
 type EventRow = typeof schema.events.$inferSelect;
@@ -91,6 +91,41 @@ function readMissReason(value: unknown): MissReason | null {
 function readMissNote(value: unknown): string | null {
   return typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, 280) || null : null;
 }
+
+/** The longest span one request can read: a month view plus its edge weeks. */
+const MAX_RANGE_MS = 45 * DAY;
+
+/**
+ * Blocks between two instants, for the Schedule's other weeks and its month
+ * view. Only reads what's stored: the dashboard keeps the next seven days
+ * planned, and anything further out is imported events and pinned blocks.
+ */
+events.get("/", async (c) => {
+  const { userId } = c.get("session");
+  const from = Date.parse(c.req.query("from") ?? "");
+  const to = Date.parse(c.req.query("to") ?? "");
+  if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) {
+    return c.json({ error: "Give a from and to date." }, 400);
+  }
+  if (to - from > MAX_RANGE_MS) return c.json({ error: "That range is too long." }, 400);
+
+  const rows = await db(c.env.DB)
+    .select()
+    .from(schema.events)
+    .where(
+      and(
+        eq(schema.events.userId, userId),
+        // Starting a day early catches overnight blocks (sleep) that run into the range.
+        gte(schema.events.startAt, from - DAY),
+        lt(schema.events.startAt, to),
+      ),
+    );
+  const events = rows
+    .filter((event) => event.status !== "cancelled" && event.endAt > from)
+    .sort((a, b) => a.startAt - b.startAt)
+    .map(serialiseEvent);
+  return c.json({ events });
+});
 
 events.post("/:id/outcome", async (c) => {
   const { userId } = c.get("session");

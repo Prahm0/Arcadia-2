@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import * as webPush from "web-push";
 import { db, schema, type Database } from "../db";
 import type { Env } from "../types";
+import { effectiveTier, isPaidTier } from "./tiers";
 
 export type PushKind = "session_start" | "session_followup";
 
@@ -40,11 +41,11 @@ export async function sendPushToUser(
   if (!configured(env)) return;
 
   const [user] = await database
-    .select({ email: schema.users.email, tier: schema.users.tier })
+    .select({ email: schema.users.email, tier: schema.users.tier, developerAccess: schema.users.developerAccess })
     .from(schema.users)
     .where(eq(schema.users.id, userId))
     .limit(1);
-  if (!user || user.email.endsWith("@arcadia.local") || (user.tier !== "pro" && user.tier !== "max")) return;
+  if (!user || user.email.endsWith("@arcadia.local") || !isPaidTier(effectiveTier(user.tier, user.developerAccess))) return;
 
   const subscriptions = await database
     .select()

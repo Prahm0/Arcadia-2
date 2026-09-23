@@ -8,6 +8,7 @@ export interface AuthUser {
   timezone?: string;
   onboardingComplete?: boolean;
   tier?: "free" | "pro" | "max";
+  developerAccess?: boolean;
   hasSubscription?: boolean;
   subscriptionStatus?: string | null;
   subscriptionCurrentPeriodEnd?: string | null;

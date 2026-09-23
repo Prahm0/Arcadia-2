@@ -1,6 +1,6 @@
 /**
- * Tier + daily-cap plumbing for Arcad. The `users.tier` column is the
- * source of truth (the Stripe webhook keeps it in sync); we count sent
+ * Tier + daily-cap plumbing for Arcad. The Stripe webhook owns `users.tier`;
+ * `developer_access` grants Max features independently. We count sent
  * messages per user per day in `arcad_usage` and reject a send once the
  * cap is hit. Free = 2/day, Pro = 20/day, Max = 100/day.
  */
@@ -47,17 +47,22 @@ export function isPaidTier(tier: Tier): boolean {
   return tier === "pro" || tier === "max";
 }
 
+export function effectiveTier(tier: string | null | undefined, developerAccess: boolean): Tier {
+  if (developerAccess) return "max";
+  return isValidTier(tier) ? tier : "free";
+}
+
 export async function getUserTier(
   database: ReturnType<typeof makeDb>,
   userId: string,
 ): Promise<Tier> {
   const [user] = await database
-    .select({ tier: schema.users.tier })
+    .select({ tier: schema.users.tier, developerAccess: schema.users.developerAccess })
     .from(schema.users)
     .where(eq(schema.users.id, userId))
     .limit(1);
 
-  return isValidTier(user?.tier) ? user.tier : "free";
+  return effectiveTier(user?.tier, user?.developerAccess ?? false);
 }
 
 export interface CapCheckResult {

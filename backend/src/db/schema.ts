@@ -20,6 +20,8 @@ export const users = sqliteTable(
     // Billing. `tier` is the source of truth the app reads; the stripe_*
     // columns exist so the webhook can reconcile without a lookup.
     tier: text("tier").notNull().default("free"),
+    // Privileged test access is independent of Stripe's subscription tier.
+    developerAccess: integer("developer_access", { mode: "boolean" }).notNull().default(false),
     stripeCustomerId: text("stripe_customer_id"),
     stripeSubscriptionId: text("stripe_subscription_id"),
     subscriptionStatus: text("subscription_status"),
@@ -511,6 +513,10 @@ export const studyRooms = sqliteTable(
     // 6 characters from an alphabet without look-alikes; stored uppercase.
     code: text("code").notNull(),
     name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    colour: text("colour").notNull().default("slate"),
+    icon: text("icon").notNull().default(""),
+    weeklyGoalMinutes: integer("weekly_goal_minutes"),
     ownerUserId: text("owner_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -538,6 +544,19 @@ export const studyRoomMembers = sqliteTable(
     primaryKey({ columns: [t.roomId, t.userId] }),
     index("study_room_members_user_idx").on(t.userId),
   ],
+);
+
+export const studyRoomMessages = sqliteTable(
+  "study_room_messages",
+  {
+    id: text("id").primaryKey(),
+    roomId: text("room_id").notNull().references(() => studyRooms.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    displayName: text("display_name").notNull(),
+    body: text("body").notNull(),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [index("study_room_messages_room_time_idx").on(t.roomId, t.createdAt)],
 );
 
 // One row per user, written by the focus timer and read by every room the

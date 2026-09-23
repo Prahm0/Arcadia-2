@@ -866,10 +866,12 @@ export default function SettingsView() {
               <div className="flex items-baseline justify-between">
                 <div>
                   <p className="text-[14px] font-semibold" style={{ color: "var(--app-text)" }}>
-                    Arcadia {tier === "free" ? "Free" : tier === "pro" ? "Pro" : "Max"}
+                    Arcadia {data.user.developerAccess ? "Developer" : tier === "free" ? "Free" : tier === "pro" ? "Pro" : "Max"}
                   </p>
                   <p className="mt-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-                    {tier === "free"
+                    {data.user.developerAccess
+                      ? "Max feature access for testing. Billing stays separate."
+                      : tier === "free"
                       ? "2 Arcad messages per day. Upgrade any time."
                       : tier === "pro"
                       ? "20 Arcad messages per day, calendar sync, uploads."

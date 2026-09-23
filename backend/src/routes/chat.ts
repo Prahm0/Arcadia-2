@@ -7,7 +7,7 @@ import { ARCAD_VOICE, PROPOSE_TOOL, REMEMBER_TOOL, complete, type ChatMessage } 
 import { replan } from "../lib/replan";
 import { subjectKey, weeklyTargetMinutes } from "../lib/scheduler";
 import { describeBrief, recentMissReasonContext, subjectBriefs } from "../lib/study-context";
-import { DAILY_MESSAGE_CAP, isValidTier, tryConsumeMessage } from "../lib/tiers";
+import { DAILY_MESSAGE_CAP, getUserTier, tryConsumeMessage } from "../lib/tiers";
 import { DAY, iso, parseClock } from "../lib/time";
 import type { Env, Variables } from "../types";
 
@@ -104,12 +104,7 @@ chat.post("/", async (c) => {
   // Look up the sender's tier and consume a message from today's quota.
   // We do this before writing the user message so a rejected send leaves
   // no half-persisted turn in the conversation.
-  const [userRow] = await database
-    .select({ tier: schema.users.tier })
-    .from(schema.users)
-    .where(eq(schema.users.id, userId))
-    .limit(1);
-  const tier = isValidTier(userRow?.tier) ? userRow.tier : "free";
+  const tier = await getUserTier(database, userId);
   const cap = await tryConsumeMessage(database, userId, tier);
   if (!cap.allowed) {
     return c.json(

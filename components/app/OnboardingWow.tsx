@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api/client";
+import { analytics } from "@/lib/analytics/events";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import AppButton from "./AppButton";
 
@@ -61,6 +62,7 @@ export default function OnboardingWow({ onContinue }: { onContinue: () => void }
       }
       const res = await api<RecoveryResult>("/api/plan/recover", { method: "POST", body: JSON.stringify(body) });
       setResult(res);
+      analytics.recoveryUsed(reason, res.moved ?? 0, true);
       void reload();
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : "Couldn't reach Arcad. You can try this any time from Today.");

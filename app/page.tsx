@@ -9,6 +9,7 @@ import PricingSection from "@/components/PricingSection";
 import ProblemSection from "@/components/ProblemSection";
 import ScheduleDemo from "@/components/ScheduleDemo";
 import ThinkingSection from "@/components/ThinkingSection";
+import TesterNotesSection from "@/components/TesterNotesSection";
 import TodayDemo from "@/components/TodayDemo";
 import LazyMount from "@/components/ui/LazyMount";
 
@@ -33,6 +34,7 @@ export default function Home() {
         <LazyMount minHeight="260vh" className="bg-dusk">
           <ConnectionsSection />
         </LazyMount>
+        <TesterNotesSection />
         <PricingSection />
         <FinalCTA />
       </main>

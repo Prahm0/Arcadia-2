@@ -8,6 +8,52 @@ import type { Env, Variables } from "../types";
 
 const analytics = new Hono<{ Bindings: Env; Variables: Variables }>();
 
+/** The 90-day consistency grid used by Analytics. */
+analytics.get("/heatmap", async (c) => {
+  const { userId } = c.get("session");
+  const requestedDays = Number(c.req.query("days"));
+  const days = Number.isFinite(requestedDays) ? Math.min(180, Math.max(28, Math.round(requestedDays))) : 90;
+  const database = db(c.env.DB);
+  const [profile] = await database
+    .select({ timezone: schema.profiles.timezone })
+    .from(schema.profiles)
+    .where(eq(schema.profiles.userId, userId))
+    .limit(1);
+  const timezone = profile?.timezone ?? "Australia/Brisbane";
+  const end = startOfLocalDay(Date.now(), timezone) + DAY;
+  const start = startOfLocalDay(end - days * DAY, timezone);
+  const rows = await database
+    .select()
+    .from(schema.studySessions)
+    .where(
+      and(
+        eq(schema.studySessions.userId, userId),
+        gte(schema.studySessions.endedAt, start),
+        lte(schema.studySessions.endedAt, end),
+      ),
+    );
+  const focusRows = rows.filter((row) => row.type !== "break" && row.seconds > 0);
+  const dayRows = bucketByDay(focusRows, start, end, timezone);
+  const minutes = dayRows.map((row) => row.minutes).filter((value) => value > 0);
+  const sessions = dayRows.map((row) => row.sessions).filter((value) => value > 0);
+  const streaks = computeStreaks(focusRows, timezone);
+
+  return c.json({
+    timezone,
+    start: iso(start),
+    end: iso(end),
+    days: dayRows,
+    max: { minutes: Math.max(0, ...minutes), sessions: Math.max(0, ...sessions) },
+    thresholds: { minutes: intensityThresholds(minutes), sessions: intensityThresholds(sessions) },
+    streaks: {
+      current: streaks.currentStreak,
+      longest: streaks.longestStreak,
+      activeDays: minutes.length,
+      totalDays: dayRows.length,
+    },
+  });
+});
+
 analytics.get("/", async (c) => {
   const { userId } = c.get("session");
   const requested = c.req.query("period");
@@ -50,7 +96,8 @@ analytics.get("/", async (c) => {
     .select()
     .from(schema.studySessions)
     .where(eq(schema.studySessions.userId, userId));
-  const streaks = computeStreaks(allSessions, timezone);
+  const focusSessions = allSessions.filter((session) => session.type !== "break" && session.seconds > 0);
+  const streaks = computeStreaks(focusSessions, timezone);
   const tier = await getUserTier(database, userId);
   const recentMisses = isPaidTier(tier)
     ? await database
@@ -83,10 +130,25 @@ analytics.get("/", async (c) => {
       .map(([reason, count]) => ({ reason, count }))
       .sort((a, b) => b.count - a.count || a.reason.localeCompare(b.reason)),
     streaks: { current: streaks.currentStreak, longest: streaks.longestStreak },
+    sky: {
+      sessions: focusSessions.length,
+      minutes: minutesBetween(focusSessions),
+      subjects: bucketBySubject(focusSessions).slice(0, 4),
+    },
     current: summarise(current),
     previous: summarise(previous),
   });
 });
+
+/** Five personal bands instead of fixed hour targets, so the map adapts to the student. */
+function intensityThresholds(values: number[]): number[] {
+  if (values.length === 0) return [15, 30, 45, 60, 90];
+  const sorted = [...values].sort((a, b) => a - b);
+  return [0.2, 0.4, 0.6, 0.8, 1].map((percentile) => {
+    const index = Math.min(sorted.length - 1, Math.floor((sorted.length - 1) * percentile));
+    return Math.max(1, sorted[index]);
+  });
+}
 
 function summarise(rows: Array<typeof schema.studySessions.$inferSelect>) {
   const minutes = minutesBetween(rows);

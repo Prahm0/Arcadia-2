@@ -89,7 +89,10 @@ const TIERS: Tier[] = [
  */
 function perWeek(pricing: PaidPricing, interval: Interval): number {
   if (interval === "week") return pricing.weekly;
-  if (interval === "month") return pricing.monthly / (365.25 / 12 / 7);
+  // 4.345 is the same weeks-per-month constant the monthly prices were set
+  // with, so the per-week display matches the intended rate (e.g. Max
+  // monthly reads $7.95, not $7.94 from a slightly different divisor).
+  if (interval === "month") return pricing.monthly / 4.345;
   return pricing.yearly / 52;
 }
 

@@ -22,15 +22,14 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<!-- TODO: replace both Google values with the iOS OAuth client created in Google Cloud Console. -->
 	<key>GIDClientID</key>
-	<string>TODO_IOS_GOOGLE_CLIENT_ID.apps.googleusercontent.com</string>
+	<string>667729410180-pump7p13tngmf5p8is6rohuriva1qgci.apps.googleusercontent.com</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.TODO_IOS_GOOGLE_CLIENT_ID</string>
+				<string>com.googleusercontent.apps.667729410180-pump7p13tngmf5p8is6rohuriva1qgci</string>
 			</array>
 		</dict>
 	</array>

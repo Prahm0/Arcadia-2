@@ -6,6 +6,7 @@ import ArcadiaMark from "@/components/ui/ArcadiaMark";
 import { SubjectTag } from "./cards/shared";
 import { appButtonClass } from "./AppButton";
 import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
+import { CONSISTENCY_THRESHOLD, STREAK_MILESTONES, type StreakSummary } from "@/lib/app/streaks";
 
 export interface SkyTotals {
   sessions: number;
@@ -74,7 +75,8 @@ export default function StudySky({
   subjectColours,
 }: {
   sky: SkyTotals;
-  streak: number;
+  /** The plan streak, the one streak the app counts everywhere. */
+  streak: StreakSummary;
   loading: boolean;
   subjectColours: Map<string, string>;
 }) {
@@ -93,8 +95,11 @@ export default function StudySky({
             <div className="mt-4 grid grid-cols-3 gap-2">
               <SkyStat icon={<BarsIcon />} label="Sessions" value={loading ? "–" : String(sky.sessions)} />
               <SkyStat icon={<ClockIcon />} label="Focused" value={loading ? "–" : formatMinutes(sky.minutes)} />
-              <SkyStat icon={<FlameIcon />} label="Streak" value={loading ? "–" : `${streak}d`} />
+              <SkyStat icon={<FlameIcon />} label="Streak" value={loading ? "–" : `${streak.current}d`} hint={`best ${streak.longest}d`} />
             </div>
+            {!loading && streak.current === 0 && streak.lastPlannedDay?.missReason ? (
+              <p className="mt-2 text-[12px]" style={{ color: "var(--app-text-muted)" }}>Streak reset, {streak.lastPlannedDay.missReason}.</p>
+            ) : null}
 
             <div className="mt-6 border-t pt-6" style={{ borderColor: "var(--app-border)" }}>
               <Milestones milestones={milestones} loading={loading} />
@@ -529,8 +534,12 @@ interface Milestone {
   detail: string;
 }
 
-function buildMilestones(sky: SkyTotals, streak: number): Milestone[] {
+function buildMilestones(sky: SkyTotals, streak: StreakSummary): Milestone[] {
   const hours = (m: number) => formatMinutes(Math.max(0, m));
+  // One tile walks the streak milestones (3, 7, 30 days) in turn.
+  const target = streak.nextMilestone ?? STREAK_MILESTONES[STREAK_MILESTONES.length - 1];
+  const streakDone = streak.nextMilestone === null;
+  const rule = `A day counts when you do ${Math.round(CONSISTENCY_THRESHOLD * 100)}% of the study you planned.`;
   return [
     {
       id: "first-light",
@@ -542,11 +551,13 @@ function buildMilestones(sky: SkyTotals, streak: number): Milestone[] {
     },
     {
       id: "streak",
-      label: "5-day streak",
+      label: `${target}-day streak`,
       icon: <BoltIcon />,
-      progress: Math.min(1, streak / 5),
-      done: streak >= 5,
-      detail: streak >= 5 ? `${streak} consistent days in a row.` : `${streak} of 5 consistent days. ${5 - streak} to go.`,
+      progress: streakDone ? 1 : Math.min(1, streak.current / target),
+      done: streakDone,
+      detail: streakDone
+        ? `${streak.current} consistent days in a row.`
+        : `${streak.current} of ${target} consistent days. ${target - streak.current} to go. ${rule}`,
     },
     {
       id: "hours",
@@ -649,7 +660,7 @@ function ProgressRing({ progress, done }: { progress: number; done: boolean }) {
   );
 }
 
-function SkyStat({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+function SkyStat({ icon, label, value, hint }: { icon: ReactNode; label: string; value: string; hint?: string }) {
   return (
     <div className="min-w-0 rounded-lg px-2 py-3 sm:px-2.5" style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)" }}>
       <p className="flex min-w-0 items-center gap-1 text-[11.5px] font-medium sm:gap-1.5 sm:text-[12px] [&_svg]:size-3.5 sm:[&_svg]:size-4" style={{ color: "var(--app-text-muted)" }}>
@@ -657,13 +668,14 @@ function SkyStat({ icon, label, value }: { icon: ReactNode; label: string; value
         <span className="truncate">{label}</span>
       </p>
       <p className="mt-2 truncate text-[18px] font-semibold leading-none tabular-nums tracking-[-0.02em]" style={{ color: "var(--app-text)" }}>{value}</p>
+      {hint ? <p className="mt-1.5 truncate text-[11px] font-medium tabular-nums" style={{ color: "var(--app-text-faint)" }}>{hint}</p> : null}
     </div>
   );
 }
 
-function nextSkyGoal(sky: SkyTotals, streak: number): string {
+function nextSkyGoal(sky: SkyTotals, streak: StreakSummary): string {
   if (sky.sessions < 5) return `${5 - sky.sessions} more session${5 - sky.sessions === 1 ? "" : "s"} unlocks your first orbit.`;
-  if (streak < 5) return `${5 - streak} more consistent day${5 - streak === 1 ? "" : "s"} unlocks your streak star.`;
+  if (streak.nextMilestone && streak.daysToNext) return `${streak.daysToNext} more consistent day${streak.daysToNext === 1 ? "" : "s"} to a ${streak.nextMilestone}-day streak.`;
   if (sky.minutes < 600) return `${formatMinutes(600 - sky.minutes)} until your 10-hour star.`;
   if (sky.sessions < 50) return `${50 - sky.sessions} more sessions unlock your 50-session star.`;
   return "Your next constellation is taking shape.";

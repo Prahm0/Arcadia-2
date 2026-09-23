@@ -22,7 +22,7 @@ interface RegisterResponse {
 // own Suspense boundary per Next's rules, hence the inner component.
 export default function RegisterPage() {
   return (
-    <Suspense fallback={<RegisterInner initialToken={null} oauthError={null} />}>
+    <Suspense fallback={<RegisterInner initialToken={null} oauthError={null} referralCode={null} />}>
       <RegisterWithParams />
     </Suspense>
   );
@@ -30,15 +30,23 @@ export default function RegisterPage() {
 
 function RegisterWithParams() {
   const params = useSearchParams();
-  return <RegisterInner initialToken={params.get("token")} oauthError={params.get("oauth")} />;
+  return (
+    <RegisterInner
+      initialToken={params.get("token")}
+      oauthError={params.get("oauth")}
+      referralCode={params.get("ref")}
+    />
+  );
 }
 
 function RegisterInner({
   initialToken,
   oauthError,
+  referralCode,
 }: {
   initialToken: string | null;
   oauthError: string | null;
+  referralCode: string | null;
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -119,7 +127,7 @@ function RegisterInner({
     try {
       const response = await api<RegisterResponse>("/api/auth/register", {
         method: "POST",
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, referralCode }),
       });
       analytics.signupCompleted();
       setResult(response);
@@ -217,7 +225,7 @@ function RegisterInner({
         </div>
       ) : (
         <form onSubmit={onSubmit} className="space-y-5">
-          <SocialAuthButtons from="register" />
+          <SocialAuthButtons from="register" referralCode={referralCode} />
           <Field
             label="Name"
             type="text"

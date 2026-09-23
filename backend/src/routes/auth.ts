@@ -4,6 +4,7 @@ import { db, schema } from "../db";
 import { sendEmail, verificationEmail } from "../lib/email";
 import { newId, newToken } from "../lib/ids";
 import { hashPassword, newSalt, passwordProblem, verifyPassword } from "../lib/password";
+import { createPendingReferral, createReferralCode, normaliseReferralCode } from "../lib/referrals";
 import { createSession, destroySession } from "../lib/session";
 import {
   appleRedirectUri,
@@ -46,6 +47,7 @@ function oauthErrorUrl(env: Env, returnTo: "/login" | "/register", reason: strin
 async function finishSocialLogin(
   c: Parameters<typeof createSession>[0],
   identity: SocialIdentity,
+  referralCode?: string | null,
 ): ReturnType<typeof createSession> {
   const database = db(c.env.DB);
   const [linked] = await database
@@ -70,6 +72,7 @@ async function finishSocialLogin(
     userId = existingUser?.id;
     if (!userId) {
       userId = newId("usr");
+      const stableReferralCode = await createReferralCode(database);
       const salt = newSalt();
       const passwordHash = await hashPassword(newToken(48), salt);
       await database.batch([
@@ -81,6 +84,7 @@ async function finishSocialLogin(
           name: identity.name,
           emailVerified: true,
           lastSignInAt: Date.now(),
+          referralCode: stableReferralCode,
         }),
         database.insert(schema.profiles).values({
           userId,
@@ -94,6 +98,7 @@ async function finishSocialLogin(
           userId,
         }),
       ]);
+      await createPendingReferral(database, userId, referralCode);
     } else {
       await database.batch([
         database
@@ -144,14 +149,18 @@ auth.post("/oauth/google/native", async (c) => {
     return c.json({ error: "Google sign-in is not configured." }, 503);
   }
 
-  const body = await c.req.json<{ idToken?: string }>().catch(() => null);
+  const body = await c.req.json<{ idToken?: string; referralCode?: string }>().catch(() => null);
   const idToken = typeof body?.idToken === "string" ? body.idToken : "";
   if (!idToken || idToken.length > 8_192) {
     return c.json({ error: "Invalid Google sign-in response." }, 400);
   }
 
   try {
-    const { csrfToken } = await finishSocialLogin(c, await verifyGoogleIdToken(c.env, idToken));
+    const { csrfToken } = await finishSocialLogin(
+      c,
+      await verifyGoogleIdToken(c.env, idToken),
+      normaliseReferralCode(body?.referralCode),
+    );
     return c.json({ redirect: "/app", csrfToken });
   } catch (error) {
     console.error(
@@ -174,6 +183,7 @@ auth.get("/oauth/google", async (c) => {
     nonce,
     next: safeNext(c.req.query("next")),
     returnTo,
+    referralCode: returnTo === "/register" ? normaliseReferralCode(c.req.query("ref")) : null,
   });
   const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   url.searchParams.set("client_id", clientId);
@@ -195,7 +205,7 @@ auth.get("/oauth/google/callback", async (c) => {
     if (c.req.query("error")) return c.redirect(oauthErrorUrl(c.env, returnTo, "cancelled"));
     const code = c.req.query("code");
     if (!code) return c.redirect(oauthErrorUrl(c.env, returnTo, "failed"));
-    await finishSocialLogin(c, await exchangeGoogleCode(c.env, code));
+    await finishSocialLogin(c, await exchangeGoogleCode(c.env, code), state.referralCode);
     return c.redirect(new URL(state.next, c.env.APP_ORIGIN).toString());
   } catch (error) {
     console.error("[oauth] Google sign-in failed", error instanceof Error ? error.message : error);
@@ -220,6 +230,7 @@ auth.get("/oauth/apple", async (c) => {
     nonce,
     next: safeNext(c.req.query("next")),
     returnTo,
+    referralCode: returnTo === "/register" ? normaliseReferralCode(c.req.query("ref")) : null,
   });
   const url = new URL("https://appleid.apple.com/auth/authorize");
   url.searchParams.set("client_id", c.env.APPLE_CLIENT_ID);
@@ -253,7 +264,7 @@ auth.post("/oauth/apple/callback", async (c) => {
         // Apple only supplies this optional JSON on the first authorization.
       }
     }
-    await finishSocialLogin(c, await exchangeAppleCode(c.env, code, state.nonce, suppliedName));
+    await finishSocialLogin(c, await exchangeAppleCode(c.env, code, state.nonce, suppliedName), state.referralCode);
     return c.redirect(new URL(state.next, c.env.APP_ORIGIN).toString(), 303);
   } catch (error) {
     console.error("[oauth] Apple sign-in failed", error instanceof Error ? error.message : error);
@@ -262,7 +273,7 @@ auth.post("/oauth/apple/callback", async (c) => {
 });
 
 auth.post("/register", async (c) => {
-  const body = await c.req.json<{ name?: string; email?: string; password?: string }>().catch(
+  const body = await c.req.json<{ name?: string; email?: string; password?: string; referralCode?: string }>().catch(
     () => null,
   );
   if (!body) return c.json({ error: "Invalid request." }, 400);
@@ -298,6 +309,7 @@ auth.post("/register", async (c) => {
   const salt = newSalt();
   const passwordHash = await hashPassword(password, salt);
   const userId = newId("usr");
+  const referralCode = await createReferralCode(database);
   const verificationToken = isGuest ? null : newToken(24);
 
   await database.insert(schema.users).values({
@@ -309,6 +321,7 @@ auth.post("/register", async (c) => {
     emailVerified: isGuest,
     verificationToken,
     verificationExpiresAt: isGuest ? null : Date.now() + DAY,
+    referralCode,
   });
 
   await database.insert(schema.profiles).values({
@@ -321,6 +334,8 @@ auth.post("/register", async (c) => {
   if (isGuest) {
     return c.json({ message: "Guest account ready." });
   }
+
+  await createPendingReferral(database, userId, body.referralCode);
 
   const link = `${c.env.APP_ORIGIN}/register?token=${encodeURIComponent(verificationToken!)}`;
   const sent = await sendEmail(c.env, { to: email, ...verificationEmail(link) });

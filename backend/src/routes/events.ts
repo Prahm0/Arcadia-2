@@ -70,14 +70,14 @@ async function applyOutcome(database: Database, event: EventRow, outcome: Outcom
 
 async function missReasonAccess(database: Database, userId: string) {
   const [user] = await database
-    .select({ email: schema.users.email, tier: schema.users.tier, developerAccess: schema.users.developerAccess })
+    .select({ email: schema.users.email, tier: schema.users.tier, developerAccess: schema.users.developerAccess, proBonusUntil: schema.users.proBonusUntil })
     .from(schema.users)
     .where(eq(schema.users.id, userId))
     .limit(1);
   if (user?.email.endsWith("@arcadia.local")) {
     return { allowed: false as const, error: "Guest accounts cannot save miss reasons.", code: "guest_cannot_use" };
   }
-  const tier = effectiveTier(user?.tier, user?.developerAccess ?? false);
+  const tier = effectiveTier(user?.tier, user?.developerAccess ?? false, user?.proBonusUntil);
   if (!isPaidTier(tier)) {
     return { allowed: false as const, error: "Miss reasons are available on Pro and Max.", code: "tier_required" };
   }

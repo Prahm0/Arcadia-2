@@ -8,6 +8,7 @@ export interface OAuthState {
   nonce: string;
   next: string;
   returnTo: "/login" | "/register";
+  referralCode: string | null;
 }
 
 export interface SocialIdentity {
@@ -42,6 +43,7 @@ export async function signOAuthState(env: Env, state: OAuthState): Promise<strin
     nonce: state.nonce,
     next: safeNext(state.next),
     returnTo: state.returnTo,
+    referralCode: state.referralCode,
   })
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setAudience("arcadia-oauth")
@@ -72,6 +74,7 @@ export async function verifyOAuthState(
     nonce: payload.nonce,
     next: safeNext(payload.next),
     returnTo: payload.returnTo,
+    referralCode: typeof payload.referralCode === "string" ? payload.referralCode : null,
   };
 }
 

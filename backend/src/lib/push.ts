@@ -41,11 +41,11 @@ export async function sendPushToUser(
   if (!configured(env)) return;
 
   const [user] = await database
-    .select({ email: schema.users.email, tier: schema.users.tier, developerAccess: schema.users.developerAccess })
+    .select({ email: schema.users.email, tier: schema.users.tier, developerAccess: schema.users.developerAccess, proBonusUntil: schema.users.proBonusUntil })
     .from(schema.users)
     .where(eq(schema.users.id, userId))
     .limit(1);
-  if (!user || user.email.endsWith("@arcadia.local") || !isPaidTier(effectiveTier(user.tier, user.developerAccess))) return;
+  if (!user || user.email.endsWith("@arcadia.local") || !isPaidTier(effectiveTier(user.tier, user.developerAccess, user.proBonusUntil))) return;
 
   const subscriptions = await database
     .select()

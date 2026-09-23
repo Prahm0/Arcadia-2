@@ -48,9 +48,16 @@ export function isPaidTier(tier: Tier): boolean {
   return tier === "pro" || tier === "max";
 }
 
-export function effectiveTier(tier: string | null | undefined, developerAccess: boolean): Tier {
+export function effectiveTier(
+  tier: string | null | undefined,
+  developerAccess: boolean,
+  proBonusUntil?: number | null,
+  now = Date.now(),
+): Tier {
   if (developerAccess) return "max";
-  return isValidTier(tier) ? tier : "free";
+  const baseTier = isValidTier(tier) ? tier : "free";
+  if (baseTier === "free" && (proBonusUntil ?? 0) > now) return "pro";
+  return baseTier;
 }
 
 export async function getUserTier(
@@ -58,12 +65,16 @@ export async function getUserTier(
   userId: string,
 ): Promise<Tier> {
   const [user] = await database
-    .select({ tier: schema.users.tier, developerAccess: schema.users.developerAccess })
+    .select({
+      tier: schema.users.tier,
+      developerAccess: schema.users.developerAccess,
+      proBonusUntil: schema.users.proBonusUntil,
+    })
     .from(schema.users)
     .where(eq(schema.users.id, userId))
     .limit(1);
 
-  return effectiveTier(user?.tier, user?.developerAccess ?? false);
+  return effectiveTier(user?.tier, user?.developerAccess ?? false, user?.proBonusUntil);
 }
 
 export interface CapCheckResult {

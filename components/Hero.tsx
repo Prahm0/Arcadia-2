@@ -101,10 +101,10 @@ export default function Hero() {
 
             <h1 className="type-hero mt-8 text-white">
               <Line progress={scrollYProgress} reduced={reduced} delay={0.015} restDelay="0.15s">
-                Your week just changed.
+                Your study plan
               </Line>
               <Line progress={scrollYProgress} reduced={reduced} delay={0.03} restDelay="0.27s">
-                Your plan <em className="accent-serif not-italic text-accent-200">already knows.</em>
+                survives <em className="accent-serif not-italic text-accent-200">real life.</em>
               </Line>
             </h1>
 
@@ -117,8 +117,8 @@ export default function Hero() {
               restDelay="0.5s"
             >
               <p className="type-body-lg max-w-[640px] text-white/65">
-                Add your subjects and what&rsquo;s due. Arcadia plans your whole week around
-                them, then rewrites the plan every time something moves.
+                Arcadia plans around your school, deadlines, sport, work and the rest of your
+                week. When something changes, it rebuilds the plan and shows you what to do next.
               </p>
             </CopyItem>
 
@@ -136,10 +136,10 @@ export default function Hero() {
                   Get started
                 </Button>
                 <a
-                  href="#today"
+                  href="#recovery"
                   className="group inline-flex h-12 items-center gap-2 px-1 text-[15px] font-medium text-white/80 transition-colors duration-200 hover:text-white"
                 >
-                  Watch a week re-plan itself
+                  Watch the recovery moment
                   <span
                     aria-hidden="true"
                     className="inline-block transition-transform duration-300 ease-[var(--ease-out-expo)] group-hover:translate-y-0.5"

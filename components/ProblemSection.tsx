@@ -20,8 +20,8 @@ export default function ProblemSection() {
             <RevealText
               id="problem-heading"
               as="h2"
-              lines={["School doesn’t happen", "in a vacuum."]}
-              accent="vacuum."
+              lines={["Every planner goes stale", "when life changes."]}
+              accent="life changes."
               className="type-display mt-8 text-white"
               delay={0.1}
             />
@@ -29,8 +29,8 @@ export default function ProblemSection() {
           <div className="col-span-12 mt-10 sm:col-span-8 sm:col-start-5 lg:col-span-5 lg:col-start-8 lg:mt-0 lg:self-end">
             <FadeIn delay={0.15}>
               <p className="type-body-lg max-w-[480px] text-white/60">
-                Classes stay the same. Everything else doesn&rsquo;t. Training runs late, an
-                assignment moves, a friend cancels. And you&rsquo;ve still got a test on Friday.
+                School stays on the calendar. Everything around it moves. Training runs late,
+                work changes, an assignment shifts and you still have a test on Friday.
               </p>
             </FadeIn>
           </div>
@@ -46,15 +46,16 @@ export default function ProblemSection() {
           <div className="col-span-12 lg:col-span-6">
             <FadeIn delay={0.05} y={28} duration={0.9}>
               <p className="type-body-lg max-w-[520px] text-white/60">
-                A normal planner sits there until you rebuild it. Every night. On your own.
+                A normal planner is useful until the first thing changes. Then you are back to
+                dragging blocks around and deciding what can wait.
               </p>
             </FadeIn>
           </div>
           <div className="col-span-12 mt-10 lg:col-span-6 lg:mt-0">
             <RevealText
               as="p"
-              lines={["Arcadia reorganises", "with you."]}
-              accent="reorganises"
+              lines={["Arcadia keeps your", "plan useful."]}
+              accent="useful."
               className="type-display text-white"
               delay={0.15}
             />

@@ -119,8 +119,8 @@ export default function ArcadiaInput() {
             <RevealText
               id="tell-heading"
               as="h2"
-              lines={["Say it once.", "Arcadia sorts the rest."]}
-              accent="sorts the rest."
+              lines={["Tell Arcadia", "what changed."]}
+              accent="what changed."
               className="type-display mt-8 text-day-text"
               delay={0.1}
             />
@@ -128,8 +128,8 @@ export default function ArcadiaInput() {
           <div className="col-span-12 lg:col-span-4 lg:col-start-9 lg:self-end">
             <FadeIn delay={0.25}>
               <p className="type-body-lg max-w-[420px] text-day-text/60">
-                Plain words. No forms. It works out what the change touches and moves only
-                that.
+                Say it plainly. Arcadia finds the affected blocks, rebuilds the plan and shows
+                you what comes next.
               </p>
             </FadeIn>
           </div>
@@ -148,7 +148,7 @@ export default function ArcadiaInput() {
                 {(answered || inFlight) && <span className="text-day-text/30">”</span>}
               </p>
               <p className="type-mono-label mt-6 text-day-muted">
-                {answered ? "Rearranged in one sentence." : inFlight ? "Arcadia is reading the week…" : "Example request, typed for you."}
+                {answered ? "Your plan is ready." : inFlight ? "Rebuilding your plan…" : "Example request, typed for you."}
               </p>
             </div>
           </div>

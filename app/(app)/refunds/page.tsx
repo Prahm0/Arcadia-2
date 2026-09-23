@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import LegalPage from "@/components/LegalPage";
 
 export const metadata: Metadata = {
-  title: "Refunds · Arcadia",
+  title: "Refunds",
   description: "Arcadia's cancellation and refund policy.",
 };
 

@@ -30,6 +30,7 @@ import uploads from "./routes/uploads";
 import waitlist from "./routes/waitlist";
 import type { Env, Variables } from "./types";
 import { dispatchPushCheckIns } from "./lib/push";
+import { refreshWantedLayouts } from "./lib/day-plan";
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -119,5 +120,6 @@ export default {
   fetch: app.fetch,
   async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(dispatchPushCheckIns(env));
+    ctx.waitUntil(refreshWantedLayouts(env));
   },
 } satisfies ExportedHandler<Env>;

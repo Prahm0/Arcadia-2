@@ -8,6 +8,8 @@ export interface Env {
   APP_ORIGIN: string;
   MAIL_FROM: string;
   OPENAI_MODEL: string;
+  // The model Arcad lays out the week's study blocks with. Falls back to OPENAI_MODEL.
+  OPENAI_PLAN_MODEL?: string;
   // Local dev only: point Arcad at a stand-in server instead of OpenAI.
   OPENAI_BASE_URL?: string;
   STRIPE_PRICE_PRO_WEEKLY: string;

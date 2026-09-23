@@ -109,6 +109,8 @@ export interface ProfileResponse {
     atarTarget: number | null;
     timezone: string;
     joinedAt: string;
+    /** A developer test account: gold avatar ring and a Developer tag. */
+    developerAccess?: boolean;
   };
   stats: {
     currentStreak: number;

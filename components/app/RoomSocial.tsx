@@ -14,6 +14,7 @@ import {
 } from "@/lib/api/rooms";
 import { ROOM_COLOURS, roomColour } from "@/lib/app/roomColours";
 import AppButton from "./AppButton";
+import { Avatar, DeveloperTag } from "./profile/ui";
 
 export function RoomSettings({ code, room, isPaid, onSaved }: {
   code: string;
@@ -145,7 +146,7 @@ export function RoomMemberProfilePanel({ code, member, onClose }: { code: string
     return () => { active = false; };
   }, [code, member.userId]);
   return <section className="rounded-lg p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)", borderLeft: `4px solid ${roomColour("blue")}` }} aria-label={`${member.displayName}'s room profile`}>
-    <div className="flex items-start justify-between gap-3"><div><p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Room member</p><h2 className="mt-1 text-[20px] font-semibold" style={{ color: "var(--app-text)" }}>{member.displayName}</h2></div><AppButton variant="ghost" onClick={onClose}>Close</AppButton></div>
+    <div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-center gap-3">{profile ? <Avatar name={member.displayName} colour={profile.avatarColour} size={44} developer={profile.developerAccess} /> : null}<div className="min-w-0"><p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Room member</p><div className="mt-1 flex min-w-0 items-center gap-2"><h2 className="truncate text-[20px] font-semibold" style={{ color: "var(--app-text)" }}>{member.displayName}</h2>{profile?.developerAccess ? <DeveloperTag size="sm" /> : null}</div></div></div><AppButton variant="ghost" onClick={onClose}>Close</AppButton></div>
     {error ? <p className="mt-3 text-[13px]" style={{ color: "var(--app-danger)" }}>{error}</p> : !profile ? <p className="mt-3 text-[13px]" style={{ color: "var(--app-text-muted)" }}>Loading profile…</p> : <div className="mt-4 grid grid-cols-2 gap-4 text-[13px] sm:grid-cols-4">
       <Stat label="Today" value={duration(member.todaySeconds)} /><Stat label="Past 7 days" value={duration(profile.weekSeconds)} /><Stat label="All-time focus" value={duration(profile.totalSeconds)} /><Stat label="Sessions" value={String(profile.sessions)} />
     </div>}

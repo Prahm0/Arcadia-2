@@ -342,10 +342,15 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
                   className="ui-hover flex min-w-0 flex-1 items-center gap-2.5 rounded-md px-1.5 py-1"
                   style={{ background: pathname.startsWith("/app/profile") ? ACTIVE_BG : undefined }}
                 >
-                  <Avatar name={user.name} colour={user.avatarColour} size={28} />
+                  <Avatar name={user.name} colour={user.avatarColour} size={28} developer={user.developerAccess} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-medium" style={{ color: "var(--app-text)" }}>{user.name}</p>
-                    <p className="truncate text-[11.5px]" style={{ color: "var(--app-text-muted)" }}>{isGuestEmail(user.email) ? "Guest account" : "Your profile"}</p>
+                    <p
+                      className="truncate text-[11.5px]"
+                      style={{ color: user.developerAccess ? "var(--app-gold)" : "var(--app-text-muted)" }}
+                    >
+                      {isGuestEmail(user.email) ? "Guest account" : user.developerAccess ? "Developer" : "Your profile"}
+                    </p>
                   </div>
                 </Link>
                 <Link

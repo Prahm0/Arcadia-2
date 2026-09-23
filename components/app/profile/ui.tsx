@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useId, type ReactNode } from "react";
 import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
 import { WEEKLY_MAX_MINUTES, WEEKLY_STEP_MINUTES, formatWeekly } from "@/lib/app/studyTargets";
 
@@ -333,23 +333,79 @@ export function initials(name: string): string {
   return (first + last).toUpperCase();
 }
 
+/**
+ * One laurel branch in a 100×100 box, climbing the right side of the avatar
+ * from the bottom. Angles run clockwise from the top; leaves alternate either
+ * side of the stem and lean towards the tip. The left branch is its mirror.
+ */
+const LAUREL = (() => {
+  const r = 45;
+  const at = (deg: number, radius = r) => {
+    const a = (deg * Math.PI) / 180;
+    return { x: 50 + radius * Math.sin(a), y: 50 - radius * Math.cos(a) };
+  };
+  const from = at(172);
+  const to = at(48);
+  const stem = `M${from.x.toFixed(2)} ${from.y.toFixed(2)} A${r} ${r} 0 0 0 ${to.x.toFixed(2)} ${to.y.toFixed(2)}`;
+  const leaves: { cx: number; cy: number; rotate: number; rx: number; ry: number }[] = [];
+  const count = 7;
+  for (let i = 0; i < count; i++) {
+    const deg = 160 - i * ((160 - 58) / (count - 1));
+    const outer = i % 2 === 0;
+    const p = at(deg, r + (outer ? 3 : -3));
+    // Leaves shrink a touch towards the tip, like a real sprig.
+    const scale = 1 - i * 0.05;
+    leaves.push({ cx: p.x, cy: p.y, rotate: deg - 90 + (outer ? 32 : -32), rx: 1.9 * scale, ry: 4.6 * scale });
+  }
+  const tip = at(46);
+  leaves.push({ cx: tip.x, cy: tip.y, rotate: 46 - 90, rx: 1.6, ry: 3.8 });
+  return { stem, leaves };
+})();
+
+function LaurelBranch({ fill }: { fill: string }) {
+  return (
+    <>
+      <path d={LAUREL.stem} fill="none" stroke={fill} strokeWidth="1" strokeLinecap="round" />
+      {LAUREL.leaves.map((leaf, i) => (
+        <ellipse
+          key={i}
+          cx={leaf.cx}
+          cy={leaf.cy}
+          rx={leaf.rx}
+          ry={leaf.ry}
+          fill={fill}
+          transform={`rotate(${leaf.rotate.toFixed(1)} ${leaf.cx.toFixed(2)} ${leaf.cy.toFixed(2)})`}
+        />
+      ))}
+    </>
+  );
+}
+
+/**
+ * Initials on a colour. Developer accounts get a thin gold laurel wreath; the
+ * wreath sits inside `size`, so switching it on never moves the layout.
+ */
 export function Avatar({
   name,
   colour,
   size = 72,
+  developer = false,
 }: {
   name: string;
   colour?: string | null;
   size?: number;
+  developer?: boolean;
 }) {
-  return (
+  const gradientId = `laurel-${useId().replace(/:/g, "")}`;
+  const inner = developer ? Math.round(size * 0.74) : size;
+  const face = (
     <div
       aria-hidden="true"
       className="grid shrink-0 place-items-center rounded-full font-semibold"
       style={{
-        width: size,
-        height: size,
-        fontSize: Math.round(size * 0.38),
+        width: inner,
+        height: inner,
+        fontSize: Math.round(inner * 0.38),
         background: colour || fallbackColour(name),
         color: "#fff",
         letterSpacing: "-0.02em",
@@ -357,6 +413,50 @@ export function Avatar({
     >
       {initials(name)}
     </div>
+  );
+  if (!developer) return face;
+  const fill = `url(#${gradientId})`;
+  return (
+    <div aria-hidden="true" className="relative grid shrink-0 place-items-center" style={{ width: size, height: size }}>
+      <svg viewBox="0 0 100 100" width={size} height={size} className="pointer-events-none absolute inset-0">
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0" stopColor="#a8760a" />
+            <stop offset="0.55" stopColor="#d4a52c" />
+            <stop offset="1" stopColor="#f1d27a" />
+          </linearGradient>
+        </defs>
+        <LaurelBranch fill={fill} />
+        <g transform="translate(100 0) scale(-1 1)">
+          <LaurelBranch fill={fill} />
+        </g>
+      </svg>
+      {face}
+    </div>
+  );
+}
+
+/** The gold "Developer" tag that sits beside a developer account's name. */
+export function DeveloperTag({ size = "md" }: { size?: "sm" | "md" }) {
+  return (
+    <span
+      className={
+        size === "sm"
+          ? "inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-semibold"
+          : "inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[12px] font-semibold"
+      }
+      style={{
+        color: "var(--app-gold)",
+        background: "var(--app-gold-soft)",
+        border: "1px solid var(--app-gold-border)",
+        letterSpacing: "0.01em",
+      }}
+    >
+      <svg viewBox="0 0 20 20" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M7 6l-4 4 4 4M13 6l4 4-4 4" />
+      </svg>
+      Developer
+    </span>
   );
 }
 

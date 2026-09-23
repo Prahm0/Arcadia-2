@@ -430,8 +430,10 @@ studyRooms.get("/:code/members/:memberId", async (c) => {
     displayName: schema.studyRoomMembers.displayName,
     joinedAt: schema.studyRoomMembers.joinedAt,
     avatarColour: schema.profiles.avatarColour,
+    developerAccess: schema.users.developerAccess,
   }).from(schema.studyRoomMembers)
     .leftJoin(schema.profiles, eq(schema.profiles.userId, schema.studyRoomMembers.userId))
+    .leftJoin(schema.users, eq(schema.users.id, schema.studyRoomMembers.userId))
     .where(and(eq(schema.studyRoomMembers.roomId, room.id), eq(schema.studyRoomMembers.userId, memberId))).limit(1);
   if (!member) return c.json({ error: "Member not found." }, 404);
   const now = Date.now();
@@ -445,6 +447,7 @@ studyRooms.get("/:code/members/:memberId", async (c) => {
     userId: memberId,
     displayName: member.displayName,
     avatarColour: member.avatarColour,
+    developerAccess: member.developerAccess ?? false,
     joinedAt: iso(member.joinedAt),
     weekSeconds: Number(stats?.weekSeconds ?? 0),
     totalSeconds: Number(stats?.totalSeconds ?? 0),

@@ -4,7 +4,6 @@ import type { Database } from "../db";
 import { schema } from "../db";
 import { newId } from "./ids";
 import type { MonthPlan } from "./month-plan";
-import { inTerm } from "./terms";
 import {
   DAY,
   HOUR,
@@ -55,15 +54,18 @@ function subtract(free: Slot[], busy: Slot): Slot[] {
 }
 
 /**
- * Concrete occurrences of a commitment inside [from, to). School hours are
- * skipped in the holidays when the student's state calendar is known.
+ * Concrete occurrences of a commitment inside [from, to). A commitment the
+ * student entered (school included) always blocks its hours. We used to skip
+ * school in the holidays from a hardcoded term calendar, but that silently
+ * overrode an explicit commitment and scheduled study straight through the
+ * student's school hours, which they never expect. Holiday awareness, if we
+ * want it, belongs in an explicit "I'm on break" control, not an auto guess.
  */
 function commitmentSlots(
   commitment: Commitment,
   from: number,
   to: number,
   tz: string,
-  state: string | null,
 ): Slot[] {
   const startMinutes = parseClock(commitment.startTime);
   const endMinutes = parseClock(commitment.endTime);
@@ -82,7 +84,6 @@ function commitmentSlots(
       if (Math.abs(startOfLocalDay(target, tz) - day) > HALF_DAY) continue;
     }
     // "daily" falls through and matches every day
-    if (commitment.category === "school" && inTerm(state, localDateKey(day, tz)) === false) continue;
     slots.push({
       start: day + startMinutes * MINUTE,
       end: day + endMinutes * MINUTE,
@@ -491,7 +492,7 @@ export function groundwork(
   const busy: Slot[] = [];
 
   for (const commitment of inputs.commitments) {
-    for (const slot of commitmentSlots(commitment, from, to, tz, profile.state)) {
+    for (const slot of commitmentSlots(commitment, from, to, tz)) {
       busy.push(slot);
       fixed.push({
         id: newId("evt"),

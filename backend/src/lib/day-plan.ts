@@ -21,7 +21,6 @@ import {
   type LayoutBlock,
   type ScheduleInputs,
 } from "./scheduler";
-import { inTerm } from "./terms";
 import { DAY, MINUTE, localDateKey, startOfLocalDay } from "./time";
 
 /**
@@ -201,8 +200,9 @@ function brief(ctx: Context, previous: DayLayout | null): string {
   for (const day of g.days) {
     const end = day.start + DAY;
     const weekday = new Date(`${day.date}T12:00:00Z`).getUTCDay();
-    const kind =
-      weekday === 0 || weekday === 6 ? "weekend" : inTerm(profile.state, day.date) === false ? "school holidays" : "school day";
+    // School always blocks its hours now (an explicit commitment is never
+    // silently freed by a holiday guess), so weekdays are just school days.
+    const kind = weekday === 0 || weekday === 6 ? "weekend" : "school day";
     const busy = [
       ...g.fixed.filter((row) => row.category !== "sleep"),
       ...g.keep.filter((event) => event.category !== "sleep"),

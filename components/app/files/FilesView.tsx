@@ -41,11 +41,11 @@ export default function FilesView() {
           </p>
         ) : subjects.length === 0 ? (
           <EmptyState
-            title="Add your subjects first."
-            body="Files belong to a subject. Add yours on your profile, then upload syllabuses, textbook chapters and notes here."
+            title={<>Bring your study material <span className="accent-serif">together</span>.</>}
+            body="Files are where Arcad reads your notes, syllabuses, and textbook chapters. Start with a subject, then add the material you use."
             action={
               <Link href="/app/profile#subjects" className={appButtonClass("primary")}>
-                Go to subjects
+                Add your subjects
               </Link>
             }
           />

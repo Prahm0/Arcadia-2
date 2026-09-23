@@ -63,8 +63,8 @@ export default function DeadlinesView() {
       <div className="mx-auto flex w-full max-w-[820px] flex-col gap-8 px-6 py-8 sm:px-10">
         {total === 0 && data.tasks.length === 0 ? (
           <EmptyState
-            title={<>Your <span className="accent-serif">first</span> deadline.</>}
-            body="Add a task with a due date and Arcadia carves it into study blocks that fit around your school day, training, and sleep."
+            title={<>Nothing due <span className="accent-serif">yet</span>.</>}
+            body="Add an assessment and Arcadia books the prep before it, around the rest of your week."
             example={
               <>
                 <ExampleRow title="Chemistry lab report" meta="Chem · Due Fri · 90 min" />
@@ -78,7 +78,7 @@ export default function DeadlinesView() {
                 onClick={() => { setEditing(null); setSheetOpen(true); }}
                 icon={<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M10 4v12M4 10h12" strokeLinecap="round" /></svg>}
               >
-                Add your first task
+                Add a deadline
               </AppButton>
             }
             hint="You can also just tell Arcad in chat, it'll add and schedule for you."

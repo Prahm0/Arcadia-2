@@ -35,6 +35,7 @@ export default function ScheduleView() {
   const timezone = data.profile?.timezone || "Australia/Sydney";
   const [weekOffset, setWeekOffset] = useState(0);
   const [mobileDayIndex, setMobileDayIndex] = useState(() => (new Date().getDay() + 6) % 7);
+  const [mobileView, setMobileView] = useState<"day" | "week">("day");
   const [now, setNow] = useState(new Date());
   const [showTaskSheet, setShowTaskSheet] = useState(false);
   const [newTaskDefaultDate, setNewTaskDefaultDate] = useState<string | null>(null);
@@ -129,7 +130,13 @@ export default function ScheduleView() {
   const goToToday = useCallback(() => {
     setWeekOffset(0);
     setMobileDayIndex(todayDayIndex);
+    setMobileView("day");
   }, [todayDayIndex]);
+
+  const openMobileDay = useCallback((index: number) => {
+    setMobileDayIndex(index);
+    setMobileView("day");
+  }, []);
 
   return (
     <>
@@ -171,20 +178,59 @@ export default function ScheduleView() {
       />
 
       <div className="px-4 py-6 md:hidden">
-        <MobileDaySchedule
-          days={week}
-          events={events}
-          subjects={data.subjects}
-          timezone={timezone}
-          selectedDayIndex={mobileDayIndex}
-          currentPosition={currentPosition}
-          onSelectDay={setMobileDayIndex}
-          onPreviousDay={() => moveMobileDay(-1)}
-          onNextDay={() => moveMobileDay(1)}
-          onToday={goToToday}
-          onSelectEvent={setSelectedEvent}
-          onCreateAtDay={openNewTaskForDay}
-        />
+        <div
+          role="tablist"
+          aria-label="Schedule view"
+          className="inline-flex rounded-md p-1"
+          style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
+        >
+          {(["day", "week"] as const).map((view) => {
+            const active = mobileView === view;
+            return (
+              <button
+                key={view}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setMobileView(view)}
+                className="h-8 rounded-[4px] px-3.5 text-[12.5px] font-medium capitalize transition-colors"
+                style={{
+                  background: active ? "var(--app-accent-soft)" : "transparent",
+                  color: active ? "var(--app-accent-strong)" : "var(--app-text-muted)",
+                }}
+              >
+                {view}
+              </button>
+            );
+          })}
+        </div>
+
+        {mobileView === "day" ? (
+          <MobileDaySchedule
+            days={week}
+            events={events}
+            subjects={data.subjects}
+            timezone={timezone}
+            selectedDayIndex={mobileDayIndex}
+            currentPosition={currentPosition}
+            onSelectDay={setMobileDayIndex}
+            onPreviousDay={() => moveMobileDay(-1)}
+            onNextDay={() => moveMobileDay(1)}
+            onToday={goToToday}
+            onSelectEvent={setSelectedEvent}
+            onCreateAtDay={openNewTaskForDay}
+          />
+        ) : (
+          <MobileWeekSchedule
+            days={week}
+            events={events}
+            subjects={data.subjects}
+            timezone={timezone}
+            onOpenDay={openMobileDay}
+            onSelectEvent={setSelectedEvent}
+            onCreateAtDay={openNewTaskForDay}
+          />
+        )}
       </div>
 
       <div className="hidden px-4 py-6 md:block md:px-10 md:py-8">
@@ -551,6 +597,111 @@ function WeekGrid({
         </div>
       </div>
     </div>
+  );
+}
+
+/** A whole-week phone view that stays readable by using a compact agenda. */
+function MobileWeekSchedule({
+  days,
+  events,
+  subjects,
+  timezone,
+  onOpenDay,
+  onSelectEvent,
+  onCreateAtDay,
+}: {
+  days: DayColumn[];
+  events: PlannerEvent[];
+  subjects: DashboardResponse["subjects"];
+  timezone: string;
+  onOpenDay: (index: number) => void;
+  onSelectEvent: (event: PlannerEvent) => void;
+  onCreateAtDay: (dayKey: string) => void;
+}) {
+  const eventsForDay = (day: DayColumn) =>
+    events
+      .filter((event) => dateKey(event.startAt, timezone) === day.key)
+      .sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt));
+
+  return (
+    <section className="mt-4" aria-label="Week schedule">
+      <p className="mb-3 text-[12px]" style={{ color: "var(--app-text-muted)" }}>
+        Your full week at a glance. Tap a day for its timeline.
+      </p>
+      <div className="flex flex-col gap-3">
+        {days.map((day, index) => {
+          const dayEvents = eventsForDay(day);
+          return (
+            <article
+              key={day.key}
+              className="overflow-hidden rounded-lg"
+              style={{
+                background: "var(--app-surface)",
+                boxShadow: "var(--elev-1)",
+                outline: day.isToday ? "1px solid color-mix(in oklab, var(--app-accent) 34%, transparent)" : undefined,
+              }}
+            >
+              <div className="flex items-center justify-between gap-3 border-b px-4 py-3" style={{ borderColor: "var(--app-border)" }}>
+                <button
+                  type="button"
+                  onClick={() => onOpenDay(index)}
+                  className="flex min-w-0 items-baseline gap-2 text-left"
+                  aria-label={`Open ${day.weekday}, ${day.label}`}
+                >
+                  <span className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>{day.weekday}</span>
+                  <span className="text-[12px]" style={{ color: "var(--app-text-muted)" }}>{day.label}</span>
+                  {day.isToday ? <span className="text-[11px] font-medium" style={{ color: "var(--app-accent-strong)" }}>Today</span> : null}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onCreateAtDay(day.key)}
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-[18px] leading-none"
+                  style={{ color: "var(--app-text-soft)" }}
+                  aria-label={`Add a task due ${day.label}`}
+                >
+                  +
+                </button>
+              </div>
+
+              {dayEvents.length ? (
+                <div className="flex flex-col gap-1.5 p-2">
+                  {dayEvents.map((event) => {
+                    const hue = event.category === "study" ? subjectColour(subjects, event.subject) : null;
+                    const styles = hue ? hueBlock(hue) : CATEGORY_STYLE[event.category] ?? CATEGORY_STYLE.other;
+                    const completed = event.outcome === "completed";
+                    const missed = event.outcome === "missed";
+                    const time = event.kind === "all-day" ? "All day" : `${formatClock(event.startAt, timezone)} to ${formatClock(event.endAt, timezone)}`;
+                    return (
+                      <button
+                        key={event.id}
+                        type="button"
+                        onClick={() => onSelectEvent(event)}
+                        className={cn("flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left active:scale-[0.99]", completed && "opacity-55", missed && "opacity-40")}
+                        style={{ background: styles.bg, color: styles.text, border: `1px ${event.category === "sleep" ? "dashed" : "solid"} ${styles.border}` }}
+                      >
+                        <span className="w-[72px] shrink-0 text-[11px] tabular-nums opacity-70">{time}</span>
+                        <span className="min-w-0 truncate text-[13px] font-medium">
+                          {event.category === "study" ? studyTitle(event) : event.title}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onCreateAtDay(day.key)}
+                  className="w-full px-4 py-4 text-left text-[12.5px]"
+                  style={{ color: "var(--app-text-muted)" }}
+                >
+                  Nothing planned. Add a task for this day.
+                </button>
+              )}
+            </article>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

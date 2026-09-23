@@ -98,7 +98,7 @@ export function buildProactiveCards(
             ? "A full week. This one's stuck."
             : "Three in a row, you've got a streak.",
       actions: [
-        { label: "See it", href: "/app/analytics", variant: "primary" },
+        { label: "See it", href: "/app/streaks", variant: "primary" },
       ],
     });
   }

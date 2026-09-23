@@ -64,6 +64,7 @@ export type TourId =
   | "rooms"
   | "cards"
   | "analytics"
+  | "streaks"
   | "review";
 
 /**
@@ -615,18 +616,18 @@ export const TOURS: Record<TourId, Tour> = {
     steps: [
       {
         title: "Your study, measured",
-        body: "Focus time, sessions and your current streak for the week or the month. Switch with Week and Month at the top.",
+        body: "Focus time, sessions, average session length and active days for the last 7 or 30 days, each against the period before. Switch with Week and Month at the top.",
         visual: (
           <div className="grid w-[300px] grid-cols-3 gap-2">
             <Stat label="Focus time" value="6h 10m" />
             <Stat label="Sessions" value="9" />
-            <Stat label="Current streak" value="4" sub="days" />
+            <Stat label="Avg session" value="41" sub="min" />
           </div>
         ),
       },
       {
         title: "Where the time went",
-        body: "Daily focus shows which days you studied. By subject shows how your time splits between subjects.",
+        body: "Daily focus shows each day next to the same day last period. Hover a bar for the exact numbers. By subject shows how your time splits.",
         visual: (
           <div className="grid w-[310px] grid-cols-[1.3fr_1fr] gap-2">
             <Window width={170}>
@@ -643,11 +644,40 @@ export const TOURS: Record<TourId, Tour> = {
         ),
       },
       {
+        title: "When you study",
+        body: "Time of day adds up your focus minutes by hour, so you can see when you actually get work done.",
+        visual: (
+          <Window width={220}>
+            <BarChart values={[0, 10, 45, 60, 20, 0, 30, 90]} labels={["9", "", "12", "", "3", "", "6", ""]} height={48} highlight={7} />
+          </Window>
+        ),
+      },
+      {
         title: "Consistency over months",
         body: "The heatmap shades each of the last 90 days by minutes focused. Gaps show up at a glance.",
         visual: (
           <Window width={200} style={{ width: "auto" }}>
             <Heatmap weeks={14} />
+          </Window>
+        ),
+      },
+    ],
+  },
+
+  streaks: {
+    title: "Streaks",
+    steps: [
+      {
+        title: "Your study sky",
+        body: "Every focus session lights one star. Hover or tap a star to see which session lit it, or how many sessions away it is.",
+        visual: (
+          <Window width={260}>
+            <div className="flex items-center justify-between px-1 py-2">
+              {[1, 1, 1, 1, 0, 0, 0].map((lit, index) => (
+                <span key={index} className="text-[14px]" style={{ color: "var(--app-arcad)", opacity: lit ? 1 : 0.35 }}>✦</span>
+              ))}
+            </div>
+            <p className="text-[9.5px]" style={{ color: "var(--app-text-muted)" }}>4/16 stars lit · next session lights star 5</p>
           </Window>
         ),
       },

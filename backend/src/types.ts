@@ -18,6 +18,10 @@ export interface Env {
   STRIPE_PRICE_MAX_WEEKLY: string;
   STRIPE_PRICE_MAX_MONTHLY: string;
   STRIPE_PRICE_MAX_YEARLY: string;
+  // Stripe coupon id for the onboarding win-back offer (e.g. 41% off Pro
+  // monthly). Non-secret. Empty until a coupon is created in Stripe; the
+  // win-back checkout then just runs at full price.
+  STRIPE_WINBACK_COUPON_ID?: string;
   REVENUECAT_ENTITLEMENT_PRO: string;
   REVENUECAT_ENTITLEMENT_MAX: string;
 

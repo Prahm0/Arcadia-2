@@ -9,6 +9,7 @@ import { AU_STATES, countryOptions, guessCountry } from "@/lib/app/countries";
 import { fittedWeeklyMinutes, formatWeekly } from "@/lib/app/studyTargets";
 import { WEEKDAYS } from "./CommitmentSheet";
 import OnboardingBuild from "./OnboardingBuild";
+import OnboardingPaywall from "./OnboardingPaywall";
 import { Label, Select, TextArea, TextInput, WeeklyStepper } from "./profile/ui";
 
 interface OnboardingProps {
@@ -158,6 +159,9 @@ const toggleDay = (days: number[], day: number) =>
 export default function Onboarding({ defaultName, defaultTimezone, onComplete }: OnboardingProps) {
   const [step, setStep] = useState(0);
   const [building, setBuilding] = useState(false);
+  // After the plan builds we show the paywall (never mid-onboarding); only
+  // once it's resolved do we reload into the app via onComplete.
+  const [showPaywall, setShowPaywall] = useState(false);
 
   // You
   const [name, setName] = useState(defaultName);
@@ -399,6 +403,10 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
     setStep((s) => Math.max(0, s - 1));
   }
 
+  if (showPaywall) {
+    return <OnboardingPaywall onContinueFree={onComplete} />;
+  }
+
   if (building) {
     return (
       <OnboardingBuild
@@ -408,7 +416,7 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
           analytics.onboardingCompleted(body.subjects.length, body.tasks.length);
         }}
         onBack={() => setBuilding(false)}
-        onDone={onComplete}
+        onDone={() => setShowPaywall(true)}
       />
     );
   }

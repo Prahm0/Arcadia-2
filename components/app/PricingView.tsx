@@ -27,6 +27,8 @@ interface Tier {
   features: string[];
   highlighted?: boolean;
   badge?: string;
+  /** A tier we show but can't sell yet: no price, no checkout, "coming soon". */
+  comingSoon?: boolean;
 }
 
 const TIERS: Tier[] = [
@@ -68,20 +70,14 @@ const TIERS: Tier[] = [
   {
     key: "max",
     name: "Max",
-    headline: "Arcad becomes your exam tutor.",
-    // Per-week display of $9.95 / $7.95 / $3.95. Monthly = 7.95 ×
-    // 4.345 ≈ 34.54; yearly = 3.95 × 52 = 205.40.
-    pricing: { weekly: 9.95, monthly: 34.54, yearly: 205.4 },
+    headline: "The power tier, coming soon.",
+    pricing: null,
+    comingSoon: true,
     features: [
       "Everything in Pro",
-      "Arcad, 100 messages a day, 50x the free plan",
-      "Voice Arcad, talk while you study, hands-free",
-      "Arcad tutor mode, step-by-step problem walkthroughs",
-      "Exam-style practice + essay feedback",
-      "1:1 human tutor bookings (coming soon)",
-      "Priority AI, the smartest model, first in the queue",
-      "Study group leader mode, invite up to 10",
+      "A deeper tutoring layer we're building now",
     ],
+    badge: "Coming soon",
   },
 ];
 
@@ -354,7 +350,11 @@ function TierCard({
       {tier.badge ? (
         <div
           className="absolute -top-3 right-6 rounded-md px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]"
-          style={{ background: "var(--app-arcad)", color: "var(--app-arcad-on)" }}
+          style={
+            tier.comingSoon
+              ? { background: "var(--app-surface-soft)", color: "var(--app-text-muted)", boxShadow: "var(--elev-1)" }
+              : { background: "var(--app-arcad)", color: "var(--app-arcad-on)" }
+          }
         >
           {tier.badge}
         </div>
@@ -373,7 +373,11 @@ function TierCard({
       </div>
 
       <div>
-        {pricing === null || perWeekRate === null || billedAmount === null ? (
+        {tier.comingSoon ? (
+          <div className="text-[22px] font-semibold" style={{ color: "var(--app-text-muted)" }}>
+            Coming soon
+          </div>
+        ) : pricing === null || perWeekRate === null || billedAmount === null ? (
           <div className="flex items-baseline gap-1.5">
             <span className="text-[36px] font-semibold" style={{ color: "var(--app-text)" }}>
               $0
@@ -424,7 +428,11 @@ function TierCard({
       </ul>
 
       <div className="mt-auto pt-2">
-        {isCurrent && !isFree ? (
+        {tier.comingSoon ? (
+          <AppButton variant="ghost" disabled>
+            Coming soon
+          </AppButton>
+        ) : isCurrent && !isFree ? (
           <AppButton variant="secondary" onClick={onManage} loading={loading}>
             Manage subscription
           </AppButton>

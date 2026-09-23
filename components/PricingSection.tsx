@@ -25,6 +25,8 @@ interface Tier {
   cta: string;
   highlighted?: boolean;
   badge?: string;
+  /** A tier we show but can't sell yet: no price, no CTA, "coming soon". */
+  comingSoon?: boolean;
 }
 
 const TIERS: Tier[] = [
@@ -61,17 +63,15 @@ const TIERS: Tier[] = [
   {
     key: "max",
     name: "Max",
-    headline: "Arcad becomes your exam tutor.",
-    pricing: { weekly: 9.95, monthly: 34.54, yearly: 205.4 },
+    headline: "The power tier, coming soon.",
+    pricing: null,
+    comingSoon: true,
     features: [
       "Everything in Pro",
-      "100 Arcad messages a day, 50x the free plan",
-      "Voice Arcad, hands-free while you study",
-      "Tutor mode, step-by-step walkthroughs",
-      "1:1 human tutor bookings (coming soon)",
-      "Study group leader mode, invite up to 10",
+      "A deeper tutoring layer we're building now",
     ],
-    cta: "Go Max",
+    cta: "Coming soon",
+    badge: "Coming soon",
   },
 ];
 
@@ -131,8 +131,7 @@ export default function PricingSection() {
             <FadeIn delay={0.2}>
               <p className="type-body-lg max-w-[440px] text-white/60">
                 Start free, you&rsquo;ll feel it in your first week. When you&rsquo;re ready,
-                Pro turns Arcad into a proper study partner. Max adds a voice tutor
-                and, soon, real humans.
+                Pro turns Arcad into a proper study partner. A power tier is on the way.
               </p>
             </FadeIn>
           </div>
@@ -251,10 +250,11 @@ function TierCard({ tier, interval }: { tier: Tier; interval: Interval }) {
       {tier.badge ? (
         <div
           className="type-mono-label absolute -top-3 right-6 rounded-full px-3 py-1 text-[10.5px]"
-          style={{
-            background: "rgb(124,92,255)",
-            color: "white",
-          }}
+          style={
+            tier.comingSoon
+              ? { background: "rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.7)" }
+              : { background: "rgb(124,92,255)", color: "white" }
+          }
         >
           {tier.badge}
         </div>
@@ -268,7 +268,9 @@ function TierCard({ tier, interval }: { tier: Tier; interval: Interval }) {
       </div>
 
       <div>
-        {pricing === null || perWeekRate === null || billedAmount === null ? (
+        {tier.comingSoon ? (
+          <div className="text-[24px] font-medium tracking-[-0.01em] text-white/70">Coming soon</div>
+        ) : pricing === null || perWeekRate === null || billedAmount === null ? (
           <>
             <div className="flex items-baseline gap-2">
               <span className="text-[38px] font-medium tracking-[-0.02em] text-white">$0</span>
@@ -312,15 +314,24 @@ function TierCard({ tier, interval }: { tier: Tier; interval: Interval }) {
       </ul>
 
       <div className="mt-auto pt-2">
-        <Button
-          tone="dark"
-          variant={tier.highlighted ? "primary" : "secondary"}
-          href="/register"
-          size="md"
-          className="w-full"
-        >
-          {tier.cta}
-        </Button>
+        {tier.comingSoon ? (
+          <span
+            className="flex w-full items-center justify-center rounded-full px-4 py-3 text-[14px] font-medium"
+            style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)" }}
+          >
+            {tier.cta}
+          </span>
+        ) : (
+          <Button
+            tone="dark"
+            variant={tier.highlighted ? "primary" : "secondary"}
+            href="/register"
+            size="md"
+            className="w-full"
+          >
+            {tier.cta}
+          </Button>
+        )}
       </div>
     </div>
   );

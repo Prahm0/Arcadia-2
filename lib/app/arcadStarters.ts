@@ -1,5 +1,5 @@
 import type { DashboardResponse, PlannerEvent } from "@/lib/api/types";
-import { dateKey } from "@/lib/api/time";
+import { dateKey, formatClock, formatDueSoon, formatDurationMinutes } from "@/lib/api/time";
 import type { StreakSummary } from "@/lib/app/streaks";
 
 export interface Starter {
@@ -7,6 +7,8 @@ export interface Starter {
   label: string;
   /** The actual message sent to Arcad on click. */
   message: string;
+  /** A second line with the real fact behind it, for suggestion cards. */
+  detail?: string;
   /** Optional tone for chip styling, accent for the primary suggestion. */
   tone?: "default" | "accent";
 }
@@ -39,6 +41,7 @@ export function buildContextualStarters(
     out.push({
       label: `Recover ${subject}`,
       message: `I missed ${subject}, what's the best way to catch up before the deadline?`,
+      detail: `Missed ${relativeDay(missedRecently[0].startAt, timezone, todayKey)} ${formatClock(missedRecently[0].startAt, timezone)}`,
       tone: "accent",
     });
   }
@@ -55,6 +58,7 @@ export function buildContextualStarters(
       message: `Can you move my ${subject} session ${
         dateKey(nextStudy.startAt, timezone) === todayKey ? "later today" : "later"
       }?`,
+      detail: `Next up · ${relativeDay(nextStudy.startAt, timezone, todayKey)} ${formatClock(nextStudy.startAt, timezone)}`,
     });
   }
 
@@ -64,6 +68,12 @@ export function buildContextualStarters(
     out.push({
       label: `Plan for ${truncate(nearest.title, 24)}`,
       message: `Help me plan the work for "${nearest.title}" before it's due.`,
+      detail: [
+        formatDueSoon(nearest.dueAt, timezone),
+        nearest.remainingMinutes > 0 ? `${formatDurationMinutes(nearest.remainingMinutes)} left` : null,
+      ]
+        .filter(Boolean)
+        .join(" · "),
     });
   }
 
@@ -72,11 +82,13 @@ export function buildContextualStarters(
     out.push({
       label: "How am I tracking?",
       message: "How am I tracking against the plan this week?",
+      detail: `${streak.current}-day streak · this week so far`,
     });
   } else if (streak.longest > 0) {
     out.push({
       label: "Reset the streak",
       message: "My streak broke, what's the smallest thing I can do today to restart it?",
+      detail: "The smallest thing to do today",
     });
   }
 
@@ -87,6 +99,7 @@ export function buildContextualStarters(
     out.push({
       label: "Review last week",
       message: "Give me a review of last week, what went well, what didn't.",
+      detail: "What went well, what didn't",
     });
   }
 
@@ -95,6 +108,7 @@ export function buildContextualStarters(
     out.push({
       label: "Set up my subjects",
       message: "Help me set up my subjects and get my first tasks scheduled.",
+      detail: "Get the first week planned",
     });
   }
 
@@ -102,6 +116,7 @@ export function buildContextualStarters(
   out.push({
     label: "Add a task",
     message: "Add a task, I'll tell you what it is, when it's due, and how long.",
+    detail: "An assignment, test or bit of homework",
   });
 
   // De-dup by label and cap.
@@ -175,6 +190,18 @@ function countMissedRecently(events: PlannerEvent[], nowMs: number): number {
     const endMs = Date.parse(event.endAt);
     return endMs + 2 * 60 * 1000 <= nowMs && nowMs - endMs <= 24 * 60 * 60 * 1000;
   }).length;
+}
+
+/** "today", "tomorrow", "yesterday" or "Wed". */
+function relativeDay(iso: string, timezone: string, todayKey: string): string {
+  const key = dateKey(iso, timezone);
+  const days = Math.round(
+    (Date.parse(`${key}T00:00:00Z`) - Date.parse(`${todayKey}T00:00:00Z`)) / 86_400_000,
+  );
+  if (days === 0) return "today";
+  if (days === 1) return "tomorrow";
+  if (days === -1) return "yesterday";
+  return new Intl.DateTimeFormat("en-AU", { timeZone: timezone, weekday: "short" }).format(new Date(iso));
 }
 
 function truncate(value: string, length: number): string {

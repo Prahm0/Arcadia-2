@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createRoom, joinRoom, listRooms, type StudyRoom } from "@/lib/api/rooms";
 import { ROOM_COLOURS, roomColour } from "@/lib/app/roomColours";
@@ -14,6 +14,7 @@ export default function RoomsView() {
   const [rooms, setRooms] = useState<StudyRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const createNameInput = useRef<HTMLInputElement>(null);
 
   const [createName, setCreateName] = useState("");
   const [createDescription, setCreateDescription] = useState("");
@@ -35,7 +36,10 @@ export default function RoomsView() {
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   async function submitCreate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -96,6 +100,7 @@ export default function RoomsView() {
                 Name
               </span>
               <input
+                ref={createNameInput}
                 type="text"
                 required
                 maxLength={60}
@@ -175,14 +180,19 @@ export default function RoomsView() {
           ) : rooms.length === 0 ? (
             <div className="mt-4">
               <EmptyState
-                title={<>No rooms <span className="accent-serif">yet</span>.</>}
-                body="Create one and share the code with a friend, or drop a code someone sent you. Start a focus timer and the room sees you studying."
+                title={<>Study works better <span className="accent-serif">together</span>.</>}
+                body="A room is a quiet shared focus space. Create one for your friends, or join one with their code."
                 example={
                   <>
                     <ExampleRow title="Josh" meta="Studying · Physics · 32 min in · 2h 10m today" />
                     <ExampleRow title="Priya" meta="Break · 1h 45m today" bar="var(--app-success)" />
                     <ExampleRow title="You" meta="Idle · 40m today" bar="var(--app-text-faint)" />
                   </>
+                }
+                action={
+                  <AppButton variant="primary" onClick={() => createNameInput.current?.focus()}>
+                    Create a room
+                  </AppButton>
                 }
                 hint="No chat, no notifications, just who's working."
               />

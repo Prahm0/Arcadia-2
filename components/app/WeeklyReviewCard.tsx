@@ -42,6 +42,40 @@ export default function WeeklyReviewCard({
     return buildWeeklyReview(data.events, win, timezone);
   }, [data.events, timezone, which]);
 
+  const noCompletedFocus = review.sessionsDone === 0;
+
+  if ((!review.hasData || noCompletedFocus) && !inline) {
+    return (
+      <div
+        className="rounded-lg px-6 py-9 text-center sm:px-10"
+        style={{ background: "var(--app-surface)", border: "1px solid var(--app-border)" }}
+      >
+        <span
+          aria-hidden="true"
+          className="mx-auto grid h-10 w-10 place-items-center rounded-md text-[16px]"
+          style={{ background: "var(--app-arcad-soft)", color: "var(--app-arcad-strong)" }}
+        >
+          ✦
+        </span>
+        <h2 className="mt-4 text-[16px] font-semibold" style={{ color: "var(--app-text)" }}>
+          {review.hasData ? "Your plan is ready for its first focus block." : "Your weekly review starts with a focus block."}
+        </h2>
+        <p className="mx-auto mt-1.5 max-w-[430px] text-[13.5px] leading-5" style={{ color: "var(--app-text-muted)" }}>
+          {review.hasData
+            ? "Finish a focus block and Arcadia will turn it into a clear picture of what worked this week."
+            : "Arcadia turns the study you complete into a clear look at what worked and what to adjust next week."}
+        </p>
+        <Link
+          href="/app/focus"
+          className="mt-5 inline-flex h-9 items-center rounded-md px-3.5 text-[13px] font-semibold"
+          style={{ background: "var(--app-arcad)", color: "var(--app-arcad-on)" }}
+        >
+          Start a focus session
+        </Link>
+      </div>
+    );
+  }
+
   if (!review.hasData) {
     return (
       <div

@@ -20,12 +20,12 @@
     // Stripe price IDs — not secret. Live-mode ids, copied over from the
     // sandbox products after the account was activated. Amounts match the
     // sandbox: Pro $4.95/$12.82/$49.40, Max $9.95/$34.54/$205.40 (AUD).
-    "STRIPE_PRICE_PRO_WEEKLY": "price_1UIO8W9e8rebDtOcmpM05x4B",
-    "STRIPE_PRICE_PRO_MONTHLY": "price_1UIO8V9e8rebDtOcsHhFDvcm",
-    "STRIPE_PRICE_PRO_YEARLY": "price_1UIO8V9e8rebDtOclg6FUfH0",
-    "STRIPE_PRICE_MAX_WEEKLY": "price_1UIO8R9e8rebDtOcnPZs0Nn3",
-    "STRIPE_PRICE_MAX_MONTHLY": "price_1UIO8S9e8rebDtOcAXdSoZZa",
-    "STRIPE_PRICE_MAX_YEARLY": "price_1UIO8S9e8rebDtOcyuG3u5Ih"
+    "STRIPE_PRICE_PRO_WEEKLY": "price_1UImcr9e8rebDtOcpjakTCxb",
+    "STRIPE_PRICE_PRO_MONTHLY": "price_1UImdr9e8rebDtOcSF1UJoXs",
+    "STRIPE_PRICE_PRO_YEARLY": "price_1UIme39e8rebDtOc4neAYi5g",
+    "STRIPE_PRICE_MAX_WEEKLY": "price_1UImh99e8rebDtOcRg3WSl9V",
+    "STRIPE_PRICE_MAX_MONTHLY": "price_1UImhN9e8rebDtOckTgt2JRz",
+    "STRIPE_PRICE_MAX_YEARLY": "price_1UImhc9e8rebDtOc6mo8AfL0"
   },
 
   "d1_databases": [

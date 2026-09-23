@@ -14,8 +14,13 @@ export interface DayConsistency {
   key: string;
   plannedMinutes: number;
   actualMinutes: number;
+  /** Completed and missed scheduled blocks, used to celebrate a recovery. */
+  completedBlocks: number;
+  missedBlocks: number;
   ratio: number;
   consistent: boolean;
+  /** A missed block did not end the day because 70% of the plan was still done. */
+  recovered: boolean;
   /** True while the day is still in progress, protects it from breaking a streak. */
   isInProgress: boolean;
   /** Set when the day had a plan but fell short, phrased for direct display. */
@@ -50,15 +55,19 @@ export function computeConsistency(
   const study = events.filter((event) => event.category === "study");
   if (study.length === 0) return [];
 
-  const dayMap = new Map<string, { planned: number; actual: number }>();
+  const dayMap = new Map<string, { planned: number; actual: number; completedBlocks: number; missedBlocks: number }>();
   const nowMs = Date.now();
 
   for (const event of study) {
     const key = dateKey(event.startAt, timezone);
     const minutes = Math.max(0, (Date.parse(event.endAt) - Date.parse(event.startAt)) / 60000);
-    const bucket = dayMap.get(key) ?? { planned: 0, actual: 0 };
+    const bucket = dayMap.get(key) ?? { planned: 0, actual: 0, completedBlocks: 0, missedBlocks: 0 };
     bucket.planned += minutes;
-    if (event.outcome === "completed") bucket.actual += minutes;
+    if (event.outcome === "completed") {
+      bucket.actual += minutes;
+      bucket.completedBlocks += 1;
+    }
+    if (event.outcome === "missed") bucket.missedBlocks += 1;
     dayMap.set(key, bucket);
   }
 
@@ -75,8 +84,11 @@ export function computeConsistency(
       key,
       plannedMinutes: planned,
       actualMinutes: actual,
+      completedBlocks: bucket.completedBlocks,
+      missedBlocks: bucket.missedBlocks,
       ratio,
       consistent,
+      recovered: consistent && bucket.missedBlocks > 0,
       isInProgress,
       missReason:
         planned > 0 && !consistent

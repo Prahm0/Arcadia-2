@@ -1,10 +1,12 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import type { PlannerEvent, PlannerTask } from "@/lib/api/types";
 import { isTypingTarget } from "@/lib/app/commands";
 import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
+import { studyTitle } from "@/lib/app/subjectColour";
 import { useMediaQuery } from "@/lib/hooks";
 import { cn } from "@/lib/cn";
 import PageHeader from "./PageHeader";
@@ -13,7 +15,7 @@ import NewTaskSheet from "./NewTaskSheet";
 import TaskDetailSheet from "./TaskDetailSheet";
 import EventDetailSheet from "./EventDetailSheet";
 import PageTour from "./tour/PageTour";
-import TimeGrid from "./schedule/TimeGrid";
+import TimeGrid, { type ScheduleMenus } from "./schedule/TimeGrid";
 import TermMatrix, { type MatrixView } from "./schedule/TermMatrix";
 import AnalyticsStrip from "./schedule/AnalyticsStrip";
 import ContextPanel, { type SubjectInfo } from "./schedule/ContextPanel";
@@ -81,6 +83,7 @@ export default function ScheduleView() {
 
 function Planner({ now, today, timezone }: { now: Date; today: string; timezone: string }) {
   const { data } = useDashboardData();
+  const router = useRouter();
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
   const [anchor, setAnchor] = useState(today);
   const [habitDay, setHabitDay] = useState(today);
@@ -88,6 +91,7 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
   const [taskSheet, setTaskSheet] = useState<{ due: string | null; subject: string | null; editing: PlannerTask | null } | null>(null);
   const [detailTask, setDetailTask] = useState<PlannerTask | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<PlannerEvent | null>(null);
+  const [eventMode, setEventMode] = useState<"details" | "reschedule">("details");
   const wide = useMediaQuery("(min-width: 768px)");
   const { mode, matrix } = prefs;
   const { habits } = useHabits();
@@ -244,6 +248,69 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
   );
   const liveTask = useMemo(() => (detailTask ? planner.tasks.find((task) => task.id === detailTask.id) ?? null : null), [detailTask, planner.tasks]);
 
+  // Right-click menus: what the blocks' and deadlines' sheets offer, one step closer.
+  const menus: ScheduleMenus = {
+    event: (event) => {
+      const study = event.category === "study";
+      const planned = event.outcome === "planned";
+      const editable = event.editable !== false;
+      const name = study ? studyTitle(event) : event.title;
+      return [
+        { kind: "item", label: "Open", onSelect: () => setSelectedEvent(event) },
+        study && planned && {
+          kind: "item",
+          label: "Start focus",
+          onSelect: () => router.push(`/app/focus?eventId=${encodeURIComponent(event.id)}`),
+        },
+        { kind: "separator" },
+        study && event.outcome !== "missed" && {
+          kind: "item",
+          label: event.outcome === "completed" ? "Mark not done" : "Mark done",
+          onSelect: () => void planner.setEventDone(event, event.outcome !== "completed"),
+        },
+        editable && planned && {
+          kind: "item",
+          label: "Reschedule…",
+          onSelect: () => {
+            setEventMode("reschedule");
+            setSelectedEvent(event);
+          },
+        },
+        { kind: "separator" },
+        editable && planned && {
+          kind: "item",
+          label: "Remove from schedule…",
+          danger: true,
+          onSelect: () => {
+            if (confirm(`Remove "${name}" from your schedule?`)) void planner.removeEvent(event);
+          },
+        },
+      ];
+    },
+    task: (task) => {
+      const done = task.status === "complete";
+      return [
+        { kind: "item", label: "Open", onSelect: () => setDetailTask(task) },
+        { kind: "item", label: "Edit details…", onSelect: () => setTaskSheet({ due: null, subject: null, editing: task }) },
+        { kind: "separator" },
+        { kind: "item", label: done ? "Reopen" : "Mark done", onSelect: () => void planner.setTaskDone(task, !done) },
+        { kind: "separator" },
+        {
+          kind: "item",
+          label: "Delete…",
+          danger: true,
+          onSelect: () => {
+            if (confirm(`Delete "${task.title}"? This also removes its scheduled study blocks.`)) void planner.removeTask(task);
+          },
+        },
+      ];
+    },
+    day: (key) => [
+      { kind: "item", label: "Add a deadline…", onSelect: () => addTask(key) },
+      mode !== "day" && { kind: "item", label: "Open day", onSelect: () => openDay(key) },
+    ],
+  };
+
   const title =
     mode === "term" ? `${period.name}${period.isTerm ? `, ${period.year}` : ` ${period.year}`}` : mode === "week" ? weekTitle(days) : dayTitle(anchor);
   const meta = mode === "term" ? periodDates(period) : periodPosition(period, anchor);
@@ -290,7 +357,15 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
           setTaskSheet({ due: null, subject: null, editing: task });
         }}
       />
-      <EventDetailSheet event={liveEvent} timezone={timezone} onClose={() => setSelectedEvent(null)} />
+      <EventDetailSheet
+        event={liveEvent}
+        timezone={timezone}
+        initialMode={eventMode}
+        onClose={() => {
+          setSelectedEvent(null);
+          setEventMode("details");
+        }}
+      />
     </>
   );
 
@@ -487,6 +562,7 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
                     onMoveTask={(task, key) => void planner.moveTask(task, key)}
                     habitsRow={mode === "week" && habits.length ? habitsRow : undefined}
                     overlay={noDeadlines ? <FirstDeadline onAdd={() => addTask(null)} /> : null}
+                    menus={menus}
                   />
                 )}
               </div>
@@ -508,6 +584,7 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
                 onMoveEvent={(event, ms) => void planner.moveEvent(event, ms)}
                 onSetTaskDone={(task, done) => void planner.setTaskDone(task, done)}
                 onMoveTask={(task, key) => void planner.moveTask(task, key)}
+                menus={menus}
               />
             ) : null}
 

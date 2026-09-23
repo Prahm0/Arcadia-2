@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Fragment, useEffect, useState, type ReactNode } from "react";
 import ArcadOrb from "../ArcadOrb";
+import { copyText, showContextMenu } from "../ContextMenu";
 import type { ChatMessage } from "./types";
 
 /**
@@ -30,10 +31,26 @@ export function MessageRow({
   onEdit?: () => void;
   children?: ReactNode;
 }) {
+  // Selected text and links keep the browser's menu; this is for copying the lot.
+  const onContextMenu = (event: React.MouseEvent) => {
+    if ((event.target as Element).closest("a[href]")) return;
+    showContextMenu(
+      event,
+      [
+        { kind: "item", label: "Copy message", onSelect: () => void copyText(message.content) },
+        { kind: "separator" },
+        message.failed && onRetry && { kind: "item", label: "Try again", onSelect: onRetry },
+        message.failed && onEdit && { kind: "item", label: "Edit", onSelect: onEdit },
+      ],
+      message.role === "user" ? "Your message" : "Arcad's reply",
+    );
+  };
+
   if (message.role === "user") {
     return (
       <li className="flex flex-col items-end">
         <div
+          onContextMenu={onContextMenu}
           className="max-w-[85%] whitespace-pre-wrap break-words rounded-[14px] px-3.5 py-2 text-[15px] leading-[1.55]"
           style={{
             background: "color-mix(in oklab, var(--app-text) 7%, var(--app-surface))",
@@ -69,7 +86,9 @@ export function MessageRow({
         {reveal ? (
           <Typewriter text={message.content} onDone={onRevealed} />
         ) : (
-          <ArcadText text={message.content} />
+          <div onContextMenu={onContextMenu}>
+            <ArcadText text={message.content} />
+          </div>
         )}
         {!reveal ? (
           <>

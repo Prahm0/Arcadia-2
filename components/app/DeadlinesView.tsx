@@ -1,10 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import type { PlannerTask } from "@/lib/api/types";
 import { dateKey, formatDurationMinutes, formatDueSoon } from "@/lib/api/time";
+import { playCompletionTick } from "@/lib/app/completion";
 import { cn } from "@/lib/cn";
+import { flashMenuNotice, showContextMenu } from "./ContextMenu";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import EmptyState, { ExampleRow } from "./EmptyState";
@@ -13,7 +16,7 @@ import TaskDetailSheet from "./TaskDetailSheet";
 import { categoryColor } from "@/lib/app/categoryColors";
 
 export default function DeadlinesView() {
-  const { data } = useDashboardData();
+  const { data, patch, reload } = useDashboardData();
   const timezone = data.profile?.timezone || "Australia/Sydney";
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<PlannerTask | null>(null);
@@ -47,6 +50,60 @@ export default function DeadlinesView() {
     return days >= 0 && days <= 7;
   });
   const overdue = pending.filter((task) => daysUntil(task.dueAt, timezone) < 0);
+
+  function edit(task: PlannerTask) {
+    setEditing(task);
+    setSheetOpen(true);
+  }
+
+  // The right-click menu's versions of the detail sheet's buttons.
+  async function complete(task: PlannerTask) {
+    playCompletionTick();
+    patch((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((existing) =>
+        existing.id === task.id ? { ...existing, status: "complete", remainingMinutes: 0 } : existing,
+      ),
+    }));
+    try {
+      await api(`/api/tasks/${encodeURIComponent(task.id)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: "complete" }),
+      });
+    } catch (err) {
+      flashMenuNotice(err instanceof Error ? err.message : "Couldn't mark it done.");
+    }
+    await reload();
+  }
+
+  async function remove(task: PlannerTask) {
+    if (!confirm(`Delete "${task.title}"? This also removes its scheduled study blocks.`)) return;
+    try {
+      await api(`/api/tasks/${encodeURIComponent(task.id)}`, { method: "DELETE" });
+      patch((prev) => ({
+        ...prev,
+        tasks: prev.tasks.filter((existing) => existing.id !== task.id),
+        events: prev.events.filter((event) => event.taskId !== task.id),
+      }));
+    } catch (err) {
+      flashMenuNotice(err instanceof Error ? err.message : "Couldn't delete it.");
+    }
+    await reload();
+  }
+
+  const taskMenu = (task: PlannerTask) => (event: React.MouseEvent) =>
+    showContextMenu(
+      event,
+      [
+        { kind: "item", label: "Open", onSelect: () => setDetailTask(task) },
+        { kind: "item", label: "Edit details…", onSelect: () => edit(task) },
+        { kind: "separator" },
+        { kind: "item", label: "Mark done", onSelect: () => void complete(task) },
+        { kind: "separator" },
+        { kind: "item", label: "Delete…", danger: true, onSelect: () => void remove(task) },
+      ],
+      task.title,
+    );
 
   return (
     <>
@@ -114,6 +171,7 @@ export default function DeadlinesView() {
             overdue={overdue.length}
             minutesThisWeek={thisWeek.reduce((sum, task) => sum + task.remainingMinutes, 0)}
             onOpen={() => setDetailTask(nextTask)}
+            onContextMenu={taskMenu(nextTask)}
           />
         ) : null}
 
@@ -133,6 +191,7 @@ export default function DeadlinesView() {
                   timezone={timezone}
                   color={subjectColor.get((task.subject || "").toLowerCase())}
                   onClick={() => setDetailTask(task)}
+                  onContextMenu={taskMenu(task)}
                 />
               ))}
             </ul>
@@ -146,8 +205,7 @@ export default function DeadlinesView() {
         onClose={() => setDetailTask(null)}
         onEdit={(task) => {
           setDetailTask(null);
-          setEditing(task);
-          setSheetOpen(true);
+          edit(task);
         }}
       />
       <NewTaskSheet
@@ -167,6 +225,7 @@ function DeadlineOverview({
   overdue,
   minutesThisWeek,
   onOpen,
+  onContextMenu,
 }: {
   task: PlannerTask;
   timezone: string;
@@ -175,12 +234,14 @@ function DeadlineOverview({
   overdue: number;
   minutesThisWeek: number;
   onOpen: () => void;
+  onContextMenu: (event: React.MouseEvent) => void;
 }) {
   const state = deadlineState(task.dueAt, timezone);
   const attention = state.days <= 1 || state.days < 0;
 
   return (
     <section
+      onContextMenu={onContextMenu}
       className="overflow-hidden rounded-xl border"
       style={{
         background: attention
@@ -235,12 +296,13 @@ function DeadlineSnapshot({ label, value, detail, tone = "default" }: { label: s
 }
 
 function DeadlineRow({
-  task, timezone, color, onClick,
+  task, timezone, color, onClick, onContextMenu,
 }: {
   task: PlannerTask;
   timezone: string;
   color?: string;
   onClick: () => void;
+  onContextMenu: (event: React.MouseEvent) => void;
 }) {
   const state = deadlineState(task.dueAt, timezone);
   const estimated = Math.max(task.estimatedMinutes ?? task.remainingMinutes, task.remainingMinutes, 1);
@@ -252,6 +314,7 @@ function DeadlineRow({
       <button
         type="button"
         onClick={onClick}
+        onContextMenu={onContextMenu}
         className={cn("group flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors sm:gap-4 sm:px-4")}
         style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
       >

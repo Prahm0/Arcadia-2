@@ -14,17 +14,30 @@ export default function DeckSettingsSheet({
   deck,
   onClose,
   onSaved,
+  onDeleted,
 }: {
   open: boolean;
   deck: Deck;
   onClose: () => void;
   onSaved: (deck: Deck) => void;
+  /** Opened from the shelf rather than the deck's page: stay on the shelf. */
+  onDeleted?: () => void;
 }) {
   if (!open) return null;
-  return <SettingsForm deck={deck} onClose={onClose} onSaved={onSaved} />;
+  return <SettingsForm deck={deck} onClose={onClose} onSaved={onSaved} onDeleted={onDeleted} />;
 }
 
-function SettingsForm({ deck, onClose, onSaved }: { deck: Deck; onClose: () => void; onSaved: (deck: Deck) => void }) {
+function SettingsForm({
+  deck,
+  onClose,
+  onSaved,
+  onDeleted,
+}: {
+  deck: Deck;
+  onClose: () => void;
+  onSaved: (deck: Deck) => void;
+  onDeleted?: () => void;
+}) {
   const router = useRouter();
   const { subjects } = useSubjects();
   // Topics live on the profile; only fetched while this is open.
@@ -61,7 +74,8 @@ function SettingsForm({ deck, onClose, onSaved }: { deck: Deck; onClose: () => v
     setError(null);
     try {
       await deleteDeck(deck.id);
-      router.push("/app/cards");
+      if (onDeleted) onDeleted();
+      else router.push("/app/cards");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't delete it.");
       setDeleting(false);

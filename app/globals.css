@@ -75,6 +75,9 @@
   --app-success: #1f8a4c;
   --app-warning: #8a5a0b;         /* amber, for things that need a decision */
   --app-warning-soft: rgba(196, 138, 30, 0.14);
+  --app-gold: #8a6410;            /* developer accounts */
+  --app-gold-soft: rgba(212, 160, 23, 0.12);
+  --app-gold-border: rgba(184, 134, 11, 0.45);
   --app-arcad: #6a49f5;           /* reserved for Arcad, the AI companion */
   --app-arcad-soft: rgba(106, 73, 245, 0.1);
   --app-arcad-strong: #5636d8;
@@ -131,6 +134,9 @@
   --app-success: #4cc97a;
   --app-warning: #ffb340;
   --app-warning-soft: rgba(255, 179, 64, 0.14);
+  --app-gold: #f2c75c;
+  --app-gold-soft: rgba(242, 199, 92, 0.1);
+  --app-gold-border: rgba(242, 199, 92, 0.4);
   --app-arcad: #b3a1ff;
   --app-arcad-soft: rgba(179, 161, 255, 0.16);
   --app-arcad-strong: #c9bcff;

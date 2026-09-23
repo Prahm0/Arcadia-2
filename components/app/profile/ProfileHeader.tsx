@@ -9,6 +9,7 @@ import type { SectionProps } from "./ProfileView";
 import {
   Avatar,
   ColourSwatches,
+  DeveloperTag,
   Label,
   Select,
   Sheet,
@@ -47,14 +48,17 @@ export default function ProfileHeader({ data, replace, replanned }: SectionProps
       style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
     >
       <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:p-6">
-        <Avatar name={profile.name} colour={profile.avatarColour} size={80} />
+        <Avatar name={profile.name} colour={profile.avatarColour} size={80} developer={profile.developerAccess} />
         <div className="min-w-0 flex-1">
-          <h1
-            className="truncate text-[26px] font-semibold leading-tight tracking-[-0.02em]"
-            style={{ color: "var(--app-text)" }}
-          >
-            {profile.name}
-          </h1>
+          <div className="flex min-w-0 items-center gap-2.5">
+            <h1
+              className="truncate text-[26px] font-semibold leading-tight tracking-[-0.02em]"
+              style={{ color: "var(--app-text)" }}
+            >
+              {profile.name}
+            </h1>
+            {profile.developerAccess ? <DeveloperTag /> : null}
+          </div>
           <p className="mt-1 text-[14px]" style={{ color: "var(--app-text-soft)" }}>
             {facts.length ? facts.join(" · ") : "Add your year level and school"}
           </p>
@@ -165,7 +169,7 @@ function EditProfileForm({ onClose, data, onSaved }: EditProfileProps) {
   return (
     <form onSubmit={submit} className="space-y-4">
       <div className="flex items-center gap-4">
-        <Avatar name={name || profile.name} colour={colour} size={56} />
+        <Avatar name={name || profile.name} colour={colour} size={56} developer={profile.developerAccess} />
         <div className="min-w-0">
           <p className="mb-2 text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>
             Colour

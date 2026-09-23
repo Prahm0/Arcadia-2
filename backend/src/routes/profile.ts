@@ -113,6 +113,7 @@ export async function buildProfile(database: Database, userId: string) {
       atarTarget: row.atarTarget,
       timezone,
       joinedAt: iso(user.createdAt),
+      developerAccess: user.developerAccess,
     },
     stats: {
       currentStreak: streaks.currentStreak,

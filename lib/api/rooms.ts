@@ -64,6 +64,7 @@ export interface RoomMemberProfile {
   userId: string;
   displayName: string;
   avatarColour: string | null;
+  developerAccess?: boolean;
   joinedAt: string;
   weekSeconds: number;
   totalSeconds: number;

@@ -9,7 +9,12 @@ import type { Conversation } from "./types";
  * and every past chat grouped by when it last moved, each one renameable
  * and deletable from its "…" menu.
  */
+/** A window with a sidebar down its left: shows and hides the chats column. */
+export const PANEL_ICON =
+  "M3.5 5.5A1.5 1.5 0 015 4h10a1.5 1.5 0 011.5 1.5v9A1.5 1.5 0 0115 16H5a1.5 1.5 0 01-1.5-1.5v-9zM8 4v12";
+
 export default function ChatRail({
+  onHide,
   conversations,
   activeId,
   view,
@@ -19,6 +24,8 @@ export default function ChatRail({
   onRename,
   onDelete,
 }: {
+  /** Collapse the column, or close the drawer. */
+  onHide: () => void;
   conversations: Conversation[];
   activeId: string | null;
   view: "chat" | "month";
@@ -33,7 +40,24 @@ export default function ChatRail({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex flex-col gap-0.5 p-2">
+      <div className="flex h-12 shrink-0 items-center justify-between pl-4 pr-2">
+        <span className="text-[13px] font-medium" style={{ color: "var(--app-text-muted)" }}>
+          Chats
+        </span>
+        <button
+          type="button"
+          onClick={onHide}
+          aria-label="Hide chats"
+          title="Hide chats"
+          className="grid h-9 w-9 place-items-center rounded-md ui-hover"
+          style={{ color: "var(--app-text-soft)" }}
+        >
+          <svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d={PANEL_ICON} />
+          </svg>
+        </button>
+      </div>
+      <div className="flex flex-col gap-0.5 px-2 pb-2">
         <RailButton
           active={view === "chat" && activeId === null}
           onClick={onNewChat}

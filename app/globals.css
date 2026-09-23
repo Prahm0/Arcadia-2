@@ -790,6 +790,22 @@ html[data-app-theme] .type-mono-label {
   --from: 0.4;
   --to: 0.75;
 }
+/* Arcad's "thinking" line: a soft light passing over the words. */
+@keyframes arcad-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+.arcad-shimmer {
+  background: linear-gradient(90deg, var(--app-text-muted) 0%, var(--app-text-muted) 40%, var(--app-text) 50%, var(--app-text-muted) 60%, var(--app-text-muted) 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+  animation: arcad-shimmer 1.8s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .arcad-shimmer { animation: none; }
+}
 
 /* The companion's own star breathes, barely. */
 @keyframes companion-twinkle {

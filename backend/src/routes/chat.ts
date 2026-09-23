@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../db";
 import { newId } from "../lib/ids";
@@ -34,6 +34,19 @@ function serialiseProposal(row: typeof schema.proposals.$inferSelect) {
     createdAt: iso(row.createdAt),
     expiresAt: iso(row.expiresAt),
   };
+}
+
+/**
+ * Every proposal made in a conversation, whatever became of it, so the chat
+ * can show each one under the reply that made it.
+ */
+async function conversationProposals(env: Env, userId: string, conversationId: string) {
+  const rows = await db(env.DB)
+    .select()
+    .from(schema.proposals)
+    .where(and(eq(schema.proposals.userId, userId), eq(schema.proposals.conversationId, conversationId)))
+    .orderBy(asc(schema.proposals.createdAt));
+  return rows.map(serialiseProposal);
 }
 
 /** Most recent conversation, or a fresh one. */
@@ -78,13 +91,14 @@ chat.get("/", async (c) => {
     conversationId: conversation.id,
     messages: messageRows.map(serialiseMessage),
     proposals: proposalRows.map(serialiseProposal),
+    conversationProposals: await conversationProposals(c.env, userId, conversation.id),
   });
 });
 
 chat.post("/", async (c) => {
   const { userId } = c.get("session");
   const body = await c.req
-    .json<{ message?: string; conversationId?: string | null }>()
+    .json<{ message?: string; conversationId?: string | null; newConversation?: boolean }>()
     .catch(() => null);
 
   const text = String(body?.message ?? "").trim();
@@ -125,7 +139,19 @@ chat.post("/", async (c) => {
   let conversation:
     | typeof schema.conversations.$inferSelect
     | undefined;
-  if (body?.conversationId) {
+  // A new chat only gets a row once its first message is sent, so opening
+  // Arcad doesn't leave empty conversations behind.
+  let createdConversation = false;
+  if (body?.newConversation) {
+    const id = newId("cnv");
+    await database.insert(schema.conversations).values({ id, userId, title: null });
+    [conversation] = await database
+      .select()
+      .from(schema.conversations)
+      .where(eq(schema.conversations.id, id))
+      .limit(1);
+    createdConversation = true;
+  } else if (body?.conversationId) {
     const [found] = await database
       .select()
       .from(schema.conversations)
@@ -279,6 +305,18 @@ chat.post("/", async (c) => {
         // half-written message. Since we never delivered a reply, hand the
         // message back so a failed send does not cost the student their quota.
         await refundMessage(database, userId).catch(() => {});
+        // Take the question back out so a retry doesn't leave it in the
+        // conversation twice, and drop a chat that never got going.
+        await database
+          .delete(schema.messages)
+          .where(eq(schema.messages.id, userMessageId))
+          .catch(() => undefined);
+        if (createdConversation) {
+          await database
+            .delete(schema.conversations)
+            .where(eq(schema.conversations.id, conversationId))
+            .catch(() => undefined);
+        }
         send({
           type: "error",
           message: error instanceof Error ? error.message : "Arcad couldn't respond.",
@@ -418,12 +456,13 @@ export const conversations = new Hono<{ Bindings: Env; Variables: Variables }>()
 
 conversations.get("/", async (c) => {
   const { userId } = c.get("session");
+  // Untitled means nothing was ever sent, so there's nothing to go back to.
   const rows = await db(c.env.DB)
     .select()
     .from(schema.conversations)
-    .where(eq(schema.conversations.userId, userId))
+    .where(and(eq(schema.conversations.userId, userId), isNotNull(schema.conversations.title)))
     .orderBy(desc(schema.conversations.updatedAt))
-    .limit(50);
+    .limit(100);
 
   return c.json({
     conversations: rows.map((row) => ({
@@ -486,7 +525,53 @@ conversations.get("/:id", async (c) => {
       updatedAt: iso(conversation.updatedAt),
     },
     messages: messageRows.map(serialiseMessage),
+    proposals: await conversationProposals(c.env, userId, id),
   });
+});
+
+conversations.patch("/:id", async (c) => {
+  const { userId } = c.get("session");
+  const id = c.req.param("id");
+  const body = await c.req.json<{ title?: string }>().catch(() => null);
+  const title = String(body?.title ?? "").trim().slice(0, 80);
+  if (!title) return c.json({ error: "Give it a name first." }, 422);
+
+  const database = db(c.env.DB);
+  const [conversation] = await database
+    .select()
+    .from(schema.conversations)
+    .where(and(eq(schema.conversations.id, id), eq(schema.conversations.userId, userId)))
+    .limit(1);
+  if (!conversation) return c.json({ error: "Conversation not found." }, 404);
+
+  await database.update(schema.conversations).set({ title }).where(eq(schema.conversations.id, id));
+  return c.json({ ok: true, title });
+});
+
+conversations.delete("/:id", async (c) => {
+  const { userId } = c.get("session");
+  const id = c.req.param("id");
+  const database = db(c.env.DB);
+  const [conversation] = await database
+    .select()
+    .from(schema.conversations)
+    .where(and(eq(schema.conversations.id, id), eq(schema.conversations.userId, userId)))
+    .limit(1);
+  if (!conversation) return c.json({ error: "Conversation not found." }, 404);
+
+  // Suggestions nobody acted on go with the chat; applied ones already live in the plan.
+  await database
+    .delete(schema.proposals)
+    .where(
+      and(
+        eq(schema.proposals.userId, userId),
+        eq(schema.proposals.conversationId, id),
+        eq(schema.proposals.status, "pending"),
+      ),
+    );
+  await database.delete(schema.messages).where(eq(schema.messages.conversationId, id));
+  await database.delete(schema.conversations).where(eq(schema.conversations.id, id));
+  return c.json({ ok: true });
 });
 
 /** Accepting or declining what Arcad proposed. */

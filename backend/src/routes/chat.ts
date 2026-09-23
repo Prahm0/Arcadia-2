@@ -7,7 +7,7 @@ import { ARCAD_VOICE, PROPOSE_TOOL, REMEMBER_TOOL, complete, type ChatMessage } 
 import { replan } from "../lib/replan";
 import { subjectKey, weeklyTargetMinutes } from "../lib/scheduler";
 import { describeBrief, recentMissReasonContext, subjectBriefs } from "../lib/study-context";
-import { DAILY_MESSAGE_CAP, getUserTier, tryConsumeMessage } from "../lib/tiers";
+import { DAILY_MESSAGE_CAP, getUserTier, refundMessage, tryConsumeMessage } from "../lib/tiers";
 import { DAY, iso, parseClock } from "../lib/time";
 import type { Env, Variables } from "../types";
 
@@ -275,6 +275,10 @@ chat.post("/", async (c) => {
           ...(remembered.length > 0 ? { remembered } : {}),
         });
       } catch (error) {
+        // The send was consumed up front so a rejected turn leaves no
+        // half-written message. Since we never delivered a reply, hand the
+        // message back so a failed send does not cost the student their quota.
+        await refundMessage(database, userId).catch(() => {});
         send({
           type: "error",
           message: error instanceof Error ? error.message : "Arcad couldn't respond.",

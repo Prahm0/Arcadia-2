@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createRoom, joinRoom, listRooms, type StudyRoom } from "@/lib/api/rooms";
+import { ROOM_COLOURS, roomColour } from "@/lib/app/roomColours";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import EmptyState, { ExampleRow } from "./EmptyState";
@@ -15,6 +16,8 @@ export default function RoomsView() {
   const [error, setError] = useState<string | null>(null);
 
   const [createName, setCreateName] = useState("");
+  const [createDescription, setCreateDescription] = useState("");
+  const [createColour, setCreateColour] = useState("slate");
   const [creating, setCreating] = useState(false);
 
   const [joinCode, setJoinCode] = useState("");
@@ -43,8 +46,9 @@ export default function RoomsView() {
     try {
       // No display name: the server uses the profile name, which keeps two
       // guests from both showing up as "Guest".
-      const room = await createRoom(name);
+      const room = await createRoom(name, createDescription, createColour);
       setCreateName("");
+      setCreateDescription("");
       router.push(`/app/rooms/${room.code}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't create the room.");
@@ -105,6 +109,11 @@ export default function RoomsView() {
                 }}
               />
             </label>
+            <label className="mt-3 block">
+              <span className="mb-2 block text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>Description <span style={{ color: "var(--app-text-faint)" }}>(optional)</span></span>
+              <textarea value={createDescription} onChange={(event) => setCreateDescription(event.target.value)} maxLength={300} rows={2} placeholder="What are you studying together?" className="w-full rounded-md px-3 py-2.5 text-[13px] outline-none" style={{ background: "var(--app-surface-soft)", color: "var(--app-text)" }} />
+            </label>
+            <fieldset className="mt-3"><legend className="text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>Colour</legend><div className="mt-2 flex flex-wrap gap-2">{Object.entries(ROOM_COLOURS).map(([key, hex]) => <label key={key} className="cursor-pointer rounded-full p-1" style={{ border: createColour === key ? `2px solid ${hex}` : "2px solid transparent" }} title={key}><input type="radio" name="create-room-colour" value={key} checked={createColour === key} onChange={() => setCreateColour(key)} className="sr-only" /><span className="block h-5 w-5 rounded-full" style={{ background: hex }} /></label>)}</div></fieldset>
             <div className="mt-4">
               <AppButton type="submit" variant="primary" loading={creating} disabled={!createName.trim()}>
                 Create
@@ -185,14 +194,15 @@ export default function RoomsView() {
                   <Link
                     href={`/app/rooms/${room.code}`}
                     className="group flex items-center gap-4 rounded-md px-4 py-4 transition-colors ui-hover"
-                    style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
+                    style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)", borderLeft: `4px solid ${roomColour(room.colour)}` }}
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-[15px] font-medium tracking-[-0.005em]" style={{ color: "var(--app-text)" }}>
-                        {room.name}
+                        {room.icon ? `${room.icon} ` : ""}{room.name}
                       </p>
+                      {room.description ? <p className="mt-1 truncate text-[12px]" style={{ color: "var(--app-text-muted)" }}>{room.description}</p> : null}
                       <p className="mt-1 type-mono-label" style={{ color: "var(--app-text-muted)" }}>
-                        {room.code} · {room.memberCount} {room.memberCount === 1 ? "member" : "members"}
+                        {room.code} · {room.memberCount}/{room.capacity} members
                       </p>
                     </div>
                     {room.studyingCount > 0 ? (

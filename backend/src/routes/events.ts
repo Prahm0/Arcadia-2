@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { db, schema, type Database } from "../db";
 import { serialiseEvent } from "../lib/serialise";
 import { planIsCurrent, planSession, type Checkout, type SessionPlan } from "../lib/session-plan";
-import { isPaidTier, isValidTier } from "../lib/tiers";
+import { effectiveTier, isPaidTier } from "../lib/tiers";
 import { MINUTE } from "../lib/time";
 import type { Env, Variables } from "../types";
 
@@ -70,14 +70,14 @@ async function applyOutcome(database: Database, event: EventRow, outcome: Outcom
 
 async function missReasonAccess(database: Database, userId: string) {
   const [user] = await database
-    .select({ email: schema.users.email, tier: schema.users.tier })
+    .select({ email: schema.users.email, tier: schema.users.tier, developerAccess: schema.users.developerAccess })
     .from(schema.users)
     .where(eq(schema.users.id, userId))
     .limit(1);
   if (user?.email.endsWith("@arcadia.local")) {
     return { allowed: false as const, error: "Guest accounts cannot save miss reasons.", code: "guest_cannot_use" };
   }
-  const tier = isValidTier(user?.tier) ? user.tier : "free";
+  const tier = effectiveTier(user?.tier, user?.developerAccess ?? false);
   if (!isPaidTier(tier)) {
     return { allowed: false as const, error: "Miss reasons are available on Pro and Max.", code: "tier_required" };
   }

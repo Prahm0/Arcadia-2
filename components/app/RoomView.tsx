@@ -12,8 +12,10 @@ import {
   type RoomDashboard,
   type StudyRoomMember,
 } from "@/lib/api/rooms";
+import { roomColour } from "@/lib/app/roomColours";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
+import { RoomChat, RoomMemberProfilePanel, RoomSettings } from "./RoomSocial";
 
 /**
  * How often the dashboard re-reads the room. Friends' timers tick locally
@@ -45,6 +47,7 @@ export default function RoomView({ code }: RoomViewProps) {
   const [leaving, setLeaving] = useState(false);
   const [joining, setJoining] = useState(false);
   const [joinName, setJoinName] = useState("");
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const now = useNow(dash?.members.some((member) => member.activity !== "idle") ?? false);
 
   const load = useCallback(async () => {
@@ -138,6 +141,7 @@ export default function RoomView({ code }: RoomViewProps) {
 
   const studyingNow = members.filter((member) => member.activity === "focus").length;
   const roomToday = members.reduce((sum, member) => sum + liveTodaySeconds(member, now), 0);
+  const roomWeek = members.reduce((sum, member) => sum + member.weekSeconds, 0);
   const me = members.find((member) => member.userId === data.user.id);
 
   if (notFound) {
@@ -160,7 +164,7 @@ export default function RoomView({ code }: RoomViewProps) {
     <>
       <PageHeader width={860}
         eyebrow="Rooms"
-        title={dash ? dash.room.name : "Loading…"}
+        title={dash ? `${dash.room.icon ? `${dash.room.icon} ` : ""}${dash.room.name}` : "Loading…"}
         tour="rooms"
         meta={
           dash?.isMember
@@ -185,6 +189,9 @@ export default function RoomView({ code }: RoomViewProps) {
       />
 
       <div className="mx-auto flex w-full max-w-[860px] flex-col gap-6 px-6 py-8 sm:px-10">
+        {dash ? <div className="rounded-md px-4 py-3 text-[13px]" style={{ background: "var(--app-surface-soft)", color: "var(--app-text-soft)", borderLeft: `4px solid ${roomColour(dash.room.colour)}` }}>
+          {dash.room.description || "A place to study together."} <span className="ml-2 whitespace-nowrap" style={{ color: "var(--app-text-muted)" }}>{dash.room.memberCount}/{dash.room.capacity} members</span>
+        </div> : null}
         {actionError ? (
           <div
             className="rounded-md p-4 text-[13px]"
@@ -236,6 +243,15 @@ export default function RoomView({ code }: RoomViewProps) {
           </form>
         ) : dash?.isMember ? (
           <>
+            {dash.room.ownerUserId === data.user.id ? <RoomSettings key={dash.room.id} code={code} room={dash.room} isPaid={data.user.tier === "pro" || data.user.tier === "max"} onSaved={setDash} /> : null}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <RoomMetric label="Studying now" value={String(studyingNow)} />
+              <RoomMetric label="Focus today" value={formatDuration(roomToday)} />
+              <RoomMetric label="Past 7 days" value={formatDuration(roomWeek)} />
+              <RoomMetric label="Members" value={`${dash.room.memberCount}/${dash.room.capacity}`} />
+            </div>
+            {dash.room.weeklyGoalMinutes ? <div className="rounded-md p-4" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}><div className="flex justify-between gap-2 text-[13px]" style={{ color: "var(--app-text-soft)" }}><span>Shared 7-day goal</span><span>{formatDuration(roomWeek)} / {formatDuration(dash.room.weeklyGoalMinutes * 60)}</span></div><div className="mt-2 h-2 overflow-hidden rounded-full" style={{ background: "var(--app-surface-soft)" }}><div className="h-full rounded-full" style={{ width: `${Math.min(100, (roomWeek / (dash.room.weeklyGoalMinutes * 60)) * 100)}%`, background: roomColour(dash.room.colour) }} /></div></div> : null}
+            <RoomActivityChart days={dash.room.weekActivity ?? []} colour={dash.room.colour} />
             {me && me.activity === "idle" ? (
               <div
                 className="flex flex-wrap items-center justify-between gap-3 rounded-md px-4 py-3"
@@ -262,9 +278,14 @@ export default function RoomView({ code }: RoomViewProps) {
                   now={now}
                   isYou={member.userId === data.user.id}
                   isOwner={member.userId === dash.room.ownerUserId}
+                  onProfile={() => setSelectedMemberId(member.userId)}
                 />
               ))}
             </ul>
+
+            {selectedMemberId && members.some((member) => member.userId === selectedMemberId) ? <RoomMemberProfilePanel key={selectedMemberId} code={code} member={members.find((member) => member.userId === selectedMemberId)!} onClose={() => setSelectedMemberId(null)} /> : null}
+
+            <RoomChat code={code} userId={data.user.id} ownerUserId={dash.room.ownerUserId} memberIds={members.map((member) => member.userId)} onMemberClick={setSelectedMemberId} />
 
             <p className="text-[12px]" style={{ color: reconnecting ? "var(--app-danger)" : "var(--app-text-faint)" }}>
               {reconnecting
@@ -287,11 +308,13 @@ function MemberCard({
   now,
   isYou,
   isOwner,
+  onProfile,
 }: {
   member: StudyRoomMember;
   now: number;
   isYou: boolean;
   isOwner: boolean;
+  onProfile: () => void;
 }) {
   const elapsed = elapsedSeconds(member, now);
   const studying = member.activity === "focus";
@@ -336,11 +359,11 @@ function MemberCard({
           {initial(member.displayName)}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[14.5px] font-medium" style={{ color: "var(--app-text)" }}>
+          <button type="button" onClick={onProfile} className="truncate text-left text-[14.5px] font-medium underline-offset-2 hover:underline" style={{ color: "var(--app-text)" }}>
             {member.displayName}
             {isYou ? <span className="ml-1.5 text-[11px]" style={{ color: "var(--app-text-muted)" }}>you</span> : null}
             {isOwner ? <span className="ml-1.5 text-[11px]" style={{ color: "var(--app-text-faint)" }}>owner</span> : null}
-          </p>
+          </button>
           <p className="truncate type-mono-label" style={{ color: "var(--app-text-muted)" }}>{detail}</p>
         </div>
         <span
@@ -370,8 +393,26 @@ function MemberCard({
           </p>
         </div>
       </div>
+      <p className="text-[11px]" style={{ color: "var(--app-text-faint)" }}>Past 7 days: {formatDuration(member.weekSeconds)}</p>
     </li>
   );
+}
+
+function RoomMetric({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-md p-3" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}><p className="type-eyebrow" style={{ color: "var(--app-text-faint)" }}>{label}</p><p className="mt-1 text-[18px] font-semibold" style={{ color: "var(--app-text)" }}>{value}</p></div>;
+}
+
+function RoomActivityChart({ days, colour }: { days: Array<{ day: string; seconds: number; sessions: number }>; colour: string }) {
+  const max = Math.max(1, ...days.map((day) => day.seconds));
+  return <section className="rounded-lg p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }} aria-label="Room activity in the past seven days">
+    <h2 className="text-[16px] font-semibold" style={{ color: "var(--app-text)" }}>Room activity · past 7 days</h2>
+    <div className="mt-4 grid grid-cols-7 gap-2">{days.map((day) => <div key={day.day} className="flex flex-col items-center justify-end gap-2" title={`${day.day}: ${formatDuration(day.seconds)} across ${day.sessions} focus sessions`}>
+      <span className="text-[10px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>{formatDuration(day.seconds)}</span>
+      <div className="flex h-20 w-full items-end rounded-sm" style={{ background: "var(--app-surface-soft)" }}><div className="w-full rounded-sm" style={{ height: `${Math.max(day.seconds ? 8 : 0, (day.seconds / max) * 100)}%`, background: roomColour(colour) }} /></div>
+      <span className="text-[11px]" style={{ color: "var(--app-text-faint)" }}>{new Date(`${day.day}T12:00:00Z`).toLocaleDateString("en-AU", { weekday: "short" })}</span>
+    </div>)}</div>
+    <p className="mt-3 text-[11px]" style={{ color: "var(--app-text-faint)" }}>Completed focus sessions, grouped by UTC day.</p>
+  </section>;
 }
 
 /** A 1s clock, only while someone's timer is actually running. */

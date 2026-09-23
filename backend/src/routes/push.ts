@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { db, schema } from "../db";
-import { isPaidTier, isValidTier } from "../lib/tiers";
+import { effectiveTier, isPaidTier } from "../lib/tiers";
 import type { Env, Variables } from "../types";
 
 const push = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -29,7 +29,7 @@ async function access(c: AppContext) {
   const { userId } = c.get("session");
   const database = db(c.env.DB);
   const [user] = await database
-    .select({ email: schema.users.email, tier: schema.users.tier })
+    .select({ email: schema.users.email, tier: schema.users.tier, developerAccess: schema.users.developerAccess })
     .from(schema.users)
     .where(eq(schema.users.id, userId))
     .limit(1);
@@ -37,7 +37,7 @@ async function access(c: AppContext) {
   if (user.email.endsWith("@arcadia.local")) {
     return { database, userId, response: c.json({ error: "Guest accounts cannot use check-ins.", code: "guest_cannot_use" }, 403) };
   }
-  const tier = isValidTier(user.tier) ? user.tier : "free";
+  const tier = effectiveTier(user.tier, user.developerAccess);
   if (!isPaidTier(tier)) {
     return { database, userId, response: c.json({ error: "Check-ins are available on Pro and Max.", code: "upgrade_required" }, 402) };
   }

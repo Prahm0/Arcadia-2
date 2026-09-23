@@ -2,6 +2,7 @@ import { schema } from "../db";
 import { defaultWeeklyMinutes } from "./scheduler";
 import type { Checkout, SessionPlan } from "./session-plan";
 import { iso } from "./time";
+import { effectiveTier } from "./tiers";
 
 type TaskRow = typeof schema.tasks.$inferSelect;
 type EventRow = typeof schema.events.$inferSelect;
@@ -125,10 +126,8 @@ export function serialiseUser(user: UserRow, profile: ProfileRow | null) {
     avatarColour: profile?.avatarColour ?? null,
     timezone: profile?.timezone ?? "Australia/Brisbane",
     onboardingComplete: profile?.onboardingComplete ?? false,
-    tier: (user.tier === "pro" || user.tier === "max" ? user.tier : "free") as
-      | "free"
-      | "pro"
-      | "max",
+    tier: effectiveTier(user.tier, user.developerAccess),
+    developerAccess: user.developerAccess,
     hasSubscription: Boolean(user.stripeCustomerId),
     subscriptionStatus: user.subscriptionStatus ?? null,
     subscriptionCurrentPeriodEnd: user.subscriptionCurrentPeriodEnd

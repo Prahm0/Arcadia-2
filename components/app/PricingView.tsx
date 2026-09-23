@@ -42,6 +42,7 @@ const TIERS: Tier[] = [
       "Arcad, 2 messages / day",
       "1 flashcard deck",
       "Weekly review, text summary",
+      "Study rooms for up to 12, with chat and room colours",
     ],
   },
   {
@@ -57,7 +58,8 @@ const TIERS: Tier[] = [
       "Arcad, 20 messages a day, 10x the free plan",
       "Google / Apple / Canvas calendar sync",
       "Upload PDFs & notes, Arcad answers from them",
-      "Study rooms (unlimited) with shared timers",
+      "Study rooms for up to 30, with shared timers",
+      "Room icon and shared 7-day focus goal",
       "Full analytics, subject breakdown, streaks, trends",
       "Custom focus presets",
       "Up to 3 flashcard decks",
@@ -77,6 +79,7 @@ const TIERS: Tier[] = [
       "Arcad, 100 messages a day, 50x the free plan",
       "Unlimited flashcard decks",
       "New study tools land here first",
+      "Study rooms for up to 50",
     ],
   },
 ];

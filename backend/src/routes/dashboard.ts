@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../db";
-import { rebuildSchedule, weeklyBudget, type WeeklyBudget } from "../lib/scheduler";
+import { rebuildSchedule, subjectKey, uniqueSubjects, weeklyBudget, type WeeklyBudget } from "../lib/scheduler";
 import {
   serialiseCommitment,
   serialiseEvent,
@@ -44,7 +44,7 @@ dashboard.get("/", async (c) => {
     await rebuildSchedule(database, userId, start, end);
   }
 
-  const [subjectRows, taskRows, commitmentRows, eventRows, companionRow, googleRow, feedRows] =
+  const [subjectRows, taskRows, commitmentRows, eventRows, companionRow, googleRow, feedRows, topicRows, assessmentRows] =
     await Promise.all([
       database.select().from(schema.subjects).where(eq(schema.subjects.userId, userId)),
       database.select().from(schema.tasks).where(eq(schema.tasks.userId, userId)),
@@ -73,6 +73,14 @@ dashboard.get("/", async (c) => {
         .select()
         .from(schema.calendarFeeds)
         .where(eq(schema.calendarFeeds.userId, userId)),
+      database
+        .select({ subjectId: schema.subjectTopics.subjectId })
+        .from(schema.subjectTopics)
+        .where(eq(schema.subjectTopics.userId, userId)),
+      database
+        .select({ subjectId: schema.subjectAssessments.subjectId })
+        .from(schema.subjectAssessments)
+        .where(eq(schema.subjectAssessments.userId, userId)),
     ]);
 
   const pending = taskRows
@@ -131,11 +139,12 @@ dashboard.get("/", async (c) => {
     range: { start: iso(start), end: iso(end) },
     events,
     focusTasks: focus,
-    briefing: buildBriefing(
+    notices: buildNotices({
       events,
-      focus.length,
-      profile ? weeklyBudget(profile, subjectRows) : null,
-    ),
+      subjects: subjectRows,
+      withSyllabus: new Set([...topicRows, ...assessmentRows].map((row) => row.subjectId)),
+      budget: profile ? weeklyBudget(profile, subjectRows) : null,
+    }),
     analytics,
     companion: companionRow[0]
       ? {
@@ -187,37 +196,81 @@ dashboard.get("/", async (c) => {
   });
 });
 
-function buildBriefing(
-  events: ReturnType<typeof serialiseEvent>[],
-  focusCount: number,
-  budget: WeeklyBudget | null,
-): string | null {
-  const now = Date.now();
-  const upcoming = events.filter(
-    (event) => event.category === "study" && Date.parse(event.startAt) >= now,
-  );
-  // The scheduler shrinks every subject evenly when targets outgrow the
-  // daily cap; say so rather than leaving the student to wonder why.
-  const overBudget =
-    budget && budget.targetMinutes > budget.capacityMinutes
-      ? ` Your subject targets add up to ${formatHours(budget.targetMinutes)} a week but your daily limit fits ${formatHours(budget.capacityMinutes)}, so each subject gets a little less.`
-      : "";
-  if (upcoming.length === 0) {
-    return focusCount > 0
-      ? "Nothing scheduled yet. Add a due date and Arcadia will find the time."
-      : overBudget.trim() || null;
-  }
-  const minutes = upcoming.reduce(
-    (sum, event) => sum + Math.round((Date.parse(event.endAt) - Date.parse(event.startAt)) / 60000),
-    0,
-  );
-  const hours = Math.round((minutes / 60) * 10) / 10;
-  return `${upcoming.length} study block${upcoming.length === 1 ? "" : "s"} ahead, about ${hours}h in total.${overBudget}`;
+export interface Notice {
+  /** Changes when what the notice says changes, so a snoozed one comes back if it's different. */
+  id: string;
+  kind: "budget" | "syllabus";
+  title: string;
+  body: string;
+  action: { label: string; href: string };
 }
 
+/**
+ * Things worth interrupting the student for: only what they can act on,
+ * and nothing that's just a recap of the week.
+ */
+function buildNotices({
+  events,
+  subjects,
+  withSyllabus,
+  budget,
+}: {
+  events: ReturnType<typeof serialiseEvent>[];
+  subjects: Array<typeof schema.subjects.$inferSelect>;
+  withSyllabus: Set<string>;
+  budget: WeeklyBudget | null;
+}): Notice[] {
+  const notices: Notice[] = [];
+
+  // The scheduler shrinks every subject evenly when targets outgrow the
+  // daily cap; say so rather than leaving them to wonder why.
+  if (budget && budget.targetMinutes > budget.capacityMinutes) {
+    notices.push({
+      id: `budget:${budget.targetMinutes}:${budget.capacityMinutes}`,
+      kind: "budget",
+      title: "Your targets don't fit in a week",
+      body: `Your subjects ask for ${formatHours(budget.targetMinutes)} a week but your daily limit fits ${formatHours(budget.capacityMinutes)}, so each subject gets about ${Math.round((budget.capacityMinutes / budget.targetMinutes) * 20) * 5}% of its target.`,
+      action: { label: "Adjust targets", href: "/app/profile#subjects" },
+    });
+  }
+
+  // Subjects with study coming up this week that Arcad knows nothing about.
+  const now = Date.now();
+  const studying = new Set(
+    events
+      .filter((event) => event.category === "study" && Date.parse(event.endAt) > now)
+      .map((event) => subjectKey(event.subject)),
+  );
+  const bare = uniqueSubjects(subjects).filter(
+    (subject) => studying.has(subjectKey(subject.name)) && !withSyllabus.has(subject.id),
+  );
+  if (bare.length > 0) {
+    const names = bare.map((subject) => subject.name);
+    notices.push({
+      id: `syllabus:${bare.map((subject) => subject.id).sort().join(",")}`,
+      kind: "syllabus",
+      title:
+        bare.length === 1
+          ? `Add your ${names[0]} syllabus`
+          : bare.length === 2
+            ? `Add your ${names[0]} and ${names[1]} syllabuses`
+            : `${bare.length} subjects have no syllabus yet`,
+      body: "Arcad plans each session around what you're covering in class. Without it, sessions stay general.",
+      action: {
+        label: "Add syllabus",
+        href: bare.length === 1 ? `/app/profile/subjects/${encodeURIComponent(bare[0].id)}` : "/app/profile#subjects",
+      },
+    });
+  }
+
+  return notices;
+}
+
+/** "14h", "13h 30m". */
 function formatHours(minutes: number): string {
-  const hours = Math.round((minutes / 60) * 2) / 2;
-  return `${hours}h`;
+  const rounded = Math.round(minutes / 30) * 30;
+  const hours = Math.floor(rounded / 60);
+  return rounded % 60 ? `${hours}h 30m` : `${hours}h`;
 }
 
 export default dashboard;

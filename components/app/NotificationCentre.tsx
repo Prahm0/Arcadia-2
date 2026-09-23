@@ -1,15 +1,22 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import type { Notice } from "@/lib/api/types";
+import { NoticeIcon, useNotices } from "./Notices";
 
 interface NotificationCentreProps {
-  briefing?: string | null;
+  notices: Notice[];
 }
 
-export default function NotificationCentre({ briefing }: NotificationCentreProps) {
+export default function NotificationCentre({ notices }: NotificationCentreProps) {
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
-  const [unread, setUnread] = useState(Boolean(briefing));
+  // Unread while anything up top is still waiting on them.
+  const { visible } = useNotices(notices);
+  const [seen, setSeen] = useState(false);
+  const unread = visible.length > 0 && !seen;
+  const setUnread = (value: boolean) => setSeen(!value);
   const bellRef = useRef<HTMLButtonElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -150,28 +157,31 @@ export default function NotificationCentre({ briefing }: NotificationCentreProps
             <div className="h-px" style={{ background: "var(--app-border)" }} />
 
             <div className="flex-1 overflow-y-auto px-6 py-5">
-              {briefing ? (
-                <>
-                  <p className="type-mono-label mb-3" style={{ color: "var(--app-text-faint)" }}>
-                    Today
-                  </p>
-                  <article className="flex gap-3 py-2">
-                    <span
-                      aria-hidden="true"
-                      className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
-                      style={{ background: "var(--app-accent)" }}
-                    />
-                    <div>
-                      <p className="text-[14px] font-semibold">Your daily briefing</p>
-                      <p
-                        className="mt-1.5 text-[13px] leading-relaxed"
-                        style={{ color: "var(--app-text-muted)" }}
+              {notices.length ? (
+                <ul className="flex flex-col gap-1">
+                  {notices.map((notice) => (
+                    <li key={notice.id}>
+                      <Link
+                        href={notice.action.href}
+                        onClick={closeCentre}
+                        className="-mx-3 flex gap-3 rounded-lg px-3 py-3 ui-hover"
                       >
-                        {briefing}
-                      </p>
-                    </div>
-                  </article>
-                </>
+                        <NoticeIcon kind={notice.kind} />
+                        <span className="min-w-0">
+                          <span className="block text-[14px] font-semibold" style={{ color: "var(--app-text)" }}>
+                            {notice.title}
+                          </span>
+                          <span className="mt-1 block text-[13px] leading-relaxed" style={{ color: "var(--app-text-muted)" }}>
+                            {notice.body}
+                          </span>
+                          <span className="mt-2 block text-[13px] font-medium" style={{ color: "var(--app-accent-strong)" }}>
+                            {notice.action.label}
+                          </span>
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
               ) : (
                 <div className="grid h-full min-h-[280px] place-items-center text-center">
                   <div>

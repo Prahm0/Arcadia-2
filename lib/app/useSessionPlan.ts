@@ -5,6 +5,9 @@ import { api } from "@/lib/api/client";
 import type { DashboardResponse, PlannerEvent } from "@/lib/api/types";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 
+/** Matches PLAN_VERSION in backend/src/lib/session-plan.ts. */
+const PLAN_VERSION = 2;
+
 /** Swap one event in the dashboard cache for the server's copy. */
 export function useReplaceEvent() {
   const { patch } = useDashboardData();
@@ -30,7 +33,10 @@ export function useSessionPlan(event: PlannerEvent | null | undefined) {
   const [failedFor, setFailedFor] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const needsPlan = Boolean(event && event.category === "study" && !event.plan && !event.checkout);
+  // Plans from before v2 could name topics Arcad made up; they're redone
+  // unless the session has already started.
+  const stale = Boolean(event?.plan && (event.plan.v ?? 1) < PLAN_VERSION && !event.startedAt);
+  const needsPlan = Boolean(event && event.category === "study" && (!event.plan || stale) && !event.checkout);
   const eventId = event?.id;
 
   useEffect(() => {
@@ -56,7 +62,7 @@ export function useSessionPlan(event: PlannerEvent | null | undefined) {
   }, [eventId, replaceEvent]);
 
   return {
-    plan: event?.plan ?? null,
+    plan: stale ? null : (event?.plan ?? null),
     loading: needsPlan && failedFor !== eventId,
     failed: needsPlan && failedFor === eventId,
     refreshing,

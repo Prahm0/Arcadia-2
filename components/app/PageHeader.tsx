@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { HeaderNotices } from "./Notices";
 import PageTour from "./tour/PageTour";
 import type { TourId } from "./tour/tours";
 
@@ -21,9 +22,10 @@ interface PageHeaderProps {
 export default function PageHeader({ eyebrow, title, meta, action, tour }: PageHeaderProps) {
   return (
     <header
-      className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b px-6 py-5 sm:px-10"
+      className="border-b px-6 py-5 sm:px-10"
       style={{ borderColor: "var(--app-border)", background: "var(--app-surface)" }}
     >
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
       <div className="min-w-0">
         {eyebrow ? (
           <p className="text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>
@@ -48,6 +50,8 @@ export default function PageHeader({ eyebrow, title, meta, action, tour }: PageH
           {action}
         </div>
       ) : null}
+      </div>
+      <HeaderNotices />
     </header>
   );
 }

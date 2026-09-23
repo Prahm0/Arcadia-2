@@ -7,6 +7,7 @@ import { formatClock } from "@/lib/api/time";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { studyTitle, subjectColour } from "@/lib/app/subjectColour";
 import { useSessionPlan } from "@/lib/app/useSessionPlan";
+import SyllabusNudge from "./SyllabusNudge";
 
 /**
  * The top of Today: the study session that's on now (or next), set up by
@@ -76,6 +77,7 @@ export default function StartNowCard() {
                   </li>
                 ))}
               </ol>
+              <SyllabusNudge plan={plan} />
             </>
           ) : (
             <div className="mt-2" role="status">

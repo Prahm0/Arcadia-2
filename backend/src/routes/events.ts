@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema, type Database } from "../db";
 import { serialiseEvent } from "../lib/serialise";
-import { planSession, type Checkout } from "../lib/session-plan";
+import { planIsCurrent, planSession, type Checkout, type SessionPlan } from "../lib/session-plan";
 import { isPaidTier, isValidTier } from "../lib/tiers";
 import { MINUTE } from "../lib/time";
 import type { Env, Variables } from "../types";
@@ -196,7 +196,10 @@ events.post("/:id/plan", async (c) => {
   if (event.category !== "study") return c.json({ error: "Only study blocks get a plan." }, 422);
   if (event.checkout) return c.json({ event: serialiseEvent(event) });
 
-  if (!event.plan || body?.refresh) {
+  // Plans from an older planner may name topics it made up; redo them
+  // unless the session's already under way.
+  const stale = Boolean(event.plan && !event.startedAt && !planIsCurrent(JSON.parse(event.plan) as SessionPlan));
+  if (!event.plan || stale || body?.refresh) {
     const plan = await planSession(c.env, database, userId, event);
     await database.update(schema.events).set({ plan: JSON.stringify(plan) }).where(eq(schema.events.id, event.id));
   }

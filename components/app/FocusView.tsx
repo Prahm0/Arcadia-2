@@ -15,6 +15,7 @@ import CheckoutSheet from "./CheckoutSheet";
 import EventDetailSheet from "./EventDetailSheet";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
+import SyllabusNudge from "./SyllabusNudge";
 
 const BUILT_IN_PRESETS = [
   { label: "Deep focus", focus: 50 * 60, break: 10 * 60 },
@@ -651,6 +652,7 @@ function FocusViewInner() {
                   {planLoading ? "Arcad's setting this one up…" : "No plan yet. Start anyway, and check out at the end."}
                 </p>
               )}
+              {plan && !linkedEvent.checkout ? <SyllabusNudge plan={plan} /> : null}
               {linkedEvent.checkout ? (
                 <p className="mt-4 text-[13px]" style={{ color: "var(--app-success)" }}>
                   Done and checked out.

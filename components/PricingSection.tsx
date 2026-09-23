@@ -44,7 +44,7 @@ const TIERS: Tier[] = [
   {
     key: "pro",
     name: "Pro",
-    headline: "Arcad turned up. Calendar synced. Notes indexed.",
+    headline: "Arcad becomes your study partner.",
     pricing: { weekly: 4.95, monthly: 12.82, yearly: 49.4 },
     features: [
       "Everything in Free",
@@ -61,7 +61,7 @@ const TIERS: Tier[] = [
   {
     key: "max",
     name: "Max",
-    headline: "Voice tutor. Exam prep. Real humans when you're stuck.",
+    headline: "Arcad becomes your exam tutor.",
     pricing: { weekly: 9.95, monthly: 34.54, yearly: 205.4 },
     features: [
       "Everything in Pro",

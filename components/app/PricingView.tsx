@@ -33,7 +33,7 @@ const TIERS: Tier[] = [
   {
     key: "free",
     name: "Free",
-    headline: "The scaffold. Get organised, on your own.",
+    headline: "Get organised, on your own.",
     pricing: null,
     features: [
       "Auto-scheduled daily plan",
@@ -47,7 +47,7 @@ const TIERS: Tier[] = [
   {
     key: "pro",
     name: "Pro",
-    headline: "Arcad unlocked. Calendar synced. Notes indexed.",
+    headline: "Arcad becomes your study partner.",
     // Prices target a per-week display of $4.95 / $2.95 / $0.95. The
     // monthly figure is 2.95 × (365.25 ÷ 12 ÷ 7) ≈ 12.82; the yearly
     // is 0.95 × 52 = 49.40.
@@ -68,7 +68,7 @@ const TIERS: Tier[] = [
   {
     key: "max",
     name: "Max",
-    headline: "Voice tutor. Exam prep. Real humans when you're stuck.",
+    headline: "Arcad becomes your exam tutor.",
     // Per-week display of $9.95 / $7.95 / $3.95. Monthly = 7.95 ×
     // 4.345 ≈ 34.54; yearly = 3.95 × 52 = 205.40.
     pricing: { weekly: 9.95, monthly: 34.54, yearly: 205.4 },

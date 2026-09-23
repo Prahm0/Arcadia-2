@@ -48,7 +48,7 @@ const TIERS: Tier[] = [
     pricing: { weekly: 4.95, monthly: 12.82, yearly: 49.4 },
     features: [
       "Everything in Free",
-      "20 Arcad messages / day",
+      "20 Arcad messages a day, 10x the free plan",
       "Google · Apple · Canvas calendar sync",
       "Upload PDFs & notes, Arcad answers from them",
       "Unlimited study rooms with shared timers",
@@ -65,7 +65,7 @@ const TIERS: Tier[] = [
     pricing: { weekly: 9.95, monthly: 34.54, yearly: 205.4 },
     features: [
       "Everything in Pro",
-      "100 Arcad messages / day",
+      "100 Arcad messages a day, 50x the free plan",
       "Voice Arcad, hands-free while you study",
       "Tutor mode, step-by-step walkthroughs",
       "1:1 human tutor bookings (coming soon)",

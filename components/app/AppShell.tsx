@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useState, type ReactNode } from "react";
 import { api, saveCsrf } from "@/lib/api/client";
-import type { AuthUser } from "@/lib/api/types";
+import type { AuthUser, Notice } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { useStreak } from "@/lib/app/useStreak";
 import { useSessionReminders } from "@/lib/app/useSessionReminders";
@@ -26,7 +26,7 @@ import { isGuestEmail } from "@/lib/auth/guest";
 
 interface AppShellProps {
   user: AuthUser | null;
-  briefing?: string | null;
+  notices?: Notice[];
   children: ReactNode;
 }
 
@@ -105,7 +105,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-export default function AppShell({ user, briefing, children }: AppShellProps) {
+export default function AppShell({ user, notices = [], children }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const streakSummary = useStreak();
@@ -175,7 +175,7 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
           </div>
         ) : null}
       </div>
-      <NotificationCentre briefing={briefing} />
+      <NotificationCentre notices={notices} />
 
       <div className="flex">
         {/* Sidebar, desktop only. Mobile uses MobileBottomNav + MobileMoreSheet. */}
@@ -428,22 +428,6 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
         <main
           className="flex-1 min-w-0 pb-[calc(env(safe-area-inset-bottom,0)+72px)] lg:pb-0"
         >
-          {/* Arcad's own voice, so the strip carries Arcad's purple rather
-              than the terracotta the rest of the UI uses. */}
-          {briefing ? (
-            <div
-              className="border-b px-6 py-2.5 text-[13px] hidden lg:flex items-center gap-3"
-              style={{ borderColor: "var(--app-border)", background: "var(--app-arcad-soft)", color: "var(--app-text-soft)" }}
-            >
-              <span
-                aria-hidden="true"
-                className="inline-block h-1.5 w-1.5 rounded-full"
-                style={{ background: "var(--app-arcad)" }}
-              />
-              <span className="font-medium" style={{ color: "var(--app-arcad-strong)" }}>Arcad</span>
-              <span>{briefing}</span>
-            </div>
-          ) : null}
           {isGuestEmail(user?.email) ? (
             <GuestBanner />
           ) : null}

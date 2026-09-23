@@ -61,11 +61,11 @@ function Gate({ children }: { children: ReactNode }) {
     );
   }
 
-  const briefing = state.data.user.onboardingComplete ? state.data.briefing : null;
+  const notices = state.data.user.onboardingComplete ? (state.data.notices ?? []) : [];
 
   return (
     <DashboardDataProvider data={state.data} reload={reload} patch={patch}>
-      <AppShell user={state.data.user} briefing={briefing}>
+      <AppShell user={state.data.user} notices={notices}>
         {children}
       </AppShell>
     </DashboardDataProvider>

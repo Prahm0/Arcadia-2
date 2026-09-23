@@ -13,8 +13,15 @@ export interface PlanStep {
   text: string;
 }
 
+/**
+ * Bumped when plans made by an older planner shouldn't be shown any more.
+ * v2: plans no longer invent topics for subjects with no syllabus.
+ */
+export const PLAN_VERSION = 2;
+
 /** What Arcad sets a study block up as. */
 export interface SessionPlan {
+  v?: number;
   /** The one line that says what this session is: "3.2 Limiting reagents". */
   topic: string;
   /** Why this, now: "Prac report due Mon 2 Nov". */
@@ -23,7 +30,17 @@ export interface SessionPlan {
   steps: PlanStep[];
   /** "arcad" when the model wrote it; "fallback" when built from the data alone. */
   by: "arcad" | "fallback";
+  /**
+   * Set when Arcad had nothing about the course to go on (no syllabus,
+   * assessments, notes or deadline), so the UI can ask for the syllabus.
+   */
+  needsSyllabus?: { subjectId: string | null; subject: string };
   createdAt: string;
+}
+
+/** Whether a plan is current, or was made by an older planner and should be redone. */
+export function planIsCurrent(plan: Pick<SessionPlan, "v"> | null | undefined): boolean {
+  return (plan?.v ?? 1) >= PLAN_VERSION;
 }
 
 /** How a session went, written at the end. */
@@ -162,10 +179,47 @@ async function gatherInputs(database: Database, userId: string, event: EventRow)
   };
 }
 
-/** A plan built from the data alone, for when Arcad can't be reached. */
+/**
+ * Whether there's anything real to plan from. Without it Arcad would have to
+ * make up a topic ("The Great Gatsby, chapter 3"), so it doesn't try.
+ */
+function hasCourseDetail(inputs: PlanInputs): boolean {
+  const { task, brief, subject, lastCheckouts } = inputs;
+  return Boolean(
+    task ||
+      brief?.topic ||
+      brief?.previousTopic ||
+      brief?.upcomingAssessments.length ||
+      brief?.resources.length ||
+      subject?.notes.trim() ||
+      lastCheckouts.some((past) => past.checkout.leftover.trim()),
+  );
+}
+
+/** A plan built from the data alone, for when Arcad can't be reached or has nothing to go on. */
 export function fallbackPlan(inputs: PlanInputs): SessionPlan {
   const { event, minutes, brief, task, lastCheckouts, timeZone } = inputs;
   const subjectName = event.subject ?? "Study";
+  if (!hasCourseDetail(inputs)) {
+    // Nothing to name a topic from: say what the block is and leave the
+    // choosing to them, rather than guess.
+    return {
+      v: PLAN_VERSION,
+      // The subject is already on the card, so the topic doesn't repeat it.
+      topic: "Open study",
+      why: "No syllabus yet, so you choose the focus",
+      steps: fitSteps(
+        [
+          { minutes: Math.round(minutes * 0.25), text: "Look back over this week's class notes" },
+          { minutes: Math.round(minutes * 0.75), text: "Work on whatever felt least solid" },
+        ],
+        minutes,
+      ),
+      by: "fallback",
+      needsSyllabus: { subjectId: brief?.subjectId ?? inputs.subject?.id ?? null, subject: subjectName },
+      createdAt: new Date().toISOString(),
+    };
+  }
   const topicTitle = task?.title ?? brief?.topic?.title ?? `${subjectName} revision`;
   const assessment = brief?.upcomingAssessments[0];
 
@@ -197,6 +251,7 @@ export function fallbackPlan(inputs: PlanInputs): SessionPlan {
   ];
 
   return {
+    v: PLAN_VERSION,
     topic: clip(topicTitle, 60),
     why: clip(why, 70),
     steps: fitSteps(steps, minutes),
@@ -247,7 +302,7 @@ function prompt(inputs: PlanInputs): string {
  */
 export async function planSession(env: Env, database: Database, userId: string, event: EventRow): Promise<SessionPlan> {
   const inputs = await gatherInputs(database, userId, event);
-  if (!aiConfigured(env)) return fallbackPlan(inputs);
+  if (!aiConfigured(env) || !hasCourseDetail(inputs)) return fallbackPlan(inputs);
 
   try {
     const reply = await completeJson<{ topic: string; why: string; steps: PlanStep[] }>(
@@ -259,10 +314,10 @@ export async function planSession(env: Env, database: Database, userId: string, 
             ARCAD_VOICE,
             "",
             "Set up one study session. Reply with:",
-            "- topic: what this session is on, under 60 characters. Name the real syllabus topic, textbook section or task (\"3.2 Limiting reagents\"), never just the subject.",
+            "- topic: what this session is on, under 60 characters. Use the topic, section, assessment or task named in the details (\"3.2 Limiting reagents\").",
             "- why: why this now, under 70 characters: what's assessed or due and when, or that it's this week's class topic.",
             `- steps: one to three steps whose minutes add up to exactly ${inputs.minutes}. Each is one short line of something they do: a section to work through, questions to attempt, a past paper, a draft to write themselves. If they left something unfinished last time, start with it. If the last session felt rough, go back over that before moving on.`,
-            "Use only what's in the details below. Don't invent chapters, question numbers or assessments.",
+            "Use only what's in the details below. Never name a book, text, chapter, section, question number or assessment that isn't written there. If the details only give you the subject, keep the topic general (\"This week's Chemistry\").",
           ].join("\n"),
         },
         { role: "user", content: prompt(inputs) },
@@ -272,6 +327,7 @@ export async function planSession(env: Env, database: Database, userId: string, 
     );
     if (!reply || !clip(reply.topic, 60)) return fallbackPlan(inputs);
     return {
+      v: PLAN_VERSION,
       topic: clip(reply.topic, 60),
       why: clip(reply.why, 70),
       steps: fitSteps(reply.steps ?? [], inputs.minutes),

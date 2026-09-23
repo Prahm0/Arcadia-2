@@ -60,6 +60,10 @@ export interface SessionPlan {
   steps: Array<{ minutes: number; text: string }>;
   /** "fallback" when built without Arcad (offline or unavailable). */
   by: "arcad" | "fallback";
+  /** Planner version; older plans are redone. */
+  v?: number;
+  /** Set when there was nothing about the course to plan from. */
+  needsSyllabus?: { subjectId: string | null; subject: string };
   createdAt: string;
 }
 
@@ -113,7 +117,8 @@ export interface DashboardResponse {
   range: { start: string; end: string };
   events: PlannerEvent[];
   focusTasks: PlannerTask[];
-  briefing: string | null;
+  /** Things worth interrupting for, each with one action. */
+  notices: Notice[];
   analytics: {
     currentStreak?: number;
     longestStreak?: number;
@@ -153,4 +158,13 @@ export interface CalendarFeed {
   color: string;
   lastSyncAt: string | null;
   lastSyncError: string | null;
+}
+
+export interface Notice {
+  /** Changes when the notice's content does, so a snoozed one returns if it's different. */
+  id: string;
+  kind: "budget" | "syllabus";
+  title: string;
+  body: string;
+  action: { label: string; href: string };
 }

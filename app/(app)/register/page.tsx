@@ -9,7 +9,6 @@ import PrimaryButton from "@/components/app/PrimaryButton";
 import SocialAuthButtons from "@/components/app/SocialAuthButtons";
 import { api } from "@/lib/api/client";
 import { analytics } from "@/lib/analytics/events";
-import { continueAsGuest } from "@/lib/auth/guest";
 
 interface RegisterResponse {
   message: string;
@@ -56,7 +55,6 @@ function RegisterInner({
   );
   const [verifying, setVerifying] = useState(Boolean(initialToken));
   const [verifyFailed, setVerifyFailed] = useState(false);
-  const [guestLoading, setGuestLoading] = useState(false);
   const signupStarted = useRef(false);
 
   useEffect(() => {
@@ -96,19 +94,6 @@ function RegisterInner({
       cancelled = true;
     };
   }, [initialToken, router]);
-
-  async function onGuest() {
-    setGuestLoading(true);
-    setError(null);
-    try {
-      await continueAsGuest();
-      router.push("/app");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
-    } finally {
-      setGuestLoading(false);
-    }
-  }
 
   // Local-dev fallback: when RESEND_API_KEY isn't set the backend returns the
   // token directly in the register response so the developer can proceed
@@ -274,30 +259,6 @@ function RegisterInner({
           <PrimaryButton type="submit" loading={loading}>
             Create account
           </PrimaryButton>
-          <div
-            className="flex items-center gap-3 text-[11.5px] uppercase tracking-[0.16em]"
-            style={{ color: "var(--app-text-faint)" }}
-          >
-            <span className="h-px flex-1" style={{ background: "var(--app-border)" }} />
-            or
-            <span className="h-px flex-1" style={{ background: "var(--app-border)" }} />
-          </div>
-          <button
-            type="button"
-            onClick={onGuest}
-            disabled={guestLoading || loading}
-            className="ui-pressable w-full rounded-md px-4 py-3 text-[14.5px] disabled:cursor-not-allowed disabled:opacity-60"
-            style={{
-              background: "var(--app-surface)",
-              color: "var(--app-text)",
-              boxShadow: "var(--elev-1)",
-            }}
-          >
-            {guestLoading ? "Setting up a guest account…" : "Continue as guest"}
-          </button>
-          <p className="text-center text-[12px]" style={{ color: "var(--app-text-faint)" }}>
-            Skips sign-up with a throwaway account, nothing saves after you close the tab.
-          </p>
         </form>
       )}
     </AuthShell>

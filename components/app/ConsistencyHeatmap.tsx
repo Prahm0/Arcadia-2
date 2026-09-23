@@ -101,7 +101,7 @@ export default function ConsistencyHeatmap() {
                   return (
                     <div
                       key={`month-${index}`}
-                      className="w-[15px] shrink-0 text-[10px] font-mono"
+                      className="w-[15px] shrink-0 text-[10px] tabular-nums"
                       style={{ color: "var(--app-text-muted)" }}
                     >
                       {label ?? ""}
@@ -112,7 +112,7 @@ export default function ConsistencyHeatmap() {
 
               <div className="mt-1 flex">
                 {/* Weekday rail */}
-                <div className="mr-1.5 flex w-[22px] shrink-0 flex-col justify-between py-0.5 text-[9.5px] font-mono" style={{ color: "var(--app-text-muted)" }}>
+                <div className="mr-1.5 flex w-[22px] shrink-0 flex-col justify-between py-0.5 text-[9.5px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
                   {WEEKDAYS.map((day, i) => (
                     <span key={day} className={i % 2 === 0 ? "" : "opacity-0"}>{day}</span>
                   ))}
@@ -169,7 +169,7 @@ export default function ConsistencyHeatmap() {
               ))}
               More
             </div>
-            <p className="text-[12px] font-mono" style={{ color: "var(--app-text-muted)" }} aria-live="polite">
+            <p className="text-[12px] tabular-nums" style={{ color: "var(--app-text-muted)" }} aria-live="polite">
               {hovered ? `${formatDayLabel(hovered.date)} · ${formatMinutes(hovered.minutes)} · ${hovered.sessions} session${hovered.sessions === 1 ? "" : "s"}` : "Hover a cell for detail"}
             </p>
           </div>

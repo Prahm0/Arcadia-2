@@ -113,7 +113,7 @@ export default function NoticeStack({ notices }: { notices: Notice[] }) {
             <section
               aria-label={notice.title}
               className="flex flex-wrap items-center gap-x-3.5 gap-y-3 rounded-xl px-4 py-3 sm:flex-nowrap"
-              style={{ background: "var(--app-surface-soft)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
+              style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
             >
               <NoticeIcon kind={notice.kind} />
               <div className="min-w-0 flex-1 basis-[200px]">

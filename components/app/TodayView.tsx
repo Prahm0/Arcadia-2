@@ -27,6 +27,7 @@ import StartNowCard from "./StartNowCard";
 import SundayReviewInline from "./SundayReviewInline";
 import { subjectColour } from "@/lib/app/subjectColour";
 import { useStreak } from "@/lib/app/useStreak";
+import { SubjectTag } from "./cards/shared";
 import { playCompletionTick } from "@/lib/app/completion";
 
 const CATEGORY_BAR = CATEGORY_COLOR;
@@ -134,6 +135,7 @@ export default function TodayView() {
   return (
     <>
       <PageHeader
+        notices
         title="Today"
         meta={`${greeting}, ${firstName} · ${formatFriendlyDate(now.toISOString(), timezone)}`}
         tour="today"
@@ -148,7 +150,7 @@ export default function TodayView() {
         }
       />
 
-      <div className="mx-auto grid w-full max-w-[1160px] gap-8 px-6 py-8 sm:px-10 sm:py-10 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="mx-auto grid w-full max-w-[1160px] gap-8 px-6 pb-10 pt-6 sm:px-10 lg:grid-cols-[minmax(0,1fr)_320px]">
         <section className="min-w-0">
           <StartNowCard />
           <SundayReviewInline />
@@ -263,7 +265,7 @@ function TodayCard(props: TodayCardProps) {
                   ? "You're done for today."
                   : `${remainingCount} ${remainingCount === 1 ? "thing" : "things"} to focus on today.`}
                 {remainingCount > 0 && (
-                  <span className="font-mono"> · {formatDurationMinutes(totalMinutes)}</span>
+                  <span className="tabular-nums"> · {formatDurationMinutes(totalMinutes)}</span>
                 )}
                 {completedCount > 0 && (
                   <span className="ml-1" style={{ color: "var(--app-success)" }}>
@@ -310,7 +312,7 @@ function TodayCard(props: TodayCardProps) {
             {laterEvents.map((event) => (
               <li key={event.id} className="flex items-center gap-4 text-[13.5px]">
                 <span
-                  className="font-mono w-[80px] shrink-0"
+                  className="tabular-nums w-[80px] shrink-0"
                   style={{ color: "var(--app-text-muted)" }}
                 >
                   {formatClock(event.startAt, timezone)}
@@ -342,21 +344,16 @@ function FocusRow({
   const minutes = Math.round((Date.parse(event.endAt) - Date.parse(event.startAt)) / 60000);
   const startClock = formatClock(event.startAt, timezone);
   const focusHref = `/app/focus?eventId=${encodeURIComponent(event.id)}`;
-  const colour = subjectColour(subjects, event.subject) ?? CATEGORY_BAR[event.category] ?? "var(--app-accent)";
+  const colour = subjectColour(subjects, event.subject) ?? CATEGORY_BAR[event.category] ?? "";
   // Arcad's topic once it's set up; a deadline's own name; otherwise the
   // subject label above says it all until Arcad sets the session up.
   const title = event.plan?.topic ?? (event.taskId ? event.title : null);
 
   const rowContent = (
     <>
-      <span
-        aria-hidden="true"
-        className="h-8 w-[3px] shrink-0 rounded-full transition-colors duration-200"
-        style={{ background: isDone || isMissed ? "var(--app-border)" : colour }}
-      />
       <span className="min-w-0 flex-1">
-        <span className="block text-[12px]" style={{ color: "var(--app-text-muted)" }}>
-          {event.subject || "Study"}
+        <span className="block" style={{ opacity: isDone || isMissed ? 0.5 : 1 }}>
+          <SubjectTag size="sm" subject={{ name: event.subject || "Study", colour: event.category === "study" ? colour : "" }} />
         </span>
         {title ? (
           <span
@@ -378,10 +375,10 @@ function FocusRow({
         )}
       </span>
       <span className="flex shrink-0 flex-col items-end gap-1">
-        <span className="font-mono text-[13px]" style={{ color: "var(--app-text)" }}>
+        <span className="tabular-nums text-[13px]" style={{ color: "var(--app-text)" }}>
           {formatDurationMinutes(minutes)}
         </span>
-        <span className="text-[11px] font-mono" style={{ color: "var(--app-text-muted)" }}>
+        <span className="text-[11px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
           {startClock}
         </span>
       </span>
@@ -389,7 +386,7 @@ function FocusRow({
         <span
           aria-hidden="true"
           className="ml-2 hidden shrink-0 text-[11px] opacity-0 transition-opacity group-hover:opacity-100 sm:block"
-          style={{ color: "var(--app-accent-strong)" }}
+          style={{ color: "var(--app-text-muted)" }}
         >
           Focus →
         </span>
@@ -477,7 +474,7 @@ function NextDeadlinesCard({ tasks, timezone }: { tasks: any[]; timezone: string
             <p className="text-[14.5px] font-medium tracking-[-0.005em]" style={{ color: "var(--app-text)" }}>
               {task.title}
             </p>
-            <p className="mt-1 text-[12.5px] font-mono" style={{ color: "var(--app-text-muted)" }}>
+            <p className="mt-1 text-[12.5px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
               {task.subject ? `${task.subject} · ` : ""}
               {formatDueSoon(task.dueAt, timezone)} · {formatDurationMinutes(task.remainingMinutes)}
             </p>
@@ -596,7 +593,7 @@ function Stat({ label, value, unit }: { label: string; value: string; unit: stri
   return (
     <div>
       <p className="text-[11px]" style={{ color: "var(--app-text-muted)" }}>{label}</p>
-      <p className="mt-1 text-[22px] font-medium leading-none font-mono" style={{ color: "var(--app-text)" }}>{value}</p>
+      <p className="mt-1 text-[22px] font-medium leading-none tabular-nums" style={{ color: "var(--app-text)" }}>{value}</p>
       <p className="mt-0.5 text-[11px]" style={{ color: "var(--app-text-muted)" }}>{unit}</p>
     </div>
   );

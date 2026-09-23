@@ -440,7 +440,7 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
               label={
                 <>
                   Max daily study{" "}
-                  <span className="ml-2 font-mono" style={{ color: "var(--app-text-muted)" }}>
+                  <span className="ml-2 tabular-nums" style={{ color: "var(--app-text-muted)" }}>
                     {Math.round(maxDaily / 60)} hr {maxDaily % 60 ? `${maxDaily % 60} min` : ""}
                   </span>
                 </>
@@ -557,7 +557,7 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
                         <path d="M5 10h10" strokeLinecap="round" />
                       </StepperButton>
                       <span
-                        className="w-[68px] text-center font-mono text-[14px]"
+                        className="w-[68px] text-center tabular-nums text-[14px]"
                         style={{ color: minutes > 0 ? "var(--app-text)" : "var(--app-text-muted)" }}
                         aria-live="polite"
                       >

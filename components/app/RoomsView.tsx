@@ -72,7 +72,7 @@ export default function RoomsView() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader width={860}
         eyebrow="Study"
         title="Rooms"
         meta={loading ? undefined : `${rooms.length} ${rooms.length === 1 ? "room" : "rooms"}`}
@@ -129,7 +129,7 @@ export default function RoomsView() {
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                 placeholder="ABC234"
-                className="w-full rounded-md px-3 py-2.5 text-[15px] font-mono tracking-widest outline-none"
+                className="w-full rounded-md px-3 py-2.5 text-[15px] tabular-nums tracking-widest outline-none"
                 style={{
                   background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)",
                   color: "var(--app-text)",

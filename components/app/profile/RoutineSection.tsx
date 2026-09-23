@@ -136,7 +136,7 @@ function Range({
         <span className="text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>
           {label}
         </span>
-        <span className="font-mono text-[13px]" style={{ color: "var(--app-text)" }}>
+        <span className="tabular-nums text-[13px]" style={{ color: "var(--app-text)" }}>
           {display}
         </span>
       </span>

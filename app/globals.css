@@ -63,13 +63,14 @@
   --app-text-soft: #35322c;
   --app-text-muted: #5f5a52;
   --app-text-faint: #98928a;
-  /* Landing-page violet, carried into the app so both surfaces feel like one
-     product. Used for small fills, marks, active states — never a page-sized
-     slab. Strong is deeper for text/borders where 4.5:1 on the card matters. */
-  --app-accent: #7c5cff;
-  --app-accent-soft: rgba(124, 92, 255, 0.1);
-  --app-accent-strong: #5f42d6;
-  --app-accent-on: #ffffff;       /* text/icons sitting ON --app-accent */
+  /* Ink, not a brand colour. Primary actions, selection and progress are
+     near-black on the warm paper, the way a notebook reads; colour in the
+     app comes from the student's subjects and events, and violet is kept
+     for Arcad alone so it still means "this is Arcad". */
+  --app-accent: #1f1e1b;
+  --app-accent-soft: rgba(31, 30, 27, 0.06);
+  --app-accent-strong: #45423b;   /* hover on ink fills; 10:1 as text */
+  --app-accent-on: #fbfaf7;       /* text/icons sitting ON --app-accent */
   --app-danger: #b03030;
   --app-success: #4a6b33;         /* sage */
   --app-warning: #8a5a0b;         /* amber, for things that need a decision */
@@ -119,12 +120,10 @@
   --app-text-soft: #d9d3c7;
   --app-text-muted: #a39c8e;
   --app-text-faint: #736c60;
-  --app-accent: #9d87ff;          /* the same violet, lifted off the grey */
-  --app-accent-soft: rgba(157, 135, 255, 0.16);
-  --app-accent-strong: #c6b8ff;
-  /* Light violet on dark: white on it is only 2.9:1. Anything sitting on the
-     accent uses a near-black instead — 8.9:1. */
-  --app-accent-on: #16112a;
+  --app-accent: #f1ede4;          /* paper-white ink on the warm grey */
+  --app-accent-soft: rgba(241, 237, 228, 0.1);
+  --app-accent-strong: #d6d0c4;
+  --app-accent-on: #1c1b19;
   --app-danger: #e8877a;
   --app-success: #a3b884;
   --app-warning: #e3b563;

@@ -231,7 +231,7 @@ export default function SyllabusSection({
                         </span>
                       ) : null}
                     </span>
-                    <span className="shrink-0 font-mono text-[12px]" style={{ color: "var(--app-text-muted)" }}>
+                    <span className="shrink-0 tabular-nums text-[12px]" style={{ color: "var(--app-text-muted)" }}>
                       {formatDateSpan(topic.startsOn, topic.endsOn)}
                     </span>
                   </button>
@@ -260,7 +260,7 @@ export default function SyllabusSection({
                       {[KIND_LABEL[item.kind], item.weight, item.dueLabel || null].filter(Boolean).join(" · ")}
                     </span>
                   </button>
-                  <span className="shrink-0 font-mono text-[12px]" style={{ color: "var(--app-text-muted)" }}>
+                  <span className="shrink-0 tabular-nums text-[12px]" style={{ color: "var(--app-text-muted)" }}>
                     {formatDateSpan(item.dueOn, null)}
                   </span>
                   {item.taskId ? (

@@ -206,7 +206,7 @@ function BeforeEmpty({ label }: { label: string }) {
     <div className="min-w-0">
       <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>{label}</p>
       <div
-        className="mt-1.5 grid h-[64px] w-full place-items-center rounded-sm text-[11px] font-mono"
+        className="mt-1.5 grid h-[64px] w-full place-items-center rounded-sm text-[11px] tabular-nums"
         style={{
           background: "var(--app-surface-soft)",
           border: "1px dashed var(--app-border-strong)",

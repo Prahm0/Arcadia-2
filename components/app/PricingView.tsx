@@ -171,7 +171,7 @@ export default function PricingView() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader width={1080}
         eyebrow="Plans"
         title={
           <>

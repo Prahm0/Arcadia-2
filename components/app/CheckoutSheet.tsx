@@ -151,7 +151,7 @@ function CheckoutForm({ event, initialDone, minutes, onClose, onSaved }: Checkou
       ) : null}
 
       <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
+        <span className="tabular-nums text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
           {minutes} min
         </span>
         <AppButton type="submit" variant="primary" loading={saving}>

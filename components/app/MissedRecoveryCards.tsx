@@ -179,7 +179,7 @@ export default function MissedRecoveryCards() {
                 {state.step === "ask" ? (
                   <p className="mt-1.5 text-[14.5px] leading-snug" style={{ color: "var(--app-text)" }}>
                     <span className="font-medium">{subject}</span> at{" "}
-                    <span className="font-mono">{startClock}–{endClock}</span>, did you get to it?
+                    <span className="tabular-nums">{startClock}–{endClock}</span>, did you get to it?
                   </p>
                 ) : state.step === "why" ? (
                   <p className="mt-1.5 text-[14.5px] leading-snug" style={{ color: "var(--app-text)" }}>

@@ -139,7 +139,7 @@ export default function DeckEditor({
                 opacity: last && isBlank(row) ? 0.75 : 1,
               }}
             >
-              <span className="pt-2 text-right font-mono text-[12px] tabular-nums" style={{ color: "var(--app-text-faint)" }}>
+              <span className="pt-2 text-right tabular-nums text-[12px] " style={{ color: "var(--app-text-faint)" }}>
                 {index + 1}
               </span>
               <Field

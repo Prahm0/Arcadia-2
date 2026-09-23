@@ -40,7 +40,7 @@ export default function DeadlinesView() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader width={820}
         eyebrow="Plan"
         title="Deadlines"
         meta={
@@ -157,7 +157,7 @@ function DeadlineRow({
           <p className="text-[15px] font-medium tracking-[-0.005em]" style={{ color: "var(--app-text)" }}>
             {task.title}
           </p>
-          <p className="mt-1 text-[12.5px] font-mono" style={{ color: "var(--app-text-muted)" }}>
+          <p className="mt-1 text-[12.5px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
             {task.subject ? `${task.subject} · ` : ""}
             {formatDueSoon(task.dueAt, timezone)} · {formatDurationMinutes(task.remainingMinutes)}
           </p>

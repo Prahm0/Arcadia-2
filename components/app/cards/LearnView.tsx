@@ -446,7 +446,7 @@ function ChoiceButton({
     >
       <span
         aria-hidden="true"
-        className="mt-px grid h-5 w-5 shrink-0 place-items-center rounded font-mono text-[11px]"
+        className="mt-px grid h-5 w-5 shrink-0 place-items-center rounded tabular-nums text-[11px]"
         style={{ background: "var(--app-surface-soft)", color: "var(--app-text-muted)" }}
       >
         {number}

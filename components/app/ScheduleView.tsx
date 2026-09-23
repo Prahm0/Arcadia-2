@@ -113,7 +113,7 @@ export default function ScheduleView() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader width={"full"}
         eyebrow="Plan"
         title="Schedule"
         meta={`${weekLabel.title} ${weekLabel.subtitle}`}
@@ -162,7 +162,7 @@ export default function ScheduleView() {
           >
             <div className="flex items-center gap-4">
               <span className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>{weekLabel.range}</span>
-              <span className="text-[13px] font-mono" style={{ color: "var(--app-text-muted)" }}>{week[0].label} – {week[6].label}</span>
+              <span className="text-[13px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>{week[0].label} – {week[6].label}</span>
             </div>
             <div className="hidden lg:flex items-center gap-2 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
               <span
@@ -350,7 +350,7 @@ function WeekGrid({
             <span className="font-medium" style={{ color: day.isToday ? "var(--app-accent-strong)" : "var(--app-text)" }}>
               {day.weekday}
             </span>{" "}
-            <span className="font-mono" style={{ color: "var(--app-text-muted)" }}>{day.date}</span>
+            <span className="tabular-nums" style={{ color: "var(--app-text-muted)" }}>{day.date}</span>
           </div>
         ))}
       </div>
@@ -361,7 +361,7 @@ function WeekGrid({
           return (
             <div key={hour} className="pointer-events-none absolute inset-x-0" style={{ top: `${top}%` }}>
               <span
-                className="absolute -top-[8px] left-4 text-[11px] font-mono"
+                className="absolute -top-[8px] left-4 text-[11px] tabular-nums"
                 style={{ color: "var(--app-text-muted)" }}
               >
                 {formatHourLabel(hour)}
@@ -486,7 +486,7 @@ function WeekGrid({
                     ) : null}
                   </div>
                   {showTime ? (
-                    <div className="mt-0.5 text-[10.5px] font-mono opacity-70">
+                    <div className="mt-0.5 text-[10.5px] tabular-nums opacity-70">
                       {formatClock(event.startAt, timezone)}–{formatClock(event.endAt, timezone)}
                     </div>
                   ) : null}

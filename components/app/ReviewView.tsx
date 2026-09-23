@@ -11,7 +11,7 @@ export default function ReviewView() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader width={900}
         eyebrow="Progress"
         title="Weekly review"
         meta={which === "previous" ? "Last week" : "This week"}

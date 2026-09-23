@@ -123,7 +123,7 @@ function CommitmentList({
               <span className="block text-[13px]" style={{ color: "var(--app-text-soft)" }}>
                 {describeRecurrence(item)}
               </span>
-              <span className="block font-mono text-[12px]" style={{ color: "var(--app-text-muted)" }}>
+              <span className="block tabular-nums text-[12px]" style={{ color: "var(--app-text-muted)" }}>
                 {formatTimeRange(item.startTime, item.endTime)}
               </span>
             </span>

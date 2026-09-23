@@ -444,7 +444,7 @@ function FocusViewInner() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader width={960}
         eyebrow="Study"
         title="Focus"
         meta={`${phase === "break" ? "On a break · " : ""}${todayMinutes} min focused today`}
@@ -462,13 +462,13 @@ function FocusViewInner() {
               <p className="flex flex-wrap items-center gap-x-2 text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>
                 <span style={{ color: "var(--app-text-soft)" }}>{linkedEvent.subject ?? "Study"}</span>
                 <span aria-hidden="true">·</span>
-                <span className="font-mono">
+                <span className="tabular-nums">
                   {formatWallClock(linkedEvent.startAt, timezone)}–{formatWallClock(linkedEvent.endAt, timezone)}
                 </span>
                 {linkedMinutes ? (
                   <>
                     <span aria-hidden="true">·</span>
-                    <span className="font-mono">{linkedMinutes} min</span>
+                    <span className="tabular-nums">{linkedMinutes} min</span>
                   </>
                 ) : null}
               </p>
@@ -640,7 +640,7 @@ function FocusViewInner() {
                         }}>
                           {step.text}
                         </span>
-                        <span className="shrink-0 font-mono text-[12px]" style={{ color: "var(--app-text-muted)" }}>
+                        <span className="shrink-0 tabular-nums text-[12px]" style={{ color: "var(--app-text-muted)" }}>
                           {step.minutes}m
                         </span>
                       </label>
@@ -691,7 +691,7 @@ function FocusViewInner() {
                   }}
                 >
                   <span>{p.label}</span>
-                  <span className="font-mono text-[12px]" style={{ color: "var(--app-text-muted)" }}>
+                  <span className="tabular-nums text-[12px]" style={{ color: "var(--app-text-muted)" }}>
                     {p.focus / 60}m · {p.break / 60}m
                   </span>
                 </button>

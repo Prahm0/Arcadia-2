@@ -236,7 +236,7 @@ export function WeeklyStepper({
         <path d="M5 10h10" strokeLinecap="round" />
       </StepButton>
       <span
-        className="w-[72px] text-center font-mono text-[14px]"
+        className="w-[72px] text-center tabular-nums text-[14px]"
         style={{ color: minutes > 0 ? "var(--app-text)" : "var(--app-text-muted)" }}
         aria-live="polite"
       >

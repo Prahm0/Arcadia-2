@@ -32,7 +32,7 @@ export default function CardsView({ startCreating = false }: { startCreating?: b
 
   return (
     <>
-      <PageHeader
+      <PageHeader width={820}
         eyebrow="Resources"
         title="Cards"
         meta={

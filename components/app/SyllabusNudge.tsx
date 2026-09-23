@@ -12,8 +12,7 @@ export default function SyllabusNudge({ plan }: { plan: SessionPlan }) {
   return (
     <Link
       href={href}
-      className="group mt-4 flex items-center gap-3 rounded-md border px-3.5 py-3 transition-colors ui-hover"
-      style={{ borderColor: "var(--app-border)" }}
+      className="group -mx-2 mt-3 flex items-center gap-3 rounded-md px-2 py-2 transition-colors ui-hover"
     >
       <span className="min-w-0 flex-1">
         <span className="block text-[13.5px] font-medium" style={{ color: "var(--app-text)" }}>

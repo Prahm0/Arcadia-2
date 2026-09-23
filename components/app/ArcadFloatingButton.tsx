@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
+import { analytics } from "@/lib/analytics/events";
 import { useStreak } from "@/lib/app/useStreak";
 import { buildContextualStarters, buildGreeting } from "@/lib/app/arcadStarters";
 import { OPEN_ARCAD_EVENT } from "@/lib/app/commands";
@@ -124,6 +125,7 @@ export default function ArcadFloatingButton() {
   async function send(text: string) {
     const clean = text.trim();
     if (!clean || sending) return;
+    analytics.arcadMessageSent();
 
     localMessageId.current += 1;
     const optimistic: SideMessage = {

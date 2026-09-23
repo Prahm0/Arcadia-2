@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
+import { analytics } from "@/lib/analytics/events";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import type { DashboardResponse } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
@@ -144,6 +145,7 @@ export default function ArcadView() {
   async function send(text: string) {
     const clean = text.trim();
     if (!clean) return;
+    analytics.arcadMessageSent();
     setSending(true);
     setError(null);
     const optimistic: Message = {

@@ -263,7 +263,7 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
   }
 
   return (
-    <div className="mx-auto flex min-h-svh w-full max-w-[560px] flex-col px-5 py-10 sm:px-8 sm:py-16">
+    <div className="mx-auto flex min-h-svh w-full max-w-[560px] flex-col px-5 pb-[calc(env(safe-area-inset-bottom,0px)+88px)] pt-10 sm:px-8 sm:pt-16 lg:py-16">
       {/* Progress dots */}
       <ol className="flex items-center gap-2" aria-label="Onboarding progress">
         {STEPS.map((s, i) => {

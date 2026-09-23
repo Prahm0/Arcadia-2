@@ -14,12 +14,13 @@
  */
 
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { hidePwaBanner } from "@/lib/capacitor/platform";
 
 const DISMISS_KEY = "arcadia:pwa-prompt-dismissed-at";
 const DISMISS_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const AUTO_DISMISS_MS = 4_000;
 
 // Chrome's BeforeInstallPromptEvent isn't in lib.dom yet.
 interface BeforeInstallPromptEvent extends Event {
@@ -34,6 +35,15 @@ export default function PwaInstallPrompt() {
   const [mode, setMode] = useState<Mode>("hidden");
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const nativeShell = hidePwaBanner();
+
+  const dismiss = useCallback(() => {
+    setMode("hidden");
+    try {
+      window.localStorage.setItem(DISMISS_KEY, String(Date.now()));
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   // Only show inside the product itself. On the landing the banner
   // competes with the primary Get Started CTA, especially on phones
@@ -96,14 +106,14 @@ export default function PwaInstallPrompt() {
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, [isInApp, nativeShell]);
 
-  function dismiss() {
-    setMode("hidden");
-    try {
-      window.localStorage.setItem(DISMISS_KEY, String(Date.now()));
-    } catch {
-      /* ignore */
-    }
-  }
+  // This is a small reminder, not a modal students must manage. It also
+  // disappears after an iOS install action, which Safari cannot report back
+  // to the page until the new standalone app is opened.
+  useEffect(() => {
+    if (mode === "hidden") return;
+    const timer = window.setTimeout(dismiss, AUTO_DISMISS_MS);
+    return () => window.clearTimeout(timer);
+  }, [dismiss, mode]);
 
   async function install() {
     if (!deferred) return;
@@ -122,7 +132,7 @@ export default function PwaInstallPrompt() {
     <div
       role="dialog"
       aria-label="Install Arcadia on your home screen"
-      className="fixed inset-x-3 bottom-3 z-[60] mx-auto max-w-[440px] rounded-2xl p-4 shadow-2xl"
+      className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom,0px)+68px)] z-[60] mx-auto max-w-[440px] rounded-2xl p-4 shadow-2xl"
       style={{
         background: "var(--app-surface, #17131f)",
         border: "1px solid rgba(255,255,255,0.08)",
@@ -156,8 +166,9 @@ export default function PwaInstallPrompt() {
         <button
           type="button"
           onClick={dismiss}
-          aria-label="Dismiss"
-          className="grid size-7 shrink-0 place-items-center rounded-md text-white/50 hover:text-white/80"
+          aria-label="Close install prompt"
+          title="Close"
+          className="grid size-8 shrink-0 place-items-center rounded-full border border-white/15 text-white/70 hover:border-white/30 hover:text-white"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M6 6l12 12M18 6 6 18" />

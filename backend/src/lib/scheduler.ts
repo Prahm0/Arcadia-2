@@ -480,10 +480,11 @@ export function groundwork(
     event.source === "auto" && event.startAt <= now && event.endAt > now;
   const keep = inputs.existing.filter(
     (event) =>
-      event.pinned ||
-      event.outcome !== "planned" ||
-      !REMATERIALISED.has(event.source) ||
-      underway(event),
+      event.source !== "sleep" &&
+      (event.pinned ||
+        event.outcome !== "planned" ||
+        !REMATERIALISED.has(event.source) ||
+        underway(event)),
   );
   const disposable = inputs.existing.filter((event) => !keep.includes(event));
 
@@ -514,9 +515,13 @@ export function groundwork(
 
   for (const slot of sleepSlots(profile, from, to)) {
     busy.push(slot);
-    if (slot.end <= from || slot.start >= to) continue;
+    // The night before the window still blocks early study time, but its
+    // event starts outside the rows loaded for reconciliation.
+    if (slot.start < from || slot.start >= to) continue;
     fixed.push({
-      id: newId("evt"),
+      // One id per user and local night also prevents overlapping rebuilds
+      // from inserting the same sleep block with different random ids.
+      id: `evt_sleep_${userId}_${localDateKey(slot.start, tz)}`,
       userId,
       title: "Sleep",
       category: "sleep",
@@ -1070,7 +1075,13 @@ export async function rebuildSchedule(
   const survivors = new Set<string>();
   const inserts: EventRow[] = [];
   for (const row of planned) {
-    const match = reusable.get(signature(row))?.pop();
+    const matches = reusable.get(signature(row));
+    const match = row.source === "sleep"
+      ? matches?.find((event) =>
+          event.id === row.id && event.status === "planned" &&
+          event.outcome === "planned" && !event.pinned,
+        )
+      : matches?.pop();
     if (match) survivors.add(match.id);
     else inserts.push(row);
   }
@@ -1082,7 +1093,23 @@ export async function rebuildSchedule(
         .delete(schema.events)
         .where(and(eq(schema.events.userId, userId), inArray(schema.events.id, ids))),
     ),
-    ...inserts.map((row) => database.insert(schema.events).values(row)),
+    ...inserts.map((row) => row.source === "sleep"
+      ? database.insert(schema.events).values(row).onConflictDoUpdate({
+          target: schema.events.id,
+          set: {
+            startAt: row.startAt,
+            endAt: row.endAt,
+            title: "Sleep",
+            category: "sleep",
+            kind: "sleep",
+            status: "planned",
+            outcome: "planned",
+            source: "sleep",
+            editable: false,
+            pinned: false,
+          },
+        })
+      : database.insert(schema.events).values(row)),
   ];
   if (!current && inputs.layoutRow?.wantedKey !== key) {
     writes.push(

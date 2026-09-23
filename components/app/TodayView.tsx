@@ -110,8 +110,15 @@ export default function TodayView() {
   );
 
   const studyBlocks = todaysEvents.filter((event) => event.category === "study");
-  const laterEvents = todaysEvents.filter(
+  const laterCandidates = todaysEvents.filter(
     (event) => event.category !== "study" && Date.parse(event.endAt) >= now.getTime(),
+  );
+  // Old or overlapping schedule rebuilds may have left several sleep rows.
+  // Show the generated nightly target once while leaving other events alone.
+  const sleepEvent = laterCandidates.find((event) => event.category === "sleep" && event.source === "sleep")
+    ?? laterCandidates.find((event) => event.category === "sleep");
+  const laterEvents = laterCandidates.filter(
+    (event) => event.category !== "sleep" || event === sleepEvent,
   );
 
   const remaining = studyBlocks.filter((event) => event.outcome === "planned");

@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useTransform, type MotionValue } from "framer-motion";
+import { motion, useSpring, useTransform, type MotionValue } from "framer-motion";
 import { useRef } from "react";
 import {
   DAY_NAMES,
@@ -72,7 +72,11 @@ export default function ConnectionsSection() {
     .map(([a, b]) => [indexById.get(a)!, indexById.get(b)!] as [number, number]);
   const noise = isMobile ? noisePoints.slice(0, 12) : noisePoints;
 
-  const scrollYProgress = useScrollProgress(ref);
+  // Same treatment as the hero: the section scrubs its animation off scroll
+  // position, which stepped under a mouse wheel. A spring eases the value so
+  // wheel jumps glide instead of snapping.
+  const rawProgress = useScrollProgress(ref);
+  const scrollYProgress = useSpring(rawProgress, { stiffness: 150, damping: 30, mass: 0.3 });
 
   const headlineAOpacity = useTransform(scrollYProgress, [...HEADLINE_A], [0, 1, 1, 0]);
   const headlineAY = useTransform(scrollYProgress, [HEADLINE_A[2], HEADLINE_A[3]], [0, -24]);

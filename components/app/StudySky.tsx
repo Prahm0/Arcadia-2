@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import Link from "next/link";
 import ArcadiaMark from "@/components/ui/ArcadiaMark";
 import { SubjectTag } from "./cards/shared";
@@ -17,7 +17,9 @@ export interface SkyTotals {
 /**
  * The constellation, in a 1000 x 400 box. Positions are percentages of the
  * sky, so the lines (a stretched SVG) and the stars (fixed-size HTML) stay
- * lined up at every width. Stars light in array order, one per session.
+ * lined up at every width. Stars light in array order, one per focus block.
+ * Fifty keeps the sky lively through the existing 50-session milestone
+ * without needing a canvas or a heavy 3D scene.
  */
 const STARS: Array<{ x: number; y: number; from?: number; name?: string; keystone?: boolean }> = [
   { x: 70, y: 340, name: "First light" },
@@ -35,7 +37,40 @@ const STARS: Array<{ x: number; y: number; from?: number; name?: string; keyston
   { x: 862, y: 300 },
   { x: 928, y: 352 },
   { x: 776, y: 146, from: 10 },
-  { x: 858, y: 94, from: 14, name: "Full sky" },
+  { x: 858, y: 94, from: 14, name: "First constellation" },
+  { x: 926, y: 120 },
+  { x: 894, y: 58 },
+  { x: 812, y: 48 },
+  { x: 740, y: 82 },
+  { x: 676, y: 38 },
+  { x: 605, y: 78 },
+  { x: 534, y: 30 },
+  { x: 460, y: 76 },
+  { x: 388, y: 38, name: "Second orbit" },
+  { x: 320, y: 70 },
+  { x: 250, y: 38 },
+  { x: 180, y: 80 },
+  { x: 110, y: 38 },
+  { x: 64, y: 100 },
+  { x: 88, y: 168 },
+  { x: 34, y: 230 },
+  { x: 104, y: 264 },
+  { x: 44, y: 330 },
+  { x: 140, y: 368 },
+  { x: 225, y: 342 },
+  { x: 285, y: 382 },
+  { x: 365, y: 330 },
+  { x: 432, y: 370 },
+  { x: 505, y: 316 },
+  { x: 575, y: 364 },
+  { x: 642, y: 308 },
+  { x: 702, y: 360 },
+  { x: 770, y: 316 },
+  { x: 832, y: 370 },
+  { x: 902, y: 320 },
+  { x: 956, y: 260 },
+  { x: 916, y: 210 },
+  { x: 960, y: 175, name: "Full sky", keystone: true },
 ];
 const EDGES = STARS.flatMap((star, index) => (index === 0 ? [] : [[star.from ?? index - 1, index] as const]));
 
@@ -73,34 +108,61 @@ export default function StudySky({
   streak,
   loading,
   subjectColours,
+  todayStars,
 }: {
   sky: SkyTotals;
   /** The plan streak, the one streak the app counts everywhere. */
   streak: StreakSummary;
   loading: boolean;
   subjectColours: Map<string, string>;
+  /** Completed scheduled focus blocks today from the live dashboard cache. */
+  todayStars: number;
 }) {
   const lit = loading ? 0 : Math.min(STARS.length, sky.sessions);
   const complete = !loading && sky.sessions >= STARS.length;
   const milestones = useMemo(() => buildMilestones(sky, streak), [sky, streak]);
+  const previousSessions = useRef<number | null>(null);
+  const [newestStar, setNewestStar] = useState<number | null>(null);
+  const [celebration, setCelebration] = useState(0);
+  const connectedLines = Math.min(Math.max(0, streak.current - 1), Math.max(0, lit - 1));
+  const recoveredDays = streak.current > 0
+    ? streak.history.filter((day) => day.consistent).slice(-streak.current).filter((day) => day.recovered).length
+    : 0;
+
+  // Only the latest star catches light. Older stars stay calm instead of
+  // replaying their celebration every time this page mounts.
+  useEffect(() => {
+    if (loading) return;
+    const previous = previousSessions.current;
+    previousSessions.current = sky.sessions;
+    if (lit === 0 || (previous !== null && sky.sessions <= previous)) return;
+    setNewestStar(lit - 1);
+    setCelebration((value) => value + 1);
+  }, [loading, lit, sky.sessions]);
 
   return (
     <div className="mx-auto w-full max-w-[1140px] px-6 pb-1 pt-8 sm:px-10">
       <section className="overflow-hidden rounded-xl" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
         <div className="grid lg:grid-cols-[minmax(0,1.55fr)_minmax(360px,0.85fr)]">
-          <SkyPanel sky={sky} lit={lit} loading={loading} complete={complete} next={nextSkyGoal(sky, streak)} />
+          <SkyPanel
+            sky={sky}
+            lit={lit}
+            loading={loading}
+            complete={complete}
+            next={nextSkyGoal(sky, streak)}
+            newestStar={newestStar}
+            celebration={celebration}
+            connectedLines={connectedLines}
+            recoveredDays={recoveredDays}
+          />
 
           <aside className="border-t px-5 py-6 sm:px-8 sm:py-8 lg:border-l lg:border-t-0" style={{ borderColor: "var(--app-border)" }}>
-            <h3 className="text-[15px] font-semibold tracking-[-0.01em]" style={{ color: "var(--app-text)" }}>Sky progress</h3>
+            <TonightSky loading={loading} stars={todayStars} streak={streak.current} next={nextSkyGoal(sky, streak)} recoveredDays={recoveredDays} />
             <div className="mt-4 grid grid-cols-3 gap-2">
               <SkyStat icon={<BarsIcon />} label="Sessions" value={loading ? "–" : String(sky.sessions)} />
               <SkyStat icon={<ClockIcon />} label="Focused" value={loading ? "–" : formatMinutes(sky.minutes)} />
               <SkyStat icon={<FlameIcon />} label="Streak" value={loading ? "–" : `${streak.current}d`} hint={`best ${streak.longest}d`} />
             </div>
-            {!loading && streak.current === 0 && streak.lastPlannedDay?.missReason ? (
-              <p className="mt-2 text-[12px]" style={{ color: "var(--app-text-muted)" }}>Streak reset, {streak.lastPlannedDay.missReason}.</p>
-            ) : null}
-
             <div className="mt-6 border-t pt-6" style={{ borderColor: "var(--app-border)" }}>
               <Milestones milestones={milestones} loading={loading} />
             </div>
@@ -130,6 +192,58 @@ export default function StudySky({
   );
 }
 
+function TonightSky({
+  loading,
+  stars,
+  streak,
+  next,
+  recoveredDays,
+}: {
+  loading: boolean;
+  stars: number;
+  streak: number;
+  next: string;
+  recoveredDays: number;
+}) {
+  return (
+    <div
+      className="rounded-lg px-4 py-4"
+      style={{
+        background: "linear-gradient(135deg, color-mix(in oklab, var(--app-arcad) 18%, var(--app-surface-soft)), var(--app-surface-soft))",
+        boxShadow: "var(--elev-inset)",
+      }}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-[15px] font-semibold tracking-[-0.01em]" style={{ color: "var(--app-text)" }}>Tonight&apos;s sky</h3>
+        <ArcadiaMark size={14} animate="twinkle" className="text-[var(--app-arcad)]" />
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <div>
+          <p className="text-[11.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>Stars today</p>
+          <p className="mt-1 text-[22px] font-semibold leading-none tabular-nums tracking-[-0.03em]" style={{ color: "var(--app-text)" }}>
+            {loading ? "–" : stars}
+          </p>
+        </div>
+        <div>
+          <p className="text-[11.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>Current streak</p>
+          <p className="mt-1 text-[22px] font-semibold leading-none tabular-nums tracking-[-0.03em]" style={{ color: "var(--app-text)" }}>
+            {loading ? "–" : `${streak}d`}
+          </p>
+        </div>
+      </div>
+      <p className="mt-3 text-[12px] leading-[1.45]" style={{ color: "var(--app-text-soft)" }}>
+        {loading ? "Reading your next milestone." : next}
+      </p>
+      {!loading && recoveredDays > 0 ? (
+        <p className="mt-3 flex items-start gap-1.5 text-[12px] leading-[1.45]" style={{ color: "var(--app-success)" }}>
+          <span className="mt-px shrink-0"><ShieldIcon /></span>
+          Recovery protected {recoveredDays === 1 ? "a constellation link" : `${recoveredDays} constellation links`}.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 /* ---- The sky ------------------------------------------------------------ */
 
 function SkyPanel({
@@ -138,12 +252,20 @@ function SkyPanel({
   loading,
   complete,
   next,
+  newestStar,
+  celebration,
+  connectedLines,
+  recoveredDays,
 }: {
   sky: SkyTotals;
   lit: number;
   loading: boolean;
   complete: boolean;
   next: string;
+  newestStar: number | null;
+  celebration: number;
+  connectedLines: number;
+  recoveredDays: number;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -198,7 +320,14 @@ function SkyPanel({
         </p>
       </div>
 
-      <Constellation lit={lit} loading={loading} />
+      <Constellation
+        lit={lit}
+        loading={loading}
+        newestStar={newestStar}
+        celebration={celebration}
+        connectedLines={connectedLines}
+        recoveredDays={recoveredDays}
+      />
 
       <div className="relative mt-2 flex flex-wrap items-end justify-between gap-5">
         <div className="min-w-0">
@@ -301,7 +430,23 @@ function SkyBackdrop() {
   );
 }
 
-function Constellation({ lit, loading }: { lit: number; loading: boolean }) {
+function Constellation({
+  lit,
+  loading,
+  newestStar,
+  celebration,
+  connectedLines,
+  recoveredDays,
+}: {
+  lit: number;
+  loading: boolean;
+  newestStar: number | null;
+  celebration: number;
+  /** One bright link for each consecutive active day in the current streak. */
+  connectedLines: number;
+  /** Recovery days keep a connection protected rather than dimming the sky. */
+  recoveredDays: number;
+}) {
   const nextIndex = lit < STARS.length ? lit : -1;
   const [hovered, setHovered] = useState<number | null>(null);
   const [pinned, setPinned] = useState<number | null>(null);
@@ -333,24 +478,28 @@ function Constellation({ lit, loading }: { lit: number; loading: boolean }) {
   return (
     <div
       role="group"
-      aria-label={`Study sky: ${lit} of ${STARS.length} stars lit. Use the arrow keys to move between stars.`}
+      aria-label={`Study sky: ${lit} of ${STARS.length} stars lit. ${connectedLines} streak connection${connectedLines === 1 ? "" : "s"} active. Use the arrow keys to move between stars.`}
       className="relative mt-3 aspect-[1000/620] w-full sm:aspect-[1000/420]"
       onPointerDown={(event) => { if (event.target === event.currentTarget) setPinned(null); }}
     >
       <svg aria-hidden="true" className="absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 1000 400" preserveAspectRatio="none" fill="none">
         {EDGES.map(([a, b]) => {
-          const on = b < lit;
+          // A completed session lights the star. A separate, shorter run of
+          // links represents consecutive active days, so repetition in one
+          // day cannot pretend to be a streak.
+          const on = b >= Math.max(1, lit - connectedLines) && b < lit;
+          const recovered = on && b >= lit - Math.min(recoveredDays, connectedLines);
           const touched = shown === a || shown === b;
           return (
             <line
               key={`${a}-${b}`}
               x1={STARS[a].x} y1={STARS[a].y} x2={STARS[b].x} y2={STARS[b].y}
-              stroke={INK}
-              strokeWidth={on ? 1.4 : 1}
+              stroke={recovered ? "var(--app-success)" : INK}
+              strokeWidth={on ? (recovered ? 2 : 1.4) : 1}
               strokeLinecap="round"
               strokeDasharray={on ? undefined : "2 5"}
               vectorEffect="non-scaling-stroke"
-              opacity={on ? (touched ? 0.95 : 0.6) : touched ? 0.55 : 0.28}
+              opacity={on ? (touched ? 0.98 : recovered ? 0.84 : 0.68) : touched ? 0.55 : 0.28}
               style={{ transition: "opacity 300ms ease-out" }}
             />
           );
@@ -363,6 +512,8 @@ function Constellation({ lit, loading }: { lit: number; loading: boolean }) {
           ref={(node) => { buttons.current[index] = node; }}
           index={index}
           state={loading ? "locked" : index < lit ? "lit" : index === nextIndex ? "next" : "locked"}
+          fresh={index === newestStar}
+          celebration={celebration}
           active={shown === index}
           tabIndex={index === tabStop ? 0 : -1}
           label={starLabel(index, lit, loading)}
@@ -384,6 +535,8 @@ function SkyStar({
   ref,
   index,
   state,
+  fresh,
+  celebration,
   active,
   tabIndex,
   label,
@@ -397,6 +550,8 @@ function SkyStar({
   ref: (node: HTMLButtonElement | null) => void;
   index: number;
   state: "lit" | "next" | "locked";
+  fresh: boolean;
+  celebration: number;
   active: boolean;
   tabIndex: number;
   label: string;
@@ -431,12 +586,13 @@ function SkyStar({
       {state === "lit" ? (
         <span
           aria-hidden="true"
-          className="sky-ignite pointer-events-none absolute rounded-full"
+          key={fresh ? `new-${celebration}` : "settled"}
+          className={fresh ? "sky-ignite pointer-events-none absolute rounded-full" : "pointer-events-none absolute rounded-full"}
           style={{
             width: glow,
             height: glow,
             background: `radial-gradient(circle, color-mix(in oklab, ${INK} ${keystone ? 42 : 36}%, transparent) 0%, transparent 68%)`,
-            "--d": `${index * 70}ms`,
+            "--d": fresh ? "0ms" : undefined,
           } as CSSProperties}
         />
       ) : null}
@@ -455,8 +611,9 @@ function SkyStar({
       ) : null}
       <span
         aria-hidden="true"
-        className={"relative flex " + (state === "lit" ? "sky-ignite" : "")}
-        style={{ "--d": `${index * 70}ms` } as CSSProperties}
+        key={fresh ? `star-${celebration}` : "settled"}
+        className={"relative flex " + (fresh ? "sky-ignite" : "")}
+        style={{ "--d": "0ms" } as CSSProperties}
       >
         <svg
           viewBox="0 0 24 24"
@@ -674,10 +831,14 @@ function SkyStat({ icon, label, value, hint }: { icon: ReactNode; label: string;
 }
 
 function nextSkyGoal(sky: SkyTotals, streak: StreakSummary): string {
-  if (sky.sessions < 5) return `${5 - sky.sessions} more session${5 - sky.sessions === 1 ? "" : "s"} unlocks your first orbit.`;
+  const constellationTarget = [5, 16, 30, STARS.length].find((target) => sky.sessions < target);
+  if (constellationTarget) {
+    const blocks = constellationTarget - sky.sessions;
+    const label = constellationTarget === 5 ? "your first orbit" : constellationTarget === STARS.length ? "a full sky" : "your next constellation";
+    return `${blocks} more focus block${blocks === 1 ? "" : "s"} unlock${blocks === 1 ? "s" : ""} ${label}.`;
+  }
   if (streak.nextMilestone && streak.daysToNext) return `${streak.daysToNext} more consistent day${streak.daysToNext === 1 ? "" : "s"} to a ${streak.nextMilestone}-day streak.`;
   if (sky.minutes < 600) return `${formatMinutes(600 - sky.minutes)} until your 10-hour star.`;
-  if (sky.sessions < 50) return `${50 - sky.sessions} more sessions unlock your 50-session star.`;
   return "Your next constellation is taking shape.";
 }
 
@@ -717,6 +878,9 @@ function StarIcon() {
 }
 function BoltIcon() {
   return <Icon><path d="M9 1.5 3.5 9H8l-1 5.5L12.5 7H8l1-5.5Z" /></Icon>;
+}
+function ShieldIcon() {
+  return <Icon><path d="M8 1.8 13 4v3.7c0 3.2-2 5.4-5 6.7-3-1.3-5-3.5-5-6.7V4l5-2.2Z" /><path d="m5.9 8 1.4 1.4 2.9-3" /></Icon>;
 }
 function ArrowIcon() {
   return <Icon><path d="M3 8h10M9 4l4 4-4 4" /></Icon>;

@@ -4,9 +4,12 @@ import { KeyboardResize } from "@capacitor/keyboard";
 const config: CapacitorConfig = {
   appId: "app.arcadiahq.arcadia",
   appName: "Arcadia",
-  // The iOS shell loads the live app below. This directory is only a small
-  // native fallback that lets Capacitor keep its standard project structure.
-  webDir: "public",
+  // The iOS shell loads the live app below (server.url). This directory is
+  // only a placeholder so Capacitor keeps its standard project structure; its
+  // contents are never loaded on device. It must NOT be `public`, because
+  // Next.js serves everything under public/ at the site root, and a stray
+  // index.html there shadows the real landing page.
+  webDir: "capacitor-shell",
   server: {
     url: "https://arcadiahq.app/app",
     allowNavigation: ["arcadiahq.app", "*.arcadiahq.app"],

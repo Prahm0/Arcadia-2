@@ -66,6 +66,12 @@ billing.post("/checkout", async (c) => {
   const couponId = body.winback && c.env.STRIPE_WINBACK_COUPON_ID
     ? c.env.STRIPE_WINBACK_COUPON_ID
     : undefined;
+  // Never honour a discounted offer at full price: if the win-back was
+  // requested but no coupon is configured, fail loudly instead of charging
+  // the student the full amount after promising a discount.
+  if (body.winback && !couponId) {
+    return c.json({ error: "That offer isn't available right now.", code: "winback_unavailable" }, 409);
+  }
   if (plan !== "pro" && plan !== "max") {
     return c.json({ error: "Pick a Pro or Max plan." }, 400);
   }

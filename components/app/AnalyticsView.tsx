@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
@@ -60,7 +61,10 @@ export default function AnalyticsView() {
     }
   }, [period]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   const hasPaidPlan = data.user.tier === "pro" || data.user.tier === "max";
   const current = analytics?.current ?? { minutes: 0, sessions: 0, averageMinutes: 0 };
@@ -71,6 +75,9 @@ export default function AnalyticsView() {
   const previousActiveDays = previousDaily.filter((day) => day.minutes > 0).length;
   const lastLabel = period === "week" ? "last week" : "last month";
   const show = (value: string) => (loading && !analytics ? "–" : value);
+  const hasFocusData = Boolean(analytics && (current.minutes > 0 || current.sessions > 0 || daily.some((day) => day.minutes > 0)));
+  const showFirstRun = !loading && !error && analytics !== null && !hasFocusData;
+  const insight = analytics && hasFocusData ? getAnalyticsInsight(analytics, period) : null;
 
   return (
     <>
@@ -86,81 +93,203 @@ export default function AnalyticsView() {
         <p className="mx-auto w-full max-w-[1140px] px-6 pt-4 text-[13px] sm:px-10" style={{ color: "var(--app-danger)" }}>{error}</p>
       ) : null}
 
-      <div className="mx-auto grid w-full max-w-[1140px] grid-cols-2 gap-3 px-6 pt-8 sm:px-10 lg:grid-cols-4 lg:gap-4">
-        <StatCard label="Focus time" value={show(formatMinutes(current.minutes))} delta={change(current.minutes, previous.minutes)} was={`${formatMinutes(previous.minutes)} ${lastLabel}`} />
-        <StatCard label="Sessions" value={show(String(current.sessions))} delta={change(current.sessions, previous.sessions)} was={`${previous.sessions} ${lastLabel}`} />
-        <StatCard label="Avg session" value={show(formatMinutes(current.averageMinutes))} delta={change(current.averageMinutes, previous.averageMinutes)} was={`${formatMinutes(previous.averageMinutes)} ${lastLabel}`} />
-        <StatCard label="Active days" value={show(`${activeDays}/${daily.length || (period === "week" ? 7 : 30)}`)} delta={change(activeDays, previousActiveDays)} was={`${previousActiveDays} ${lastLabel}`} />
-      </div>
+      {showFirstRun ? (
+        <FirstRunAnalytics />
+      ) : (
+        <>
+          {insight ? <AnalyticsInsight insight={insight} /> : null}
 
-      <div className="mx-auto grid w-full max-w-[1140px] gap-4 px-6 pt-4 sm:px-10 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <Panel title="Daily focus" note={<Legend />}>
-          {loading && !analytics ? <Muted>Loading…</Muted> : (
-            <Bars
-              height={200}
-              label={`Minutes focused per day, last ${daily.length} days`}
-              bars={daily.map((day, index) => {
-                const before = previousDaily[index];
-                return {
-                  key: day.date,
-                  value: day.minutes,
-                  ghost: before?.minutes ?? 0,
-                  label: period === "week" ? shortDay(day.date) : index % 5 === 0 || index === daily.length - 1 ? dayOfMonth(day.date) : "",
-                  tip: (
-                    <>
-                      <TipTitle>{longDay(day.date)}</TipTitle>
-                      <TipLine>{formatMinutes(day.minutes)} · {day.sessions} session{day.sessions === 1 ? "" : "s"}</TipLine>
-                      {before ? <TipLine muted>{formatMinutes(before.minutes)} same day {lastLabel}</TipLine> : null}
-                    </>
-                  ),
-                };
-              })}
-            />
-          )}
-        </Panel>
+          <div className="mx-auto grid w-full max-w-[1140px] grid-cols-2 gap-3 px-6 pt-4 sm:px-10 lg:grid-cols-4 lg:gap-4">
+            <StatCard label="Focus time" value={show(formatMinutes(current.minutes))} delta={change(current.minutes, previous.minutes)} was={`${formatMinutes(previous.minutes)} ${lastLabel}`} />
+            <StatCard label="Sessions" value={show(String(current.sessions))} delta={change(current.sessions, previous.sessions)} was={`${previous.sessions} ${lastLabel}`} />
+            <StatCard label="Avg session" value={show(formatMinutes(current.averageMinutes))} delta={change(current.averageMinutes, previous.averageMinutes)} was={`${formatMinutes(previous.averageMinutes)} ${lastLabel}`} />
+            <StatCard label="Active days" value={show(`${activeDays}/${daily.length || (period === "week" ? 7 : 30)}`)} delta={change(activeDays, previousActiveDays)} was={`${previousActiveDays} ${lastLabel}`} />
+          </div>
 
-        <Panel title="By subject" note={analytics?.subjects.length ? <span className="tabular-nums">{analytics.subjects.length} subject{analytics.subjects.length === 1 ? "" : "s"}</span> : null}>
-          {loading && !analytics ? <Muted>Loading…</Muted> : !analytics || analytics.subjects.length === 0 ? (
-            <Muted>No focus time logged this {period}.</Muted>
-          ) : (
-            <SubjectBreakdown subjects={analytics.subjects} total={current.minutes} />
-          )}
-        </Panel>
-      </div>
+          <div className="mx-auto grid w-full max-w-[1140px] gap-4 px-6 pt-4 sm:px-10 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+            <Panel title="Daily focus" note={<Legend />}>
+              {loading && !analytics ? <Muted>Loading…</Muted> : (
+                <Bars
+                  height={200}
+                  label={`Minutes focused per day, last ${daily.length} days`}
+                  bars={daily.map((day, index) => {
+                    const before = previousDaily[index];
+                    return {
+                      key: day.date,
+                      value: day.minutes,
+                      ghost: before?.minutes ?? 0,
+                      label: period === "week" ? shortDay(day.date) : index % 5 === 0 || index === daily.length - 1 ? dayOfMonth(day.date) : "",
+                      tip: (
+                        <>
+                          <TipTitle>{longDay(day.date)}</TipTitle>
+                          <TipLine>{formatMinutes(day.minutes)} · {day.sessions} session{day.sessions === 1 ? "" : "s"}</TipLine>
+                          {before ? <TipLine muted>{formatMinutes(before.minutes)} same day {lastLabel}</TipLine> : null}
+                        </>
+                      ),
+                    };
+                  })}
+                />
+              )}
+            </Panel>
 
-      <div className="mx-auto w-full max-w-[1140px] px-6 pt-4 sm:px-10">
-        <Panel title="Time of day" note={<PeakHour hourly={analytics?.hourly ?? []} />}>
-          {loading && !analytics ? <Muted>Loading…</Muted> : (
-            <Bars
-              height={140}
-              label="Minutes focused by hour of day"
-              bars={(analytics?.hourly ?? []).map((slot) => ({
-                key: String(slot.hour),
-                value: slot.minutes,
-                label: slot.hour % 3 === 0 ? hourLabel(slot.hour) : "",
-                tip: (
-                  <>
-                    <TipTitle>{hourLabel(slot.hour)}–{hourLabel((slot.hour + 1) % 24)}</TipTitle>
-                    <TipLine>{formatMinutes(slot.minutes)}</TipLine>
-                  </>
-                ),
-              }))}
-            />
-          )}
-        </Panel>
-      </div>
+            <Panel title="By subject" note={analytics?.subjects.length ? <span className="tabular-nums">{analytics.subjects.length} subject{analytics.subjects.length === 1 ? "" : "s"}</span> : null}>
+              {loading && !analytics ? <Muted>Loading…</Muted> : !analytics || analytics.subjects.length === 0 ? (
+                <Muted>No focus time logged this {period}.</Muted>
+              ) : (
+                <SubjectBreakdown subjects={analytics.subjects} total={current.minutes} />
+              )}
+            </Panel>
+          </div>
 
-      {hasPaidPlan ? (
-        <div className="mx-auto w-full max-w-[1140px] px-6 pt-4 sm:px-10">
-          <MissReasonBreakdown reasons={analytics?.missReasons ?? []} />
-        </div>
-      ) : null}
+          <div className="mx-auto w-full max-w-[1140px] px-6 pt-4 sm:px-10">
+            <Panel title="Time of day" note={<PeakHour hourly={analytics?.hourly ?? []} />}>
+              {loading && !analytics ? <Muted>Loading…</Muted> : (
+                <Bars
+                  height={140}
+                  label="Minutes focused by hour of day"
+                  bars={(analytics?.hourly ?? []).map((slot) => ({
+                    key: String(slot.hour),
+                    value: slot.minutes,
+                    label: slot.hour % 3 === 0 ? hourLabel(slot.hour) : "",
+                    tip: (
+                      <>
+                        <TipTitle>{hourLabel(slot.hour)}–{hourLabel((slot.hour + 1) % 24)}</TipTitle>
+                        <TipLine>{formatMinutes(slot.minutes)}</TipLine>
+                      </>
+                    ),
+                  }))}
+                />
+              )}
+            </Panel>
+          </div>
 
-      <div className="mx-auto w-full max-w-[1140px] px-6 pb-16 pt-4 sm:px-10">
-        <ConsistencyHeatmap />
-      </div>
+          {hasPaidPlan ? (
+            <div className="mx-auto w-full max-w-[1140px] px-6 pt-4 sm:px-10">
+              <MissReasonBreakdown reasons={analytics?.missReasons ?? []} />
+            </div>
+          ) : null}
+
+          <div className="mx-auto w-full max-w-[1140px] px-6 pb-16 pt-4 sm:px-10">
+            <ConsistencyHeatmap />
+          </div>
+        </>
+      )}
     </>
   );
+}
+
+function FirstRunAnalytics() {
+  return (
+    <section className="mx-auto w-full max-w-[1140px] px-6 pb-16 pt-8 sm:px-10" aria-label="Your future study insights">
+      <div
+        className="relative overflow-hidden rounded-xl border px-6 py-8 sm:px-10 sm:py-10"
+        style={{
+          background: "linear-gradient(135deg, color-mix(in oklab, var(--app-arcad) 14%, var(--app-surface)), var(--app-surface))",
+          borderColor: "color-mix(in oklab, var(--app-arcad) 24%, var(--app-border))",
+          boxShadow: "var(--elev-1)",
+        }}
+      >
+        <div className="relative z-10 max-w-[470px]">
+          <p className="type-eyebrow" style={{ color: "var(--app-arcad-strong)" }}>Your progress starts here</p>
+          <h2 className="mt-3 text-[24px] font-semibold tracking-[-0.025em] sm:text-[30px]" style={{ color: "var(--app-text)" }}>
+            Your study insights will grow here.
+          </h2>
+          <p className="mt-3 max-w-[420px] text-[14px] leading-6" style={{ color: "var(--app-text-soft)" }}>
+            Each focus block reveals your best study times, your strongest days, and the progress you are building.
+          </p>
+          <Link
+            href="/app/focus"
+            className="mt-6 inline-flex h-10 items-center justify-center gap-2 rounded-md px-4 text-[13px] font-semibold transition-opacity hover:opacity-90"
+            style={{ background: "var(--app-arcad)", color: "var(--app-arcad-on)" }}
+          >
+            Start a focus session
+            <span aria-hidden="true">→</span>
+          </Link>
+        </div>
+        <AnalyticsPreview />
+      </div>
+    </section>
+  );
+}
+
+function AnalyticsPreview() {
+  return (
+    <svg
+      viewBox="0 0 430 230"
+      aria-hidden="true"
+      className="pointer-events-none absolute -bottom-8 -right-[110px] h-[185px] w-[345px] opacity-30 sm:-bottom-5 sm:-right-20 sm:h-[235px] sm:w-[440px] sm:opacity-80"
+    >
+      <defs>
+        <linearGradient id="analytics-preview-fill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="var(--app-arcad)" stopOpacity="0.3" />
+          <stop offset="100%" stopColor="var(--app-arcad)" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d="M34 185H402M34 130H402M34 75H402" stroke="var(--app-border)" strokeDasharray="4 6" />
+      <path d="M42 185C78 171 95 174 124 144S175 161 205 115 252 133 284 82 337 99 394 38V185H42Z" fill="url(#analytics-preview-fill)" />
+      <path d="M42 185C78 171 95 174 124 144S175 161 205 115 252 133 284 82 337 99 394 38" fill="none" stroke="var(--app-arcad)" strokeLinecap="round" strokeWidth="3" />
+      {[[42, 185], [124, 144], [205, 115], [284, 82], [394, 38]].map(([cx, cy], index) => (
+        <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={index === 4 ? 7 : 4} fill="var(--app-arcad)" className={index === 4 ? "motion-safe:animate-pulse motion-reduce:animate-none" : ""} />
+      ))}
+    </svg>
+  );
+}
+
+interface AnalyticsInsight {
+  headline: string;
+  detail: string;
+}
+
+function AnalyticsInsight({ insight }: { insight: AnalyticsInsight }) {
+  return (
+    <section className="mx-auto w-full max-w-[1140px] px-6 pt-8 sm:px-10" aria-label="Focus insight">
+      <div className="flex items-start gap-3 rounded-lg border px-4 py-3.5 sm:px-5" style={{ background: "var(--app-surface)", borderColor: "var(--app-border)", boxShadow: "var(--elev-1)" }}>
+        <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full text-[14px]" style={{ background: "var(--app-arcad-soft)", color: "var(--app-arcad-strong)" }} aria-hidden="true">✦</span>
+        <div>
+          <p className="text-[14px] font-semibold" style={{ color: "var(--app-text)" }}>{insight.headline}</p>
+          <p className="mt-0.5 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>{insight.detail}</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function getAnalyticsInsight(analytics: AnalyticsResponse, period: Period): AnalyticsInsight {
+  const strongestDay = analytics.daily.reduce<DailyBucket | null>(
+    (best, day) => (day.minutes > (best?.minutes ?? 0) ? day : best),
+    null,
+  );
+  const strongestHour = (analytics.hourly ?? []).reduce<{ hour: number; minutes: number } | null>(
+    (best, slot) => (slot.minutes > (best?.minutes ?? 0) ? slot : best),
+    null,
+  );
+
+  if (analytics.current.sessions >= 3 && strongestHour && strongestHour.minutes > 0) {
+    const window = focusWindow(strongestHour.hour);
+    return {
+      headline: `Your strongest focus window is the ${window}.`,
+      detail: `${formatMinutes(strongestHour.minutes)} of your focus time landed there this ${period}.`,
+    };
+  }
+
+  if (strongestDay && strongestDay.minutes > 0) {
+    return {
+      headline: `Your strongest focus day this ${period} was ${shortDay(strongestDay.date)}.`,
+      detail: `${formatMinutes(strongestDay.minutes)} across ${strongestDay.sessions} session${strongestDay.sessions === 1 ? "" : "s"}.`,
+    };
+  }
+
+  return {
+    headline: "Your focus pattern is taking shape.",
+    detail: "A few more sessions will reveal your strongest study rhythm.",
+  };
+}
+
+function focusWindow(hour: number): string {
+  if (hour < 12) return "morning";
+  if (hour < 17) return "afternoon";
+  if (hour < 22) return "evening";
+  return "late night";
 }
 
 function AnalyticsPeriodPicker({ period, setPeriod }: { period: Period; setPeriod: (period: Period) => void }) {

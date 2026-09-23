@@ -100,9 +100,22 @@ export default function ResourcesSection({
         </p>
       ) : null}
       {subject.resources.length === 0 ? (
-        <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-          Nothing yet. Add the textbook chapters or notes you actually use (PDF or photos).
-        </p>
+        <div
+          className="flex flex-wrap items-center justify-between gap-3 rounded-md px-4 py-3.5"
+          style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)" }}
+        >
+          <div className="min-w-0 max-w-[470px]">
+            <p className="text-[13.5px] font-medium" style={{ color: "var(--app-text)" }}>
+              Give Arcad something to work with.
+            </p>
+            <p className="mt-0.5 text-[12.5px] leading-5" style={{ color: "var(--app-text-muted)" }}>
+              Add the notes, textbook chapters, or handouts you use and Arcad can point you to the right material.
+            </p>
+          </div>
+          <AppButton size="sm" variant="secondary" onClick={() => input.current?.click()}>
+            Add a file
+          </AppButton>
+        </div>
       ) : (
         <ul className="flex flex-col">
           {subject.resources.map((file) => {

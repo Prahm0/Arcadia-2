@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lt } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lt } from "drizzle-orm";
 import { schema, type Database } from "../db";
 import { newId } from "./ids";
 import { replan } from "./replan";
@@ -222,13 +222,24 @@ export async function recoverPlan(
   }
 
   // The nearest real deadline that still has study booked before it: the thing
-  // the student most needs protected.
-  const withDue = after.filter((e) => e.taskId);
-  if (withDue.length > 0) {
-    const soonest = withDue.reduce((a, b) => (a.startAt < b.startAt ? a : b));
-    const protectedName = label(soonest);
-    if (!addedDeadline || protectedName !== addedDeadline.name) {
-      lines.push(`Kept ${protectedName} on track`);
+  // the student most needs protected. Named with its due date, because
+  // "Protected your English essay, due Fri 3 Oct" is the line that sells the
+  // recovery. Skip it when we just added the deadline (covered above).
+  const [nearestTask] = await database
+    .select({
+      id: schema.tasks.id,
+      title: schema.tasks.title,
+      subject: schema.tasks.subject,
+      dueAt: schema.tasks.dueAt,
+    })
+    .from(schema.tasks)
+    .where(and(eq(schema.tasks.userId, userId), eq(schema.tasks.status, "pending"), gte(schema.tasks.dueAt, now)))
+    .orderBy(asc(schema.tasks.dueAt))
+    .limit(1);
+  if (nearestTask && (!addedDeadline || nearestTask.title !== addedDeadline.name)) {
+    const bookedBeforeDue = after.some((e) => e.taskId === nearestTask.id && e.startAt <= nearestTask.dueAt);
+    if (bookedBeforeDue) {
+      lines.push(`Protected your ${label(nearestTask)}, due ${dateLabel(nearestTask.dueAt, tz)}`);
     }
   }
 

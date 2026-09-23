@@ -58,10 +58,20 @@ function tierForPriceId(env: Env, priceId: string): "pro" | "max" | null {
 billing.post("/checkout", async (c) => {
   const { userId } = c.get("session");
   const body = await c.req
-    .json<{ plan?: Plan; interval?: Interval }>()
-    .catch(() => ({} as { plan?: Plan; interval?: Interval }));
+    .json<{ plan?: Plan; interval?: Interval; winback?: boolean }>()
+    .catch(() => ({} as { plan?: Plan; interval?: Interval; winback?: boolean }));
   const plan = body.plan;
   const interval = body.interval ?? "month";
+  // The onboarding win-back auto-applies a discount coupon, when one is set.
+  const couponId = body.winback && c.env.STRIPE_WINBACK_COUPON_ID
+    ? c.env.STRIPE_WINBACK_COUPON_ID
+    : undefined;
+  // Never honour a discounted offer at full price: if the win-back was
+  // requested but no coupon is configured, fail loudly instead of charging
+  // the student the full amount after promising a discount.
+  if (body.winback && !couponId) {
+    return c.json({ error: "That offer isn't available right now.", code: "winback_unavailable" }, 409);
+  }
   if (plan !== "pro" && plan !== "max") {
     return c.json({ error: "Pick a Pro or Max plan." }, 400);
   }
@@ -135,6 +145,7 @@ billing.post("/checkout", async (c) => {
       customerId: customerId ?? undefined,
       userId,
       priceId,
+      couponId,
       successUrl: `${c.env.APP_ORIGIN}/app/welcome?upgrade=success`,
       cancelUrl: `${c.env.APP_ORIGIN}/app/pricing?upgrade=cancelled`,
     });

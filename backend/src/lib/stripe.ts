@@ -133,6 +133,8 @@ export async function createCheckoutSession(
     priceId: string;
     successUrl: string;
     cancelUrl: string;
+    /** A fixed coupon to auto-apply (the win-back offer). */
+    couponId?: string;
   },
 ): Promise<CheckoutSession> {
   const body: Record<string, unknown> = {
@@ -141,9 +143,15 @@ export async function createCheckoutSession(
     success_url: params.successUrl,
     cancel_url: params.cancelUrl,
     client_reference_id: params.userId,
-    allow_promotion_codes: true,
     subscription_data: { metadata: { userId: params.userId } },
   };
+  // Stripe rejects `discounts` and `allow_promotion_codes` together: a fixed
+  // win-back coupon is auto-applied, otherwise customers can enter a code.
+  if (params.couponId) {
+    body.discounts = [{ coupon: params.couponId }];
+  } else {
+    body.allow_promotion_codes = true;
+  }
   if (params.customerId) {
     body.customer = params.customerId;
   } else if (params.customerEmail) {

@@ -114,3 +114,21 @@ export async function tryConsumeMessage(
   }
   return { allowed: true, tier, used, cap };
 }
+
+/**
+ * Hands a consumed message back to today's quota. We consume before calling
+ * the model so a rejected send leaves no half-written turn, but if the model
+ * (or anything else) then fails, the student never got a reply, so the message
+ * should not count. Floored at 0 so a double refund can't drive the count
+ * negative.
+ */
+export async function refundMessage(
+  database: ReturnType<typeof makeDb>,
+  userId: string,
+): Promise<void> {
+  const day = todayUtc();
+  await database
+    .update(schema.arcadUsage)
+    .set({ count: sql`MAX(${schema.arcadUsage.count} - 1, 0)` })
+    .where(and(eq(schema.arcadUsage.userId, userId), eq(schema.arcadUsage.day, day)));
+}

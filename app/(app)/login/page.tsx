@@ -8,7 +8,6 @@ import Field from "@/components/app/Field";
 import PrimaryButton from "@/components/app/PrimaryButton";
 import SocialAuthButtons from "@/components/app/SocialAuthButtons";
 import { api, ApiError } from "@/lib/api/client";
-import { continueAsGuest as continueAsGuestApi } from "@/lib/auth/guest";
 
 type Notice = { tone: "info" | "error"; text: string } | null;
 
@@ -18,7 +17,6 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [guestLoading, setGuestLoading] = useState(false);
   // Unverified-email state: gates the "Resend verification email" affordance.
   // Tracks the specific email that failed so a resend still works if the
   // student types something new before clicking.
@@ -92,20 +90,6 @@ function LoginForm() {
       setNotice({ tone: "error", text: message });
     } finally {
       setResending(false);
-    }
-  }
-
-  async function continueAsGuest() {
-    setGuestLoading(true);
-    setNotice(null);
-    try {
-      await continueAsGuestApi();
-      router.push("/app");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Something went wrong.";
-      setNotice({ tone: "error", text: message });
-    } finally {
-      setGuestLoading(false);
     }
   }
 
@@ -184,30 +168,6 @@ function LoginForm() {
         <PrimaryButton type="submit" loading={loading}>
           Sign in
         </PrimaryButton>
-        <div
-          className="flex items-center gap-3 text-[11.5px] uppercase tracking-[0.16em]"
-          style={{ color: "var(--app-text-faint)" }}
-        >
-          <span className="h-px flex-1" style={{ background: "var(--app-border)" }} />
-          or
-          <span className="h-px flex-1" style={{ background: "var(--app-border)" }} />
-        </div>
-        <button
-          type="button"
-          onClick={continueAsGuest}
-          disabled={guestLoading || loading}
-          className="ui-pressable w-full rounded-md px-4 py-3 text-[14.5px] disabled:cursor-not-allowed disabled:opacity-60"
-          style={{
-            background: "var(--app-surface)",
-            color: "var(--app-text)",
-            boxShadow: "var(--elev-1)",
-          }}
-        >
-          {guestLoading ? "Setting up a guest account…" : "Continue as guest"}
-        </button>
-        <p className="text-center text-[12px]" style={{ color: "var(--app-text-faint)" }}>
-          Skips sign-up with a throwaway account, nothing saves after you close the tab.
-        </p>
       </form>
     </AuthShell>
   );

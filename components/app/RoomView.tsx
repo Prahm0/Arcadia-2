@@ -344,7 +344,7 @@ function MemberCard({
           <p className="truncate type-mono-label" style={{ color: "var(--app-text-muted)" }}>{detail}</p>
         </div>
         <span
-          className="shrink-0 rounded-full px-2.5 py-0.5 text-[11.5px] font-medium"
+          className="shrink-0 rounded-md px-2.5 py-0.5 text-[11.5px] font-medium"
           style={{ background: chip.bg, color: chip.fg }}
         >
           {chip.label}

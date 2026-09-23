@@ -259,7 +259,7 @@ export default function ArcadFloatingButton() {
               <Link
                 href="/app/arcad"
                 onClick={hidePanel}
-                className="ui-hover rounded-full px-3 py-2 text-[11.5px] font-medium"
+                className="ui-hover rounded-md px-3 py-2 text-[11.5px] font-medium"
                 style={{ color: "var(--app-arcad-strong)" }}
               >
                 Full chat

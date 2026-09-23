@@ -196,7 +196,7 @@ export default function MissedRecoveryCards() {
                   type="button"
                   onClick={() => snooze(event.id)}
                   aria-label="Snooze this check-in"
-                  className="shrink-0 rounded-full px-2 py-1 text-[11px] font-medium"
+                  className="shrink-0 rounded-md px-2 py-1 text-[11px] font-medium"
                   style={{ color: "var(--app-text-muted)" }}
                 >
                   Later

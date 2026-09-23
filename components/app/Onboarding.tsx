@@ -271,7 +271,7 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
           return (
             <li key={s.key} className="flex-1">
               <span
-                className="block h-1 rounded-full transition-colors"
+                className="block h-1 rounded-[1px] transition-colors"
                 style={{
                   background:
                     state === "done"
@@ -324,7 +324,7 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
                     key={option}
                     type="button"
                     onClick={() => setGrade(option)}
-                    className="rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors"
+                    className="rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors"
                     style={{
                       background: grade === option ? "var(--app-accent-soft)" : "transparent",
                       color: grade === option ? "var(--app-accent-strong)" : "var(--app-text-soft)",
@@ -359,7 +359,7 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
               <button
                 type="button"
                 onClick={pickImNotSure}
-                className="rounded-full px-3 py-2 text-[12.5px] font-medium transition-colors"
+                className="rounded-md px-3 py-2 text-[12.5px] font-medium transition-colors"
                 style={{
                   background: "transparent",
                   color: "var(--app-text-soft)",
@@ -383,7 +383,7 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
                       type="button"
                       onClick={() => toggleSubject(subject)}
                       className={cn(
-                        "rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors",
+                        "rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors",
                       )}
                       style={{
                         background: active ? "var(--app-accent-soft)" : "transparent",
@@ -510,7 +510,7 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
               <button
                 type="button"
                 onClick={addTaskRow}
-                className="self-start rounded-full px-3 py-1.5 text-[12.5px] font-medium"
+                className="self-start rounded-md px-3 py-1.5 text-[12.5px] font-medium"
                 style={{
                   background: "transparent",
                   color: "var(--app-text-soft)",
@@ -538,13 +538,12 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
                     style={{ borderColor: "var(--app-border)" }}
                   >
                     <span
-                      aria-hidden="true"
-                      className="h-2.5 w-2.5 shrink-0 rounded-full"
-                      style={{ background: SUBJECT_COLORS[index % SUBJECT_COLORS.length] }}
-                    />
-                    <span
-                      className="min-w-0 flex-1 truncate text-[15px]"
-                      style={{ color: minutes > 0 ? "var(--app-text)" : "var(--app-text-muted)" }}
+                      className="min-w-0 flex-1 truncate text-[15px] font-medium"
+                      style={{
+                        color: minutes > 0
+                          ? `color-mix(in oklab, ${SUBJECT_COLORS[index % SUBJECT_COLORS.length]} 70%, var(--app-text))`
+                          : "var(--app-text-muted)",
+                      }}
                     >
                       {subject}
                     </span>

@@ -394,7 +394,7 @@ export default function SettingsView() {
         }
         action={nativeShell ? (
           <span
-            className="rounded-full px-2.5 py-1 text-[11px] font-medium"
+            className="rounded-md px-2.5 py-1 text-[11px] font-medium"
             style={{ background: "var(--app-accent-soft)", color: "var(--app-accent-strong)" }}
           >
             Arcadia iOS
@@ -750,7 +750,7 @@ export default function SettingsView() {
                         key={option}
                         type="button"
                         onClick={() => updateLead(option)}
-                        className="rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-colors"
+                        className="rounded-md px-3 py-1.5 text-[12.5px] font-medium transition-colors"
                         style={{
                           background: leadMin === option ? "var(--app-accent-soft)" : "transparent",
                           color: leadMin === option ? "var(--app-accent-strong)" : "var(--app-text-soft)",

@@ -73,8 +73,7 @@ function SubjectCard({ subject, fallback }: { subject: ProfileSubject; fallback:
     >
       <div className="flex items-start justify-between gap-3">
         <span className="flex min-w-0 items-center gap-2">
-          <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: colour }} />
-          <span className="truncate text-[14.5px] font-medium" style={{ color: "var(--app-text)" }}>
+          <span className="truncate text-[14.5px] font-medium" style={{ color: `color-mix(in oklab, ${colour} 70%, var(--app-text))` }}>
             {subject.name}
           </span>
         </span>
@@ -104,7 +103,7 @@ function SubjectCard({ subject, fallback }: { subject: ProfileSubject; fallback:
       {off ? null : (
         <>
           <div
-            className="mt-2.5 flex h-1.5 overflow-hidden rounded-full"
+            className="mt-2.5 flex h-1.5 overflow-hidden rounded-[1px]"
             style={{ background: "var(--app-surface-soft)" }}
             role="img"
             aria-label={`${formatHoursMinutes(subject.weekDoneMinutes)} done and ${formatHoursMinutes(subject.weekPlannedMinutes)} planned of ${formatWeekly(subject.weeklyMinutes)} this week`}

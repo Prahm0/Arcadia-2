@@ -451,7 +451,7 @@ export const TOURS: Record<TourId, Tour> = {
           <div className="flex flex-col items-center gap-3">
             <TimerRing time="18:40" label="Focus" progress={0.62} size={100} />
             <span
-              className="rounded-full px-3 py-1 text-[10.5px] font-medium"
+              className="rounded-md px-3 py-1 text-[10.5px] font-medium"
               style={{ border: "1px dashed var(--app-border-strong)", color: "var(--app-text-muted)", background: "var(--app-surface)" }}
             >
               Distraction · <span className="tabular-nums">2</span>

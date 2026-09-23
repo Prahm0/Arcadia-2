@@ -87,12 +87,12 @@ export default function WeeklyReviewCard({
       {/* Overall ratio bar */}
       <div className="mt-3">
         <div
-          className="h-1.5 w-full overflow-hidden rounded-full"
+          className="h-1.5 w-full overflow-hidden rounded-[1px]"
           style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)" }}
           aria-hidden="true"
         >
           <div
-            className="h-full rounded-full"
+            className="h-full"
             style={{
               width: `${Math.min(100, pctOverall)}%`,
               background: pctOverall >= 70 ? "var(--app-success)" : "var(--app-accent)",
@@ -148,12 +148,12 @@ export default function WeeklyReviewCard({
                     </span>
                   </div>
                   <div
-                    className="mt-1 h-1 overflow-hidden rounded-full"
+                    className="mt-1 h-1 overflow-hidden rounded-[1px]"
                     style={{ background: "var(--app-border)" }}
                     aria-hidden="true"
                   >
                     <div
-                      className="h-full rounded-full"
+                      className="h-full"
                       style={{
                         width: `${Math.min(100, pct)}%`,
                         background: pct >= 70 ? "var(--app-success)" : "var(--app-accent)",
@@ -209,8 +209,7 @@ function LabeledLine({
       style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)" }}
     >
       <div className="flex items-center gap-1.5">
-        <span aria-hidden="true" className="size-1.5 rounded-full" style={{ background: dotColor }} />
-        <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>
+        <p className="type-eyebrow" style={{ color: tone === "success" ? dotColor : "var(--app-text-muted)" }}>
           {label}
         </p>
       </div>

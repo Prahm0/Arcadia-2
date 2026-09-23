@@ -455,7 +455,7 @@ export function Meter({ label, value, fraction }: { label: string; value: string
         </span>
       </div>
       <div className="mt-1 h-1.5 rounded-full" style={{ background: "var(--app-surface-soft)" }}>
-        <div className="h-full rounded-full" style={{ width: `${fraction * 100}%`, background: "var(--app-accent)" }} />
+        <div className="h-full" style={{ width: `${fraction * 100}%`, background: "var(--app-accent)" }} />
       </div>
     </div>
   );

@@ -97,7 +97,7 @@ export default function ProactiveArcadCards({ limit = 2, compact = false }: Proa
                         key={action.label}
                         href={action.href}
                         onClick={() => dismiss(card.id)}
-                        className="rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-colors"
+                        className="rounded-md px-3 py-1.5 text-[12.5px] font-medium transition-colors"
                         style={actionStyle(action.variant)}
                       >
                         {action.label}
@@ -107,7 +107,7 @@ export default function ProactiveArcadCards({ limit = 2, compact = false }: Proa
                         key={action.label}
                         type="button"
                         onClick={() => onAction(card, action)}
-                        className="rounded-full px-3 py-1.5 text-[12.5px] font-medium transition-colors"
+                        className="rounded-md px-3 py-1.5 text-[12.5px] font-medium transition-colors"
                         style={actionStyle(action.variant)}
                       >
                         {action.label}

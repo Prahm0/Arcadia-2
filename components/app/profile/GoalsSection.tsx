@@ -41,12 +41,9 @@ export default function GoalsSection({ data, refresh, replace }: SectionProps) {
                       className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12.5px] ui-hover"
                       style={{ border: "1px solid var(--app-border)", color: "var(--app-text-soft)" }}
                     >
-                      <span
-                        aria-hidden="true"
-                        className="h-2 w-2 rounded-full"
-                        style={{ background: subject.colour || "var(--app-text-faint)" }}
-                      />
-                      {subject.name}
+                      <span style={{ color: subject.colour ? `color-mix(in oklab, ${subject.colour} 70%, var(--app-text))` : undefined }}>
+                        {subject.name}
+                      </span>
                       <span className="font-medium" style={{ color: "var(--app-text)" }}>
                         {subject.targetGrade}
                       </span>

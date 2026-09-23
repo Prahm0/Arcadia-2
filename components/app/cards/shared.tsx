@@ -50,17 +50,16 @@ export function SubjectTag({
   return (
     <span
       className={
-        "inline-flex max-w-full items-center gap-1.5 rounded-md font-medium " +
-        (size === "sm" ? "px-1.5 py-px text-[12px]" : "px-2 py-0.5 text-[12.5px]")
+        "inline-flex max-w-full items-center gap-1.5 rounded-[4px] font-medium " +
+        (size === "sm" ? "px-1.5 py-px text-[12px]" : "px-1.5 py-0.5 text-[12.5px]")
       }
       style={
         colour
           ? {
-              color: `color-mix(in oklab, ${colour} 72%, var(--app-text))`,
-              background: `color-mix(in oklab, ${colour} 10%, transparent)`,
-              boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${colour} 55%, transparent)`,
+              color: `color-mix(in oklab, ${colour} 70%, var(--app-text))`,
+              background: `color-mix(in oklab, ${colour} 13%, transparent)`,
             }
-          : { color: "var(--app-text-muted)", boxShadow: "inset 0 0 0 1px var(--app-border-strong)" }
+          : { color: "var(--app-text-muted)", background: "var(--app-accent-soft)" }
       }
     >
       <span className="truncate">{subject?.name ?? "No subject"}</span>
@@ -75,7 +74,7 @@ export function MasteryBar({ deck, height = 6 }: { deck: Pick<Deck, "cardCount" 
   const learning = deck.cardCount - deck.newCount - deck.masteredCount;
   return (
     <div
-      className="flex w-full overflow-hidden rounded-full"
+      className="flex w-full overflow-hidden rounded-[1px]"
       style={{ height, background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)" }}
       role="img"
       aria-label={`${deck.masteredCount} mastered, ${learning} still learning, ${deck.newCount} not studied`}

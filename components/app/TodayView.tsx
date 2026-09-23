@@ -231,12 +231,12 @@ function TodayCard(props: TodayCardProps) {
         <div className="flex items-center gap-3 text-[12px]" style={{ color: "var(--app-text-muted)" }}>
           <span>Week {Math.round(weekProgress * 100)}%</span>
           <span
-            className="relative h-1 w-16 overflow-hidden rounded-full"
+            className="relative h-1 w-16 overflow-hidden rounded-[1px]"
             style={{ background: "var(--app-border)" }}
             aria-hidden="true"
           >
             <span
-              className="absolute inset-y-0 left-0 rounded-full"
+              className="absolute inset-y-0 left-0"
               style={{ width: `${weekProgress * 100}%`, background: "var(--app-accent)" }}
             />
           </span>

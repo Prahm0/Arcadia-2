@@ -196,7 +196,7 @@ export default function TaskDetailSheet({ task, timezone, onClose, onEdit }: Tas
               </p>
               {isComplete ? (
                 <span
-                  className="rounded-full px-1.5 py-0.5 text-[10.5px] font-medium"
+                  className="rounded-md px-1.5 py-0.5 text-[10.5px] font-medium"
                   style={{
                     background: "color-mix(in oklab, var(--app-success) 15%, transparent)",
                     color: "var(--app-success)",
@@ -244,12 +244,12 @@ export default function TaskDetailSheet({ task, timezone, onClose, onEdit }: Tas
             </p>
           </div>
           <div
-            className="mt-2 h-1.5 w-full overflow-hidden rounded-full"
+            className="mt-2 h-1.5 w-full overflow-hidden rounded-[1px]"
             style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)" }}
             aria-hidden="true"
           >
             <div
-              className="h-full rounded-full"
+              className="h-full"
               style={{
                 width: `${progress * 100}%`,
                 background: "var(--app-accent)",
@@ -272,7 +272,7 @@ export default function TaskDetailSheet({ task, timezone, onClose, onEdit }: Tas
                   type="button"
                   onClick={() => addMinutes(n)}
                   disabled={busy !== null}
-                  className="rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors disabled:opacity-50"
+                  className="rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors disabled:opacity-50"
                   style={{
                     border: "1px solid var(--app-border-strong)",
                     color: "var(--app-text)",

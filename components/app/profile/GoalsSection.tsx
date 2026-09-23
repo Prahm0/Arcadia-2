@@ -15,11 +15,15 @@ import { Section, TextInput } from "./ui";
  */
 export default function GoalsSection({ data, refresh, replace }: SectionProps) {
   const graded = data.subjects.filter((subject) => subject.targetGrade);
+  // An ATAR is Australian. No country yet means an account from before
+  // countries existed, which were all Australian.
+  const { country } = data.profile;
+  const atar = !country || country === "AU";
 
   return (
     <Section id="goals" title="Goals" meta="What you're aiming for. Arcad keeps these in mind.">
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-[220px_1fr]">
-        <AtarTarget value={data.profile.atarTarget} onSaved={replace} />
+      <div className={atar ? "grid grid-cols-1 gap-5 md:grid-cols-[220px_1fr]" : "grid grid-cols-1 gap-5"}>
+        {atar ? <AtarTarget value={data.profile.atarTarget} onSaved={replace} /> : null}
 
         <div className="min-w-0">
           <GoalList goals={data.goals} refresh={refresh} />
@@ -220,7 +224,7 @@ function GoalList({ goals, refresh }: { goals: ProfileGoal[]; refresh: () => Pro
         </ul>
       ) : (
         <p className="mt-1.5 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-          e.g. &ldquo;Get into Engineering at UQ&rdquo; or &ldquo;Stop cramming the night before&rdquo;.
+          e.g. &ldquo;Get into engineering at uni&rdquo; or &ldquo;Stop cramming the night before&rdquo;.
         </p>
       )}
       <form

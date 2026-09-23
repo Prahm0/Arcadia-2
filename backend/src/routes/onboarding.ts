@@ -4,13 +4,16 @@ import { db, schema } from "../db";
 import { newId } from "../lib/ids";
 import { subjectKey } from "../lib/scheduler";
 import { parseClock } from "../lib/time";
-import { AU_STATES } from "./profile";
+import { AU_STATES, countryCode } from "./profile";
 import type { Env, Variables } from "../types";
 
 /** Everything the profile holds, collected in one go at the end of onboarding. */
 interface OnboardingBody {
   name?: string;
   grade?: string;
+  /** ISO 3166 alpha-2, e.g. "AU". */
+  country?: string | null;
+  /** Australian state; ignored for other countries. */
   state?: string | null;
   school?: string | null;
   timezone?: string;
@@ -81,7 +84,8 @@ onboarding.post("/", async (c) => {
   const wakeTime = parseClock(preferences.wakeTime) !== null ? preferences.wakeTime! : "07:00";
   const bedtime = parseClock(preferences.bedtime) !== null ? preferences.bedtime! : "22:30";
   const timezone = (body.timezone || "Australia/Brisbane").slice(0, 64);
-  const state = text(body.state, 8)?.toUpperCase() ?? null;
+  const country = countryCode(body.country);
+  const state = country === "AU" ? (text(body.state, 8)?.toUpperCase() ?? null) : null;
   const atar = Number(body.atarTarget);
   const name = (body.name ?? "").trim().slice(0, 120);
 
@@ -90,6 +94,7 @@ onboarding.post("/", async (c) => {
     .set({
       displayName: name || null,
       grade: text(body.grade, 32),
+      country,
       state: state && AU_STATES.includes(state) ? state : null,
       school: text(body.school, 120),
       atarTarget:

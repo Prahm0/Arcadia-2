@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { AU_STATES, updateProfile } from "@/lib/api/profile";
+import { useMemo, useState } from "react";
+import { updateProfile } from "@/lib/api/profile";
+import { AU_STATES, countryName, countryOptions } from "@/lib/app/countries";
 import AppButton from "../AppButton";
 import PageTour from "../tour/PageTour";
 import type { SectionProps } from "./ProfileView";
@@ -26,7 +27,7 @@ export default function ProfileHeader({ data, replace, replanned }: SectionProps
   const { profile, stats } = data;
   const [editing, setEditing] = useState(false);
 
-  const facts = [profile.grade, profile.school, profile.state].filter(Boolean);
+  const facts = [profile.grade, profile.school, profile.state, countryName(profile.country)].filter(Boolean);
   const joined = new Intl.DateTimeFormat("en-AU", { month: "long", year: "numeric" }).format(
     new Date(profile.joinedAt),
   );
@@ -129,7 +130,10 @@ function EditProfileForm({ onClose, data, onSaved }: EditProfileProps) {
   const [name, setName] = useState(profile.name);
   const [grade, setGrade] = useState(profile.grade ?? "");
   const [school, setSchool] = useState(profile.school ?? "");
+  // Accounts from before countries existed were all Australian.
+  const [country, setCountry] = useState(profile.country ?? (profile.state ? "AU" : ""));
   const [state, setState] = useState(profile.state ?? "");
+  const countries = useMemo(() => countryOptions(), []);
   const [colour, setColour] = useState(profile.avatarColour ?? fallbackColour(profile.name));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -145,7 +149,8 @@ function EditProfileForm({ onClose, data, onSaved }: EditProfileProps) {
         name,
         grade: grade || null,
         school: school || null,
-        state: state || null,
+        country: country || null,
+        state: country === "AU" ? state || null : null,
         avatarColour: colour,
       });
       await onSaved(next, (profile.grade ?? "") !== grade);
@@ -182,7 +187,19 @@ function EditProfileForm({ onClose, data, onSaved }: EditProfileProps) {
             ))}
           </Select>
         </Label>
-        <Label text="State or territory">
+        <Label text="Country">
+          <Select value={country} onChange={setCountry}>
+            <option value="">Not set</option>
+            {countries.map((option) => (
+              <option key={option.code} value={option.code}>
+                {option.name}
+              </option>
+            ))}
+          </Select>
+        </Label>
+      </div>
+      {country === "AU" ? (
+        <Label text="State or territory" hint="Your plan follows its school terms and holidays.">
           <Select value={state} onChange={setState}>
             <option value="">Not set</option>
             {AU_STATES.map((option) => (
@@ -192,9 +209,9 @@ function EditProfileForm({ onClose, data, onSaved }: EditProfileProps) {
             ))}
           </Select>
         </Label>
-      </div>
+      ) : null}
       <Label text="School">
-        <TextInput value={school} onChange={setSchool} maxLength={120} placeholder="e.g. Brisbane State High" />
+        <TextInput value={school} onChange={setSchool} maxLength={120} placeholder="Your school's name" />
       </Label>
 
       {error ? (

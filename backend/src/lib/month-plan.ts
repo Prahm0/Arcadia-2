@@ -40,6 +40,15 @@ const PLAN_SPAN_DAYS = 28;
 const MIN_SHARE = 0.5;
 const MAX_SHARE = 1.5;
 
+/** "New Zealand" for "NZ"; the code itself if the runtime doesn't know it. */
+function countryName(code: string): string {
+  try {
+    return new Intl.DisplayNames("en", { type: "region" }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
 const clip = (value: unknown, max: number) => String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
 
 function shortDate(date: string): string {
@@ -247,6 +256,8 @@ function describe(inputs: PlanInputs): string {
     priority >= 3 ? "finding it hard" : priority <= 1 ? "going well" : "going okay";
   const lines = [
     `Student: ${profile.grade ?? "year not given"}${profile.state ? `, ${profile.state}` : ""}${
+      profile.country ? `, ${countryName(profile.country)}` : ""
+    }${
       profile.school ? `, ${profile.school}` : ""
     }.`,
     `Daily study limit ${profile.maxDailyStudyMinutes} minutes, so at most ${capacity} minutes a week.`,

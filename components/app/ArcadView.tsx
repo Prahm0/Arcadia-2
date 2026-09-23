@@ -8,7 +8,6 @@ import { analytics } from "@/lib/analytics/events";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import type { DashboardResponse } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
-import { formatDueSoon, formatDurationMinutes } from "@/lib/api/time";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import ArcadOrb from "./ArcadOrb";
@@ -53,11 +52,10 @@ interface ChatState {
   proposals: Proposal[];
 }
 
-type Tab = "month" | "chat" | "context" | "history";
+type Tab = "month" | "chat" | "history";
 const TABS: { key: Tab; label: string }[] = [
   { key: "month", label: "Month" },
   { key: "chat", label: "Chat" },
-  { key: "context", label: "Context" },
   { key: "history", label: "History" },
 ];
 
@@ -338,7 +336,6 @@ function ArcadPage() {
             </>
           )}
           {tab === "month" && <MonthPlanPanel />}
-          {tab === "context" && <ContextPanel data={data} />}
           {tab === "history" && (
             <HistoryPanel
               conversations={conversations}
@@ -620,83 +617,6 @@ function ArcadHero({
   );
 }
 
-function ContextPanel({ data }: { data: DashboardResponse }) {
-  const timezone = data.profile?.timezone || "Australia/Sydney";
-  const pending = data.tasks.filter((t) => t.status === "pending");
-  const totalMinutes = pending.reduce((s, t) => s + t.remainingMinutes, 0);
-  const streak = useStreak();
-  return (
-    <div className="rounded-lg p-6" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
-      <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>What Arcad knows</p>
-      <p className="mt-2 text-[14px]" style={{ color: "var(--app-text-muted)" }}>
-        Every message is sent with this context so Arcad can plan around your real life, nothing generic.
-      </p>
-
-      <div className="mt-6 space-y-6">
-        <ContextRow label="Student">
-          <p className="text-[14.5px]" style={{ color: "var(--app-text)" }}>
-            {data.user.name} · {data.profile?.grade || "Grade not set"}
-          </p>
-          <p className="mt-1 text-[12.5px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
-            Timezone {timezone}
-          </p>
-        </ContextRow>
-        <ContextRow label="Subjects">
-          <div className="flex flex-wrap gap-1.5">
-            {data.subjects.map((s) => (
-              <span
-                key={s.id}
-                className="rounded-md px-2.5 py-1 text-[12px]"
-                style={{
-                  border: `1px solid ${s.colour || "var(--app-border)"}55`,
-                  background: `${s.colour || "var(--app-border)"}0f`,
-                  color: "var(--app-text-soft)",
-                }}
-              >
-                {s.name}
-              </span>
-            ))}
-          </div>
-        </ContextRow>
-        <ContextRow label="Open workload">
-          <p className="text-[14.5px]" style={{ color: "var(--app-text)" }}>
-            {pending.length} open {pending.length === 1 ? "task" : "tasks"} · {formatDurationMinutes(totalMinutes)}
-          </p>
-        </ContextRow>
-        <ContextRow label="This week">
-          <div className="grid grid-cols-3 gap-3">
-            <Stat label="Streak" value={String(streak.current)} />
-            <Stat label="Today" value={`${data.analytics?.todayMinutes ?? 0} min`} />
-            <Stat label="Week" value={`${data.analytics?.weekMinutes ?? 0} min`} />
-          </div>
-        </ContextRow>
-        {data.focusTasks.length > 0 ? (
-          <ContextRow label="Next deadlines">
-            <ul className="flex flex-col gap-2">
-              {data.focusTasks.slice(0, 3).map((task) => (
-                <li key={task.id}>
-                  <p className="text-[14px]" style={{ color: "var(--app-text)" }}>{task.title}</p>
-                  <p className="text-[12px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
-                    {task.subject ? `${task.subject} · ` : ""}
-                    {formatDueSoon(task.dueAt, timezone)}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </ContextRow>
-        ) : null}
-        <ContextRow label="Assistant">
-          <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-            {data.assistant?.providerConfigured
-              ? "OpenAI connected, Arcad interprets open-ended messages."
-              : "Local mode, Arcad handles structured requests without a provider key."}
-          </p>
-        </ContextRow>
-      </div>
-    </div>
-  );
-}
-
 function MiniContext({ data }: { data: DashboardResponse }) {
   const streak = useStreak();
   return (
@@ -720,24 +640,6 @@ function MiniContext({ data }: { data: DashboardResponse }) {
           <span className="tabular-nums" style={{ color: "var(--app-text)" }}>{data.analytics?.todayMinutes ?? 0} min</span>
         </li>
       </ul>
-    </div>
-  );
-}
-
-function ContextRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <p className="type-eyebrow mb-2" style={{ color: "var(--app-text-muted)" }}>{label}</p>
-      {children}
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-[11px]" style={{ color: "var(--app-text-muted)" }}>{label}</p>
-      <p className="mt-1 text-[16px] tabular-nums font-medium" style={{ color: "var(--app-text)" }}>{value}</p>
     </div>
   );
 }

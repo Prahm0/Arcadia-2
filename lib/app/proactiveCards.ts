@@ -11,6 +11,8 @@ export interface ProactiveAction {
   href?: string;
   /** Message to send to Arcad via /app/arcad?prompt=…, used when there is no href. */
   arcadPrompt?: string;
+  /** Opens the "Life happened" recovery sheet on Today, pre-run with this reason. */
+  lifeReason?: string;
   /** Optional tone override; primary defaults to accent. */
   variant?: "primary" | "ghost";
 }
@@ -18,7 +20,7 @@ export interface ProactiveAction {
 export interface ProactiveCard {
   /** Stable per-event id used for dismissal storage. */
   id: string;
-  kind: "deadline-24h" | "streak-milestone" | "low-week";
+  kind: "deadline-24h" | "streak-milestone" | "low-week" | "plan-slipped";
   tone: ProactiveTone;
   eyebrow: string;
   title: string;
@@ -45,6 +47,32 @@ export function buildProactiveCards(
   const timezone = data.profile?.timezone || data.user.timezone || "Australia/Sydney";
   const nowMs = now.getTime();
   const cards: ProactiveCard[] = [];
+
+  // --- Plan slipped (the signature recovery moment) ---
+  // Study blocks scheduled earlier today that fully passed while still
+  // "planned" mean the day has drifted. Arcad noticing and offering to rebuild
+  // is what makes the plan feel self-healing, so this leads.
+  const todayKey = dateKey(now.toISOString(), timezone);
+  const slipped = data.events.filter(
+    (event) =>
+      event.category === "study" &&
+      event.outcome === "planned" &&
+      dateKey(event.startAt, timezone) === todayKey &&
+      Date.parse(event.endAt) < nowMs,
+  );
+  if (slipped.length > 0) {
+    cards.push({
+      id: `plan-slipped:${todayKey}`,
+      kind: "plan-slipped",
+      tone: "warn",
+      eyebrow: "Life happened",
+      title:
+        slipped.length === 1
+          ? "You slipped past a study block today. Want me to rebuild the rest of your week around it?"
+          : `You slipped past ${slipped.length} study blocks today. Want me to rebuild the rest of your week around them?`,
+      actions: [{ label: "Rebalance my week", lifeReason: "missed", variant: "primary" }],
+    });
+  }
 
   // --- Deadline within 24h ---
   // Any pending task due in the next 24 hours with meaningful work remaining.

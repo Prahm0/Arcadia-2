@@ -92,12 +92,12 @@ function readMissNote(value: unknown): string | null {
   return typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, 280) || null : null;
 }
 
-/** The longest span one request can read: a month view plus its edge weeks. */
-const MAX_RANGE_MS = 45 * DAY;
+/** The longest span one request can read: a term plus the holidays after it. */
+const MAX_RANGE_MS = 130 * DAY;
 
 /**
- * Blocks between two instants, for the Schedule's other weeks and its month
- * view. Only reads what's stored: the dashboard keeps the next seven days
+ * Blocks between two instants, for the planner's term, other weeks and
+ * days. Only reads what's stored: the dashboard keeps the next seven days
  * planned, and anything further out is imported events and pinned blocks.
  */
 events.get("/", async (c) => {

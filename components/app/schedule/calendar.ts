@@ -8,7 +8,7 @@ export const DAY_MS = 86_400_000;
 export const HOUR_MS = 3_600_000;
 export const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-export type ScheduleMode = "day" | "week" | "month";
+export type ScheduleMode = "term" | "week" | "day";
 
 export interface DayColumn {
   /** YYYY-MM-DD in the student's timezone. */
@@ -78,43 +78,25 @@ export function dayColumn(key: string, today: string, timezone: string): DayColu
   };
 }
 
-/** The days a view shows around the anchor date. */
-export function visibleDays(mode: ScheduleMode, anchor: string, today: string, timezone: string): DayColumn[] {
+/** The day, or the Monday-to-Sunday week, around the anchor date. */
+export function visibleDays(mode: "day" | "week", anchor: string, today: string, timezone: string): DayColumn[] {
   if (mode === "day") return [dayColumn(anchor, today, timezone)];
-  if (mode === "week") {
-    const monday = mondayOf(anchor);
-    return Array.from({ length: 7 }, (_, i) => dayColumn(addDays(monday, i), today, timezone));
-  }
-  // Month: whole weeks from the Monday on or before the 1st to the Sunday on or after the last day.
-  const first = `${anchor.slice(0, 7)}-01`;
-  const start = mondayOf(first);
-  const last = addDays(`${addDays(first, 32).slice(0, 7)}-01`, -1);
-  const end = addDays(mondayOf(last), 6);
-  const days: DayColumn[] = [];
-  for (let key = start; key <= end; key = addDays(key, 1)) days.push(dayColumn(key, today, timezone));
-  return days;
+  const monday = mondayOf(anchor);
+  return Array.from({ length: 7 }, (_, i) => dayColumn(addDays(monday, i), today, timezone));
 }
 
-/** Moves the anchor one view forward or back. */
-export function stepAnchor(mode: ScheduleMode, anchor: string, direction: -1 | 1): string {
-  if (mode === "day") return addDays(anchor, direction);
-  if (mode === "week") return addDays(anchor, 7 * direction);
-  const [year, month] = anchor.split("-").map(Number);
-  return new Date(Date.UTC(year, month - 1 + direction, 1, 12)).toISOString().slice(0, 10);
-}
-
-const MONTH_LONG = new Intl.DateTimeFormat("en-AU", { month: "long", timeZone: "UTC" });
 const MONTH_SHORT = new Intl.DateTimeFormat("en-AU", { month: "short", timeZone: "UTC" });
 
-/** The title over the grid: "21 – 27 Sep 2026", "Wednesday 23 Sep", "September 2026". */
-export function rangeTitle(mode: ScheduleMode, anchor: string, days: DayColumn[]): string {
+/** "Wednesday 23 September 2026" */
+export function dayTitle(key: string): string {
+  return new Intl.DateTimeFormat("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })
+    .format(new Date(`${key}T12:00:00Z`))
+    .replace(",", "");
+}
+
+/** "21 – 27 Sep 2026" */
+export function weekTitle(days: DayColumn[]): string {
   const at = (key: string) => new Date(`${key}T12:00:00Z`);
-  if (mode === "month") return `${MONTH_LONG.format(at(anchor))} ${anchor.slice(0, 4)}`;
-  if (mode === "day") {
-    return new Intl.DateTimeFormat("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })
-      .format(at(anchor))
-      .replace(",", "");
-  }
   const first = days[0];
   const last = days[days.length - 1];
   const firstMonth = MONTH_SHORT.format(at(first.key));
@@ -123,6 +105,13 @@ export function rangeTitle(mode: ScheduleMode, anchor: string, days: DayColumn[]
   if (firstMonth === lastMonth) return `${first.date} – ${last.date} ${lastMonth} ${year}`;
   if (first.key.slice(0, 4) !== year) return `${first.date} ${firstMonth} ${first.key.slice(0, 4)} – ${last.date} ${lastMonth} ${year}`;
   return `${first.date} ${firstMonth} – ${last.date} ${lastMonth} ${year}`;
+}
+
+/** "Wed 23 Sep" */
+export function shortDate(key: string): string {
+  return new Intl.DateTimeFormat("en-AU", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })
+    .format(new Date(`${key}T12:00:00Z`))
+    .replace(",", "");
 }
 
 /** Hours since the local day began, e.g. 13.5 for 1:30pm. */
@@ -169,18 +158,20 @@ export function isExam(task: PlannerTask): boolean {
   return task.taskType === "exam";
 }
 
-/** Tasks grouped by the local day they're due. */
+/** Tasks grouped by the local day they're due, done ones included. */
 export function tasksByDay(tasks: PlannerTask[], timezone: string): Map<string, PlannerTask[]> {
   const byDay = new Map<string, PlannerTask[]>();
   for (const task of tasks) {
-    if (task.status !== "pending") continue;
+    if (task.status === "cancelled") continue;
     const key = dateKey(task.dueAt, timezone);
     const list = byDay.get(key) ?? [];
     list.push(task);
     byDay.set(key, list);
   }
-  // Exams first: they're the thing a student plans a week around.
-  for (const list of byDay.values()) list.sort((a, b) => Number(isExam(b)) - Number(isExam(a)));
+  // Open before done, and exams first: they're the thing a student plans a week around.
+  for (const list of byDay.values()) {
+    list.sort((a, b) => Number(a.status === "complete") - Number(b.status === "complete") || Number(isExam(b)) - Number(isExam(a)));
+  }
   return byDay;
 }
 
@@ -273,4 +264,49 @@ export function allDayEvents(events: PlannerEvent[], day: DayColumn): PlannerEve
     const last = endKey > first ? addDays(endKey, -1) : first;
     return day.key >= first && day.key <= last;
   });
+}
+
+export function eventMinutes(event: PlannerEvent): number {
+  return Math.max(0, (Date.parse(event.endAt) - Date.parse(event.startAt)) / 60_000);
+}
+
+export type ItemStatus = "completed" | "pending" | "rescheduled" | "overdue" | "missed";
+
+/**
+ * Where a block stands. A study block the student moved is pinned where they
+ * put it (see PATCH /api/events/:id), which is how "rescheduled" is known.
+ */
+export function eventStatus(event: PlannerEvent, nowMs: number): ItemStatus {
+  if (event.outcome === "completed") return "completed";
+  if (event.outcome === "missed") return "missed";
+  if (Date.parse(event.endAt) < nowMs) return "overdue";
+  if (event.category === "study" && event.pinned && event.editable !== false && !event.startedAt) return "rescheduled";
+  return "pending";
+}
+
+export function taskStatus(task: PlannerTask, nowMs: number): ItemStatus {
+  if (task.status === "complete") return "completed";
+  return Date.parse(task.dueAt) < nowMs ? "overdue" : "pending";
+}
+
+export const STATUS_LABEL: Record<ItemStatus, string> = {
+  completed: "Done",
+  pending: "Pending",
+  rescheduled: "Moved",
+  overdue: "Overdue",
+  missed: "Missed",
+};
+
+/** "45m", "1h 30m" */
+export function shortMinutes(minutes: number): string {
+  const rounded = Math.round(minutes);
+  if (rounded < 60) return `${rounded}m`;
+  const h = Math.floor(rounded / 60);
+  const m = rounded % 60;
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
+
+/** Same subject, ignoring case and stray spaces. */
+export function sameSubject(a: string | null | undefined, b: string | null | undefined): boolean {
+  return (a ?? "").trim().toLowerCase() === (b ?? "").trim().toLowerCase();
 }

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
 import {
   Avatar,
   BarChart,
@@ -52,6 +53,8 @@ export interface Tour {
   /** The page's name, as it appears in the sidebar. */
   title: string;
   steps: TourStep[];
+  /** Bump to show this one tour again after its page changes, without replaying every tour. */
+  version?: number;
 }
 
 export type TourId =
@@ -284,10 +287,16 @@ export const TOURS: Record<TourId, Tour> = {
 
   schedule: {
     title: "Schedule",
+    version: 2,
     steps: [
       {
-        title: "Your week, planned for you",
-        body: "Arcadia fills the gaps around your commitments with study blocks for your open tasks, and keeps it current as things change.",
+        title: "Your term at a glance",
+        body: "Term shows every subject across the term, a square a day: outlined is planned, filled is done, a folded corner is a deadline or exam. Click a square to tick it off, move it or open the day.",
+        visual: <TermSquares />,
+      },
+      {
+        title: "Week and Day, hour by hour",
+        body: "Arcadia fills the gaps around your commitments with study blocks for your open tasks. Tick a block when it's done, and use Day view to work through today.",
         visual: (
           <WeekGrid
             blocks={[
@@ -334,7 +343,7 @@ export const TOURS: Record<TourId, Tour> = {
       },
       {
         title: "Drag to reschedule",
-        body: "Drag a study block to a better time and drop it. Only study blocks move; school and other commitments stay put.",
+        body: "Drag a study block to another time or day, or drag a deadline in the Due row to a new day. School and other commitments stay put.",
         visual: (
           <div className="relative">
             <WeekGrid
@@ -351,8 +360,29 @@ export const TOURS: Record<TourId, Tour> = {
         ),
       },
       {
+        title: "Habits beside the plan",
+        body: "Tick off habits from the panel on the right in any view, and keep their streaks going. Press H to open or close it.",
+        visual: (
+          <Window width={220}>
+            <Stack gap={7} style={{ padding: "2px 4px" }}>
+              {[
+                { name: "Wake up at 6:00", done: true, streak: 6 },
+                { name: "Read 10 pages", done: true, streak: 3 },
+                { name: "Gym", done: false, streak: 0 },
+              ].map((habit) => (
+                <div key={habit.name} className="flex items-center gap-2 text-[10.5px]" style={{ color: "var(--app-text)" }}>
+                  <span className="h-3 w-3 rounded-[3px]" style={{ background: habit.done ? "var(--app-text)" : undefined, boxShadow: habit.done ? undefined : "inset 0 0 0 1px var(--app-border-strong)" }} />
+                  <span className="flex-1" style={{ textDecoration: habit.done ? "line-through" : undefined, color: habit.done ? "var(--app-text-muted)" : "var(--app-text)" }}>{habit.name}</span>
+                  {habit.streak ? <span style={{ color: "var(--app-text-muted)" }}>{habit.streak}</span> : null}
+                </div>
+              ))}
+            </Stack>
+          </Window>
+        ),
+      },
+      {
         title: "Click empty space to add",
-        body: "Click an empty spot on any day to add a task due then. Use the arrows or Today to move between weeks.",
+        body: "Click an empty spot on any day to add a task due then. Use the arrows or Today to move between terms, weeks and days.",
         visual: (
           <div className="relative">
             <WeekGrid
@@ -368,6 +398,7 @@ export const TOURS: Record<TourId, Tour> = {
       },
     ],
   },
+
 
   deadlines: {
     title: "Deadlines",
@@ -775,4 +806,40 @@ export function subscribeActiveTour(listener: () => void): () => void {
 
 export function getActiveTour(): TourId | null {
   return activeTour;
+}
+
+/** A few rows of the term view: planned, part done, done, and a deadline corner. */
+function TermSquares() {
+  const rows: Array<{ name: string; hue: string; cells: Array<"" | "plan" | "part" | "done" | "due" | "exam"> }> = [
+    { name: "Maths", hue: SUBJECT_COLORS[0], cells: ["done", "done", "", "done", "part", "plan", "plan", "", "plan", "due"] },
+    { name: "Physics", hue: SUBJECT_COLORS[1], cells: ["done", "", "done", "part", "", "plan", "", "exam", "", ""] },
+    { name: "English", hue: SUBJECT_COLORS[2], cells: ["", "done", "done", "", "done", "", "plan", "plan", "", "plan"] },
+  ];
+  return (
+    <Window width={280}>
+      <Stack gap={6} style={{ padding: "4px 6px" }}>
+        {rows.map((row) => (
+          <div key={row.name} className="flex items-center gap-2">
+            <span className="w-12 text-[10px] font-medium" style={{ color: `color-mix(in oklab, ${row.hue} 70%, var(--app-text))` }}>{row.name}</span>
+            <span className="flex gap-[3px]">
+              {row.cells.map((cell, i) => (
+                <span
+                  key={i}
+                  className="relative h-[13px] w-[13px] overflow-hidden rounded-[3px]"
+                  style={{
+                    background: cell === "done" ? row.hue : cell === "part" ? `linear-gradient(to top, ${row.hue} 50%, transparent 50%)` : cell === "plan" ? "transparent" : "var(--app-surface-soft)",
+                    boxShadow: cell === "plan" || cell === "part" ? `inset 0 0 0 1.25px ${row.hue}` : undefined,
+                  }}
+                >
+                  {cell === "due" || cell === "exam" ? (
+                    <span className="absolute right-0 top-0 h-0 w-0" style={{ borderTop: `6px solid ${cell === "exam" ? "var(--app-danger)" : "var(--app-text)"}`, borderLeft: "6px solid transparent" }} />
+                  ) : null}
+                </span>
+              ))}
+            </span>
+          </div>
+        ))}
+      </Stack>
+    </Window>
+  );
 }

@@ -12,7 +12,8 @@ const AUTO_OPEN_DELAY_MS = 450;
 const WHEEL_COOLDOWN_MS = 450;
 
 function storageKey(id: TourId, userId: string) {
-  return `arcadia:tour:v${TOUR_VERSION}:${id}:${userId}`;
+  const own = TOURS[id].version;
+  return `arcadia:tour:v${TOUR_VERSION}${own ? `.${own}` : ""}:${id}:${userId}`;
 }
 
 function hasSeen(key: string): boolean {

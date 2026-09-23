@@ -12,6 +12,7 @@ import {
   serialiseUser,
 } from "../lib/serialise";
 import { DAY, iso, localDateKey, startOfLocalDay } from "../lib/time";
+import { termsAround } from "../lib/terms";
 import { computeStreaks, minutesBetween } from "../lib/analytics";
 import type { Env, Variables } from "../types";
 
@@ -155,6 +156,8 @@ dashboard.get("/", async (c) => {
     tasks: pending.map(serialiseTask),
     commitments: commitmentRows.map(serialiseCommitment),
     range: { start: iso(start), end: iso(end) },
+    // The student's school terms, for the planner's term view. Empty outside the states we have dates for.
+    terms: termsAround(profile?.state, Number(localDateKey(now, timezone).slice(0, 4))),
     events,
     focusTasks: focus,
     notices: buildNotices({

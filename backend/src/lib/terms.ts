@@ -101,6 +101,22 @@ export function termWeekOf(
 }
 
 /**
+ * Every known term for the state from the year before `year` to the year
+ * after, oldest first, for the planner's term view. Empty when the state's
+ * calendar isn't known.
+ */
+export function termsAround(
+  state: string | null | undefined,
+  year: number,
+): Array<{ year: number; term: number; start: string; end: string }> {
+  const byYear = state ? TERM_DATES[state] : undefined;
+  if (!byYear) return [];
+  return [year - 1, year, year + 1].flatMap((y) =>
+    (byYear[y] ?? []).map(([start, end], index) => ({ year: y, term: index + 1, start, end })),
+  );
+}
+
+/**
  * Whether `date` (YYYY-MM-DD) is a school day's date inside a term: true in
  * term, false in the holidays, null when the state's calendar isn't known.
  */

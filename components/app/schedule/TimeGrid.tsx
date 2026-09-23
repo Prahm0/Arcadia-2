@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { DashboardResponse, PlannerEvent, PlannerTask } from "@/lib/api/types";
-import { formatClock } from "@/lib/api/time";
+import { dateKey, formatClock } from "@/lib/api/time";
 import { cn } from "@/lib/cn";
 import { studyTitle } from "@/lib/app/subjectColour";
 import {
@@ -41,6 +41,14 @@ interface TimeGridProps {
   onAddDeadline: (dayKey: string) => void;
   onOpenDay?: (dayKey: string) => void;
   onReschedule: (eventId: string, newStartMs: number) => void | Promise<void>;
+  /** Tick a block done, or back to planned. */
+  onToggleDone?: (event: PlannerEvent) => void;
+  /** Tick a deadline done, or reopen it. */
+  onToggleTask?: (task: PlannerTask) => void;
+  /** A deadline dragged to another day. */
+  onMoveTask?: (task: PlannerTask, dayKey: string) => void;
+  /** A row under Due for each day's habits. */
+  habitsRow?: (day: DayColumn) => React.ReactNode;
   /** Shown over the grid, e.g. the first-deadline prompt. */
   overlay?: React.ReactNode;
 }
@@ -74,8 +82,13 @@ export default function TimeGrid({
   onAddDeadline,
   onOpenDay,
   onReschedule,
+  onToggleDone,
+  onToggleTask,
+  onMoveTask,
+  habitsRow,
   overlay,
 }: TimeGridProps) {
+  const [dropDay, setDropDay] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const columnsRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
@@ -155,14 +168,15 @@ export default function TimeGrid({
   }, [days.length, single, onReschedule]);
 
   const dueRows = days.map((day) => [...(due.get(day.key) ?? []).map((task) => ({ task })), ...allDayEvents(events, day).map((event) => ({ event }))]);
-  const hasDueRow = dueRows.some((row) => row.length > 0);
+  // With deadlines movable the row is always there, so any day can take a drop.
+  const hasDueRow = Boolean(onMoveTask) || dueRows.some((row) => row.length > 0);
   const columns = `${GUTTER}px repeat(${days.length}, minmax(0, 1fr))`;
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
       <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-width:thin]">
         {/* Day names and the Due row stay pinned while the hours scroll. */}
-        <div className="sticky top-0 z-30" style={{ background: "var(--app-bg)" }}>
+        <div className="sticky top-0 z-30" style={{ background: "var(--app-surface)" }}>
           <div className="grid" style={{ gridTemplateColumns: columns, borderBottom: hasDueRow ? undefined : "1px solid var(--app-border)" }}>
             <div className="flex items-end justify-end pb-1.5 pr-2 text-[10px] font-medium" style={{ color: "var(--app-text-faint)" }}>
               {shortZone(timezone, now)}
@@ -210,12 +224,45 @@ export default function TimeGrid({
                 return (
                   <div
                     key={days[index].key}
-                    className="flex min-w-0 flex-col gap-1 px-1 pb-1.5 pt-1"
-                    style={{ borderLeft: "1px solid color-mix(in oklab, var(--app-border) 70%, transparent)" }}
+                    className="flex min-h-[30px] min-w-0 flex-col gap-1 px-1 pb-1.5 pt-1 transition-colors"
+                    style={{
+                      borderLeft: "1px solid color-mix(in oklab, var(--app-border) 70%, transparent)",
+                      background: dropDay === days[index].key ? "var(--app-accent-soft)" : undefined,
+                    }}
+                    onDragOver={
+                      onMoveTask
+                        ? (event) => {
+                            if (!event.dataTransfer.types.includes(TASK_DRAG)) return;
+                            event.preventDefault();
+                            event.dataTransfer.dropEffect = "move";
+                            setDropDay(days[index].key);
+                          }
+                        : undefined
+                    }
+                    onDragLeave={() => setDropDay((current) => (current === days[index].key ? null : current))}
+                    onDrop={
+                      onMoveTask
+                        ? (event) => {
+                            const id = event.dataTransfer.getData(TASK_DRAG);
+                            setDropDay(null);
+                            const task = [...due.values()].flat().find((candidate) => candidate.id === id);
+                            if (!task) return;
+                            event.preventDefault();
+                            if (dateKeyOf(task, timezone) !== days[index].key) onMoveTask(task, days[index].key);
+                          }
+                        : undefined
+                    }
                   >
                     {shown.map((item) =>
                       "task" in item ? (
-                        <DueChip key={item.task.id} task={item.task} subjects={subjects} onOpen={() => onOpenTask(item.task)} />
+                        <DueChip
+                          key={item.task.id}
+                          task={item.task}
+                          subjects={subjects}
+                          onOpen={() => onOpenTask(item.task)}
+                          onToggle={onToggleTask ? () => onToggleTask(item.task) : undefined}
+                          draggable={Boolean(onMoveTask) && item.task.status !== "complete"}
+                        />
                       ) : (
                         <button
                           key={item.event.id}
@@ -236,6 +283,17 @@ export default function TimeGrid({
                   </div>
                 );
               })}
+            </div>
+          ) : null}
+
+          {habitsRow ? (
+            <div className="grid" style={{ gridTemplateColumns: columns, borderBottom: "1px solid var(--app-border)" }}>
+              <div className="pr-2 pt-1.5 text-right text-[10.5px] font-medium" style={{ color: "var(--app-text-faint)" }}>Habits</div>
+              {days.map((day) => (
+                <div key={day.key} className="min-w-0 px-1 py-1" style={{ borderLeft: "1px solid color-mix(in oklab, var(--app-border) 70%, transparent)" }}>
+                  {habitsRow(day)}
+                </div>
+              ))}
             </div>
           ) : null}
         </div>
@@ -293,6 +351,7 @@ export default function TimeGrid({
                     onSelectEvent(event);
                   }}
                   onAddDeadline={() => onAddDeadline(day.key)}
+                  onToggleDone={onToggleDone}
                 />
               ))}
             </div>
@@ -336,6 +395,7 @@ function DayColumnView({
   onBeginDrag,
   onSelectEvent,
   onAddDeadline,
+  onToggleDone,
 }: {
   day: DayColumn;
   dayIndex: number;
@@ -352,6 +412,7 @@ function DayColumnView({
   onBeginDrag: (event: PlannerEvent, dayIndex: number, e: React.PointerEvent) => void;
   onSelectEvent: (event: PlannerEvent) => void;
   onAddDeadline: () => void;
+  onToggleDone?: (event: PlannerEvent) => void;
 }) {
   const asleepBands = bed > wake ? [[0, wake], [bed, 24]] : [[bed, wake]];
   return (
@@ -433,6 +494,7 @@ function DayColumnView({
             offsetDays={moving ? drag.days : 0}
             onPointerDown={(e) => onBeginDrag(block.event, dayIndex, e)}
             onClick={() => onSelectEvent(block.event)}
+            onToggleDone={onToggleDone && block.event.category === "study" && !moving ? () => onToggleDone(block.event) : undefined}
           />
         );
       })}
@@ -449,6 +511,7 @@ function Block({
   offsetDays,
   onPointerDown,
   onClick,
+  onToggleDone,
 }: {
   block: PlacedBlock;
   subjects: Subjects;
@@ -458,8 +521,10 @@ function Block({
   offsetDays: number;
   onPointerDown: (e: React.PointerEvent) => void;
   onClick: () => void;
+  onToggleDone?: () => void;
 }) {
   const { event } = block;
+  const movedByStudent = event.category === "study" && event.pinned && event.editable !== false && !event.startedAt && event.outcome === "planned";
   const styles = blockStyle(event, subjects);
   const moving = offsetMinutes !== 0 || offsetDays !== 0;
   const heightPx = Math.max(18, (block.end - block.start) * HOUR_PX - 2);
@@ -475,7 +540,7 @@ function Block({
 
   return (
     <div
-      className={cn("absolute px-[3px]", moving ? "z-30" : "z-10")}
+      className={cn("group/block absolute px-[3px]", moving ? "z-30" : "z-10")}
       style={{
         top: block.start * HOUR_PX + 1 + (offsetMinutes / 60) * HOUR_PX,
         height: heightPx,
@@ -508,7 +573,7 @@ function Block({
         }}
       >
         <span className={cn("flex items-center gap-1 truncate text-[12px] font-semibold", missed && "line-through")}>
-          {completed ? (
+          {completed && !onToggleDone ? (
             <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-label="Done" className="shrink-0">
               <path d="M1 5l2.5 2.5L9 1.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -519,44 +584,114 @@ function Block({
         {roomy ? (
           <span className="mt-0.5 truncate text-[11px] tabular-nums opacity-75">
             {formatClock(start, timezone)}–{formatClock(end, timezone)}
-            {detail && heightPx >= 58 ? ` · ${detail}` : ""}
+            {movedByStudent ? " · Moved" : detail && heightPx >= 58 ? ` · ${detail}` : ""}
           </span>
         ) : null}
       </button>
+      {onToggleDone ? (
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={completed}
+          aria-label={completed ? `Mark ${title} not done` : `Mark ${title} done`}
+          title={completed ? "Done. Click to undo" : "Mark done"}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleDone();
+          }}
+          className={cn(
+            "absolute right-[7px] grid h-4 w-4 place-items-center rounded-[4px] transition-opacity",
+            roomy ? "top-[5px]" : "top-1/2 -translate-y-1/2",
+            completed ? "opacity-100" : "opacity-0 focus-visible:opacity-100 group-hover/block:opacity-100",
+          )}
+          style={{
+            background: completed ? "currentColor" : "var(--app-surface)",
+            color: styles.text,
+            boxShadow: completed ? undefined : "inset 0 0 0 1.5px currentColor",
+          }}
+        >
+          {completed ? (
+            <svg width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+              <path d="M1.5 5.2l2.3 2.3L8.6 2.4" stroke="var(--app-surface)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          ) : null}
+        </button>
+      ) : null}
     </div>
   );
 }
 
-/** A deadline in the Due row: exams outlined in red, the rest tagged by subject. */
-function DueChip({ task, subjects, onOpen }: { task: PlannerTask; subjects: Subjects; onOpen: () => void }) {
+const TASK_DRAG = "application/x-arcadia-task";
+
+function dateKeyOf(task: PlannerTask, timezone: string): string {
+  return dateKey(task.dueAt, timezone);
+}
+
+/**
+ * A deadline in the Due row: exams outlined in red, the rest tagged by
+ * subject. Tick it off in place, or drag it to another day to move it.
+ */
+function DueChip({
+  task,
+  subjects,
+  onOpen,
+  onToggle,
+  draggable,
+}: {
+  task: PlannerTask;
+  subjects: Subjects;
+  onOpen: () => void;
+  onToggle?: () => void;
+  draggable: boolean;
+}) {
   const index = subjects.findIndex((s) => s.name.toLowerCase() === (task.subject ?? "").toLowerCase());
   const colour = index >= 0 ? subjects[index].colour || SUBJECT_COLORS[index % SUBJECT_COLORS.length] : null;
   const exam = isExam(task);
+  const done = task.status === "complete";
+  const tone = exam ? "var(--app-danger)" : colour;
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      title={`${exam ? "Exam" : "Due"}: ${task.title}${task.subject ? ` (${task.subject})` : ""}`}
-      className="flex min-w-0 items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-left text-[11.5px] font-medium"
+    <div
+      draggable={draggable}
+      onDragStart={(event) => {
+        event.dataTransfer.setData(TASK_DRAG, task.id);
+        event.dataTransfer.effectAllowed = "move";
+      }}
+      title={`${exam ? "Exam" : "Due"}: ${task.title}${task.subject ? ` (${task.subject})` : ""}${draggable ? ". Drag to another day to move it." : ""}`}
+      className={cn("flex min-w-0 items-center gap-1 rounded-[4px] py-0.5 pl-1 pr-1.5 text-[11.5px] font-medium", draggable && "cursor-grab active:cursor-grabbing")}
       style={
-        exam
-          ? {
-              color: "var(--app-danger)",
-              background: "color-mix(in oklab, var(--app-danger) 9%, transparent)",
-              boxShadow: "inset 0 0 0 1px color-mix(in oklab, var(--app-danger) 45%, transparent)",
-            }
-          : colour
+        done
+          ? { color: "var(--app-text-faint)", boxShadow: "inset 0 0 0 1px var(--app-border)" }
+          : tone
             ? {
-                color: `color-mix(in oklab, ${colour} 70%, var(--app-text))`,
-                background: `color-mix(in oklab, ${colour} 12%, transparent)`,
-                boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${colour} 35%, transparent)`,
+                color: `color-mix(in oklab, ${tone} 72%, var(--app-text))`,
+                background: `color-mix(in oklab, ${tone} ${exam ? 9 : 12}%, transparent)`,
+                boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${tone} ${exam ? 45 : 35}%, transparent)`,
               }
             : { color: "var(--app-text-soft)", background: "var(--app-surface-soft)", boxShadow: "inset 0 0 0 1px var(--app-border)" }
       }
     >
-      {exam ? <span className="shrink-0 text-[9.5px] font-bold uppercase tracking-[0.05em]">Exam</span> : null}
-      <span className="truncate">{task.title}</span>
-    </button>
+      {onToggle ? (
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={done}
+          aria-label={done ? `Reopen ${task.title}` : `Mark ${task.title} done`}
+          onClick={onToggle}
+          className="grid h-3 w-3 shrink-0 place-items-center rounded-[3px]"
+          style={{ background: done ? "currentColor" : undefined, boxShadow: done ? undefined : "inset 0 0 0 1.25px currentColor" }}
+        >
+          {done ? (
+            <svg width="7" height="7" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+              <path d="M1.5 5.2l2.3 2.3L8.6 2.4" stroke="var(--app-surface)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          ) : null}
+        </button>
+      ) : null}
+      <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-1 text-left">
+        {exam ? <span className="shrink-0 text-[9.5px] font-bold uppercase tracking-[0.05em]">Exam</span> : null}
+        <span className="truncate" style={{ textDecoration: done ? "line-through" : undefined }}>{task.title}</span>
+      </button>
+    </div>
   );
 }
 

@@ -20,6 +20,8 @@ export interface SocialIdentity {
 const encoder = new TextEncoder();
 const APPLE_ISSUER = "https://appleid.apple.com";
 const APPLE_KEYS = createRemoteJWKSet(new URL("https://appleid.apple.com/auth/keys"));
+const GOOGLE_ISSUERS = ["https://accounts.google.com", "accounts.google.com"];
+const GOOGLE_KEYS = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
 
 function stateKey(env: Env): Uint8Array {
   if (!env.TOKEN_ENCRYPTION_KEY) throw new Error("OAuth state signing is not configured.");
@@ -118,6 +120,35 @@ export async function exchangeGoogleCode(env: Env, code: string): Promise<Social
     providerUserId: profile.sub,
     email: profile.email.trim().toLowerCase(),
     name: typeof profile.name === "string" ? profile.name.trim().slice(0, 120) : "",
+  };
+}
+
+/**
+ * Verifies the ID token returned by the native Google SDK before using its
+ * profile claims. This is intentionally separate from the browser code flow.
+ */
+export async function verifyGoogleIdToken(env: Env, idToken: string): Promise<SocialIdentity> {
+  if (!env.GOOGLE_CLIENT_ID) throw new Error("Google sign-in is not configured.");
+
+  const { payload } = await jwtVerify(idToken, GOOGLE_KEYS, {
+    algorithms: ["RS256"],
+    issuer: GOOGLE_ISSUERS,
+    audience: env.GOOGLE_CLIENT_ID,
+  });
+  const emailVerified = payload.email_verified === true || payload.email_verified === "true";
+  if (
+    typeof payload.sub !== "string" ||
+    typeof payload.email !== "string" ||
+    !emailVerified
+  ) {
+    throw new Error("Google did not return a verified email address.");
+  }
+
+  return {
+    provider: "google",
+    providerUserId: payload.sub,
+    email: payload.email.trim().toLowerCase(),
+    name: typeof payload.name === "string" ? payload.name.trim().slice(0, 120) : "",
   };
 }
 

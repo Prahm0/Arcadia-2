@@ -31,11 +31,38 @@ export const users = sqliteTable(
     revenuecatAppUserId: text("revenuecat_app_user_id"),
     revenuecatEntitlement: text("revenuecat_entitlement"),
     revenuecatProductId: text("revenuecat_product_id"),
+    // Referrals are deliberately separate from billing. A qualified invite
+    // earns temporary Pro access without changing a Stripe or App Store plan.
+    referralCode: text("referral_code"),
+    referredByUserId: text("referred_by_user_id"),
+    proBonusUntil: integer("pro_bonus_until"),
+    proBonusDaysEarned: integer("pro_bonus_days_earned").notNull().default(0),
   },
   (t) => [
     uniqueIndex("users_email_idx").on(t.email),
     index("users_stripe_customer_idx").on(t.stripeCustomerId),
     index("users_revenuecat_app_user_idx").on(t.revenuecatAppUserId),
+    uniqueIndex("users_referral_code_idx").on(t.referralCode),
+  ],
+);
+
+/** A referral is created on a brand-new account and becomes real only after setup. */
+export const referrals = sqliteTable(
+  "referrals",
+  {
+    id: text("id").primaryKey(),
+    referrerUserId: text("referrer_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    inviteeUserId: text("invitee_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: integer("created_at").notNull().default(now),
+    qualifiedAt: integer("qualified_at"),
+  },
+  (t) => [
+    uniqueIndex("referrals_invitee_idx").on(t.inviteeUserId),
+    index("referrals_referrer_qualified_idx").on(t.referrerUserId, t.qualifiedAt),
   ],
 );
 

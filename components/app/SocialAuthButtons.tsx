@@ -14,9 +14,10 @@ interface ProviderConfig {
 interface SocialAuthButtonsProps {
   from: "login" | "register";
   next?: string | null;
+  referralCode?: string | null;
 }
 
-export default function SocialAuthButtons({ from, next }: SocialAuthButtonsProps) {
+export default function SocialAuthButtons({ from, next, referralCode }: SocialAuthButtonsProps) {
   const [providers, setProviders] = useState<ProviderConfig | null>(null);
   const [nativeGoogleLoading, setNativeGoogleLoading] = useState(false);
   const [nativeGoogleError, setNativeGoogleError] = useState<string | null>(null);
@@ -46,6 +47,7 @@ export default function SocialAuthButtons({ from, next }: SocialAuthButtonsProps
     if (destination !== "/app") {
       params.set("next", destination);
     }
+    if (from === "register" && referralCode) params.set("ref", referralCode);
     return `/api/auth/oauth/${provider}?${params.toString()}`;
   }
 
@@ -70,7 +72,7 @@ export default function SocialAuthButtons({ from, next }: SocialAuthButtonsProps
       const { idToken } = await GoogleSignIn.signIn();
       await api<{ redirect: string; csrfToken: string }>("/api/auth/oauth/google/native", {
         method: "POST",
-        body: JSON.stringify({ idToken }),
+        body: JSON.stringify({ idToken, referralCode: from === "register" ? referralCode : undefined }),
       });
       window.location.assign(safeNext());
     } catch (error) {

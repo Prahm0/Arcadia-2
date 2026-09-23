@@ -479,6 +479,19 @@ export default function SettingsView() {
                 Open profile
               </AppButton>
             </div>
+            {!isGuest ? (
+              <div
+                className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"
+                style={{ borderColor: "var(--app-border)" }}
+              >
+                <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>
+                  Invite a friend and you both receive Pro time when they finish setup.
+                </p>
+                <AppButton variant="secondary" onClick={() => router.push("/app/invite")}>
+                  Invite friends
+                </AppButton>
+              </div>
+            ) : null}
           </div>
         </Card>
 

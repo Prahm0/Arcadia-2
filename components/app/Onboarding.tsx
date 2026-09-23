@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { api } from "@/lib/api/client";
+import { analytics } from "@/lib/analytics/events";
 import AppButton from "@/components/app/AppButton";
 import { cn } from "@/lib/cn";
 import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
@@ -242,6 +243,7 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
           },
         }),
       });
+      analytics.onboardingCompleted(selectedSubjects.length, readyTasks.length);
       onComplete();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");

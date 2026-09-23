@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, Inter, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import PwaInstallPrompt from "@/components/PwaInstallPrompt";
+import { PostHogProvider } from "@/lib/analytics/posthog";
 import "./globals.css";
 
 // DM Sans replaces Inter as the primary sans, warmer letterforms, no
@@ -107,8 +108,10 @@ export default function RootLayout({
           product's own `html[data-app-theme] body` override, so the app shell
           was sitting on a black body in both themes. */}
       <body className="min-h-full">
-        {children}
-        <PwaInstallPrompt />
+        <PostHogProvider>
+          {children}
+          <PwaInstallPrompt />
+        </PostHogProvider>
       </body>
     </html>
   );

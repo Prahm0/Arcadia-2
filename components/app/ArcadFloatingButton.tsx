@@ -257,7 +257,7 @@ export default function ArcadFloatingButton() {
             </div>
             <div className="flex items-center gap-1">
               <Link
-                href="/app/arcad"
+                href="/app/arcad?tab=chat"
                 onClick={hidePanel}
                 className="ui-hover rounded-md px-3 py-2 text-[11.5px] font-medium"
                 style={{ color: "var(--app-arcad-strong)" }}
@@ -342,7 +342,7 @@ export default function ArcadFloatingButton() {
 
             {proposalWaiting ? (
               <Link
-                href="/app/arcad"
+                href="/app/arcad?tab=chat"
                 onClick={hidePanel}
                 className="mt-5 block rounded-md px-3.5 py-3 text-[12.5px] font-medium"
                 style={{ background: "var(--app-arcad-soft)", color: "var(--app-arcad-strong)" }}

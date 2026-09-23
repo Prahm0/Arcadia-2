@@ -16,10 +16,16 @@ plan.get("/month", async (c) => {
   return c.json({ plan: await getMonthPlan(db(c.env.DB), userId) });
 });
 
+/** A plan this fresh is handed back instead of asking Arcad again (double taps, retries). */
+const FRESH_MS = 30_000;
+
 /** Writes a fresh month plan. Doesn't touch the schedule; POST /schedule does. */
 plan.post("/month", async (c) => {
   const { userId } = c.get("session");
-  const made = await makeMonthPlan(c.env, db(c.env.DB), userId);
+  const database = db(c.env.DB);
+  const latest = await getMonthPlan(database, userId);
+  if (latest && Date.now() - Date.parse(latest.createdAt) < FRESH_MS) return c.json({ plan: latest });
+  const made = await makeMonthPlan(c.env, database, userId);
   if (!made) return c.json({ error: "Finish setting up first." }, 409);
   return c.json({ plan: made });
 });

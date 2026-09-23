@@ -24,6 +24,7 @@ import SessionStartModal from "./SessionStartModal";
 import Logo from "@/components/ui/Logo";
 import { Avatar } from "./profile/ui";
 import { isGuestEmail } from "@/lib/auth/guest";
+import { initialiseRevenueCat, logOutRevenueCat } from "@/lib/capacitor/revenuecat";
 
 interface AppShellProps {
   user: AuthUser | null;
@@ -118,6 +119,15 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const socialSignupTracked = useRef(false);
 
+  // The native shell identifies RevenueCat with Arcadia's own user ID. This
+  // stays a no-op on web, so Stripe remains the only web billing path.
+  useEffect(() => {
+    if (!user?.id) return;
+    void initialiseRevenueCat(user.id).catch((error) => {
+      console.warn("[revenuecat] initialisation failed", error);
+    });
+  }, [user?.id]);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("signup") !== "completed" || socialSignupTracked.current) return;
@@ -146,6 +156,9 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
 
   async function signOut() {
     setSigningOut(true);
+    void logOutRevenueCat().catch((error) => {
+      console.warn("[revenuecat] sign-out failed", error);
+    });
     try {
       await api("/api/auth/logout", { method: "POST" });
     } catch {

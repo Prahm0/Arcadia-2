@@ -142,6 +142,13 @@ account.delete("/", async (c) => {
     }, 403);
   }
 
+  if (user.billingProvider === "app_store" && user.subscriptionStatus === "active") {
+    return c.json({
+      error: "Manage your active App Store subscription before deleting this account.",
+      code: "app_store_subscription_active",
+    }, 409);
+  }
+
   try {
     const subscriptions = user.stripeCustomerId
       ? await listCustomerSubscriptions(c.env, user.stripeCustomerId)

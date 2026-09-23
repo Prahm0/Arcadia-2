@@ -18,6 +18,8 @@ export interface Env {
   STRIPE_PRICE_MAX_WEEKLY: string;
   STRIPE_PRICE_MAX_MONTHLY: string;
   STRIPE_PRICE_MAX_YEARLY: string;
+  REVENUECAT_ENTITLEMENT_PRO: string;
+  REVENUECAT_ENTITLEMENT_MAX: string;
 
   // secrets (wrangler secret put)
   OPENAI_API_KEY?: string;
@@ -32,6 +34,8 @@ export interface Env {
   APPLE_PRIVATE_KEY?: string;
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
+  REVENUECAT_SECRET_API_KEY?: string;
+  REVENUECAT_WEBHOOK_AUTHORIZATION?: string;
   VAPID_PUBLIC_KEY?: string;
   VAPID_PRIVATE_KEY?: string;
 }

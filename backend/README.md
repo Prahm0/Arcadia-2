@@ -54,6 +54,8 @@ means it requires a session.
 | POST | `/api/auth/login` | Sets the cookie, returns `csrfToken` |
 | POST | `/api/auth/logout` | |
 | GET/PATCH | `/api/account` | Name and theme |
+| POST | `/api/billing/iap/activate` | Server-verifies an iOS RevenueCat entitlement for the signed-in user |
+| POST | `/api/billing/iap/webhook` | RevenueCat lifecycle events, authenticated by the configured header |
 | POST | `/api/account/change-password` | Signs out other devices |
 | POST | `/api/onboarding` | Profile, subjects, preferences, first plan |
 | GET | `/api/dashboard` | Re-plans, then returns the whole app state |
@@ -125,10 +127,14 @@ APPLE_CLIENT_ID=...
 APPLE_TEAM_ID=...
 APPLE_KEY_ID=...
 APPLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\n..."
+REVENUECAT_SECRET_API_KEY=sk_...
+REVENUECAT_WEBHOOK_AUTHORIZATION="Bearer <random-long-value>"
 ```
 
 Google and Apple sign-in stay hidden when their full configuration is absent.
 Provider setup and production callback URLs are documented in `DEPLOY.md`.
+RevenueCat setup for iOS in-app purchases is documented in
+[`../IOS_REVENUECAT_SETUP.md`](../IOS_REVENUECAT_SETUP.md).
 
 ## Deploying
 

@@ -6,8 +6,10 @@ import { api } from "@/lib/api/client";
 import { analytics } from "@/lib/analytics/events";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { isGuestEmail } from "@/lib/auth/guest";
+import { useNativeIOS } from "@/lib/capacitor/platform";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
+import IosPricingView from "./IosPricingView";
 
 type TierKey = "free" | "pro" | "max";
 type Interval = "week" | "month" | "year";
@@ -116,6 +118,7 @@ export default function PricingView() {
   const [interval, setInterval] = useState<Interval>("month");
   const [busyTier, setBusyTier] = useState<TierKey | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const nativeIOS = useNativeIOS();
   // Stripe sends a cancelled checkout back here with ?upgrade=cancelled. Read
   // it in the initialiser (this subtree only mounts on the client, behind the
   // dashboard gate) so the effect just strips the param and never sets state.
@@ -130,6 +133,8 @@ export default function PricingView() {
     url.searchParams.delete("upgrade");
     window.history.replaceState({}, "", url.toString());
   }, [cancelled]);
+
+  if (nativeIOS) return <IosPricingView tiers={TIERS} />;
 
   async function startCheckout(plan: "pro" | "max") {
     // Guests can't upgrade, they'd be paying for an @arcadia.local

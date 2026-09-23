@@ -1,6 +1,7 @@
 /**
- * Tier + daily-cap plumbing for Arcad. The Stripe webhook owns `users.tier`;
- * `developer_access` grants Max features independently. We count sent
+ * Tier + daily-cap plumbing for Arcad. Stripe and RevenueCat webhooks own
+ * `users.tier` for their respective billing platforms; `developer_access`
+ * grants Max features independently. We count sent
  * messages per user per day in `arcad_usage` and reject a send once the
  * cap is hit. Free = 2/day, Pro = 20/day, Max = 100/day.
  */

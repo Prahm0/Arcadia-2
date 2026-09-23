@@ -25,7 +25,12 @@
     "STRIPE_PRICE_PRO_YEARLY": "price_1UIme39e8rebDtOc4neAYi5g",
     "STRIPE_PRICE_MAX_WEEKLY": "price_1UImh99e8rebDtOcRg3WSl9V",
     "STRIPE_PRICE_MAX_MONTHLY": "price_1UImhN9e8rebDtOckTgt2JRz",
-    "STRIPE_PRICE_MAX_YEARLY": "price_1UImhc9e8rebDtOc6mo8AfL0"
+    "STRIPE_PRICE_MAX_YEARLY": "price_1UImhc9e8rebDtOc6mo8AfL0",
+    // RevenueCat entitlement identifiers. Product identifiers and public SDK
+    // keys live in the iOS/web build environment, while the secret API key
+    // below is set with `wrangler secret put`.
+    "REVENUECAT_ENTITLEMENT_PRO": "pro",
+    "REVENUECAT_ENTITLEMENT_MAX": "max"
   },
 
   "d1_databases": [

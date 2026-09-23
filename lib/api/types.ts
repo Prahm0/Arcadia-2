@@ -10,6 +10,7 @@ export interface AuthUser {
   tier?: "free" | "pro" | "max";
   developerAccess?: boolean;
   hasSubscription?: boolean;
+  billingProvider?: "stripe" | "app_store" | null;
   subscriptionStatus?: string | null;
   subscriptionCurrentPeriodEnd?: string | null;
 }

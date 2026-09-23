@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useTransform, type MotionStyle, type MotionValue } from "framer-motion";
+import { motion, useSpring, useTransform, type MotionStyle, type MotionValue } from "framer-motion";
 import { useRef } from "react";
 import { usePrefersReducedMotion, useScrollProgress } from "@/lib/hooks";
 import { cn } from "@/lib/cn";
@@ -29,7 +29,12 @@ export default function Hero() {
   const ref = useRef<HTMLElement>(null);
   const reduced = usePrefersReducedMotion();
 
-  const scrollYProgress = useScrollProgress(ref);
+  // Raw scroll position drives everything in this section. A mouse wheel
+  // delivers it in big discrete jumps, which made the scrubbed animation feel
+  // step-by-step; a spring eases the value so wheel jumps glide instead. The
+  // trackpad already felt smooth and stays that way.
+  const rawProgress = useScrollProgress(ref);
+  const scrollYProgress = useSpring(rawProgress, { stiffness: 150, damping: 30, mass: 0.3 });
 
   /* The block travels as one: it settles as it arrives, then lifts as it goes. */
   const copyY = useTransform(scrollYProgress, [COPY_IN, COPY_IN_END, COPY_OUT, COPY_OUT_END + 0.01], [28, 0, 0, -56]);

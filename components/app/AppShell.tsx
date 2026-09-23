@@ -191,7 +191,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
             <Link
               href="/app/pricing"
               className="flex items-center gap-1 rounded-md px-2.5 py-1 text-[12px] font-semibold"
-              style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}
+              style={{ background: "var(--app-arcad)", color: "var(--app-arcad-on)" }}
             >
               <span aria-hidden="true">✦</span>
               Upgrade
@@ -320,9 +320,9 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
                 href="/app/pricing"
                 className="flex h-9 items-center justify-center gap-2 rounded-md px-3 text-[13px] font-semibold transition-opacity hover:opacity-90"
                 style={{
-                  background: "var(--app-accent)",
-                  color: "var(--app-accent-on)",
-                  boxShadow: "0 6px 18px -8px var(--app-accent)",
+                  background: "var(--app-arcad)",
+                  color: "var(--app-arcad-on)",
+                  boxShadow: "0 6px 18px -8px var(--app-arcad)",
                 }}
               >
                 <svg aria-hidden="true" viewBox="0 0 20 20" width="15" height="15" fill="currentColor">

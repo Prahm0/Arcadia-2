@@ -155,6 +155,20 @@ html[data-app-theme] {
   --font-weight-semibold: 600;
 }
 
+/* Native WebViews render edge to edge when viewport-fit=cover is present.
+   Keep Arcadia's mobile chrome clear of the iPhone status bar and home
+   indicator. These values resolve to zero in ordinary browsers. */
+@media (max-width: 63.999rem) {
+  .app-mobile-header {
+    height: calc(3rem + env(safe-area-inset-top, 0px));
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .app-mobile-nav {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;

@@ -88,13 +88,12 @@ export default function MobileBottomNav() {
     <>
       <nav
         aria-label="Mobile navigation"
-        className="lg:hidden fixed inset-x-0 bottom-0 z-40"
+        className="app-mobile-nav lg:hidden fixed inset-x-0 bottom-0 z-40"
         style={{
           // Solid, with a hairline on top. The frosted version smeared whatever
           // scrolled beneath it.
           background: "var(--app-elev)",
           boxShadow: "0 -1px 0 var(--app-border)",
-          paddingBottom: "env(safe-area-inset-bottom, 0)",
         }}
       >
         <ul className="mx-auto flex max-w-[560px] items-stretch justify-between">

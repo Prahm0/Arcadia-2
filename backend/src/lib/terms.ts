@@ -99,3 +99,13 @@ export function termWeekOf(
   }
   return null;
 }
+
+/**
+ * Whether `date` (YYYY-MM-DD) is a school day's date inside a term: true in
+ * term, false in the holidays, null when the state's calendar isn't known.
+ */
+export function inTerm(state: string | null | undefined, date: string): boolean | null {
+  const terms = state ? TERM_DATES[state]?.[Number(date.slice(0, 4))] : undefined;
+  if (!terms) return null;
+  return terms.some(([start, end]) => date >= start && date <= end);
+}

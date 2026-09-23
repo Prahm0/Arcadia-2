@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { cardCount, useDecks, type Deck } from "@/lib/api/cards";
+import { cardCount, deleteDeck, useDecks, type Deck } from "@/lib/api/cards";
 import AppButton, { appButtonClass } from "../AppButton";
+import { flashMenuNotice, linkEntries, showContextMenu } from "../ContextMenu";
 import EmptyState, { ExampleRow } from "../EmptyState";
 import PageHeader from "../PageHeader";
+import DeckSettingsSheet from "./DeckSettingsSheet";
 import NewDeckSheet from "./NewDeckSheet";
 import { CardsIcon, MasteryBar, PlusIcon, Spinner, SubjectTag, useSubjects, type SubjectInfo } from "./shared";
 
@@ -14,9 +17,11 @@ import { CardsIcon, MasteryBar, PlusIcon, Spinner, SubjectTag, useSubjects, type
  * happens on the deck pages; this is the shelf.
  */
 export default function CardsView({ startCreating = false }: { startCreating?: boolean }) {
-  const { state } = useDecks();
+  const { state, refresh } = useDecks();
   const { subjects, find } = useSubjects();
+  const router = useRouter();
   const [creating, setCreating] = useState(startCreating);
+  const [settingsFor, setSettingsFor] = useState<Deck | null>(null);
 
   const decks = useMemo(() => (state.status === "ready" ? state.data.decks : []), [state]);
   const groups = useMemo(() => groupBySubject(decks, subjects), [decks, subjects]);
@@ -29,6 +34,38 @@ export default function CardsView({ startCreating = false }: { startCreating?: b
       New deck
     </AppButton>
   );
+
+  async function remove(deck: Deck) {
+    if (!confirm(`Delete ${deck.title} and its ${cardCount(deck.cardCount)}? This can't be undone.`)) return;
+    try {
+      await deleteDeck(deck.id);
+    } catch (err) {
+      flashMenuNotice(err instanceof Error ? err.message : "Couldn't delete it.");
+    }
+    await refresh();
+  }
+
+  // Right-click: the deck page's buttons, without opening it first.
+  function deckMenu(event: React.MouseEvent, deck: Deck) {
+    const base = `/app/cards/${encodeURIComponent(deck.id)}`;
+    const studied = deck.cardCount > 0;
+    showContextMenu(
+      event,
+      [
+        { kind: "item", label: "Open", onSelect: () => router.push(base) },
+        deck.dueCount > 0 && { kind: "item", label: `Review ${deck.dueCount} due`, onSelect: () => router.push(`${base}/flashcards?due=1`) },
+        studied && { kind: "item", label: "Learn", onSelect: () => router.push(`${base}/learn`) },
+        studied && { kind: "item", label: "Flashcards", onSelect: () => router.push(`${base}/flashcards`) },
+        { kind: "item", label: studied ? "Edit cards" : "Add cards", onSelect: () => router.push(`${base}?edit=1`) },
+        { kind: "separator" },
+        ...linkEntries(base),
+        { kind: "separator" },
+        { kind: "item", label: "Deck settings…", onSelect: () => setSettingsFor(deck) },
+        { kind: "item", label: "Delete deck…", danger: true, onSelect: () => void remove(deck) },
+      ],
+      deck.title,
+    );
+  }
 
   return (
     <>
@@ -80,7 +117,7 @@ export default function CardsView({ startCreating = false }: { startCreating?: b
                 </h2>
                 <ul className="mt-3 grid gap-2 sm:grid-cols-2">
                   {group.decks.map((deck) => (
-                    <li key={deck.id}>
+                    <li key={deck.id} onContextMenu={(event) => deckMenu(event, deck)}>
                       <DeckTile deck={deck} colour={group.subject?.colour} />
                     </li>
                   ))}
@@ -92,6 +129,21 @@ export default function CardsView({ startCreating = false }: { startCreating?: b
       </div>
 
       <NewDeckSheet open={creating} onClose={() => setCreating(false)} />
+      {settingsFor ? (
+        <DeckSettingsSheet
+          open
+          deck={settingsFor}
+          onClose={() => setSettingsFor(null)}
+          onSaved={() => {
+            setSettingsFor(null);
+            void refresh();
+          }}
+          onDeleted={() => {
+            setSettingsFor(null);
+            void refresh();
+          }}
+        />
+      ) : null}
     </>
   );
 }

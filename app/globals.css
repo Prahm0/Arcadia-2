@@ -782,7 +782,17 @@ html[data-app-theme] .type-mono-label {
   --to: 0.75;
 }
 
+/* The companion's own star breathes, barely. */
+@keyframes companion-twinkle {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.86); opacity: 0.8; }
+}
+.companion-twinkle {
+  animation: companion-twinkle 3.6s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .companion-twinkle,
   .arcadia-orb-pulse,
   .arcadia-orb-pulse-fast,
   .arcadia-orb-pulse-alert { animation: none; }

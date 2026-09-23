@@ -11,22 +11,20 @@ import { cn } from "@/lib/cn";
 import {
   dateKey,
   formatClock,
-  formatDueSoon,
   formatDurationMinutes,
   formatFriendlyDate,
 } from "@/lib/api/time";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
-import CompanionCard from "./CompanionCard";
 import CompletionBurst from "./CompletionBurst";
 import DailyCheckInCard from "./DailyCheckInCard";
 import EventDetailSheet from "./EventDetailSheet";
 import NewTaskSheet from "./NewTaskSheet";
 import ProactiveArcadCards from "./ProactiveArcadCards";
 import StartNowCard from "./StartNowCard";
+import TodayRail from "./TodayRail";
 import SundayReviewInline from "./SundayReviewInline";
 import { subjectColour } from "@/lib/app/subjectColour";
-import { useStreak } from "@/lib/app/useStreak";
 import { SubjectTag } from "./cards/shared";
 import { playCompletionTick } from "@/lib/app/completion";
 
@@ -177,12 +175,7 @@ export default function TodayView() {
           />
         </section>
 
-        <aside className="flex flex-col gap-6">
-          <CompanionCard />
-          <NextDeadlinesCard tasks={data.focusTasks} timezone={timezone} />
-          <StatsCard analytics={data.analytics} />
-          <StreakCard />
-        </aside>
+        <TodayRail />
       </div>
 
       <NewTaskSheet open={showTaskSheet} onClose={() => setShowTaskSheet(false)} />
@@ -452,158 +445,6 @@ function FocusRow({
       </span>
     </li>
   );
-}
-
-function NextDeadlinesCard({ tasks, timezone }: { tasks: any[]; timezone: string }) {
-  if (!tasks?.length) {
-    return (
-      <div className="rounded-lg p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
-        <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Next deadlines</p>
-        <p className="mt-3 text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
-          Nothing due yet.
-        </p>
-      </div>
-    );
-  }
-  return (
-    <div className="rounded-lg p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
-      <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Next deadlines</p>
-      <ul className="mt-3 flex flex-col gap-3.5">
-        {tasks.slice(0, 4).map((task) => (
-          <li key={task.id}>
-            <p className="text-[14.5px] font-medium tracking-[-0.005em]" style={{ color: "var(--app-text)" }}>
-              {task.title}
-            </p>
-            <p className="mt-1 text-[12.5px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
-              {task.subject ? `${task.subject} · ` : ""}
-              {formatDueSoon(task.dueAt, timezone)} · {formatDurationMinutes(task.remainingMinutes)}
-            </p>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function StatsCard({ analytics }: { analytics: any }) {
-  const streak = useStreak();
-  const current = streak.current;
-  const week = Number(analytics?.weekMinutes ?? 0);
-  const today = Number(analytics?.todayMinutes ?? 0);
-  return (
-    <div className="rounded-lg p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
-      <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Progress</p>
-      <div className="mt-4 grid grid-cols-3 gap-4">
-        <Stat label="Streak" value={String(current)} unit={current === 1 ? "day" : "days"} />
-        <Stat label="Today" value={formatShort(today)} unit={today < 60 ? "min" : "hr"} />
-        <Stat label="Week" value={formatShort(week)} unit={week < 60 ? "min" : "hr"} />
-      </div>
-    </div>
-  );
-}
-
-function StreakCard() {
-  const streak = useStreak();
-
-  if (streak.current === 0 && !streak.lastPlannedDay) return null;
-
-  if (streak.current === 0 && streak.lastPlannedDay?.missReason) {
-    return (
-      <div
-        className="rounded-lg p-5"
-        style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
-      >
-        <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Streak</p>
-        <p className="mt-2 text-[15px] leading-snug" style={{ color: "var(--app-text)" }}>
-          Reset, {streak.lastPlannedDay.missReason}.
-        </p>
-        <p className="mt-1.5 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
-          Hit 70% of planned study time in a day and it starts counting again.
-        </p>
-        {streak.longest > 0 ? (
-          <p className="mt-3 type-mono-label" style={{ color: "var(--app-text-muted)" }}>
-            Longest so far · {streak.longest} {streak.longest === 1 ? "day" : "days"}
-          </p>
-        ) : null}
-      </div>
-    );
-  }
-
-  const progressPct =
-    streak.nextMilestone && streak.daysToNext
-      ? Math.min(1, streak.current / streak.nextMilestone)
-      : 1;
-
-  return (
-    <div
-      className="rounded-lg p-5"
-      style={{
-        background: "var(--app-surface)", boxShadow: "var(--elev-1)",
-      }}
-    >
-      <div className="flex items-center justify-between">
-        <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Streak</p>
-        {streak.hitMilestone ? (
-          <span
-            className="rounded-full px-2 py-0.5 text-[10.5px] font-medium uppercase tracking-[0.06em]"
-            style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}
-          >
-            {streak.hitMilestone}-day
-          </span>
-        ) : null}
-      </div>
-      <p className="mt-2 text-[26px] font-medium leading-none tabular-nums" style={{ color: "var(--app-text)" }}>
-        {streak.current} <span className="text-[13.5px] font-normal" style={{ color: "var(--app-text-muted)" }}>consistent {streak.current === 1 ? "day" : "days"}</span>
-      </p>
-      {streak.nextMilestone ? (
-        <>
-          <div
-            className="mt-4 h-1.5 w-full overflow-hidden rounded-full"
-            style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)" }}
-            aria-hidden="true"
-          >
-            <div
-              className="h-full rounded-full"
-              style={{
-                width: `${progressPct * 100}%`,
-                background: "var(--app-accent)",
-                transition: "width 0.4s var(--ease-out-expo, ease-out)",
-              }}
-            />
-          </div>
-          <p className="mt-2 type-mono-label" style={{ color: "var(--app-text-muted)" }}>
-            {streak.daysToNext} more to {streak.nextMilestone}
-          </p>
-        </>
-      ) : (
-        <p className="mt-3 type-mono-label" style={{ color: "var(--app-text-muted)" }}>
-          Past every milestone · keep going
-        </p>
-      )}
-      {streak.longest > streak.current ? (
-        <p className="mt-2 text-[11.5px]" style={{ color: "var(--app-text-faint)" }}>
-          Longest {streak.longest} days
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-function Stat({ label, value, unit }: { label: string; value: string; unit: string }) {
-  return (
-    <div>
-      <p className="text-[11px]" style={{ color: "var(--app-text-muted)" }}>{label}</p>
-      <p className="mt-1 text-[22px] font-medium leading-none tabular-nums" style={{ color: "var(--app-text)" }}>{value}</p>
-      <p className="mt-0.5 text-[11px]" style={{ color: "var(--app-text-muted)" }}>{unit}</p>
-    </div>
-  );
-}
-
-function formatShort(minutes: number): string {
-  if (minutes < 60) return String(minutes);
-  const h = Math.floor(minutes / 60);
-  const r = minutes % 60;
-  return r === 0 ? `${h}` : `${h}.${Math.round((r / 60) * 10)}`;
 }
 
 function timeOfDayGreeting(now: Date, timezone: string): string {

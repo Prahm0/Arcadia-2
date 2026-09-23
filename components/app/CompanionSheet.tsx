@@ -14,9 +14,9 @@ import Companion from "./Companion";
 import AppButton from "./AppButton";
 
 const FORMS: { key: CompanionForm; label: string; helper: string }[] = [
-  { key: "orb", label: "Orb", helper: "Calm, glowing." },
-  { key: "comet", label: "Comet", helper: "In motion, tail behind." },
-  { key: "nebula", label: "Nebula", helper: "Cluster of stars." },
+  { key: "orb", label: "Ring", helper: "A ring of stars that closes as it grows." },
+  { key: "comet", label: "Comet", helper: "A bright head, the tail growing behind." },
+  { key: "nebula", label: "Cluster", helper: "Stars branching out from the middle." },
 ];
 
 const PALETTES: { key: CompanionPalette; label: string; swatch: string }[] = [

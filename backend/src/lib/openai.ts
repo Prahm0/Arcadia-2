@@ -128,6 +128,20 @@ interface RequestOptions {
   temperature?: number;
   /** Structured output: the reply must match this JSON schema. */
   schema?: { name: string; schema: Record<string, unknown> };
+  /** Overrides OPENAI_MODEL for this request. */
+  model?: string;
+  /** How hard a reasoning model thinks. Ignored by other models. */
+  reasoningEffort?: "low" | "medium" | "high";
+}
+
+/** Reasoning models take no temperature and count tokens differently. */
+function isReasoningModel(model: string): boolean {
+  return /^(o\d|gpt-5)/.test(model) && !model.includes("chat");
+}
+
+/** The model Arcad lays schedules out with: worth a stronger one than chat. */
+export function planModel(env: Env): string {
+  return env.OPENAI_PLAN_MODEL || env.OPENAI_MODEL || "gpt-4o-mini";
 }
 
 async function request(env: Env, messages: ChatMessage[], options: RequestOptions) {
@@ -138,6 +152,8 @@ async function request(env: Env, messages: ChatMessage[], options: RequestOption
   // OPENAI_BASE_URL only exists so local dev can point at a stand-in server.
   const base = (env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "");
   const tools = options.tools ?? [];
+  const model = options.model || env.OPENAI_MODEL || "gpt-4o-mini";
+  const reasoning = isReasoningModel(model);
   const response = await fetch(`${base}/chat/completions`, {
     method: "POST",
     headers: {
@@ -145,10 +161,14 @@ async function request(env: Env, messages: ChatMessage[], options: RequestOption
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      model: env.OPENAI_MODEL || "gpt-4o-mini",
+      model,
       messages,
-      temperature: options.temperature ?? 0.4,
-      max_tokens: options.maxTokens ?? 250,
+      ...(reasoning
+        ? {
+            max_completion_tokens: options.maxTokens ?? 250,
+            ...(options.reasoningEffort ? { reasoning_effort: options.reasoningEffort } : {}),
+          }
+        : { temperature: options.temperature ?? 0.4, max_tokens: options.maxTokens ?? 250 }),
       ...(tools.length > 0 ? { tools, tool_choice: "auto" } : {}),
       ...(options.schema
         ? {
@@ -205,8 +225,9 @@ export async function completeJson<T>(
   messages: ChatMessage[],
   schema: { name: string; schema: Record<string, unknown> },
   maxTokens = 600,
+  options: Pick<RequestOptions, "model" | "reasoningEffort"> = {},
 ): Promise<T | null> {
-  const message = await request(env, messages, { schema, maxTokens, temperature: 0.3 });
+  const message = await request(env, messages, { schema, maxTokens, temperature: 0.3, ...options });
   try {
     return JSON.parse(message?.content ?? "") as T;
   } catch {

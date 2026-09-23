@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { db } from "../db";
+import { makeLayout } from "../lib/day-plan";
 import { getMonthPlan, makeMonthPlan } from "../lib/month-plan";
 import { replan } from "../lib/replan";
 import type { Env, Variables } from "../types";
@@ -30,10 +31,20 @@ plan.post("/month", async (c) => {
   return c.json({ plan: made });
 });
 
-/** Lays the next four weeks out from the current plan. */
+/**
+ * Lays the next four weeks out from the current plan: Arcad places the next
+ * week block by block, the scheduler's rules do the rest.
+ */
 plan.post("/schedule", async (c) => {
   const { userId } = c.get("session");
-  await replan(db(c.env.DB), userId);
+  const database = db(c.env.DB);
+  try {
+    await makeLayout(c.env, database, userId);
+  } catch (err) {
+    // The rules alone still give them a schedule; the cron retries Arcad.
+    console.error("[plan] layout failed", err);
+  }
+  await replan(database, userId);
   return c.json({ ok: true });
 });
 

@@ -566,3 +566,25 @@ export const monthPlans = sqliteTable(
   },
   (t) => [index("month_plans_user_idx").on(t.userId, t.createdAt)],
 );
+
+/**
+ * Arcad's day-by-day layout of the next week's study blocks, one row per
+ * student. The scheduler places these blocks first and fills any gaps itself.
+ * `inputsKey` is what the layout was made from; when the schedule's inputs
+ * change the scheduler sets `wantedKey`, and the cron makes a fresh layout.
+ */
+export const dayLayouts = sqliteTable(
+  "day_layouts",
+  {
+    userId: text("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    layout: text("layout"),
+    inputsKey: text("inputs_key"),
+    wantedKey: text("wanted_key"),
+    // When a refresh started, so the cron doesn't run two at once.
+    workingAt: integer("working_at"),
+    updatedAt: integer("updated_at").notNull().default(now),
+  },
+  (t) => [index("day_layouts_wanted_idx").on(t.wantedKey)],
+);

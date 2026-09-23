@@ -15,6 +15,8 @@
     "APP_ORIGIN": "https://arcadiahq.app",
     "MAIL_FROM": "Arcadia <hello@arcadiahq.app>",
     "OPENAI_MODEL": "gpt-4o-mini",
+    // Laying out the week is a real planning problem, so it gets a reasoning model.
+    "OPENAI_PLAN_MODEL": "gpt-5-mini",
     // Stripe price IDs — not secret. Live-mode ids, copied over from the
     // sandbox products after the account was activated. Amounts match the
     // sandbox: Pro $4.95/$12.82/$49.40, Max $9.95/$34.54/$205.40 (AUD).

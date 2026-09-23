@@ -117,6 +117,8 @@ export interface DashboardResponse {
   tasks: PlannerTask[];
   commitments: Array<Record<string, unknown>>;
   range: { start: string; end: string };
+  /** The student's school terms (last, this and next year), empty when their state's dates aren't known. */
+  terms?: SchoolTerm[];
   events: PlannerEvent[];
   focusTasks: PlannerTask[];
   /** Things worth interrupting for, each with one action. */
@@ -173,4 +175,13 @@ export interface Notice {
   title: string;
   body: string;
   action: { label: string; href: string };
+}
+
+export interface SchoolTerm {
+  year: number;
+  /** 1 to 4. */
+  term: number;
+  /** First and last student day, YYYY-MM-DD. */
+  start: string;
+  end: string;
 }

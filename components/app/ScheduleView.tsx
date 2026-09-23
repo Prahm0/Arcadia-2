@@ -1,967 +1,718 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
-import type { DashboardResponse, PlannerEvent } from "@/lib/api/types";
+import type { PlannerEvent, PlannerTask } from "@/lib/api/types";
+import { isTypingTarget } from "@/lib/app/commands";
+import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
+import { useMediaQuery } from "@/lib/hooks";
 import { cn } from "@/lib/cn";
-import { dateKey, formatClock } from "@/lib/api/time";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import NewTaskSheet from "./NewTaskSheet";
+import TaskDetailSheet from "./TaskDetailSheet";
 import EventDetailSheet from "./EventDetailSheet";
-import { categoryBlock, hueBlock, type CategoryBlockStyle } from "@/lib/app/categoryColors";
-import { studyTitle, subjectColour } from "@/lib/app/subjectColour";
+import PageTour from "./tour/PageTour";
+import TimeGrid from "./schedule/TimeGrid";
+import TermMatrix, { type MatrixView } from "./schedule/TermMatrix";
+import AnalyticsStrip from "./schedule/AnalyticsStrip";
+import ContextPanel, { type SubjectInfo } from "./schedule/ContextPanel";
+import DayPanel from "./schedule/DayPanel";
+import HabitsPanel, { HabitsCard } from "./schedule/HabitsPanel";
+import { HabitsProvider, useHabits } from "./schedule/habits";
+import { MobileDaySchedule, MobileWeekSchedule } from "./schedule/MobileSchedule";
+import { usePlanner } from "./schedule/usePlanner";
+import { periodDates, periodFor, periodPosition, stepPeriod } from "./schedule/period";
+import { ChevronIcon } from "./schedule/bits";
+import {
+  addDays,
+  clockHours,
+  dayTitle,
+  mondayOf,
+  sameSubject,
+  tasksByDay,
+  todayKey,
+  visibleDays,
+  weekTitle,
+  weekdayIndex,
+  type DayColumn,
+  type ScheduleMode,
+} from "./schedule/calendar";
 
-const DAY_MS = 86_400_000;
-const HOUR_START = 7;
-const HOUR_END = 23;
-const HOUR_SPAN = HOUR_END - HOUR_START;
-const HOUR_MARKS = [7, 9, 11, 13, 15, 17, 19, 21, 23];
-const SNAP_MINUTES = 15;
+const PREFS_KEY = "arcadia:planner:v1";
+const MODES: Array<{ value: ScheduleMode; label: string; key: string }> = [
+  { value: "term", label: "Term", key: "1" },
+  { value: "week", label: "Week", key: "2" },
+  { value: "day", label: "Day", key: "3" },
+];
 
-// Every block is now mixed from the one shared category hue. `sport` used to
-// be hardcoded near-black on white and `extracurricular` a fixed amber pair,
-// neither of which responded to the theme at all.
-const CATEGORY_STYLE: Record<string, CategoryBlockStyle> = Object.fromEntries(
-  ["study", "school", "sport", "extracurricular", "sleep", "other"].map((c) => [
-    c,
-    categoryBlock(c),
-  ]),
-);
+interface Prefs {
+  mode: ScheduleMode;
+  matrix: MatrixView;
+  subjects: string[];
+  habitsOpen: Record<ScheduleMode, boolean>;
+}
+
+const DEFAULT_PREFS: Prefs = {
+  mode: "term",
+  matrix: "subjects",
+  subjects: [],
+  // Day view is for doing, so habits are open there.
+  habitsOpen: { term: false, week: false, day: true },
+};
 
 export default function ScheduleView() {
-  const { data, patch, reload } = useDashboardData();
+  const { data } = useDashboardData();
   const timezone = data.profile?.timezone || "Australia/Sydney";
-  const [weekOffset, setWeekOffset] = useState(0);
-  const [mobileDayIndex, setMobileDayIndex] = useState(() => (new Date().getDay() + 6) % 7);
-  const [mobileView, setMobileView] = useState<"day" | "week">("day");
-  const [now, setNow] = useState(new Date());
-  const [showTaskSheet, setShowTaskSheet] = useState(false);
-  const [newTaskDefaultDate, setNewTaskDefaultDate] = useState<string | null>(null);
-  const [selectedEvent, setSelectedEvent] = useState<PlannerEvent | null>(null);
+  const [now, setNow] = useState(() => new Date());
+  const today = todayKey(now, timezone);
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(id);
   }, []);
 
-  const week = useMemo(() => buildWeek(now, weekOffset, timezone), [now, weekOffset, timezone]);
-  const events = useMemo(() => data.events.filter((event) => filterInWeek(event, week, timezone)), [data.events, week, timezone]);
-  const currentPosition = useMemo(() => {
-    const todayIndex = week.findIndex((day) => day.key === dateKey(now.toISOString(), timezone));
-    if (todayIndex === -1) return null;
-    const localHour = Number(new Intl.DateTimeFormat("en-AU", { timeZone: timezone, hour: "2-digit", hour12: false }).format(now));
-    const localMinute = Number(new Intl.DateTimeFormat("en-AU", { timeZone: timezone, minute: "2-digit" }).format(now));
-    const totalHours = localHour + localMinute / 60;
-    if (totalHours < HOUR_START || totalHours > HOUR_END) return null;
-    return {
-      dayIndex: todayIndex,
-      top: ((totalHours - HOUR_START) / HOUR_SPAN) * 100,
+  return (
+    <HabitsProvider userId={data.user.id} today={today}>
+      <Planner now={now} today={today} timezone={timezone} />
+    </HabitsProvider>
+  );
+}
+
+function Planner({ now, today, timezone }: { now: Date; today: string; timezone: string }) {
+  const { data } = useDashboardData();
+  const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
+  const [anchor, setAnchor] = useState(today);
+  const [habitDay, setHabitDay] = useState(today);
+  const [mobileWeek, setMobileWeek] = useState(false);
+  const [taskSheet, setTaskSheet] = useState<{ due: string | null; subject: string | null; editing: PlannerTask | null } | null>(null);
+  const [detailTask, setDetailTask] = useState<PlannerTask | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<PlannerEvent | null>(null);
+  const wide = useMediaQuery("(min-width: 768px)");
+  const { mode, matrix } = prefs;
+  const { habits } = useHabits();
+
+  // The view, matrix tab, subject filter and panel state are this browser's conveniences.
+  useEffect(() => {
+    const restore = () => {
+      try {
+        const raw = window.localStorage.getItem(PREFS_KEY);
+        if (!raw) return;
+        const saved = JSON.parse(raw) as Partial<Prefs>;
+        setPrefs({
+          ...DEFAULT_PREFS,
+          ...saved,
+          subjects: Array.isArray(saved.subjects) ? saved.subjects : [],
+          habitsOpen: { ...DEFAULT_PREFS.habitsOpen, ...saved.habitsOpen },
+        });
+      } catch {
+        /* defaults */
+      }
     };
-  }, [now, week, timezone]);
-
-  // The selected event needs to track the freshest copy from the dashboard cache
-  // so optimistic outcome/reschedule updates flow into the open sheet.
-  const liveSelectedEvent = useMemo(() => {
-    if (!selectedEvent) return null;
-    return data.events.find((event) => event.id === selectedEvent.id) ?? null;
-  }, [data.events, selectedEvent]);
-
-  const openNewTaskForDay = useCallback((dayKey: string) => {
-    setNewTaskDefaultDate(dayKey);
-    setShowTaskSheet(true);
+    restore();
   }, []);
 
-  const reschedule = useCallback(
-    async (eventId: string, newStartMs: number) => {
-      const existing = data.events.find((event) => event.id === eventId);
-      if (!existing) return;
-      const durationMs = Date.parse(existing.endAt) - Date.parse(existing.startAt);
-      const nextStart = new Date(newStartMs).toISOString();
-      const nextEnd = new Date(newStartMs + durationMs).toISOString();
-      const previousStart = existing.startAt;
-      const previousEnd = existing.endAt;
-
-      // Optimistic
-      patch((prev: DashboardResponse) => ({
-        ...prev,
-        events: prev.events.map((event) =>
-          event.id === eventId ? { ...event, startAt: nextStart, endAt: nextEnd } : event,
-        ),
-      }));
-
+  const updatePrefs = useCallback((change: Partial<Prefs>) => {
+    setPrefs((current) => {
+      const next = { ...current, ...change };
       try {
-        await api(`/api/events/${encodeURIComponent(eventId)}`, {
-          method: "PATCH",
-          body: JSON.stringify({ startAt: nextStart, endAt: nextEnd }),
-        });
-        await reload();
-      } catch (err) {
-        patch((prev: DashboardResponse) => ({
-          ...prev,
-          events: prev.events.map((event) =>
-            event.id === eventId ? { ...event, startAt: previousStart, endAt: previousEnd } : event,
-          ),
-        }));
-        console.warn("Reschedule failed", err);
+        window.localStorage.setItem(PREFS_KEY, JSON.stringify(next));
+      } catch {
+        /* not kept */
       }
+      return next;
+    });
+  }, []);
+
+  const setMode = useCallback(
+    (next: ScheduleMode) => {
+      updatePrefs({ mode: next });
+      if (next === "day") setHabitDay(anchor <= today ? anchor : today);
     },
-    [data.events, patch, reload],
+    [updatePrefs, anchor, today],
   );
 
-  const weekLabel = weekLabelFor(week);
-  const upToDate = weekOffset === 0;
-  const todayDayIndex = (new Date(`${dateKey(now.toISOString(), timezone)}T12:00:00Z`).getUTCDay() + 6) % 7;
+  const terms = useMemo(() => data.terms ?? [], [data.terms]);
+  const period = useMemo(() => periodFor(anchor, terms, today, timezone), [anchor, terms, today, timezone]);
+  const todayPeriod = useMemo(() => periodFor(today, terms, today, timezone), [terms, today, timezone]);
+  const planner = usePlanner(period, timezone);
 
-  const moveMobileDay = useCallback((direction: -1 | 1) => {
-    const next = mobileDayIndex + direction;
-    if (next < 0) {
-      setWeekOffset((value) => value - 1);
-      setMobileDayIndex(6);
-    } else if (next > 6) {
-      setWeekOffset((value) => value + 1);
-      setMobileDayIndex(0);
-    } else {
-      setMobileDayIndex(next);
-    }
-  }, [mobileDayIndex]);
+  const subjects = useMemo<SubjectInfo[]>(
+    () => data.subjects.map((subject, index) => ({ name: subject.name, colour: subject.colour || SUBJECT_COLORS[index % SUBJECT_COLORS.length] })),
+    [data.subjects],
+  );
+  // A saved filter only keeps subjects that still exist.
+  const selected = useMemo(
+    () => new Set(prefs.subjects.filter((name) => subjects.some((subject) => sameSubject(subject.name, name)))),
+    [prefs.subjects, subjects],
+  );
+  const filtering = selected.size > 0;
+  const inFilter = useCallback(
+    (name: string | null | undefined) => !filtering || [...selected].some((chosen) => sameSubject(chosen, name)),
+    [filtering, selected],
+  );
+  const shownSubjects = useMemo(() => subjects.filter((subject) => inFilter(subject.name)), [subjects, inFilter]);
+  const toggleSubject = useCallback(
+    (name: string | null) => {
+      if (name === null) return updatePrefs({ subjects: [] });
+      const next = new Set(selected);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      // Everything ticked is the same as no filter.
+      updatePrefs({ subjects: next.size === subjects.length ? [] : [...next] });
+    },
+    [selected, subjects.length, updatePrefs],
+  );
 
-  const goToToday = useCallback(() => {
-    setWeekOffset(0);
-    setMobileDayIndex(todayDayIndex);
-    setMobileView("day");
-  }, [todayDayIndex]);
+  const studyEvents = useMemo(() => planner.events.filter((event) => event.category === "study" && inFilter(event.subject)), [planner.events, inFilter]);
+  const gridEvents = useMemo(() => planner.events.filter((event) => event.category !== "study" || inFilter(event.subject)), [planner.events, inFilter]);
+  const tasks = useMemo(() => planner.tasks.filter((task) => task.status !== "cancelled" && inFilter(task.subject)), [planner.tasks, inFilter]);
+  const due = useMemo(() => tasksByDay(tasks, timezone), [tasks, timezone]);
 
-  const openMobileDay = useCallback((index: number) => {
-    setMobileDayIndex(index);
-    setMobileView("day");
-  }, []);
+  const days = useMemo<DayColumn[]>(() => visibleDays(mode === "day" ? "day" : "week", anchor, today, timezone), [mode, anchor, today, timezone]);
+  const week = useMemo(() => visibleDays("week", anchor, today, timezone), [anchor, today, timezone]);
+
+  const step = useCallback(
+    (direction: -1 | 1) => {
+      setAnchor((current) => (mode === "term" ? stepPeriod(periodFor(current, terms, today, timezone), direction) : addDays(current, direction * (mode === "week" ? 7 : 1))));
+    },
+    [mode, terms, today, timezone],
+  );
+  const goToday = useCallback(() => {
+    setAnchor(today);
+    setHabitDay(today);
+  }, [today]);
+  const openDay = useCallback(
+    (key: string) => {
+      setAnchor(key);
+      setHabitDay(key <= today ? key : today);
+      updatePrefs({ mode: "day" });
+    },
+    [today, updatePrefs],
+  );
+  const addTask = useCallback((due: string | null, subject: string | null = null) => setTaskSheet({ due, subject, editing: null }), []);
+  const toggleHabits = useCallback(
+    () => updatePrefs({ habitsOpen: { ...prefs.habitsOpen, [mode]: !prefs.habitsOpen[mode] } }),
+    [prefs.habitsOpen, mode, updatePrefs],
+  );
+
+  const reschedule = useCallback(
+    (eventId: string, startMs: number) => {
+      const event = planner.events.find((candidate) => candidate.id === eventId);
+      if (event) void planner.moveEvent(event, startMs);
+    },
+    [planner],
+  );
+
+  // 1/2/3 or D/W for the view, T for today, arrows or J/K to move, H for habits.
+  // A key right after G belongs to the app's go-to shortcuts.
+  const lastKey = useRef({ key: "", at: 0 });
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const previous = lastKey.current;
+      lastKey.current = { key: event.key.toLowerCase(), at: Date.now() };
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (isTypingTarget(event.target) || document.querySelector('[aria-modal="true"], [role="dialog"]')) return;
+      if (previous.key === "g" && Date.now() - previous.at < 1200) return;
+      // Arrow keys inside the term grid move between squares instead.
+      if (event.key.startsWith("Arrow") && (event.target as HTMLElement).closest?.('[role="grid"]')) return;
+      const actions: Record<string, () => void> = {
+        "1": () => setMode("term"),
+        "2": () => setMode("week"),
+        "3": () => setMode("day"),
+        w: () => setMode("week"),
+        d: () => setMode("day"),
+        t: goToday,
+        h: toggleHabits,
+        arrowleft: () => step(-1),
+        k: () => step(-1),
+        arrowright: () => step(1),
+        j: () => step(1),
+      };
+      const action = actions[event.key.toLowerCase()];
+      if (!action) return;
+      event.preventDefault();
+      action();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [goToday, setMode, step, toggleHabits]);
+
+  const liveEvent = useMemo(
+    () => (selectedEvent ? planner.events.find((event) => event.id === selectedEvent.id) ?? data.events.find((event) => event.id === selectedEvent.id) ?? null : null),
+    [selectedEvent, planner.events, data.events],
+  );
+  const liveTask = useMemo(() => (detailTask ? planner.tasks.find((task) => task.id === detailTask.id) ?? null : null), [detailTask, planner.tasks]);
+
+  const title =
+    mode === "term" ? `${period.name}${period.isTerm ? `, ${period.year}` : ` ${period.year}`}` : mode === "week" ? weekTitle(days) : dayTitle(anchor);
+  const meta = mode === "term" ? periodDates(period) : periodPosition(period, anchor);
+  const stripDay = mode === "day" ? anchor : today;
+  const stripRange =
+    mode === "term"
+      ? { from: period.start, to: period.end, label: period.isTerm ? period.name : "this period" }
+      : mode === "week"
+        ? { from: week[0].key, to: week[6].key, label: "this week" }
+        : { from: anchor, to: anchor, label: anchor === today ? "today" : "this day" };
+  const showingToday = mode === "term" ? today >= period.start && today <= period.end : days.some((day) => day.key === today) && (mode !== "day" || anchor === today);
+  const habitsOpen = prefs.habitsOpen[mode];
+  const noDeadlines = !data.tasks.length && !planner.tasks.some((task) => task.status === "pending");
+
+  const habitsRow = useCallback(
+    (day: DayColumn) => (
+      <DayHabits
+        day={day.key}
+        today={today}
+        onOpen={() => {
+          setHabitDay(day.key <= today ? day.key : today);
+          updatePrefs({ habitsOpen: { ...prefs.habitsOpen, [mode]: true } });
+        }}
+      />
+    ),
+    [today, prefs.habitsOpen, mode, updatePrefs],
+  );
+
+  const sheets = (
+    <>
+      <NewTaskSheet
+        open={taskSheet !== null}
+        editing={taskSheet?.editing ?? null}
+        defaultDueDate={taskSheet?.due ?? null}
+        defaultSubject={taskSheet?.subject ?? null}
+        onClose={() => setTaskSheet(null)}
+      />
+      <TaskDetailSheet
+        task={liveTask}
+        timezone={timezone}
+        onClose={() => setDetailTask(null)}
+        onEdit={(task) => {
+          setDetailTask(null);
+          setTaskSheet({ due: null, subject: null, editing: task });
+        }}
+      />
+      <EventDetailSheet event={liveEvent} timezone={timezone} onClose={() => setSelectedEvent(null)} />
+    </>
+  );
+
+  const matrixProps = {
+    period,
+    view: matrix,
+    onViewChange: (value: MatrixView) => updatePrefs({ matrix: value }),
+    subjects: shownSubjects,
+    showOther: !filtering,
+    studyEvents,
+    tasks,
+    today,
+    nowMs: now.getTime(),
+    timezone,
+    focusDay: anchor >= period.start && anchor <= period.end ? anchor : period.start,
+    onOpenDay: openDay,
+    onAddTask: (key: string, subject: string | null) => addTask(key, subject),
+    onOpenTask: setDetailTask,
+    onOpenEvent: setSelectedEvent,
+    onSetEventDone: (event: PlannerEvent, done: boolean) => void planner.setEventDone(event, done),
+    onMoveEvent: (event: PlannerEvent, ms: number) => void planner.moveEvent(event, ms),
+    onSetTaskDone: (task: PlannerTask, done: boolean) => void planner.setTaskDone(task, done),
+    onMoveTask: (task: PlannerTask, key: string) => void planner.moveTask(task, key),
+  };
+
+  const strip = (
+    <AnalyticsStrip day={stripDay} today={today} studyEvents={studyEvents} tasks={tasks} range={stripRange} timezone={timezone} />
+  );
 
   return (
     <>
-      <PageHeader width={"full"}
-        eyebrow="Plan"
-        title="Schedule"
-        meta={`${weekLabel.title} ${weekLabel.subtitle}`}
-        tour="schedule"
-        action={
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <div className="hidden items-center rounded-md md:flex" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
-              <IconButton label="Previous week" onClick={() => setWeekOffset((v) => v - 1)}>
-                <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M12 5l-5 5 5 5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              </IconButton>
-              <button
-                type="button"
-                onClick={goToToday}
-                className="h-9 border-x px-3 text-[13px] font-medium"
-                style={{ borderColor: "var(--app-border)", color: "var(--app-text-soft)" }}
-              >
-                Today
-              </button>
-              <IconButton label="Next week" onClick={() => setWeekOffset((v) => v + 1)}>
-                <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M8 5l5 5-5 5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              </IconButton>
+      {/* Phones: the same three views, stacked. Only one layout is mounted, so
+          there's one matrix and one set of keyboard targets. */}
+      {!wide ? (
+        <div className="md:hidden">
+          <PageHeader
+            eyebrow="Plan"
+            title="Schedule"
+            meta={`${title} · ${meta}`}
+            tour="schedule"
+            action={
+              <AppButton variant="primary" onClick={() => addTask(mode === "day" ? anchor : null)} icon={<PlusIcon />}>
+                Add task
+              </AppButton>
+            }
+          />
+          <div className="flex flex-col gap-4 px-4 pb-6 pt-4">
+            <div className="flex items-center justify-between gap-2">
+              <ModeSwitch mode={mode} onChange={setMode} />
+              <div className="flex items-center">
+                <RoundIcon label="Previous" onClick={() => step(-1)} direction="left" />
+                <button type="button" onClick={goToday} className="h-8 rounded-md px-2.5 text-[13px] font-medium" style={{ color: "var(--app-text-soft)" }}>
+                  Today
+                </button>
+                <RoundIcon label="Next" onClick={() => step(1)} direction="right" />
+              </div>
             </div>
-            <AppButton
-              variant="primary"
-              onClick={() => {
-                setNewTaskDefaultDate(null);
-                setShowTaskSheet(true);
-              }}
-              icon={<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M10 4v12M4 10h12" strokeLinecap="round" /></svg>}
+            {strip}
+            <HabitsCard key={mode} defaultOpen={mode === "day"} day={habitDay} today={today} onDayChange={setHabitDay} />
+            {mode === "term" ? (
+              <>
+                {subjects.length ? <SubjectChips subjects={subjects} selected={selected} onToggle={toggleSubject} /> : null}
+                <div className="flex h-[62svh] overflow-hidden rounded-lg" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
+                  <TermMatrix {...matrixProps} compact />
+                </div>
+              </>
+            ) : (
+              <div>
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>{mode === "week" || mobileWeek ? "Agenda" : "Timeline"}</span>
+                  {mode === "day" ? (
+                    <button type="button" onClick={() => setMobileWeek((value) => !value)} className="text-[12.5px] font-medium underline underline-offset-2" style={{ color: "var(--app-text-soft)" }}>
+                      {mobileWeek ? "Show the day" : "Show the week"}
+                    </button>
+                  ) : null}
+                </div>
+                {mode === "day" && !mobileWeek ? (
+                  <MobileDaySchedule
+                    days={week}
+                    events={gridEvents.filter((event) => Date.parse(event.startAt) < week[6].endMs && Date.parse(event.endAt) > week[0].startMs)}
+                    subjects={data.subjects}
+                    timezone={timezone}
+                    selectedDayIndex={weekdayIndex(anchor)}
+                    currentPosition={mobileNowPosition(week, now, timezone)}
+                    onSelectDay={(index) => setAnchor(addDays(mondayOf(anchor), index))}
+                    onPreviousDay={() => setAnchor((current) => addDays(current, -1))}
+                    onNextDay={() => setAnchor((current) => addDays(current, 1))}
+                    onToday={goToday}
+                    onSelectEvent={setSelectedEvent}
+                    onCreateAtDay={(key) => addTask(key)}
+                  />
+                ) : (
+                  <MobileWeekSchedule
+                    days={week}
+                    events={gridEvents.filter((event) => Date.parse(event.startAt) < week[6].endMs && Date.parse(event.endAt) > week[0].startMs)}
+                    subjects={data.subjects}
+                    timezone={timezone}
+                    onOpenDay={(index) => {
+                      setMobileWeek(false);
+                      openDay(addDays(mondayOf(anchor), index));
+                    }}
+                    onSelectEvent={setSelectedEvent}
+                    onCreateAtDay={(key) => addTask(key)}
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+      ) : (
+        /* Tablets and up: the planner fills the window. */
+        <div className="hidden md:flex md:h-[calc(100svh-3rem-72px)] md:flex-col lg:h-[calc(100svh-2.5rem)]">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 py-3 lg:px-5" style={{ borderColor: "var(--app-border)" }}>
+            <button
+              type="button"
+              onClick={goToday}
+              disabled={showingToday && anchor === today}
+              title="Today (T)"
+              className="ui-hover h-9 rounded-full px-4 text-[13.5px] font-medium disabled:cursor-default"
+              style={{ color: "var(--app-text)", boxShadow: "inset 0 0 0 1px var(--app-border-strong)" }}
             >
-              New task
-            </AppButton>
-          </div>
-        }
-      />
-
-      <div className="px-4 py-6 md:hidden">
-        <div
-          role="tablist"
-          aria-label="Schedule view"
-          className="inline-flex rounded-md p-1"
-          style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
-        >
-          {(["day", "week"] as const).map((view) => {
-            const active = mobileView === view;
-            return (
-              <button
-                key={view}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => setMobileView(view)}
-                className="h-8 rounded-[4px] px-3.5 text-[12.5px] font-medium capitalize transition-colors"
-                style={{
-                  background: active ? "var(--app-accent-soft)" : "transparent",
-                  color: active ? "var(--app-accent-strong)" : "var(--app-text-muted)",
-                }}
-              >
-                {view}
-              </button>
-            );
-          })}
-        </div>
-
-        {mobileView === "day" ? (
-          <MobileDaySchedule
-            days={week}
-            events={events}
-            subjects={data.subjects}
-            timezone={timezone}
-            selectedDayIndex={mobileDayIndex}
-            currentPosition={currentPosition}
-            onSelectDay={setMobileDayIndex}
-            onPreviousDay={() => moveMobileDay(-1)}
-            onNextDay={() => moveMobileDay(1)}
-            onToday={goToToday}
-            onSelectEvent={setSelectedEvent}
-            onCreateAtDay={openNewTaskForDay}
-          />
-        ) : (
-          <MobileWeekSchedule
-            days={week}
-            events={events}
-            subjects={data.subjects}
-            timezone={timezone}
-            onOpenDay={openMobileDay}
-            onSelectEvent={setSelectedEvent}
-            onCreateAtDay={openNewTaskForDay}
-          />
-        )}
-      </div>
-
-      <div className="hidden px-4 py-6 md:block md:px-10 md:py-8">
-        <div
-          className="overflow-x-auto rounded-lg"
-          style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
-        >
-          <div className="min-w-[760px]">
-          <div
-            className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 sm:px-6"
-            style={{ borderBottom: "1px solid var(--app-border)" }}
-          >
-            <div className="flex items-center gap-4">
-              <span className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>{weekLabel.range}</span>
-              <span className="text-[13px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>{week[0].label} – {week[6].label}</span>
+              Today
+            </button>
+            <div className="flex items-center">
+              <RoundIcon label={`Previous ${mode} (←)`} onClick={() => step(-1)} direction="left" />
+              <RoundIcon label={`Next ${mode} (→)`} onClick={() => step(1)} direction="right" />
             </div>
-            <div className="hidden lg:flex items-center gap-2 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
-              <span style={{ color: upToDate ? "var(--app-success)" : undefined }}>
-                {upToDate ? "Up to date" : "Historical"}
-              </span>
+            <div className="min-w-0">
+              <h1 className="truncate text-[20px] font-semibold leading-tight tracking-[-0.02em]" style={{ color: "var(--app-text)" }}>
+                <span className="sr-only">Schedule, </span>
+                {title}
+              </h1>
+              <p className="truncate text-[12.5px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>{meta}</p>
+            </div>
+            {planner.error ? (
+              <span role="alert" className="text-[12.5px]" style={{ color: "var(--app-danger)" }}>{planner.error}</span>
+            ) : planner.loading ? (
+              <span className="text-[12px]" style={{ color: "var(--app-text-faint)" }}>Loading…</span>
+            ) : null}
+
+            <div className="ml-auto flex items-center gap-2">
+              <PageTour id="schedule" />
+              {subjects.length ? <SubjectMenu subjects={subjects} selected={selected} onToggle={toggleSubject} hideAt={mode === "day" ? "wide" : "xl"} /> : null}
+              <ModeSwitch mode={mode} onChange={setMode} />
+              <AppButton variant="primary" onClick={() => addTask(mode === "day" ? anchor : null)} icon={<PlusIcon />} title="Add task (N)">
+                Add task
+              </AppButton>
             </div>
           </div>
 
-          <WeekGrid
-            days={week}
-            events={events}
-            timezone={timezone}
-            currentPosition={currentPosition}
-            onSelectEvent={setSelectedEvent}
-            onCreateAtDay={openNewTaskForDay}
-            onReschedule={reschedule}
-          />
+          <div className="flex min-h-0 flex-1">
+            <ContextPanel
+              data={data}
+              today={today}
+              timezone={timezone}
+              todayPeriod={todayPeriod}
+              period={period}
+              studyEvents={studyEvents}
+              tasks={tasks}
+              subjects={subjects}
+              selected={selected}
+              onToggleSubject={toggleSubject}
+              roomy={mode !== "day"}
+              onOpenTask={setDetailTask}
+              onJump={(key) => {
+                setAnchor(key);
+                if (mode === "day") setHabitDay(key <= today ? key : today);
+              }}
+            />
+
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 p-3 lg:p-4">
+              {strip}
+              <div className="relative flex min-h-0 flex-1 overflow-hidden rounded-lg" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
+                {mode === "term" ? (
+                  <TermMatrix {...matrixProps} />
+                ) : (
+                  <TimeGrid
+                    days={days}
+                    events={gridEvents}
+                    due={due}
+                    subjects={data.subjects}
+                    timezone={timezone}
+                    now={now}
+                    wake={clockHours(data.profile?.wakeTime, 7)}
+                    bed={clockHours(data.profile?.bedtime, 22.5)}
+                    onSelectEvent={setSelectedEvent}
+                    onOpenTask={setDetailTask}
+                    onAddDeadline={(key) => addTask(key)}
+                    onOpenDay={openDay}
+                    onReschedule={reschedule}
+                    onToggleDone={(event) => void planner.setEventDone(event, event.outcome !== "completed")}
+                    onToggleTask={(task) => void planner.setTaskDone(task, task.status !== "complete")}
+                    onMoveTask={(task, key) => void planner.moveTask(task, key)}
+                    habitsRow={mode === "week" && habits.length ? habitsRow : undefined}
+                    overlay={noDeadlines ? <FirstDeadline onAdd={() => addTask(null)} /> : null}
+                  />
+                )}
+              </div>
+            </div>
+
+            {mode === "day" ? (
+              <DayPanel
+                day={anchor}
+                today={today}
+                nowMs={now.getTime()}
+                timezone={timezone}
+                events={gridEvents.filter((event) => Date.parse(event.startAt) < days[0].endMs && Date.parse(event.endAt) > days[0].startMs)}
+                tasks={tasks}
+                subjects={subjects}
+                data={data}
+                onOpenEvent={setSelectedEvent}
+                onOpenTask={setDetailTask}
+                onSetEventDone={(event, done) => void planner.setEventDone(event, done)}
+                onMoveEvent={(event, ms) => void planner.moveEvent(event, ms)}
+                onSetTaskDone={(task, done) => void planner.setTaskDone(task, done)}
+                onMoveTask={(task, key) => void planner.moveTask(task, key)}
+              />
+            ) : null}
+
+            <HabitsPanel
+              expanded={habitsOpen}
+              onExpandedChange={(value) => updatePrefs({ habitsOpen: { ...prefs.habitsOpen, [mode]: value } })}
+              day={habitDay}
+              today={today}
+              onDayChange={setHabitDay}
+            />
           </div>
         </div>
-      </div>
+      )}
 
-      <NewTaskSheet
-        open={showTaskSheet}
-        onClose={() => {
-          setShowTaskSheet(false);
-          setNewTaskDefaultDate(null);
-        }}
-        defaultDueDate={newTaskDefaultDate}
-      />
-      <EventDetailSheet
-        event={liveSelectedEvent}
-        timezone={timezone}
-        onClose={() => setSelectedEvent(null)}
-      />
+      {sheets}
     </>
   );
 }
 
-function IconButton({ children, onClick, label }: { children: React.ReactNode; onClick: () => void; label: string }) {
+/** A week column's habits: one square per habit, click to open the panel on that day. */
+function DayHabits({ day, today, onOpen }: { day: string; today: string; onOpen: () => void }) {
+  const { habits, isDone, dayScore } = useHabits();
+  const live = habits.filter((habit) => habit.since <= day);
+  const score = dayScore(day);
+  const future = day > today;
   return (
     <button
       type="button"
-      onClick={onClick}
-      aria-label={label}
-      className="grid h-9 w-9 place-items-center"
-      style={{ color: "var(--app-text-soft)" }}
+      onClick={onOpen}
+      className="ui-hover flex w-full items-center gap-1.5 rounded px-1 py-0.5"
+      title={future ? "Still to come" : `${score.done} of ${score.total} habits done. Open habits`}
+      aria-label={`${score.done} of ${score.total} habits done, open habits`}
     >
-      {children}
+      <span className="flex flex-wrap gap-[2px]">
+        {live.map((habit) => (
+          <span
+            key={habit.id}
+            className="h-[7px] w-[7px] rounded-[2px]"
+            style={{
+              background: isDone(habit.id, day) ? "var(--app-text)" : "transparent",
+              boxShadow: isDone(habit.id, day) ? undefined : "inset 0 0 0 1px var(--app-border-strong)",
+              opacity: future ? 0.5 : 1,
+            }}
+          />
+        ))}
+      </span>
+      {!future && score.total ? (
+        <span className="ml-auto text-[10.5px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
+          {score.done}/{score.total}
+        </span>
+      ) : null}
     </button>
   );
 }
 
-interface DayColumn {
-  key: string;
-  weekday: string;
-  label: string;
-  date: number;
-  isToday: boolean;
-  startMs: number;
-  endMs: number;
-}
-
-interface WeekGridProps {
-  days: DayColumn[];
-  events: PlannerEvent[];
-  timezone: string;
-  currentPosition: { dayIndex: number; top: number } | null;
-  onSelectEvent: (event: PlannerEvent) => void;
-  onCreateAtDay: (dayKey: string) => void;
-  onReschedule: (eventId: string, newStartMs: number) => void | Promise<void>;
-}
-
-function WeekGrid({
-  days,
-  events,
-  timezone,
-  currentPosition,
-  onSelectEvent,
-  onCreateAtDay,
-  onReschedule,
-}: WeekGridProps) {
-  const { subjects } = useDashboardData().data;
-  const HEIGHT = 720;
-  const canvasRef = useRef<HTMLDivElement>(null);
-
-  // Drag state, tracked in a ref so pointermove listeners don't force React re-renders.
-  const dragRef = useRef<{
-    eventId: string;
-    startMs: number;
-    pointerY: number;
-    hasMoved: boolean;
-  } | null>(null);
-  const [dragOffsetPct, setDragOffsetPct] = useState(0);
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-
-  const beginDrag = useCallback(
-    (event: PlannerEvent, e: React.PointerEvent) => {
-      // Only study blocks are draggable, school/sport/sleep/extracurricular
-      // are usually driven by commitments, so moving them from here would
-      // desync the source.
-      if (event.category !== "study") return;
-      if (event.editable === false) return;
-      if (event.outcome !== "planned") return;
-      e.preventDefault();
-      e.stopPropagation();
-      dragRef.current = {
-        eventId: event.id,
-        startMs: Date.parse(event.startAt),
-        pointerY: e.clientY,
-        hasMoved: false,
-      };
-      setDraggingId(event.id);
-      setDragOffsetPct(0);
-      (e.currentTarget as Element).setPointerCapture(e.pointerId);
-    },
-    [],
-  );
-
-  useEffect(() => {
-    if (!draggingId) return;
-    const pixelsPerHour = HEIGHT / HOUR_SPAN;
-    const pixelsPerMinute = pixelsPerHour / 60;
-
-    function onMove(e: PointerEvent) {
-      const drag = dragRef.current;
-      if (!drag) return;
-      const rawDeltaPx = e.clientY - drag.pointerY;
-      if (Math.abs(rawDeltaPx) > 3) drag.hasMoved = true;
-      // Snap to SNAP_MINUTES grid
-      const deltaMin = Math.round(rawDeltaPx / pixelsPerMinute / SNAP_MINUTES) * SNAP_MINUTES;
-      const snappedPx = deltaMin * pixelsPerMinute;
-      setDragOffsetPct((snappedPx / HEIGHT) * 100);
-    }
-
-    function onUp() {
-      const drag = dragRef.current;
-      if (!drag) return;
-      const pxPerMin = HEIGHT / HOUR_SPAN / 60;
-      // Read the latest offset via the setState callback (a plain ref would race
-      // with the last pointermove tick).
-      setDragOffsetPct((offset) => {
-        if (drag.hasMoved) {
-          const deltaMinutes = Math.round((offset / 100) * HEIGHT / pxPerMin);
-          if (deltaMinutes !== 0) {
-            const nextStart = drag.startMs + deltaMinutes * 60 * 1000;
-            void onReschedule(drag.eventId, nextStart);
-          }
-        }
-        return 0;
-      });
-      dragRef.current = null;
-      setDraggingId(null);
-    }
-
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    window.addEventListener("pointercancel", onUp);
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("pointercancel", onUp);
-    };
-  }, [draggingId, onReschedule]);
-
-  const handleDayClick = useCallback(
-    (day: DayColumn, e: React.MouseEvent) => {
-      // Only fire when the click hit the day surface itself, not an event.
-      if (e.target !== e.currentTarget) return;
-      onCreateAtDay(day.key);
-    },
-    [onCreateAtDay],
-  );
-
+function ModeSwitch({ mode, onChange }: { mode: ScheduleMode; onChange: (mode: ScheduleMode) => void }) {
   return (
-    <div className="relative">
-      <div
-        className="flex h-11 items-center pl-16"
-        style={{ borderBottom: "1px solid var(--app-border)" }}
-      >
-        {days.map((day) => (
-          <div key={day.key} className="flex-1 px-3 text-[13px]">
-            <span className="font-medium" style={{ color: day.isToday ? "var(--app-accent-strong)" : "var(--app-text)" }}>
-              {day.weekday}
-            </span>{" "}
-            <span className="tabular-nums" style={{ color: "var(--app-text-muted)" }}>{day.date}</span>
-          </div>
-        ))}
-      </div>
-
-      <div className="relative" style={{ height: HEIGHT }} ref={canvasRef}>
-        {HOUR_MARKS.map((hour) => {
-          const top = ((hour - HOUR_START) / HOUR_SPAN) * 100;
-          return (
-            <div key={hour} className="pointer-events-none absolute inset-x-0" style={{ top: `${top}%` }}>
-              <span
-                className="absolute -top-[8px] left-4 text-[11px] tabular-nums"
-                style={{ color: "var(--app-text-muted)" }}
-              >
-                {formatHourLabel(hour)}
-              </span>
-              <div className="ml-16 h-px" style={{ background: "color-mix(in oklab, var(--app-border) 80%, transparent)" }} />
-            </div>
-          );
-        })}
-
-        {days.slice(1).map((day, i) => (
-          <div
-            key={day.key}
-            className="pointer-events-none absolute bottom-0 top-0 w-px"
+    <div role="tablist" aria-label="Plan view" className="flex rounded-full p-[3px]" style={{ background: "var(--app-surface-soft)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}>
+      {MODES.map((option) => {
+        const active = mode === option.value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(option.value)}
+            title={`${option.label} (${option.key})`}
+            className="h-8 rounded-full px-3.5 text-[13px] font-medium transition-colors"
             style={{
-              left: `calc(64px + (100% - 64px) * ${(i + 1) / 7})`,
-              background: "color-mix(in oklab, var(--app-border) 70%, transparent)",
+              background: active ? "var(--app-surface)" : "transparent",
+              color: active ? "var(--app-text)" : "var(--app-text-muted)",
+              boxShadow: active ? "var(--elev-1), inset 0 0 0 1px var(--app-border-strong)" : undefined,
             }}
-          />
-        ))}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
-        {days.map((day, dayIndex) => {
-          if (!day.isToday) return null;
-          return (
-            <div
-              key={`today-${day.key}`}
-              className="pointer-events-none absolute inset-y-0"
-              style={{
-                left: `calc(64px + (100% - 64px) * ${dayIndex / 7})`,
-                width: `calc((100% - 64px) / 7)`,
-                background: "color-mix(in oklab, var(--app-accent) 5%, transparent)",
-              }}
-              aria-hidden="true"
-            />
-          );
-        })}
+/** Below the width where the context panel shows, the subject filter lives in the toolbar. */
+function SubjectMenu({
+  subjects,
+  selected,
+  onToggle,
+  hideAt,
+}: {
+  subjects: SubjectInfo[];
+  selected: Set<string>;
+  onToggle: (name: string | null) => void;
+  /** Where the context panel takes over the filter. */
+  hideAt: "xl" | "wide";
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: MouseEvent | KeyboardEvent) => {
+      if (event instanceof KeyboardEvent ? event.key === "Escape" : !ref.current?.contains(event.target as Node)) setOpen(false);
+    };
+    window.addEventListener("mousedown", close);
+    window.addEventListener("keydown", close);
+    return () => {
+      window.removeEventListener("mousedown", close);
+      window.removeEventListener("keydown", close);
+    };
+  }, [open]);
+  return (
+    <div ref={ref} className={cn("relative", hideAt === "xl" ? "xl:hidden" : "min-[1600px]:hidden")}>
+      <AppButton variant="secondary" onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-haspopup="true">
+        {selected.size ? `${selected.size} subject${selected.size === 1 ? "" : "s"}` : "All subjects"}
+      </AppButton>
+      {open ? (
+        <div className="absolute right-0 top-[calc(100%+6px)] z-40 w-[240px] rounded-lg p-2" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-3)" }}>
+          <SubjectChips subjects={subjects} selected={selected} onToggle={onToggle} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
-        {/* Day surfaces underlay events so clicking the empty grid opens New Task */}
-        <div className="absolute inset-y-0 left-16 right-0">
-          {days.map((day, dayIndex) => (
-            <button
-              key={`bg-${day.key}`}
-              type="button"
-              aria-label={`Add a task due ${day.label}`}
-              onClick={(e) => handleDayClick(day, e)}
-              className="absolute h-full cursor-copy hover:bg-[color:var(--app-accent-soft)]/40"
-              style={{
-                left: `${(dayIndex / 7) * 100}%`,
-                width: `${100 / 7}%`,
-                background: "transparent",
-              }}
-            />
-          ))}
+function SubjectChips({ subjects, selected, onToggle }: { subjects: SubjectInfo[]; selected: Set<string>; onToggle: (name: string | null) => void }) {
+  const all = selected.size === 0;
+  const chip = (active: boolean, colour: string | null) =>
+    colour && active
+      ? {
+          color: `color-mix(in oklab, ${colour} 70%, var(--app-text))`,
+          background: `color-mix(in oklab, ${colour} 13%, transparent)`,
+          boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${colour} 45%, transparent)`,
+        }
+      : {
+          color: active ? "var(--app-text)" : "var(--app-text-muted)",
+          boxShadow: `inset 0 0 0 1px ${active ? "var(--app-border-strong)" : "var(--app-border)"}`,
+        };
+  return (
+    <div className="flex flex-wrap gap-1.5" role="group" aria-label="Subjects">
+      <button type="button" aria-pressed={all} onClick={() => onToggle(null)} className="rounded-[5px] px-2 py-1 text-[12.5px] font-medium" style={chip(all, null)}>
+        All subjects
+      </button>
+      {subjects.map((subject) => {
+        const on = selected.has(subject.name);
+        return (
+          <button key={subject.name} type="button" aria-pressed={on} onClick={() => onToggle(subject.name)} className="rounded-[5px] px-2 py-1 text-[12.5px] font-medium" style={chip(on, subject.colour)}>
+            {subject.name}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
-          {events.map((event) => {
-            const { dayIndex, top, height, visible } = positionFor(event, days, timezone);
-            if (!visible) return null;
-            // Study blocks take their subject's colour; everything else its category's.
-            const hue = event.category === "study" ? subjectColour(subjects, event.subject) : null;
-            const styles = hue ? hueBlock(hue) : CATEGORY_STYLE[event.category] ?? CATEGORY_STYLE.other;
-            const durationMinutes = Math.max(0, (Date.parse(event.endAt) - Date.parse(event.startAt)) / 60000);
-            const showTime = durationMinutes >= 35;
-            const isCompleted = event.outcome === "completed";
-            const isMissed = event.outcome === "missed";
-            const isSleep = event.category === "sleep";
-            const isBeingDragged = draggingId === event.id;
-            const draggable = event.category === "study" && event.editable !== false && event.outcome === "planned";
-            const topPct = top + (isBeingDragged ? dragOffsetPct : 0);
-            return (
-              <div
-                key={event.id}
-                className={cn(
-                  "absolute px-1",
-                  isBeingDragged && "z-20",
-                )}
-                style={{
-                  top: `${topPct}%`,
-                  height: `${Math.max(height, 3.5)}%`,
-                  left: `${(dayIndex / 7) * 100}%`,
-                  width: `${100 / 7}%`,
-                  zIndex: isBeingDragged
-                    ? 20
-                    : event.category === "sport" || event.category === "extracurricular"
-                      ? 2
-                      : 1,
-                  transition: isBeingDragged ? "none" : "top 0.18s var(--ease-out-expo)",
-                }}
-              >
-                <button
-                  type="button"
-                  onPointerDown={draggable ? (e) => beginDrag(event, e) : undefined}
-                  onClick={(e) => {
-                    // Suppress the click that a drag would otherwise fire on release
-                    if (dragRef.current || draggingId === event.id) {
-                      e.preventDefault();
-                      return;
-                    }
-                    onSelectEvent(event);
-                  }}
-                  className={cn(
-                    "block h-full w-full overflow-hidden rounded-sm px-2.5 py-1.5 text-left leading-tight transition-shadow duration-150",
-                    isCompleted && "opacity-55",
-                    isMissed && "opacity-40",
-                    draggable && "cursor-grab",
-                    isBeingDragged && "cursor-grabbing surface-raised",
-                  )}
-                  style={{
-                    background: styles.bg,
-                    color: styles.text,
-                    border: `1px ${isSleep ? "dashed" : "solid"} ${styles.border}`,
-                  }}
-                >
-                  <div className="flex items-start justify-between gap-1">
-                    <span className="truncate text-[12px] font-medium">
-                      {event.category === "study" ? studyTitle(event) : event.title}
-                    </span>
-                    {isCompleted ? (
-                      <span aria-hidden="true" className="mt-0.5 shrink-0">
-                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                          <path d="M1 5l2.5 2.5L9 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </span>
-                    ) : null}
-                  </div>
-                  {showTime ? (
-                    <div className="mt-0.5 text-[10.5px] tabular-nums opacity-70">
-                      {formatClock(event.startAt, timezone)}–{formatClock(event.endAt, timezone)}
-                    </div>
-                  ) : null}
-                </button>
-              </div>
-            );
-          })}
+function RoundIcon({ label, onClick, direction }: { label: string; onClick: () => void; direction: "left" | "right" }) {
+  return (
+    <button type="button" onClick={onClick} aria-label={label} title={label} className="ui-hover grid h-9 w-9 place-items-center rounded-full" style={{ color: "var(--app-text-soft)" }}>
+      <ChevronIcon direction={direction} />
+    </button>
+  );
+}
 
-          {currentPosition ? (
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute z-10"
-              style={{
-                top: `${currentPosition.top}%`,
-                left: `${(currentPosition.dayIndex / 7) * 100}%`,
-                width: `${100 / 7}%`,
-              }}
-            >
-              <div className="relative">
-                <span
-                  className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-full"
-                  style={{ background: "var(--app-accent)", boxShadow: "0 0 0 3px color-mix(in oklab, var(--app-accent) 25%, transparent)" }}
-                />
-                <div className="h-px" style={{ background: "var(--app-accent)" }} />
-              </div>
-            </div>
-          ) : null}
+function PlusIcon() {
+  return (
+    <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path d="M10 4v12M4 10h12" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Shown over an empty week until there's a deadline to plan around. */
+function FirstDeadline({ onAdd }: { onAdd: () => void }) {
+  const [hidden, setHidden] = useState(false);
+  if (hidden) return null;
+  return (
+    <div className="pointer-events-none absolute inset-0 z-40 grid place-items-center p-6">
+      <div
+        className={cn("pointer-events-auto relative w-full max-w-[420px] rounded-xl px-8 pb-7 pt-8 text-center")}
+        style={{ background: "var(--app-surface)", boxShadow: "var(--elev-3)" }}
+      >
+        <button type="button" onClick={() => setHidden(true)} aria-label="Not now" className="ui-hover absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-md" style={{ color: "var(--app-text-faint)" }}>
+          <svg viewBox="0 0 20 20" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+            <path d="M5 5l10 10M15 5L5 15" strokeLinecap="round" />
+          </svg>
+        </button>
+        <h2 className="text-[19px] font-semibold tracking-[-0.02em]" style={{ color: "var(--app-text)" }}>Add your first exam</h2>
+        <p className="mx-auto mt-2 max-w-[330px] text-[14px] leading-relaxed" style={{ color: "var(--app-text-muted)" }}>
+          Tell us when it is and what it covers. Arcad books study time for it in the hours you&apos;re free.
+        </p>
+        <div className="mt-5 flex justify-center">
+          <AppButton variant="primary" onClick={onAdd} icon={<PlusIcon />}>
+            Add an exam or deadline
+          </AppButton>
         </div>
       </div>
     </div>
   );
 }
 
-/** A whole-week phone view that stays readable by using a compact agenda. */
-function MobileWeekSchedule({
-  days,
-  events,
-  subjects,
-  timezone,
-  onOpenDay,
-  onSelectEvent,
-  onCreateAtDay,
-}: {
-  days: DayColumn[];
-  events: PlannerEvent[];
-  subjects: DashboardResponse["subjects"];
-  timezone: string;
-  onOpenDay: (index: number) => void;
-  onSelectEvent: (event: PlannerEvent) => void;
-  onCreateAtDay: (dayKey: string) => void;
-}) {
-  const eventsForDay = (day: DayColumn) =>
-    events
-      .filter((event) => dateKey(event.startAt, timezone) === day.key)
-      .sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt));
-
-  return (
-    <section className="mt-4" aria-label="Week schedule">
-      <p className="mb-3 text-[12px]" style={{ color: "var(--app-text-muted)" }}>
-        Your full week at a glance. Tap a day for its timeline.
-      </p>
-      <div className="flex flex-col gap-3">
-        {days.map((day, index) => {
-          const dayEvents = eventsForDay(day);
-          return (
-            <article
-              key={day.key}
-              className="overflow-hidden rounded-lg"
-              style={{
-                background: "var(--app-surface)",
-                boxShadow: "var(--elev-1)",
-                outline: day.isToday ? "1px solid color-mix(in oklab, var(--app-accent) 34%, transparent)" : undefined,
-              }}
-            >
-              <div className="flex items-center justify-between gap-3 border-b px-4 py-3" style={{ borderColor: "var(--app-border)" }}>
-                <button
-                  type="button"
-                  onClick={() => onOpenDay(index)}
-                  className="flex min-w-0 items-baseline gap-2 text-left"
-                  aria-label={`Open ${day.weekday}, ${day.label}`}
-                >
-                  <span className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>{day.weekday}</span>
-                  <span className="text-[12px]" style={{ color: "var(--app-text-muted)" }}>{day.label}</span>
-                  {day.isToday ? <span className="text-[11px] font-medium" style={{ color: "var(--app-accent-strong)" }}>Today</span> : null}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onCreateAtDay(day.key)}
-                  className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-[18px] leading-none"
-                  style={{ color: "var(--app-text-soft)" }}
-                  aria-label={`Add a task due ${day.label}`}
-                >
-                  +
-                </button>
-              </div>
-
-              {dayEvents.length ? (
-                <div className="flex flex-col gap-1.5 p-2">
-                  {dayEvents.map((event) => {
-                    const hue = event.category === "study" ? subjectColour(subjects, event.subject) : null;
-                    const styles = hue ? hueBlock(hue) : CATEGORY_STYLE[event.category] ?? CATEGORY_STYLE.other;
-                    const completed = event.outcome === "completed";
-                    const missed = event.outcome === "missed";
-                    const time = event.kind === "all-day" ? "All day" : `${formatClock(event.startAt, timezone)} to ${formatClock(event.endAt, timezone)}`;
-                    return (
-                      <button
-                        key={event.id}
-                        type="button"
-                        onClick={() => onSelectEvent(event)}
-                        className={cn("flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left active:scale-[0.99]", completed && "opacity-55", missed && "opacity-40")}
-                        style={{ background: styles.bg, color: styles.text, border: `1px ${event.category === "sleep" ? "dashed" : "solid"} ${styles.border}` }}
-                      >
-                        <span className="w-[72px] shrink-0 text-[11px] tabular-nums opacity-70">{time}</span>
-                        <span className="min-w-0 truncate text-[13px] font-medium">
-                          {event.category === "study" ? studyTitle(event) : event.title}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => onCreateAtDay(day.key)}
-                  className="w-full px-4 py-4 text-left text-[12.5px]"
-                  style={{ color: "var(--app-text-muted)" }}
-                >
-                  Nothing planned. Add a task for this day.
-                </button>
-              )}
-            </article>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-/**
- * A full seven-day grid is useful on a laptop but makes every column too
- * narrow on a phone. The mobile view keeps the same schedule data, with one
- * large, tappable day at a time and a date strip for jumping around the week.
- */
-function MobileDaySchedule({
-  days,
-  events,
-  subjects,
-  timezone,
-  selectedDayIndex,
-  currentPosition,
-  onSelectDay,
-  onPreviousDay,
-  onNextDay,
-  onToday,
-  onSelectEvent,
-  onCreateAtDay,
-}: {
-  days: DayColumn[];
-  events: PlannerEvent[];
-  subjects: DashboardResponse["subjects"];
-  timezone: string;
-  selectedDayIndex: number;
-  currentPosition: { dayIndex: number; top: number } | null;
-  onSelectDay: (index: number) => void;
-  onPreviousDay: () => void;
-  onNextDay: () => void;
-  onToday: () => void;
-  onSelectEvent: (event: PlannerEvent) => void;
-  onCreateAtDay: (dayKey: string) => void;
-}) {
-  const HEIGHT = 960;
-  const selectedDay = days[selectedDayIndex];
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
-  const blocks = events
-    .map((event) => ({ event, position: positionFor(event, days, timezone) }))
-    .filter(({ position }) => position.visible && position.dayIndex === selectedDayIndex);
-
-  function handleTouchEnd(event: React.TouchEvent<HTMLDivElement>) {
-    const start = touchStart.current;
-    touchStart.current = null;
-    const touch = event.changedTouches[0];
-    if (!start || !touch) return;
-    const x = touch.clientX - start.x;
-    const y = touch.clientY - start.y;
-    if (Math.abs(x) < 56 || Math.abs(x) <= Math.abs(y)) return;
-    if (x > 0) onPreviousDay();
-    else onNextDay();
-  }
-
-  return (
-    <section aria-label="Daily schedule">
-      <div className="flex items-center justify-between gap-2">
-        <IconButton label="Previous day" onClick={onPreviousDay}>
-          <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 5l-5 5 5 5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-        </IconButton>
-        <button
-          type="button"
-          onClick={onToday}
-          className="h-10 rounded-md px-3 text-[13px] font-medium"
-          style={{ color: "var(--app-text-soft)", background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
-        >
-          Today
-        </button>
-        <IconButton label="Next day" onClick={onNextDay}>
-          <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M8 5l5 5-5 5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-        </IconButton>
-      </div>
-
-      <div className="mt-4 grid grid-cols-7 gap-1" role="tablist" aria-label="Days this week">
-        {days.map((day, index) => {
-          const active = index === selectedDayIndex;
-          return (
-            <button
-              key={day.key}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              aria-label={`${day.label}${day.isToday ? ", today" : ""}`}
-              onClick={() => onSelectDay(index)}
-              className="flex min-h-12 flex-col items-center justify-center rounded-md text-[11px] transition-colors"
-              style={{
-                background: active ? "var(--app-accent-soft)" : "transparent",
-                color: active ? "var(--app-accent-strong)" : "var(--app-text-muted)",
-                boxShadow: active ? "inset 0 0 0 1px color-mix(in oklab, var(--app-accent) 28%, transparent)" : undefined,
-              }}
-            >
-              <span className="font-medium">{day.weekday}</span>
-              <span className="mt-0.5 text-[13px] tabular-nums">{day.date}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="mt-5 overflow-hidden rounded-lg" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
-        <div className="flex items-center justify-between gap-3 border-b px-4 py-3" style={{ borderColor: "var(--app-border)" }}>
-          <div>
-            <p className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>{selectedDay.weekday}, {selectedDay.label}</p>
-            <p className="mt-0.5 text-[12px]" style={{ color: "var(--app-text-muted)" }}>Swipe between days. Tap a block for details.</p>
-          </div>
-          {selectedDay.isToday ? <span className="text-[11px] font-medium" style={{ color: "var(--app-accent-strong)" }}>Today</span> : null}
-        </div>
-
-        <div
-          className="relative touch-pan-y select-none"
-          style={{ height: HEIGHT }}
-          onTouchStart={(event) => {
-            const touch = event.touches[0];
-            if (touch) touchStart.current = { x: touch.clientX, y: touch.clientY };
-          }}
-          onTouchEnd={handleTouchEnd}
-        >
-          {HOUR_MARKS.map((hour) => {
-            const top = ((hour - HOUR_START) / HOUR_SPAN) * 100;
-            return (
-              <div key={hour} className="pointer-events-none absolute inset-x-0" style={{ top: `${top}%` }}>
-                <span className="absolute -top-[8px] left-3 text-[11px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
-                  {formatHourLabel(hour)}
-                </span>
-                <div className="ml-14 h-px" style={{ background: "color-mix(in oklab, var(--app-border) 80%, transparent)" }} />
-              </div>
-            );
-          })}
-
-          <button
-            type="button"
-            aria-label={`Add a task due ${selectedDay.label}`}
-            onClick={() => onCreateAtDay(selectedDay.key)}
-            className="absolute bottom-0 left-14 right-0 top-0 z-0 cursor-copy active:bg-[color:var(--app-accent-soft)]/40"
-          />
-
-          {blocks.map(({ event, position }) => {
-            const hue = event.category === "study" ? subjectColour(subjects, event.subject) : null;
-            const styles = hue ? hueBlock(hue) : CATEGORY_STYLE[event.category] ?? CATEGORY_STYLE.other;
-            const completed = event.outcome === "completed";
-            const missed = event.outcome === "missed";
-            return (
-              <button
-                key={event.id}
-                type="button"
-                onClick={() => onSelectEvent(event)}
-                className={cn("absolute left-[60px] right-2 z-10 overflow-hidden rounded-md px-3 py-2 text-left active:scale-[0.99]", completed && "opacity-55", missed && "opacity-40")}
-                style={{
-                  top: `${position.top}%`,
-                  height: `${Math.max(position.height, 4.4)}%`,
-                  background: styles.bg,
-                  color: styles.text,
-                  border: `1px ${event.category === "sleep" ? "dashed" : "solid"} ${styles.border}`,
-                }}
-              >
-                <span className="block truncate text-[13px] font-medium">{event.category === "study" ? studyTitle(event) : event.title}</span>
-                <span className="mt-0.5 block text-[11px] tabular-nums opacity-70">{formatClock(event.startAt, timezone)}–{formatClock(event.endAt, timezone)}</span>
-              </button>
-            );
-          })}
-
-          {currentPosition?.dayIndex === selectedDayIndex ? (
-            <div aria-hidden="true" className="pointer-events-none absolute left-14 right-0 z-20" style={{ top: `${currentPosition.top}%` }}>
-              <span className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-full" style={{ background: "var(--app-accent)", boxShadow: "0 0 0 3px color-mix(in oklab, var(--app-accent) 25%, transparent)" }} />
-              <div className="h-px" style={{ background: "var(--app-accent)" }} />
-            </div>
-          ) : null}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function positionFor(event: PlannerEvent, days: DayColumn[], timezone: string) {
-  const startKey = dateKey(event.startAt, timezone);
-  const dayIndex = days.findIndex((day) => day.key === startKey);
-  if (dayIndex === -1) return { dayIndex: 0, top: 0, height: 0, visible: false };
-
-  // All-day events from external calendars (Google, Apple, Canvas, …) don't
-  // belong on the time grid, Google Calendar itself pins them to a strip
-  // at the top of the day. We approximate that here: a short 4%-tall chip
-  // anchored to the top of the day column, out of the way of study blocks.
-  if (event.kind === "all-day") {
-    return { dayIndex, top: 0, height: 4, visible: true };
-  }
-
-  const startMs = Date.parse(event.startAt);
-  const endMs = Date.parse(event.endAt);
-  const dayStart = days[dayIndex].startMs;
-  const startHours = (startMs - dayStart) / 3_600_000;
-  const endHours = (endMs - dayStart) / 3_600_000;
-  const top = Math.max(0, ((startHours - HOUR_START) / HOUR_SPAN) * 100);
-  const bottom = Math.min(100, ((endHours - HOUR_START) / HOUR_SPAN) * 100);
-  return {
-    dayIndex,
-    top,
-    height: Math.max(0, bottom - top),
-    visible: endHours > HOUR_START && startHours < HOUR_END,
-  };
-}
-
-function buildWeek(now: Date, offset: number, timezone: string): DayColumn[] {
-  const todayKey = dateKey(now.toISOString(), timezone);
-  const [year, month, day] = todayKey.split("-").map(Number);
-  const utcNoon = Date.UTC(year, month - 1, day, 12, 0, 0);
-  const weekday = new Date(`${todayKey}T12:00:00Z`).getUTCDay();
-  const daysFromMonday = (weekday + 6) % 7;
-  const mondayNoon = utcNoon - daysFromMonday * DAY_MS + offset * 7 * DAY_MS;
-
-  const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  return Array.from({ length: 7 }, (_, i) => {
-    const noon = mondayNoon + i * DAY_MS;
-    const key = new Date(noon).toISOString().slice(0, 10);
-    const dateNumber = new Date(noon).getUTCDate();
-    return {
-      key,
-      weekday: weekdays[i],
-      label: new Intl.DateTimeFormat("en-AU", { month: "short", day: "numeric" }).format(new Date(noon)),
-      date: dateNumber,
-      isToday: key === todayKey && offset === 0,
-      startMs: Date.parse(`${key}T00:00:00${localTimezoneOffset(timezone, key)}`),
-      endMs: Date.parse(`${key}T23:59:59${localTimezoneOffset(timezone, key)}`),
-    };
-  });
-}
-
-function filterInWeek(event: PlannerEvent, week: DayColumn[], _timezone: string): boolean {
-  const startMs = Date.parse(event.startAt);
-  const endMs = Date.parse(event.endAt);
-  return endMs >= week[0].startMs && startMs <= week[6].endMs;
-}
-
-function weekLabelFor(week: DayColumn[]): { title: string; subtitle: string; range: string } {
-  const first = week[0];
-  const last = week[6];
-  const firstDate = new Date(`${first.key}T12:00:00Z`);
-  const lastDate = new Date(`${last.key}T12:00:00Z`);
-  const sameMonth = firstDate.getUTCMonth() === lastDate.getUTCMonth();
-  const monthFmt = new Intl.DateTimeFormat("en-AU", { month: "short" });
-  const yearFmt = new Intl.DateTimeFormat("en-AU", { year: "numeric" });
-  const range = sameMonth
-    ? `${first.date} – ${last.date} ${monthFmt.format(lastDate)}`
-    : `${first.date} ${monthFmt.format(firstDate)} – ${last.date} ${monthFmt.format(lastDate)}`;
-  return {
-    title: range,
-    subtitle: yearFmt.format(lastDate),
-    range,
-  };
-}
-
-function formatHourLabel(hour: number): string {
-  const suffix = hour >= 12 ? "pm" : "am";
-  const display = hour % 12 === 0 ? 12 : hour % 12;
-  return `${display} ${suffix}`;
-}
-
-function localTimezoneOffset(_timezone: string, _dateKey: string): string {
-  // The event startAt values are already ISO strings, day boundaries use the
-  // client's own timezone here just to bracket the week, which is fine for filtering.
-  const offsetMinutes = new Date().getTimezoneOffset();
-  const sign = offsetMinutes <= 0 ? "+" : "-";
-  const abs = Math.abs(offsetMinutes);
-  return `${sign}${String(Math.floor(abs / 60)).padStart(2, "0")}:${String(abs % 60).padStart(2, "0")}`;
+function mobileNowPosition(week: DayColumn[], now: Date, timezone: string) {
+  const dayIndex = week.findIndex((day) => now.getTime() >= day.startMs && now.getTime() < day.endMs);
+  if (dayIndex === -1) return null;
+  const parts = new Intl.DateTimeFormat("en-AU", { timeZone: timezone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(now);
+  const hours = Number(parts.find((p) => p.type === "hour")?.value ?? 0) + Number(parts.find((p) => p.type === "minute")?.value ?? 0) / 60;
+  // The phone's day view draws 7am to 11pm.
+  if (hours < 7 || hours > 23) return null;
+  return { dayIndex, top: ((hours - 7) / 16) * 100 };
 }

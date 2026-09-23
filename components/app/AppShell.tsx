@@ -190,7 +190,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
           {user?.tier === "pro" || user?.tier === "max" ? null : (
             <Link
               href="/app/pricing"
-              className="flex items-center gap-1 rounded-md px-2.5 py-1 text-[12px] font-semibold"
+              className="flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-[14px] font-semibold"
               style={{ background: "var(--app-arcad)", color: "var(--app-arcad-on)" }}
             >
               <span aria-hidden="true">✦</span>
@@ -318,7 +318,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
             {user?.tier === "pro" || user?.tier === "max" ? null : (
               <Link
                 href="/app/pricing"
-                className="flex h-9 items-center justify-center gap-2 rounded-md px-3 text-[13px] font-semibold transition-opacity hover:opacity-90"
+                className="flex h-10 items-center justify-center gap-2 rounded-lg px-3.5 text-[14px] font-semibold transition-opacity hover:opacity-90"
                 style={{
                   background: "var(--app-arcad)",
                   color: "var(--app-arcad-on)",

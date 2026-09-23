@@ -29,7 +29,7 @@
     // Coupon applied to the onboarding win-back offer (41% off Pro monthly).
     // Create a 41%-off coupon in Stripe and paste its id here. Empty = no
     // discount (the offer still works, just at full price).
-    "STRIPE_WINBACK_COUPON_ID": "",
+    "STRIPE_WINBACK_COUPON_ID": "2YtHgbRQ",
     // RevenueCat entitlement identifiers. Product identifiers and public SDK
     // keys live in the iOS/web build environment, while the secret API key
     // below is set with `wrangler secret put`.

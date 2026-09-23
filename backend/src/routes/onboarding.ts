@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../db";
 import { newId } from "../lib/ids";
+import { qualifyReferral } from "../lib/referrals";
 import { subjectKey } from "../lib/scheduler";
 import { parseClock } from "../lib/time";
 import { AU_STATES, countryCode } from "./profile";
@@ -190,6 +191,11 @@ onboarding.post("/", async (c) => {
       endTime: commitment.endTime!,
     });
   }
+
+  // A referral only becomes qualified after the new student has verified
+  // their email and completed their setup. The helper is idempotent, so a
+  // retrying onboarding request cannot award Pro time twice.
+  await qualifyReferral(database, userId);
 
   return c.json({ ok: true });
 });

@@ -19,6 +19,7 @@ import AppButton from "./AppButton";
 import CompletionBurst from "./CompletionBurst";
 import DailyCheckInCard from "./DailyCheckInCard";
 import EventDetailSheet from "./EventDetailSheet";
+import LifeHappened from "./LifeHappened";
 import NewTaskSheet from "./NewTaskSheet";
 import ProactiveArcadCards from "./ProactiveArcadCards";
 import StartNowCard from "./StartNowCard";
@@ -37,6 +38,7 @@ export default function TodayView() {
   const today = dateKey(now.toISOString(), timezone);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [showTaskSheet, setShowTaskSheet] = useState(false);
+  const [showLife, setShowLife] = useState(false);
   const [celebrateId, setCelebrateId] = useState<{ id: string; at: number } | null>(null);
   const [openEventId, setOpenEventId] = useState<string | null>(null);
   const [openEventForReason, setOpenEventForReason] = useState(false);
@@ -138,13 +140,22 @@ export default function TodayView() {
         meta={`${greeting}, ${firstName} · ${formatFriendlyDate(now.toISOString(), timezone)}`}
         tour="today"
         action={
-          <AppButton
-            variant="primary"
-            onClick={() => setShowTaskSheet(true)}
-            icon={<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M10 4v12M4 10h12" strokeLinecap="round" /></svg>}
-          >
-            New task
-          </AppButton>
+          <>
+            <AppButton
+              variant="secondary"
+              onClick={() => setShowLife(true)}
+              icon={<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 10a6 6 0 0 1 10.5-4M16 10a6 6 0 0 1-10.5 4M14 3v3.5h-3.5M6 17v-3.5h3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+            >
+              Life happened
+            </AppButton>
+            <AppButton
+              variant="primary"
+              onClick={() => setShowTaskSheet(true)}
+              icon={<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M10 4v12M4 10h12" strokeLinecap="round" /></svg>}
+            >
+              New task
+            </AppButton>
+          </>
         }
       />
 
@@ -179,6 +190,7 @@ export default function TodayView() {
       </div>
 
       <NewTaskSheet open={showTaskSheet} onClose={() => setShowTaskSheet(false)} />
+      <LifeHappened open={showLife} onClose={() => setShowLife(false)} />
       <EventDetailSheet
         event={openedEvent}
         timezone={timezone}

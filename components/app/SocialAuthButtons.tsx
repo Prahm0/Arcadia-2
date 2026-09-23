@@ -1,9 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { api } from "@/lib/api/client";
+import { isNative } from "@/lib/capacitor/platform";
 
 interface ProviderConfig {
   google: boolean;
+  nativeGoogle: boolean;
+  googleClientId: string | null;
   apple: boolean;
 }
 
@@ -14,6 +18,8 @@ interface SocialAuthButtonsProps {
 
 export default function SocialAuthButtons({ from, next }: SocialAuthButtonsProps) {
   const [providers, setProviders] = useState<ProviderConfig | null>(null);
+  const [nativeGoogleLoading, setNativeGoogleLoading] = useState(false);
+  const [nativeGoogleError, setNativeGoogleError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -30,7 +36,9 @@ export default function SocialAuthButtons({ from, next }: SocialAuthButtonsProps
     };
   }, []);
 
-  if (!providers || (!providers.google && !providers.apple)) return null;
+  const useNativeGoogle = isNative();
+  const showGoogle = useNativeGoogle ? providers?.nativeGoogle : providers?.google;
+  if (!providers || (!showGoogle && !providers.apple)) return null;
 
   function href(provider: "google" | "apple") {
     const params = new URLSearchParams({ from });
@@ -40,21 +48,74 @@ export default function SocialAuthButtons({ from, next }: SocialAuthButtonsProps
     return `/api/auth/oauth/${provider}?${params.toString()}`;
   }
 
+  function safeNext(): string {
+    return next?.startsWith("/") && !next.startsWith("//") && !next.includes("\\")
+      ? next
+      : "/app";
+  }
+
+  async function signInWithNativeGoogle() {
+    if (!providers?.googleClientId || nativeGoogleLoading) return;
+
+    setNativeGoogleLoading(true);
+    setNativeGoogleError(null);
+    try {
+      // Dynamic import keeps the native SDK out of the browser sign-in path.
+      const { GoogleSignIn } = await import("@capawesome/capacitor-google-sign-in");
+      await GoogleSignIn.initialize({ clientId: providers.googleClientId });
+      const { idToken } = await GoogleSignIn.signIn();
+      await api<{ redirect: string; csrfToken: string }>("/api/auth/oauth/google/native", {
+        method: "POST",
+        body: JSON.stringify({ idToken }),
+      });
+      window.location.assign(safeNext());
+    } catch (error) {
+      if (
+        error &&
+        typeof error === "object" &&
+        "code" in error &&
+        error.code === "SIGN_IN_CANCELED"
+      ) {
+        return;
+      }
+      setNativeGoogleError("Google sign-in did not work. Please try again or use email.");
+    } finally {
+      setNativeGoogleLoading(false);
+    }
+  }
+
   return (
     <div className="space-y-3">
-      {providers.google ? (
-        <a
-          href={href("google")}
-          className="ui-pressable flex w-full items-center justify-center gap-3 rounded-md border px-4 py-3 text-[14.5px] font-medium"
-          style={{
-            background: "var(--app-surface)",
-            borderColor: "var(--app-border-strong)",
-            color: "var(--app-text)",
-          }}
-        >
-          <GoogleMark />
-          Continue with Google
-        </a>
+      {showGoogle ? (
+        useNativeGoogle ? (
+          <button
+            type="button"
+            onClick={signInWithNativeGoogle}
+            disabled={nativeGoogleLoading}
+            className="ui-pressable flex w-full items-center justify-center gap-3 rounded-md border px-4 py-3 text-[14.5px] font-medium disabled:cursor-not-allowed disabled:opacity-60"
+            style={{
+              background: "var(--app-surface)",
+              borderColor: "var(--app-border-strong)",
+              color: "var(--app-text)",
+            }}
+          >
+            <GoogleMark />
+            {nativeGoogleLoading ? "Opening Google…" : "Continue with Google"}
+          </button>
+        ) : (
+          <a
+            href={href("google")}
+            className="ui-pressable flex w-full items-center justify-center gap-3 rounded-md border px-4 py-3 text-[14.5px] font-medium"
+            style={{
+              background: "var(--app-surface)",
+              borderColor: "var(--app-border-strong)",
+              color: "var(--app-text)",
+            }}
+          >
+            <GoogleMark />
+            Continue with Google
+          </a>
+        )
       ) : null}
       {providers.apple ? (
         <a
@@ -74,6 +135,11 @@ export default function SocialAuthButtons({ from, next }: SocialAuthButtonsProps
         or use email
         <span className="h-px flex-1" style={{ background: "var(--app-border)" }} />
       </div>
+      {nativeGoogleError ? (
+        <p role="alert" className="text-center text-[12px]" style={{ color: "var(--app-danger)" }}>
+          {nativeGoogleError}
+        </p>
+      ) : null}
     </div>
   );
 }

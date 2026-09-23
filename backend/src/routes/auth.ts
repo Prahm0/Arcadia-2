@@ -12,6 +12,7 @@ import {
   googleRedirectUri,
   safeNext,
   signOAuthState,
+  verifyGoogleIdToken,
   verifyOAuthState,
   type SocialIdentity,
 } from "../lib/social-oauth";
@@ -29,6 +30,13 @@ function googleSignInConfigured(env: Env): boolean {
   );
 }
 
+function nativeGoogleSignInConfigured(env: Env): boolean {
+  return (
+    env.GOOGLE_SIGN_IN_ENABLED === "true" &&
+    Boolean(env.GOOGLE_CLIENT_ID && env.TOKEN_ENCRYPTION_KEY)
+  );
+}
+
 function oauthErrorUrl(env: Env, returnTo: "/login" | "/register", reason: string): string {
   const url = new URL(returnTo, env.APP_ORIGIN);
   url.searchParams.set("oauth", reason);
@@ -38,7 +46,7 @@ function oauthErrorUrl(env: Env, returnTo: "/login" | "/register", reason: strin
 async function finishSocialLogin(
   c: Parameters<typeof createSession>[0],
   identity: SocialIdentity,
-): Promise<void> {
+): ReturnType<typeof createSession> {
   const database = db(c.env.DB);
   const [linked] = await database
     .select({ userId: schema.oauthAccounts.userId })
@@ -106,16 +114,21 @@ async function finishSocialLogin(
       .where(eq(schema.users.id, userId));
   }
 
-  await createSession(c, userId);
+  return createSession(c, userId);
 }
 
 function socialReturnTo(value: string | undefined): "/login" | "/register" {
   return value === "register" ? "/register" : "/login";
 }
 
-auth.get("/oauth/config", (c) =>
-  c.json({
+auth.get("/oauth/config", (c) => {
+  const nativeGoogle = nativeGoogleSignInConfigured(c.env);
+  return c.json({
     google: googleSignInConfigured(c.env),
+    nativeGoogle,
+    // Google identifies this as the server client ID. It is public and is
+    // required by the native SDK so its ID token has the backend audience.
+    googleClientId: nativeGoogle ? c.env.GOOGLE_CLIENT_ID : null,
     apple: Boolean(
       c.env.APPLE_CLIENT_ID &&
         c.env.APPLE_TEAM_ID &&
@@ -123,8 +136,31 @@ auth.get("/oauth/config", (c) =>
         c.env.APPLE_PRIVATE_KEY &&
         c.env.TOKEN_ENCRYPTION_KEY,
     ),
-  }),
-);
+  });
+});
+
+auth.post("/oauth/google/native", async (c) => {
+  if (!nativeGoogleSignInConfigured(c.env)) {
+    return c.json({ error: "Google sign-in is not configured." }, 503);
+  }
+
+  const body = await c.req.json<{ idToken?: string }>().catch(() => null);
+  const idToken = typeof body?.idToken === "string" ? body.idToken : "";
+  if (!idToken || idToken.length > 8_192) {
+    return c.json({ error: "Invalid Google sign-in response." }, 400);
+  }
+
+  try {
+    const { csrfToken } = await finishSocialLogin(c, await verifyGoogleIdToken(c.env, idToken));
+    return c.json({ redirect: "/app", csrfToken });
+  } catch (error) {
+    console.error(
+      "[oauth] Native Google sign-in failed",
+      error instanceof Error ? error.message : error,
+    );
+    return c.json({ error: "Google sign-in could not be verified." }, 401);
+  }
+});
 
 auth.get("/oauth/google", async (c) => {
   const returnTo = socialReturnTo(c.req.query("from"));

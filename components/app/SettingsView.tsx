@@ -31,7 +31,8 @@ import AppButton from "./AppButton";
 import { useRouter } from "next/navigation";
 import { isGuestEmail } from "@/lib/auth/guest";
 import DeleteAccountModal from "./DeleteAccountModal";
-import { isNative } from "@/lib/capacitor/platform";
+import { isNative, useNativeIOS } from "@/lib/capacitor/platform";
+import { getIosSubscriptionManagementUrl, logOutRevenueCat } from "@/lib/capacitor/revenuecat";
 
 interface AccountResponse {
   account: {
@@ -106,6 +107,7 @@ export default function SettingsView() {
   const hasPaidPlan = tier === "pro" || tier === "max";
   const hasSubscription = Boolean(data.user.hasSubscription);
   const nativeShell = isNative();
+  const nativeIOS = useNativeIOS();
   const [pushEndpoint, setPushEndpoint] = useState<string | null>(null);
   const [pushPreferences, setPushPreferences] = useState<PushPreferences>({
     checkinsEnabled: true,
@@ -139,6 +141,13 @@ export default function SettingsView() {
     setBillingBusy(true);
     setBillingNotice(null);
     try {
+      if (nativeIOS) {
+        const url = await getIosSubscriptionManagementUrl(data.user.id);
+        if (!url) throw new Error("Your App Store subscription settings are not available yet.");
+        window.open(url, "_blank", "noopener,noreferrer");
+        setBillingBusy(false);
+        return;
+      }
       const response = await api<{ url: string }>("/api/billing/portal", { method: "POST" });
       if (response?.url) {
         window.location.href = response.url;
@@ -148,7 +157,7 @@ export default function SettingsView() {
     } catch (err) {
       setBillingNotice({
         tone: "error",
-        text: err instanceof Error && err.message ? err.message : "Couldn't open the billing portal.",
+        text: err instanceof Error && err.message ? err.message : nativeIOS ? "Couldn't open App Store subscription settings." : "Couldn't open the billing portal.",
       });
       setBillingBusy(false);
     }
@@ -389,6 +398,9 @@ export default function SettingsView() {
   }
 
   async function signOut() {
+    void logOutRevenueCat().catch((error) => {
+      console.warn("[revenuecat] sign-out failed", error);
+    });
     try {
       await api("/api/auth/logout", { method: "POST" });
     } catch {
@@ -890,17 +902,22 @@ export default function SettingsView() {
                       See plans
                     </AppButton>
                   ) : null}
-                  {hasSubscription ? (
+                  {hasSubscription && (!nativeIOS || data.user.billingProvider === "app_store") ? (
                     <AppButton
                       variant="secondary"
                       onClick={openBillingPortal}
                       loading={billingBusy}
                     >
-                      Manage subscription
+                      {nativeIOS ? "Manage in App Store" : "Manage subscription"}
                     </AppButton>
                   ) : null}
                 </div>
               </div>
+              {nativeIOS && hasSubscription && data.user.billingProvider !== "app_store" ? (
+                <p className="text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
+                  This plan was purchased outside the App Store. Manage it where you bought it.
+                </p>
+              ) : null}
             </div>
           </Card>
         )}

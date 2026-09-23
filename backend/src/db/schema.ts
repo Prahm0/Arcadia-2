@@ -17,8 +17,9 @@ export const users = sqliteTable(
     verificationExpiresAt: integer("verification_expires_at"),
     createdAt: integer("created_at").notNull().default(now),
     lastSignInAt: integer("last_sign_in_at"),
-    // Billing. `tier` is the source of truth the app reads; the stripe_*
-    // columns exist so the webhook can reconcile without a lookup.
+    // Billing. `tier` is the source of truth the app reads. Stripe tracks web
+    // subscriptions; RevenueCat tracks App Store subscriptions. `billingProvider`
+    // prevents an event from one provider downgrading a live plan from the other.
     tier: text("tier").notNull().default("free"),
     // Privileged test access is independent of Stripe's subscription tier.
     developerAccess: integer("developer_access", { mode: "boolean" }).notNull().default(false),
@@ -26,10 +27,15 @@ export const users = sqliteTable(
     stripeSubscriptionId: text("stripe_subscription_id"),
     subscriptionStatus: text("subscription_status"),
     subscriptionCurrentPeriodEnd: integer("subscription_current_period_end"),
+    billingProvider: text("billing_provider"),
+    revenuecatAppUserId: text("revenuecat_app_user_id"),
+    revenuecatEntitlement: text("revenuecat_entitlement"),
+    revenuecatProductId: text("revenuecat_product_id"),
   },
   (t) => [
     uniqueIndex("users_email_idx").on(t.email),
     index("users_stripe_customer_idx").on(t.stripeCustomerId),
+    index("users_revenuecat_app_user_idx").on(t.revenuecatAppUserId),
   ],
 );
 

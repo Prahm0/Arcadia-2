@@ -128,7 +128,13 @@ export function serialiseUser(user: UserRow, profile: ProfileRow | null) {
     onboardingComplete: profile?.onboardingComplete ?? false,
     tier: effectiveTier(user.tier, user.developerAccess),
     developerAccess: user.developerAccess,
-    hasSubscription: Boolean(user.stripeCustomerId),
+    hasSubscription:
+      Boolean(user.stripeCustomerId) ||
+      (user.billingProvider === "app_store" && user.subscriptionStatus === "active"),
+    billingProvider:
+      user.billingProvider === "stripe" || user.billingProvider === "app_store"
+        ? user.billingProvider
+        : null,
     subscriptionStatus: user.subscriptionStatus ?? null,
     subscriptionCurrentPeriodEnd: user.subscriptionCurrentPeriodEnd
       ? new Date(user.subscriptionCurrentPeriodEnd).toISOString()

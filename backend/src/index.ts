@@ -66,6 +66,9 @@ const PUBLIC_PREFIXES = [
   // Stripe posts webhook events from its own IPs; the HMAC signature
   // header is the authentication.
   "/api/billing/webhook",
+  // RevenueCat uses the configured authorization header, verified by the
+  // billing route before any subscription data is reconciled.
+  "/api/billing/iap/webhook",
 ];
 
 app.use("/api/*", async (c, next) => {

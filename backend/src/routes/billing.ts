@@ -9,6 +9,7 @@ import {
   verifyWebhookSignature,
   type StripeSubscription,
 } from "../lib/stripe";
+import { activeRevenueCatEntitlement, fetchRevenueCatSubscriber } from "../lib/revenuecat";
 import type { Env, Variables } from "../types";
 
 const billing = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -82,6 +83,9 @@ billing.post("/checkout", async (c) => {
   const [user] = await database.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
   if (!user) return c.json({ error: "User missing." }, 404);
   if (user.developerAccess) return c.json({ error: "Developer access already includes Max features. No subscription is needed." }, 409);
+  if (user.billingProvider === "app_store" && user.subscriptionStatus === "active") {
+    return c.json({ error: "This subscription is managed through the App Store.", code: "app_store_subscription_active" }, 409);
+  }
   // Guest accounts use the reserved `@arcadia.local` suffix and have no
   // way to sign back in, so subscribing one strands the customer with a
   // paid plan they can't ever reach. Force them to convert first.
@@ -148,6 +152,9 @@ billing.post("/portal", async (c) => {
   const { userId } = c.get("session");
   const database = db(c.env.DB);
   const [user] = await database.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
+  if (user?.billingProvider === "app_store") {
+    return c.json({ error: "This subscription is managed through the App Store." }, 409);
+  }
   if (!user?.stripeCustomerId) {
     return c.json({ error: "No subscription to manage yet." }, 400);
   }
@@ -161,6 +168,69 @@ billing.post("/portal", async (c) => {
     console.error("[billing] portal failed", err);
     return c.json({ error: "Couldn't open billing portal." }, 502);
   }
+});
+
+// ────────── App Store / RevenueCat ──────────
+
+/**
+ * The iOS client calls this only after RevenueCat reports a completed purchase
+ * or restore. It carries no plan, product ID, or receipt to trust: the Worker
+ * reads the session user and verifies their active entitlement directly with
+ * RevenueCat's server API.
+ */
+billing.post("/iap/activate", async (c) => {
+  const { userId } = c.get("session");
+  const database = db(c.env.DB);
+  const [user] = await database.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
+  if (!user) return c.json({ error: "User missing." }, 404);
+  if (user.email.endsWith("@arcadia.local")) {
+    return c.json({ error: "Create an account before subscribing.", code: "guest_cannot_upgrade" }, 403);
+  }
+  if (user.developerAccess) {
+    return c.json({ error: "Developer access already includes Max features. No subscription is needed." }, 409);
+  }
+  if (user.billingProvider === "stripe" && MANAGEABLE_SUBSCRIPTION_STATUSES.has(user.subscriptionStatus ?? "")) {
+    return c.json({ error: "Your existing subscription is managed outside the App Store.", code: "subscription_already_exists" }, 409);
+  }
+
+  try {
+    const entitlement = await reconcileRevenueCatUser(database, user, c.env);
+    if (!entitlement) {
+      return c.json({ error: "No active App Store subscription was found.", code: "no_active_entitlement" }, 422);
+    }
+    return c.json({ tier: entitlement.tier, productId: entitlement.productId });
+  } catch (error) {
+    console.error("[billing] RevenueCat activation failed", error);
+    return c.json({ error: "Couldn't verify your App Store subscription." }, 502);
+  }
+});
+
+/**
+ * RevenueCat posts lifecycle events here. The configured authorization header
+ * gates the public endpoint, and we re-fetch the subscriber instead of
+ * deriving access from individual webhook event shapes.
+ */
+billing.post("/iap/webhook", async (c) => {
+  if (!c.env.REVENUECAT_WEBHOOK_AUTHORIZATION) {
+    return c.json({ error: "RevenueCat webhooks not configured." }, 503);
+  }
+  if (c.req.header("authorization") !== c.env.REVENUECAT_WEBHOOK_AUTHORIZATION) {
+    return c.json({ error: "Unauthorized." }, 401);
+  }
+  const payload = await c.req.json<{ event?: { app_user_id?: string } }>().catch(() => null);
+  const appUserId = payload?.event?.app_user_id;
+  if (!appUserId) return c.json({ received: true });
+
+  const database = db(c.env.DB);
+  const [user] = await database.select().from(schema.users).where(eq(schema.users.id, appUserId)).limit(1);
+  if (!user) return c.json({ received: true });
+  try {
+    await reconcileRevenueCatUser(database, user, c.env);
+  } catch (error) {
+    console.error("[billing] RevenueCat webhook reconciliation failed", error);
+    return c.json({ error: "Webhook handler failed." }, 500);
+  }
+  return c.json({ received: true });
 });
 
 // ────────── Webhook ──────────
@@ -226,14 +296,18 @@ billing.post("/webhook", async (c) => {
         };
         const userId = await resolveUserId(database, subscription);
         if (!userId) break;
-        await database
-          .update(schema.users)
-          .set({
-            tier: "free",
-            subscriptionStatus: "canceled",
-            subscriptionCurrentPeriodEnd: subscription.current_period_end * 1000,
-          })
-          .where(eq(schema.users.id, userId));
+        const [user] = await database.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
+        if (user?.billingProvider !== "app_store") {
+          await database
+            .update(schema.users)
+            .set({
+              tier: "free",
+              billingProvider: "stripe",
+              subscriptionStatus: "canceled",
+              subscriptionCurrentPeriodEnd: subscription.current_period_end * 1000,
+            })
+            .where(eq(schema.users.id, userId));
+        }
         break;
       }
 
@@ -276,6 +350,15 @@ async function reconcileSubscription(
   subscription: StripeSubscription,
   env: Env,
 ): Promise<void> {
+  const [existing] = await database
+    .select({ billingProvider: schema.users.billingProvider, subscriptionStatus: schema.users.subscriptionStatus })
+    .from(schema.users)
+    .where(eq(schema.users.id, userId))
+    .limit(1);
+  // Stripe can retry an older event after the person moved to an App Store
+  // subscription. Never let that stale event replace RevenueCat's active tier.
+  if (existing?.billingProvider === "app_store" && existing.subscriptionStatus === "active") return;
+
   const priceId = subscription.items.data[0]?.price.id;
   const tier = priceId ? tierForPriceId(env, priceId) : null;
   // Stripe considers "trialing" and "active" as paid; everything else
@@ -285,12 +368,54 @@ async function reconcileSubscription(
     .update(schema.users)
     .set({
       tier: isPaid && tier ? tier : "free",
+      billingProvider: "stripe",
       stripeCustomerId: subscription.customer,
       stripeSubscriptionId: subscription.id,
       subscriptionStatus: subscription.status,
       subscriptionCurrentPeriodEnd: subscription.current_period_end * 1000,
     })
     .where(eq(schema.users.id, userId));
+}
+
+async function reconcileRevenueCatUser(
+  database: ReturnType<typeof db>,
+  user: typeof schema.users.$inferSelect,
+  env: Env,
+) {
+  const subscriber = await fetchRevenueCatSubscriber(env, user.id);
+  const entitlement = activeRevenueCatEntitlement(env, subscriber);
+
+  if (entitlement) {
+    await database
+      .update(schema.users)
+      .set({
+        tier: entitlement.tier,
+        billingProvider: "app_store",
+        revenuecatAppUserId: user.id,
+        revenuecatEntitlement: entitlement.entitlement,
+        revenuecatProductId: entitlement.productId,
+        subscriptionStatus: "active",
+        subscriptionCurrentPeriodEnd: entitlement.expiresAt,
+      })
+      .where(eq(schema.users.id, user.id));
+    return entitlement;
+  }
+
+  // A RevenueCat expiration must never remove an active Stripe plan.
+  if (user.billingProvider === "app_store") {
+    await database
+      .update(schema.users)
+      .set({
+        tier: "free",
+        subscriptionStatus: "expired",
+        subscriptionCurrentPeriodEnd: null,
+        revenuecatAppUserId: user.id,
+        revenuecatEntitlement: null,
+        revenuecatProductId: null,
+      })
+      .where(eq(schema.users.id, user.id));
+  }
+  return null;
 }
 
 export default billing;

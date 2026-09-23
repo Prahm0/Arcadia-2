@@ -176,16 +176,28 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
         style={{ background: "var(--app-surface)", borderColor: "var(--app-border)" }}
       >
         <BrandMark />
-        {streak > 0 ? (
-          <div
-            className="flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[12px] font-medium"
-            style={{ background: "var(--app-accent-soft)", color: "var(--app-accent-strong)" }}
-          >
-            <span aria-hidden="true">✦</span>
-            <span className="tabular-nums">{streak}</span>
-            <span>day{streak === 1 ? "" : "s"}</span>
-          </div>
-        ) : null}
+        <div className="flex items-center gap-2">
+          {streak > 0 ? (
+            <div
+              className="flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[12px] font-medium"
+              style={{ background: "var(--app-accent-soft)", color: "var(--app-accent-strong)" }}
+            >
+              <span aria-hidden="true">✦</span>
+              <span className="tabular-nums">{streak}</span>
+              <span>day{streak === 1 ? "" : "s"}</span>
+            </div>
+          ) : null}
+          {user?.tier === "pro" || user?.tier === "max" ? null : (
+            <Link
+              href="/app/pricing"
+              className="flex items-center gap-1 rounded-md px-2.5 py-1 text-[12px] font-semibold"
+              style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}
+            >
+              <span aria-hidden="true">✦</span>
+              Upgrade
+            </Link>
+          )}
+        </div>
       </div>
       <NotificationCentre notices={notices} />
 
@@ -306,10 +318,14 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
             {user?.tier === "pro" || user?.tier === "max" ? null : (
               <Link
                 href="/app/pricing"
-                className="ui-hover flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px]"
-                style={{ color: "var(--app-text-soft)" }}
+                className="flex h-9 items-center justify-center gap-2 rounded-md px-3 text-[13px] font-semibold transition-opacity hover:opacity-90"
+                style={{
+                  background: "var(--app-accent)",
+                  color: "var(--app-accent-on)",
+                  boxShadow: "0 6px 18px -8px var(--app-accent)",
+                }}
               >
-                <svg aria-hidden="true" viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--app-text-muted)" }}>
+                <svg aria-hidden="true" viewBox="0 0 20 20" width="15" height="15" fill="currentColor">
                   <path d="M10 2.5l1.15 4.15L15.5 8l-4.35 1.35L10 13.5 8.85 9.35 4.5 8l4.35-1.35L10 2.5z" />
                 </svg>
                 Upgrade to Pro

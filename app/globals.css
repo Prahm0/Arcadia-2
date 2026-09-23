@@ -525,6 +525,66 @@ html[data-app-theme] {
   }
 }
 
+/* Focus mode's buttons answer a press: a pixel of lift on hover, a quick
+   squeeze while held, then a springy settle. Unlayered, so its transition
+   wins over AppButton's colour-only one. */
+.ui-press {
+  transition-property: transform, background-color, box-shadow, color, border-color, opacity, filter;
+  transition-duration: 180ms;
+  transition-timing-function: var(--ease-out-expo);
+}
+
+.ui-press:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.ui-press:active:not(:disabled) {
+  transform: scale(0.94);
+  transition-duration: 70ms;
+}
+
+/* A to-do's tick: the ring fills and the check draws itself in. */
+.todo-check {
+  transition: background-color 200ms var(--ease-out-expo), box-shadow 200ms var(--ease-out-expo), transform 260ms var(--ease-out-expo);
+}
+
+.todo-check path {
+  stroke-dasharray: 14;
+  stroke-dashoffset: 14;
+  transition: stroke-dashoffset 260ms var(--ease-out-expo) 60ms;
+}
+
+[aria-checked="true"] > .todo-check {
+  animation: app-pop 340ms var(--ease-out-expo);
+}
+
+[aria-checked="true"] > .todo-check path {
+  stroke-dashoffset: 0;
+}
+
+.todo-text {
+  text-decoration-line: line-through;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1.5px;
+  transition: color 200ms ease-out, text-decoration-color 200ms ease-out;
+}
+
+[aria-checked="true"] .todo-text {
+  text-decoration-color: currentColor;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-press,
+  .ui-press:hover:not(:disabled),
+  .ui-press:active:not(:disabled) {
+    transform: none;
+  }
+
+  [aria-checked="true"] > .todo-check {
+    animation: none;
+  }
+}
+
 /* The landing's "one emphasised word in a serif italic" idiom has no place in
    a tool. Inside the product it renders as the surrounding text. Unlayered,
    so it beats the utility without needing specificity games. */

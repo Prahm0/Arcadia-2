@@ -502,6 +502,21 @@ export const TOURS: Record<TourId, Tour> = {
           </div>
         ),
       },
+      {
+        title: "Pop it out",
+        body: "Pop out floats a small timer over your other windows. Drag it anywhere, then click the clock to open this session's to-do list.",
+        visual: (
+          <Window width={230} title="Focus · Chemistry">
+            <div className="flex items-center justify-between px-1 pb-1">
+              <span className="text-[22px] font-medium tabular-nums" style={{ color: "var(--app-text)" }}>24:13</span>
+              <Mono>1/3</Mono>
+            </div>
+            <Row title="Reread the notes" right={<Check done />} />
+            <Row title="Questions 4–9" right={<Check />} highlight />
+            <Row title="Write up the method" right={<Check />} />
+          </Window>
+        ),
+      },
     ],
   },
 

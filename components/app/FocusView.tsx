@@ -16,6 +16,9 @@ import EventDetailSheet from "./EventDetailSheet";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import SyllabusNudge from "./SyllabusNudge";
+import PipTimer, { PIP_COMPACT_HEIGHT, PIP_WIDTH, PlayPauseIcon } from "./focus/PipTimer";
+import SessionTodos, { useOwnTodos, type TodoItem } from "./focus/SessionTodos";
+import { useDocumentPip } from "./focus/useDocumentPip";
 
 const BUILT_IN_PRESETS = [
   { label: "Deep focus", focus: 50 * 60, break: 10 * 60 },
@@ -64,7 +67,7 @@ function clampMinutes(v: unknown, fallback: number): number {
 }
 
 type Phase = "focus" | "break" | "idle";
-type AsideTab = "session" | "recents";
+type AsideTab = "setup" | "todo" | "recents";
 
 interface StudySession {
   id: string;
@@ -151,7 +154,8 @@ function FocusViewInner() {
   );
   const [goal, setGoal] = useState(linkedEvent?.title ?? "");
   const [distractions, setDistractions] = useState(0);
-  const [tab, setTab] = useState<AsideTab>("session");
+  // A scheduled session already knows what it's on, so it opens on its to-dos.
+  const [tab, setTab] = useState<AsideTab>(eventId ? "todo" : "setup");
   const [recents, setRecents] = useState<StudySession[] | null>(null);
   const [recentsError, setRecentsError] = useState(false);
   const intervalRef = useRef<number | null>(null);
@@ -174,6 +178,39 @@ function FocusViewInner() {
       writeDoneSteps(eventId, next);
       return next;
     });
+  }
+
+  // One to-do list for the session: Arcad's plan steps first, then whatever
+  // the student adds. Same list on the page and in the pop-out.
+  const ownTodos = useOwnTodos(eventId ?? "free");
+  const todos = useMemo<TodoItem[]>(() => [
+    ...(plan?.steps ?? []).map((step, index) => ({
+      key: `step:${index}`,
+      text: step.text,
+      minutes: step.minutes,
+      done: doneSteps.includes(index),
+      removable: false,
+    })),
+    ...ownTodos.items.map((item) => ({ key: `own:${item.id}`, text: item.text, done: item.done, removable: true })),
+  ], [plan, doneSteps, ownTodos.items]);
+
+  function toggleTodo(key: string) {
+    if (key.startsWith("step:")) toggleStep(Number(key.slice(5)));
+    else ownTodos.toggle(key.slice(4));
+  }
+
+  function removeTodo(key: string) {
+    if (key.startsWith("own:")) ownTodos.remove(key.slice(4));
+  }
+
+  const pip = useDocumentPip();
+  const [pipExpanded, setPipExpanded] = useState(false);
+  const [pipBlocked, setPipBlocked] = useState(false);
+
+  async function popOut() {
+    setPipExpanded(false);
+    const win = await pip.open({ width: PIP_WIDTH, height: PIP_COMPACT_HEIGHT });
+    setPipBlocked(win === null);
   }
 
   const loadRecents = useCallback(async () => {
@@ -246,15 +283,24 @@ function FocusViewInner() {
     setCheckout({ minutes: Math.max(1, Math.round((elapsed || preset.focus) / 60)) });
   }
 
+  // Counts down against the wall clock rather than by one per tick: once the
+  // timer is popped out the tab sits in the background, where the browser
+  // throttles timers, and a tick-counted clock would fall behind.
+  const remainingRef = useRef(remaining);
+  useEffect(() => {
+    remainingRef.current = remaining;
+  });
   useEffect(() => {
     if (!running) return;
+    const endsAt = Date.now() + remainingRef.current * 1000;
     intervalRef.current = window.setInterval(() => {
-      setRemaining((r) => (r <= 1 ? 0 : r - 1));
-    }, 1000);
+      setRemaining(Math.max(0, Math.round((endsAt - Date.now()) / 1000)));
+    }, 250);
     return () => {
       if (intervalRef.current) window.clearInterval(intervalRef.current);
     };
-  }, [running]);
+    // Restarts when the phase flips, so a break counts from its own length.
+  }, [running, phase]);
 
   useEffect(() => {
     if (remaining !== 0) return;
@@ -439,6 +485,12 @@ function FocusViewInner() {
 
   const totalForPhase = phase === "break" ? preset.break : preset.focus;
   const progress = 1 - remaining / totalForPhase;
+  const phaseColour = phase === "break" ? "var(--app-success)" : colour ?? "var(--app-accent)";
+  const todosDone = todos.filter((item) => item.done).length;
+
+  // A scheduled session is already set up, so it has no Setup tab.
+  const tabs: AsideTab[] = linkedEvent ? ["todo", "recents"] : ["setup", "todo", "recents"];
+  const activeTab = tabs.includes(tab) ? tab : tabs[0];
 
   const todayMinutes = Number(data.analytics?.todayMinutes ?? 0);
 
@@ -482,7 +534,7 @@ function FocusViewInner() {
             <button
               type="button"
               onClick={detach}
-              className="self-start rounded-md px-2 py-1 text-[12px] ui-hover"
+              className="ui-press self-start rounded-md px-2 py-1 text-[12px] hover:bg-[color-mix(in_oklab,var(--app-text)_6%,transparent)]"
               style={{ color: "var(--app-text-muted)" }}
             >
               Detach
@@ -491,28 +543,49 @@ function FocusViewInner() {
         </div>
       ) : null}
 
-      <div className="mx-auto grid w-full max-w-[960px] gap-8 px-6 py-10 sm:px-10 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="mx-auto grid w-full max-w-[960px] gap-6 px-6 py-8 sm:px-10 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div
-          className="flex flex-col items-center rounded-lg px-6 py-12"
+          className="relative flex flex-col items-center rounded-xl px-6 pb-8 pt-12"
           style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
         >
-          <div className="relative aspect-square w-full max-w-[320px]">
+          {pip.supported ? (
+            <button
+              type="button"
+              onClick={pip.pipWindow ? pip.close : () => void popOut()}
+              title={pip.pipWindow ? "Put the timer back on this page" : "Float the timer over your other windows"}
+              className="ui-press absolute right-3 top-3 flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12.5px] font-medium hover:bg-[color-mix(in_oklab,var(--app-text)_6%,transparent)]"
+              style={{ color: pip.pipWindow ? "var(--app-text)" : "var(--app-text-muted)" }}
+            >
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="1.75" y="2.75" width="12.5" height="10.5" rx="2" />
+                {pip.pipWindow ? <path d="M10.5 6.5h-3v3M7.5 6.5l3.5 3.5" /> : <rect x="8" y="8" width="4.5" height="3.5" rx="0.75" fill="currentColor" stroke="none" />}
+              </svg>
+              {pip.pipWindow ? "Bring back" : "Pop out"}
+            </button>
+          ) : null}
+          {pipBlocked && !pip.pipWindow ? (
+            <p role="status" className="app-enter absolute right-4 top-12 max-w-[220px] text-right text-[12px]" style={{ color: "var(--app-text-muted)" }}>
+              This browser wouldn&rsquo;t open the pop-out. Try Chrome or Edge.
+            </p>
+          ) : null}
+
+          <div className="relative aspect-square w-full max-w-[300px]">
             <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
-              <circle cx="50" cy="50" r="46" fill="none" stroke="var(--app-border)" strokeWidth="2" />
+              <circle cx="50" cy="50" r="45" fill="none" stroke="var(--app-border)" strokeWidth="3" />
               <circle
-                cx="50" cy="50" r="46" fill="none"
-                stroke={phase === "break" ? "var(--app-success)" : colour ?? "var(--app-accent)"}
-                strokeWidth="2"
+                cx="50" cy="50" r="45" fill="none"
+                stroke={phaseColour}
+                strokeWidth="3"
                 strokeLinecap="round"
-                strokeDasharray={`${2 * Math.PI * 46}`}
-                strokeDashoffset={`${2 * Math.PI * 46 * (1 - progress)}`}
-                style={{ transition: "stroke-dashoffset 1s linear" }}
+                strokeDasharray={`${2 * Math.PI * 45}`}
+                strokeDashoffset={`${2 * Math.PI * 45 * (1 - progress)}`}
+                style={{ transition: "stroke-dashoffset 1s linear, stroke 400ms ease-out" }}
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span
                 className={cn("type-eyebrow", running && "app-breathe")}
-                style={{ color: running ? "var(--app-accent)" : "var(--app-text-muted)" }}
+                style={{ color: running ? phaseColour : "var(--app-text-muted)" }}
               >
                 {phase === "break" ? "Break" : phase === "focus" ? "Focus" : "Ready"}
               </span>
@@ -521,37 +594,57 @@ function FocusViewInner() {
               <span
                 key={Math.floor(remaining / 60)}
                 className={cn(
-                  "mt-3 text-[64px] font-medium tabular-nums tracking-[-0.03em]",
+                  "mt-2 text-[60px] font-medium tabular-nums tracking-[-0.03em]",
                   running && "app-tick",
                 )}
                 style={{ color: "var(--app-text)" }}
               >
                 {formatClock(remaining)}
               </span>
-              <span className="mt-1 text-[12px]" style={{ color: "var(--app-text-muted)" }}>
+              <span className="mt-1 max-w-[70%] truncate text-[13px]" style={{ color: "var(--app-text-muted)" }}>
                 {subject}
               </span>
+              {pip.pipWindow ? (
+                <span className="app-enter mt-3 rounded-full px-2.5 py-1 text-[11.5px] font-medium" style={{ background: "var(--app-accent-soft)", color: "var(--app-text-soft)" }}>
+                  Popped out
+                </span>
+              ) : null}
             </div>
           </div>
 
-          <div className="mt-8 flex items-center gap-2">
-            {!running ? (
-              <AppButton variant="primary" onClick={start}>
-                {phase === "idle" ? "Start" : "Resume"}
-              </AppButton>
-            ) : (
-              <AppButton variant="primary" onClick={pause}>Pause</AppButton>
-            )}
-            <AppButton variant="secondary" onClick={skip} disabled={phase === "idle"}>Skip</AppButton>
-            <AppButton variant="ghost" onClick={reset}>Reset</AppButton>
+          <div className="mt-8 flex items-start justify-center gap-6">
+            <TimerControl label="Reset" onClick={reset}>
+              <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M2.75 8a5.25 5.25 0 1 0 1.6-3.77M2.75 2.5v2.75H5.5" />
+              </svg>
+            </TimerControl>
+            <div className="flex flex-col items-center gap-1.5">
+              <button
+                type="button"
+                onClick={running ? pause : start}
+                aria-label={running ? "Pause" : phase === "idle" ? "Start" : "Resume"}
+                className="ui-press grid h-16 w-16 place-items-center rounded-full shadow-[var(--elev-2)]"
+                style={{ background: phaseColour, color: "var(--app-accent-on)" }}
+              >
+                <PlayPauseIcon running={running} size={20} />
+              </button>
+              <span className="text-[12px] font-medium" style={{ color: "var(--app-text-soft)" }}>
+                {running ? "Pause" : phase === "idle" ? "Start" : "Resume"}
+              </span>
+            </div>
+            <TimerControl label={phase === "break" ? "Skip break" : "Skip"} onClick={skip} disabled={phase === "idle"}>
+              <svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor" aria-hidden="true">
+                <path d="M3 3.25v9.5L9.5 8zM10.75 3.25h2v9.5h-2z" />
+              </svg>
+            </TimerControl>
           </div>
 
           {phase !== "idle" ? (
             <button
               type="button"
               onClick={() => setDistractions((d) => d + 1)}
-              className="ui-pressable mt-6 rounded-md px-4 py-2 text-[12.5px] font-medium"
-              style={{ border: "1px dashed var(--app-border-strong)", color: "var(--app-text-muted)" }}
+              className="ui-press app-enter mt-7 rounded-full px-4 py-1.5 text-[12.5px] font-medium hover:text-[var(--app-text)]"
+              style={{ boxShadow: "inset 0 0 0 1px var(--app-border-strong)", color: "var(--app-text-muted)" }}
             >
               Distraction ·{" "}
               {/* Keyed so each tap visibly registers on the count itself. */}
@@ -564,7 +657,7 @@ function FocusViewInner() {
           {!linkedEvent && data.events.some((e) => e.category === "study" && e.outcome === "planned") ? (
             <Link
               href="/app"
-              className="mt-6 text-[12.5px] underline underline-offset-4"
+              className="mt-6 text-[12.5px] underline underline-offset-4 transition-colors hover:text-[var(--app-text)]"
               style={{ color: "var(--app-text-muted)" }}
             >
               Focus on a scheduled study block
@@ -572,49 +665,62 @@ function FocusViewInner() {
           ) : null}
         </div>
 
-        <aside className="flex flex-col gap-6">
+        <aside className="flex flex-col gap-4">
           {/* The timer stays put; only the panel beside it swaps. */}
           <div
             role="tablist"
             aria-label="Focus panel"
-            className="inset-ring grid grid-cols-2 gap-1 rounded-md p-1"
-            style={{ background: "var(--app-surface-soft)" }}
+            className="inset-ring relative grid gap-1 rounded-lg p-1"
+            style={{ background: "var(--app-surface-soft)", gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
           >
-            {(["session", "recents"] as AsideTab[]).map((t) => (
+            <span
+              aria-hidden="true"
+              className="absolute bottom-1 left-1 top-1 rounded-md transition-transform duration-300 ease-[var(--ease-out-expo)]"
+              style={{
+                width: `calc((100% - 0.5rem - ${(tabs.length - 1) * 0.25}rem) / ${tabs.length})`,
+                transform: `translateX(calc(${tabs.indexOf(activeTab)} * (100% + 0.25rem)))`,
+                background: "var(--app-surface)",
+                boxShadow: "var(--elev-1)",
+              }}
+            />
+            {tabs.map((t) => (
               <button
                 key={t}
                 type="button"
                 role="tab"
-                aria-selected={tab === t}
+                aria-selected={activeTab === t}
                 onClick={() => setTab(t)}
-                className="rounded-sm px-3 py-1.5 text-[12.5px] font-medium capitalize transition-all duration-200 ease-[var(--ease-out-expo)]"
-                style={{
-                  background: tab === t ? "var(--app-surface)" : "transparent",
-                  color: tab === t ? "var(--app-text)" : "var(--app-text-muted)",
-                  boxShadow: tab === t ? "var(--elev-1)" : "none",
-                }}
+                className="ui-press relative z-[1] flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-[12.5px] font-medium"
+                style={{ color: activeTab === t ? "var(--app-text)" : "var(--app-text-muted)" }}
               >
-                {t}
+                {TAB_LABELS[t]}
+                {t === "todo" && todos.length > 0 ? (
+                  <span key={todosDone} className="app-pop inline-block tabular-nums text-[11px]" style={{ color: "var(--app-text-muted)" }}>
+                    {todosDone}/{todos.length}
+                  </span>
+                ) : null}
               </button>
             ))}
           </div>
 
-          {tab === "recents" ? (
+          {activeTab === "recents" ? (
             <RecentSessions
               sessions={recents}
               failed={recentsError}
               timezone={timezone}
             />
-          ) : linkedEvent ? (
+          ) : activeTab === "todo" ? (
             <div className="app-enter rounded-lg p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
               <div className="flex items-center justify-between gap-3">
-                <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>The plan</p>
-                {plan && !linkedEvent.checkout ? (
+                <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>
+                  {linkedEvent ? "The plan" : "This session"}
+                </p>
+                {plan && linkedEvent && !linkedEvent.checkout ? (
                   <button
                     type="button"
                     onClick={() => void refreshPlan()}
                     disabled={planRefreshing || running}
-                    className="rounded-md px-2 py-1 text-[12px] ui-hover disabled:opacity-50"
+                    className="ui-press rounded-md px-2 py-1 text-[12px] ui-hover disabled:opacity-50"
                     style={{ color: "var(--app-text-muted)" }}
                     title={running ? "Pause first to get a new plan" : undefined}
                   >
@@ -622,51 +728,36 @@ function FocusViewInner() {
                   </button>
                 ) : null}
               </div>
-              {plan ? (
-                <ol className="mt-3 flex flex-col gap-1">
-                  {plan.steps.map((step, index) => (
-                    <li key={index}>
-                      <label className="flex cursor-pointer items-start gap-3 rounded-md px-1 py-2 ui-hover">
-                        <input
-                          type="checkbox"
-                          checked={doneSteps.includes(index)}
-                          onChange={() => toggleStep(index)}
-                          className="mt-0.5 h-4 w-4 shrink-0"
-                          style={{ accentColor: colour ?? "var(--app-accent)" }}
-                        />
-                        <span className="min-w-0 flex-1 text-[14px] leading-snug" style={{
-                          color: doneSteps.includes(index) ? "var(--app-text-muted)" : "var(--app-text)",
-                          textDecoration: doneSteps.includes(index) ? "line-through" : undefined,
-                        }}>
-                          {step.text}
-                        </span>
-                        <span className="shrink-0 tabular-nums text-[12px]" style={{ color: "var(--app-text-muted)" }}>
-                          {step.minutes}m
-                        </span>
-                      </label>
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <p className="mt-3 text-[13.5px]" style={{ color: "var(--app-text-muted)" }} role="status">
-                  {planLoading ? "Arcad's setting this one up…" : "No plan yet. Start anyway, and check out at the end."}
+              {linkedEvent && !plan ? (
+                <p className="mt-2 text-[13.5px]" style={{ color: "var(--app-text-muted)" }} role="status">
+                  {planLoading ? "Arcad's setting this one up…" : "No plan yet. Add your own to-dos, and check out at the end."}
                 </p>
-              )}
-              {plan && !linkedEvent.checkout ? <SyllabusNudge plan={plan} /> : null}
-              {linkedEvent.checkout ? (
-                <p className="mt-4 text-[13px]" style={{ color: "var(--app-success)" }}>
-                  Done and checked out.
-                </p>
-              ) : (
-                <div className="mt-4">
-                  <AppButton variant="secondary" onClick={finishSession} className="w-full">
-                    {phase === "focus" ? "Finish session" : "Check out"}
-                  </AppButton>
-                </div>
-              )}
+              ) : null}
+              <SessionTodos
+                className="mt-3"
+                items={todos}
+                accent={colour ?? "var(--app-accent)"}
+                onToggle={toggleTodo}
+                onAdd={ownTodos.add}
+                onRemove={removeTodo}
+              />
+              {plan && linkedEvent && !linkedEvent.checkout ? <SyllabusNudge plan={plan} /> : null}
+              {linkedEvent ? (
+                linkedEvent.checkout ? (
+                  <p className="mt-4 text-[13px]" style={{ color: "var(--app-success)" }}>
+                    Done and checked out.
+                  </p>
+                ) : (
+                  <div className="mt-4">
+                    <AppButton variant="secondary" onClick={finishSession} className="ui-press w-full">
+                      {phase === "focus" ? "Finish session" : "Check out"}
+                    </AppButton>
+                  </div>
+                )
+              ) : null}
             </div>
           ) : (
-            <div className="app-enter flex flex-col gap-6">
+            <div className="app-enter flex flex-col gap-4">
           <div className="rounded-lg p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
             <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Preset</p>
             <div className="mt-3 flex flex-col gap-1.5">
@@ -681,9 +772,8 @@ function FocusViewInner() {
                     setRunning(false);
                   }}
                   className={cn(
-                    "flex items-center justify-between rounded-md px-3 py-2.5 text-[13.5px] font-medium",
-                    "transition-all duration-200 ease-[var(--ease-out-expo)]",
-                    i === presetIndex ? "inset-ring" : "ui-hover",
+                    "ui-press flex items-center justify-between rounded-md px-3 py-2.5 text-[13.5px] font-medium",
+                    i === presetIndex ? "inset-ring" : "hover:bg-[color-mix(in_oklab,var(--app-text)_6%,transparent)]",
                   )}
                   style={{
                     background: i === presetIndex ? "var(--app-accent-soft)" : "transparent",
@@ -775,6 +865,27 @@ function FocusViewInner() {
         </aside>
       </div>
 
+      {pip.pipWindow ? (
+        <PipTimer
+          win={pip.pipWindow}
+          phase={phase}
+          clock={formatClock(remaining)}
+          progress={progress}
+          running={running}
+          subject={linkedEvent ? sessionGoal || subject : subject}
+          accent={colour ?? "var(--app-accent)"}
+          expanded={pipExpanded}
+          onExpandedChange={setPipExpanded}
+          onPlay={start}
+          onPause={pause}
+          onSkip={skip}
+          todos={todos}
+          onToggleTodo={toggleTodo}
+          onAddTodo={ownTodos.add}
+          onRemoveTodo={removeTodo}
+        />
+      ) : null}
+
       {linkedEvent ? (
         <CheckoutSheet
           open={checkout !== null}
@@ -796,6 +907,29 @@ function FocusViewInner() {
         onClose={() => setMissReasonEvent(null)}
       />
     </>
+  );
+}
+
+const TAB_LABELS: Record<AsideTab, string> = { setup: "Setup", todo: "To-do", recents: "Recents" };
+
+/** A round secondary timer button with its name underneath. */
+function TimerControl({ label, onClick, disabled, children }: { label: string; onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col items-center gap-1.5 pt-2">
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        aria-label={label}
+        className="ui-press grid h-12 w-12 place-items-center rounded-full hover:bg-[var(--app-surface-soft)] disabled:opacity-40"
+        style={{ boxShadow: "inset 0 0 0 1px var(--app-border-strong)", color: "var(--app-text-soft)" }}
+      >
+        {children}
+      </button>
+      <span aria-hidden="true" className="text-[12px]" style={{ color: disabled ? "var(--app-text-faint)" : "var(--app-text-muted)" }}>
+        {label}
+      </span>
+    </div>
   );
 }
 

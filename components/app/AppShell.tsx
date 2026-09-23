@@ -160,7 +160,7 @@ export default function AppShell({ user, briefing, children }: AppShellProps) {
 
       {/* Mobile top bar, brand + streak chip. Nav lives at the bottom. */}
       <div
-        className="lg:hidden sticky top-0 z-30 flex h-12 items-center justify-between border-b pl-4 pr-14"
+        className="app-mobile-header lg:hidden sticky top-0 z-30 flex h-12 items-center justify-between border-b pl-4 pr-14"
         style={{ background: "var(--app-surface)", borderColor: "var(--app-border)" }}
       >
         <BrandMark />

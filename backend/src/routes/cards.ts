@@ -5,7 +5,6 @@ import {
   BACK_MAX,
   FRONT_MAX,
   MAX_CARDS,
-  MAX_DECKS,
   TITLE_MAX,
   answer,
   countCards,
@@ -21,6 +20,7 @@ import {
 } from "../lib/cards";
 import { newId } from "../lib/ids";
 import { iso } from "../lib/time";
+import { DECK_LIMIT, getUserTier } from "../lib/tiers";
 import type { Env, Variables } from "../types";
 
 type App = Hono<{ Bindings: Env; Variables: Variables }>;
@@ -176,7 +176,17 @@ decks.post("/", async (c) => {
     .select({ count: sql<number>`count(*)` })
     .from(schema.decks)
     .where(eq(schema.decks.userId, userId));
-  if (Number(count) >= MAX_DECKS) return c.json({ error: "That's a lot of decks. Delete an old one first." }, 422);
+  const tier = await getUserTier(database, userId);
+  const limit = DECK_LIMIT[tier];
+  if (Number(count) >= limit) {
+    const message =
+      tier === "free"
+        ? "Free includes 1 flashcard deck. Upgrade to Pro for 3, or Max for unlimited decks."
+        : tier === "pro"
+          ? "Pro includes 3 flashcard decks. Upgrade to Max for unlimited decks."
+          : "That's a lot of decks. Delete an old one first.";
+    return c.json({ error: message, code: "deck_limit_reached" }, 422);
+  }
 
   const id = newId("deck");
   const source = SOURCES.includes(body.source as (typeof SOURCES)[number]) ? body.source! : "manual";

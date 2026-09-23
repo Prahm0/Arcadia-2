@@ -33,21 +33,21 @@ const TIERS: Tier[] = [
   {
     key: "free",
     name: "Free",
-    headline: "The scaffold. Get organised, on your own.",
+    headline: "Get organised, on your own.",
     pricing: null,
     features: [
       "Auto-scheduled daily plan",
-      "Task list + deadlines",
+      "Tasks & deadlines",
       "Focus timer (Classic 25/5)",
       "Arcad, 2 messages / day",
-      "Today's focus minutes",
+      "1 flashcard deck",
       "Weekly review, text summary",
     ],
   },
   {
     key: "pro",
     name: "Pro",
-    headline: "Arcad unlocked. Calendar synced. Notes indexed.",
+    headline: "Planning on autopilot, Arcad in the loop.",
     // Prices target a per-week display of $4.95 / $2.95 / $0.95. The
     // monthly figure is 2.95 × (365.25 ÷ 12 ÷ 7) ≈ 12.82; the yearly
     // is 0.95 × 52 = 49.40.
@@ -60,7 +60,7 @@ const TIERS: Tier[] = [
       "Study rooms (unlimited) with shared timers",
       "Full analytics, subject breakdown, streaks, trends",
       "Custom focus presets",
-      "Deeper weekly review with insights",
+      "Up to 3 flashcard decks",
     ],
     highlighted: true,
     badge: "Most popular",
@@ -68,19 +68,15 @@ const TIERS: Tier[] = [
   {
     key: "max",
     name: "Max",
-    headline: "Voice tutor. Exam prep. Real humans when you're stuck.",
+    headline: "The learning layer. Study, not just plan.",
     // Per-week display of $9.95 / $7.95 / $3.95. Monthly = 7.95 ×
     // 4.345 ≈ 34.54; yearly = 3.95 × 52 = 205.40.
     pricing: { weekly: 9.95, monthly: 34.54, yearly: 205.4 },
     features: [
       "Everything in Pro",
       "Arcad, 100 messages a day, 50x the free plan",
-      "Voice Arcad, talk while you study, hands-free",
-      "Arcad tutor mode, step-by-step problem walkthroughs",
-      "Exam-style practice + essay feedback",
-      "1:1 human tutor bookings (coming soon)",
-      "Priority AI, the smartest model, first in the queue",
-      "Study group leader mode, invite up to 10",
+      "Unlimited flashcard decks",
+      "New study tools land here first",
     ],
   },
 ];

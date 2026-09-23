@@ -131,8 +131,8 @@ billing.post("/checkout", async (c) => {
       customerId: customerId ?? undefined,
       userId,
       priceId,
-      successUrl: `${c.env.APP_ORIGIN}/app/settings?upgrade=success`,
-      cancelUrl: `${c.env.APP_ORIGIN}/app/upgrade?upgrade=cancelled`,
+      successUrl: `${c.env.APP_ORIGIN}/app/welcome?upgrade=success`,
+      cancelUrl: `${c.env.APP_ORIGIN}/app/pricing?upgrade=cancelled`,
     });
     if (!session.url) return c.json({ error: "Stripe returned no checkout URL." }, 502);
     return c.json({ url: session.url });

@@ -38,13 +38,14 @@ const TIERS: Tier[] = [
       "Tasks & deadlines",
       "Classic focus timer",
       "2 Arcad messages / day",
+      "1 flashcard deck",
     ],
     cta: "Start free",
   },
   {
     key: "pro",
     name: "Pro",
-    headline: "Arcad turned up. Calendar synced. Notes indexed.",
+    headline: "Planning on autopilot, Arcad in the loop.",
     pricing: { weekly: 4.95, monthly: 12.82, yearly: 49.4 },
     features: [
       "Everything in Free",
@@ -53,6 +54,7 @@ const TIERS: Tier[] = [
       "Upload PDFs & notes, Arcad answers from them",
       "Unlimited study rooms with shared timers",
       "Full analytics, streaks, subjects, trends",
+      "Up to 3 flashcard decks",
     ],
     cta: "Start Pro",
     highlighted: true,
@@ -61,15 +63,13 @@ const TIERS: Tier[] = [
   {
     key: "max",
     name: "Max",
-    headline: "Voice tutor. Exam prep. Real humans when you're stuck.",
+    headline: "The learning layer. Study, not just plan.",
     pricing: { weekly: 9.95, monthly: 34.54, yearly: 205.4 },
     features: [
       "Everything in Pro",
       "100 Arcad messages a day, 50x the free plan",
-      "Voice Arcad, hands-free while you study",
-      "Tutor mode, step-by-step walkthroughs",
-      "1:1 human tutor bookings (coming soon)",
-      "Study group leader mode, invite up to 10",
+      "Unlimited flashcard decks",
+      "New study tools land here first",
     ],
     cta: "Go Max",
   },
@@ -130,9 +130,9 @@ export default function PricingSection() {
           <div className="col-span-12 lg:col-span-5 lg:col-start-8 lg:self-end">
             <FadeIn delay={0.2}>
               <p className="type-body-lg max-w-[440px] text-white/60">
-                Start free, you&rsquo;ll feel it in your first week. When you&rsquo;re ready,
-                Pro turns Arcad into a proper study partner. Max adds a voice tutor
-                and, soon, real humans.
+                Start free, you&rsquo;ll feel it in your first week. Pro puts your
+                planning on autopilot with Arcad in the loop. Max adds the learning
+                layer, starting with unlimited flashcards.
               </p>
             </FadeIn>
           </div>

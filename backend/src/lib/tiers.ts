@@ -18,6 +18,18 @@ export const DAILY_MESSAGE_CAP: Record<Tier, number> = {
 };
 
 /**
+ * How many flashcard decks each tier can keep. Free gets a taste, Pro a
+ * handful, Max is unlimited (Infinity never trips the >= check). Flashcards
+ * are the first of Max's "learning layer" features; storage is cheap, so
+ * these limits are about tiering, not cost.
+ */
+export const DECK_LIMIT: Record<Tier, number> = {
+  free: 1,
+  pro: 3,
+  max: Number.POSITIVE_INFINITY,
+};
+
+/**
  * UTC calendar day as `YYYY-MM-DD`. UTC (not local) keeps the cap
  * predictable regardless of where the user lives — otherwise a Sydney
  * user's "day" flips 14 hours before a New York user's, and a message

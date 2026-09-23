@@ -2,14 +2,16 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { cardCount, createDeck } from "@/lib/api/cards";
+import { cardCount, createDeck, generateDeck } from "@/lib/api/cards";
+import { useProfile } from "@/lib/api/profile";
 import { SEPARATOR_LABELS, guessSeparator, parseCards, type Separator } from "@/lib/app/cardImport";
 import { cn } from "@/lib/cn";
 import AppButton from "../AppButton";
 import { Label, Select, Sheet, TextArea, TextInput } from "../profile/ui";
 import { useSubjects } from "./shared";
 
-type Start = "blank" | "paste";
+type Start = "blank" | "paste" | "arcad";
+type GenerationSource = "topic" | "file";
 
 /**
  * A new deck: a name, a subject, and either a blank editor or cards pasted
@@ -31,9 +33,13 @@ export default function NewDeckSheet({
 function NewDeckForm({ onClose, initialSubject }: { onClose: () => void; initialSubject: string | null }) {
   const router = useRouter();
   const { subjects } = useSubjects();
+  const { state: profileState } = useProfile();
   const [title, setTitle] = useState("");
   const [subjectId, setSubjectId] = useState(initialSubject ?? subjects[0]?.id ?? "");
   const [start, setStart] = useState<Start>("blank");
+  const [generationSource, setGenerationSource] = useState<GenerationSource>("topic");
+  const [topic, setTopic] = useState("");
+  const [subjectFileId, setSubjectFileId] = useState("");
   const [text, setText] = useState("");
   // null = follow the guess until the student picks one.
   const [separator, setSeparator] = useState<Separator | null>(null);
@@ -42,9 +48,18 @@ function NewDeckForm({ onClose, initialSubject }: { onClose: () => void; initial
 
   const activeSeparator = separator ?? guessSeparator(text);
   const parsed = useMemo(() => parseCards(text, activeSeparator), [text, activeSeparator]);
+  const sourceFiles = useMemo(() => {
+    if (profileState.status !== "ready") return [];
+    return profileState.data.subjects.flatMap((subject) =>
+      [subject.syllabus, ...subject.resources]
+        .filter((file): file is NonNullable<typeof file> => Boolean(file?.read && file.stored))
+        .map((file) => ({ id: file.id, filename: file.filename, subjectId: subject.id, subjectName: subject.name })),
+    );
+  }, [profileState]);
+  const selectedSourceFile = sourceFiles.find((file) => file.id === subjectFileId) ?? null;
 
   async function create() {
-    if (!title.trim()) {
+    if (start !== "arcad" && !title.trim()) {
       setError("Give the deck a name.");
       return;
     }
@@ -52,18 +67,35 @@ function NewDeckForm({ onClose, initialSubject }: { onClose: () => void; initial
       setError("Paste some cards first: one per line, term and definition split by a tab.");
       return;
     }
+    if (start === "arcad" && generationSource === "topic" && !topic.trim()) {
+      setError("Give Arcad a topic to make cards from.");
+      return;
+    }
+    if (start === "arcad" && generationSource === "file" && !selectedSourceFile) {
+      setError("Choose an uploaded file Arcad has read.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
-      const { deck } = await createDeck({
-        title: title.trim(),
-        subjectId: subjectId || null,
-        source: start === "paste" ? "import" : "manual",
-        cards: start === "paste" ? parsed.cards : [],
-      });
-      router.push(`/app/cards/${encodeURIComponent(deck.id)}${start === "blank" ? "?edit=1" : ""}`);
+      if (start === "arcad") {
+        const { deck } = await generateDeck({
+          title: title.trim() || undefined,
+          subjectId: (selectedSourceFile?.subjectId ?? subjectId) || null,
+          ...(generationSource === "topic" ? { topic: topic.trim() } : { subjectFileId: selectedSourceFile!.id }),
+        });
+        router.push(`/app/cards/${encodeURIComponent(deck.id)}`);
+      } else {
+        const { deck } = await createDeck({
+          title: title.trim(),
+          subjectId: subjectId || null,
+          source: start === "paste" ? "import" : "manual",
+          cards: start === "paste" ? parsed.cards : [],
+        });
+        router.push(`/app/cards/${encodeURIComponent(deck.id)}${start === "blank" ? "?edit=1" : ""}`);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't make the deck.");
+      setError(err instanceof Error ? err.message : start === "arcad" ? "Arcad couldn't make the deck." : "Couldn't make the deck.");
       setSaving(false);
     }
   }
@@ -77,8 +109,14 @@ function NewDeckForm({ onClose, initialSubject }: { onClose: () => void; initial
           void create();
         }}
       >
-        <Label text="Name">
-          <TextInput value={title} onChange={setTitle} placeholder="e.g. Stoichiometry" maxLength={80} required />
+        <Label text={start === "arcad" ? "Deck name (optional)" : "Name"}>
+          <TextInput
+            value={title}
+            onChange={setTitle}
+            placeholder={start === "arcad" ? "Arcad will name it if you leave this blank" : "e.g. Stoichiometry"}
+            maxLength={80}
+            required={start !== "arcad"}
+          />
         </Label>
         <Label text="Subject">
           <Select value={subjectId} onChange={setSubjectId}>
@@ -95,13 +133,19 @@ function NewDeckForm({ onClose, initialSubject }: { onClose: () => void; initial
           <p className="mb-2 text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>
             Cards
           </p>
-          <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="How to start">
+          <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="How to start">
             <StartOption selected={start === "blank"} onSelect={() => setStart("blank")} title="Type them in" body="Start with an empty deck." />
             <StartOption
               selected={start === "paste"}
               onSelect={() => setStart("paste")}
               title="Paste a list"
               body="From Quizlet, notes, anywhere."
+            />
+            <StartOption
+              selected={start === "arcad"}
+              onSelect={() => setStart("arcad")}
+              title="Generate with Arcad"
+              body="From a topic or your notes."
             />
           </div>
         </div>
@@ -156,6 +200,57 @@ function NewDeckForm({ onClose, initialSubject }: { onClose: () => void; initial
           </div>
         ) : null}
 
+        {start === "arcad" ? (
+          <div className="space-y-3">
+            <div>
+              <p className="mb-2 text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>
+                Generate from
+              </p>
+              <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Flashcard source">
+                <StartOption selected={generationSource === "topic"} onSelect={() => setGenerationSource("topic")} title="A topic" body="Tell Arcad what to cover." />
+                <StartOption selected={generationSource === "file"} onSelect={() => setGenerationSource("file")} title="Uploaded notes" body="Use a file Arcad has read." />
+              </div>
+            </div>
+
+            {generationSource === "topic" ? (
+              <Label text="Topic" hint="Arcad makes 8 to 20 concise cards.">
+                <TextArea
+                  value={topic}
+                  onChange={setTopic}
+                  rows={4}
+                  maxLength={2000}
+                  placeholder="e.g. Photosynthesis, Year 11 Biology"
+                />
+              </Label>
+            ) : (
+              <Label
+                text="Uploaded file"
+                hint={profileState.status === "loading" ? "Loading files…" : "Only files Arcad has read and can still access appear here."}
+              >
+                <Select
+                  value={subjectFileId}
+                  onChange={(id) => {
+                    setSubjectFileId(id);
+                    const file = sourceFiles.find((item) => item.id === id);
+                    if (file) setSubjectId(file.subjectId);
+                  }}
+                >
+                  <option value="">{profileState.status === "error" ? "Couldn't load uploaded files" : "Choose a file"}</option>
+                  {sourceFiles.map((file) => (
+                    <option key={file.id} value={file.id}>
+                      {file.subjectName} · {file.filename}
+                    </option>
+                  ))}
+                </Select>
+              </Label>
+            )}
+
+            <p className="text-[12px] leading-[1.45]" style={{ color: "var(--app-text-faint)" }}>
+              Generation is available on Pro and Max. Arcad creates one new deck from this source.
+            </p>
+          </div>
+        ) : null}
+
         {error ? (
           <p role="alert" className="text-[12.5px]" style={{ color: "var(--app-danger)" }}>
             {error}
@@ -167,7 +262,11 @@ function NewDeckForm({ onClose, initialSubject }: { onClose: () => void; initial
             Cancel
           </AppButton>
           <AppButton type="submit" variant="primary" loading={saving}>
-            {start === "paste" && parsed.cards.length ? `Make deck (${parsed.cards.length})` : "Make deck"}
+            {start === "arcad"
+              ? "Generate deck"
+              : start === "paste" && parsed.cards.length
+                ? `Make deck (${parsed.cards.length})`
+                : "Make deck"}
           </AppButton>
         </div>
       </form>

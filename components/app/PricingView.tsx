@@ -189,8 +189,8 @@ export default function PricingView() {
             role="note"
             className="flex flex-col gap-3 rounded-md px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
             style={{
-              background: "var(--app-accent-soft)",
-              color: "var(--app-accent-strong)",
+              background: "var(--app-arcad-soft)",
+              color: "var(--app-arcad-strong)",
               boxShadow: "var(--elev-1)",
             }}
           >
@@ -297,8 +297,8 @@ function IntervalButton({
       onClick={onClick}
       className="rounded-md px-4 py-1.5 text-[13px] font-semibold transition-colors"
       style={{
-        background: active ? "var(--app-accent)" : "transparent",
-        color: active ? "var(--app-accent-on)" : "var(--app-text-muted)",
+        background: active ? "var(--app-arcad)" : "transparent",
+        color: active ? "var(--app-arcad-on)" : "var(--app-text-muted)",
       }}
     >
       {children}
@@ -343,18 +343,18 @@ function TierCard({
       className="relative flex flex-col gap-5 rounded-lg p-6"
       style={{
         background: tier.highlighted
-          ? "color-mix(in oklab, var(--app-accent) 12%, var(--app-surface))"
+          ? "color-mix(in oklab, var(--app-arcad) 12%, var(--app-surface))"
           : "var(--app-surface)",
         boxShadow: tier.highlighted ? "var(--elev-2)" : "var(--elev-1)",
         border: tier.highlighted
-          ? "1px solid color-mix(in oklab, var(--app-accent) 45%, transparent)"
+          ? "1px solid color-mix(in oklab, var(--app-arcad) 45%, transparent)"
           : "1px solid transparent",
       }}
     >
       {tier.badge ? (
         <div
           className="absolute -top-3 right-6 rounded-md px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]"
-          style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}
+          style={{ background: "var(--app-arcad)", color: "var(--app-arcad-on)" }}
         >
           {tier.badge}
         </div>
@@ -363,7 +363,7 @@ function TierCard({
       <div>
         <h3
           className="text-[20px] font-semibold"
-          style={{ color: tier.highlighted ? "var(--app-accent-strong)" : "var(--app-text)" }}
+          style={{ color: tier.highlighted ? "var(--app-arcad-strong)" : "var(--app-text)" }}
         >
           {tier.name}
         </h3>
@@ -410,8 +410,8 @@ function TierCard({
               aria-hidden="true"
               className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full"
               style={{
-                background: tier.highlighted ? "var(--app-accent)" : "var(--app-accent-soft)",
-                color: tier.highlighted ? "var(--app-accent-on)" : "var(--app-accent-strong)",
+                background: tier.highlighted ? "var(--app-arcad)" : "var(--app-arcad-soft)",
+                color: tier.highlighted ? "var(--app-arcad-on)" : "var(--app-arcad-strong)",
               }}
             >
               <svg viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="currentColor" strokeWidth="2">

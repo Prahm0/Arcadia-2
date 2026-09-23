@@ -1,4 +1,5 @@
 import type { CapacitorConfig } from "@capacitor/cli";
+import { KeyboardResize } from "@capacitor/keyboard";
 
 const config: CapacitorConfig = {
   appId: "app.arcadiahq.arcadia",
@@ -18,8 +19,12 @@ const config: CapacitorConfig = {
     preferredContentMode: "mobile",
   },
   plugins: {
+    Keyboard: {
+      resize: KeyboardResize.Native,
+      resizeOnFullScreen: true,
+    },
     SplashScreen: {
-      launchAutoHide: false,
+      launchAutoHide: true,
       backgroundColor: "#0a0e14",
       showSpinner: false,
     },

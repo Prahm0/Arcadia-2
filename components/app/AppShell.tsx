@@ -65,7 +65,6 @@ const NAV_GROUPS: NavGroup[] = [
     icon: icon(<path d="M4 5h12v9H8l-4 3V5z" />),
     items: [
       { label: "Plan and chat", href: "/app/arcad", icon: icon(<path d="M4 5h12v9H8l-4 3V5z" />) },
-      { label: "What Arcad knows", href: "/app/profile#arcad", icon: icon(<><circle cx="10" cy="8" r="3" /><path d="M4.5 16.5c1-2.6 3.1-4 5.5-4s4.5 1.4 5.5 4" /></>) },
     ],
   },
   {

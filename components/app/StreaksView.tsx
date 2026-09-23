@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { useStreak } from "@/lib/app/useStreak";
@@ -60,6 +61,12 @@ export default function StreaksView() {
       ) : null}
 
       <StudySky sky={sky} streak={streak} loading={loading} subjectColours={subjectColours} todayStars={todayStars} />
+
+      <div className="mx-auto w-full max-w-[1140px] px-6 pt-6 text-center sm:px-10">
+        <Link href="/app/sky" className="text-[13px] font-medium underline underline-offset-4" style={{ color: "var(--app-accent)" }}>
+          Explore Constellation Cards
+        </Link>
+      </div>
 
       <div className="pb-16" />
     </>

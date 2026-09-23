@@ -291,6 +291,9 @@ export const studySessions = sqliteTable(
   "study_sessions",
   {
     id: text("id").primaryKey(),
+    activityId: text("activity_id"),
+    localDay: text("local_day"),
+    subjectKey: text("subject_key"),
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -302,8 +305,33 @@ export const studySessions = sqliteTable(
     endedAt: integer("ended_at").notNull(),
     createdAt: integer("created_at").notNull().default(now),
   },
-  (t) => [index("study_sessions_user_ended_idx").on(t.userId, t.endedAt)],
+  (t) => [index("study_sessions_user_ended_idx").on(t.userId, t.endedAt), uniqueIndex("study_sessions_activity_idx").on(t.userId, t.activityId)],
 );
+
+export const constellationPreferences = sqliteTable("constellation_preferences", {
+  userId: text("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  followed: text("followed").notNull().default("first-light"),
+  featured: text("featured"),
+  backdrop: text("backdrop"),
+  showcase: text("showcase").notNull().default("[]"),
+  favourites: text("favourites").notNull().default("[]"),
+  ambientMotion: integer("ambient_motion", { mode: "boolean" }).notNull().default(true),
+  legacyEligible: integer("legacy_eligible", { mode: "boolean" }).notNull().default(false),
+});
+export const constellationMilestones = sqliteTable("constellation_milestones", {
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  constellationId: text("constellation_id").notNull(),
+  starIndex: integer("star_index").notNull(),
+  earnedAt: integer("earned_at").notNull(),
+}, (t) => [primaryKey({ columns: [t.userId, t.constellationId, t.starIndex] })]);
+export const constellationCards = sqliteTable("constellation_cards", {
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  constellationId: text("constellation_id").notNull(),
+  definitionVersion: integer("definition_version").notNull().default(1),
+  earnedAt: integer("earned_at").notNull(),
+  addedAt: integer("added_at").notNull(),
+  seenAt: integer("seen_at"),
+}, (t) => [primaryKey({ columns: [t.userId, t.constellationId] })]);
 
 export const conversations = sqliteTable(
   "conversations",

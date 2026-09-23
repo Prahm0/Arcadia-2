@@ -19,6 +19,8 @@ import SyllabusNudge from "./SyllabusNudge";
 import PipTimer, { PIP_COMPACT_HEIGHT, PIP_WIDTH, PlayPauseIcon } from "./focus/PipTimer";
 import SessionTodos, { useOwnTodos, type TodoItem } from "./focus/SessionTodos";
 import { useDocumentPip } from "./focus/useDocumentPip";
+import { useStudySessionSave } from "@/lib/app/useStudySessionSave";
+import { constellationById } from "@/shared/constellations";
 
 const BUILT_IN_PRESETS = [
   { label: "Deep focus", focus: 50 * 60, break: 10 * 60 },
@@ -111,6 +113,8 @@ function writeDoneSteps(eventId: string | null, done: number[]) {
 
 function FocusViewInner() {
   const { data, reload, patch } = useDashboardData();
+  const studySave = useStudySessionSave(data.user.id);
+  const activityId = useRef<string | null>(null);
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -147,6 +151,7 @@ function FocusViewInner() {
   const customIndex = PRESETS.length - 1;
   const [presetIndex, setPresetIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>("idle");
+  useEffect(() => { if (phase === "focus") activityId.current = crypto.randomUUID(); }, [phase]);
   const [remaining, setRemaining] = useState(PRESETS[presetIndex].focus);
   const [running, setRunning] = useState(false);
   const [subject, setSubject] = useState(
@@ -382,15 +387,9 @@ function FocusViewInner() {
     seconds: number,
     opts: { markEvent?: "completed" | "missed" } = {},
   ) {
-    try {
-      await api("/api/study-sessions", {
-        method: "POST",
-        body: JSON.stringify([
-          { type, seconds, subject, goal: sessionGoal, distractions, endedAt: new Date().toISOString() },
-        ]),
-      });
-    } catch {
-      /* swallow, the local timer stays truthful even if the log fails */
+    if (seconds > 0) {
+      activityId.current ??= crypto.randomUUID();
+      await studySave.save({ activityId: activityId.current, type, seconds, subject, goal: sessionGoal, distractions, endedAt: new Date().toISOString() });
     }
 
     if (linkedEvent && opts.markEvent) {
@@ -503,6 +502,8 @@ function FocusViewInner() {
         // No tour popping up over a session that has just started.
         tour={linkedEvent ? undefined : "focus"}
       />
+
+      {studySave.status !== "idle" && <div className="mx-auto max-w-[960px] px-6 pt-4 sm:px-10"><div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 text-[13px]" style={{ borderColor: "var(--app-border)", background: "var(--app-surface)", color: "var(--app-text)" }}><span>{studySave.status === "saving" ? "Saving your study progress…" : studySave.status === "pending" ? "Your session is waiting to sync. Keep this browser’s data to retry later." : studySave.receipt.cards.length ? `✦ ${studySave.receipt.cards.map((id) => constellationById(id)!.name).join(" and ")} ${studySave.receipt.cards.length === 1 ? "is" : "are"} yours. Saved to your collection.` : studySave.receipt.stars ? `✦ ${studySave.receipt.stars} new ${studySave.receipt.stars === 1 ? "star" : "stars"} in your sky.` : "Your study session is saved."}</span>{studySave.status === "pending" ? <AppButton onClick={() => void studySave.retry()}>Retry save</AppButton> : studySave.status === "saved" ? <Link href={studySave.receipt.cards.length ? "/app/sky#collection" : "/app/sky"} className="text-[12px] underline underline-offset-4">{studySave.receipt.cards.length ? "View collection" : "View sky"}</Link> : null}</div></div>}
 
       {linkedEvent ? (
         // What this session is, in one glance: subject and time, Arcad's

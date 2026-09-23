@@ -4,8 +4,10 @@ import { db, schema } from "../db";
 import { newId } from "../lib/ids";
 import { DAY } from "../lib/time";
 import type { Env, Variables } from "../types";
+import { readStudySky } from "../lib/constellations";
 
 interface SessionInput {
+  activityId?: string;
   type?: string;
   seconds?: number;
   subject?: string | null;
@@ -26,29 +28,48 @@ studySessions.post("/", async (c) => {
   if (items.length > 100) return c.json({ error: "Too many sessions in one request." }, 422);
 
   const database = db(c.env.DB);
+  const [profile] = await database.select({ timezone: schema.profiles.timezone }).from(schema.profiles).where(eq(schema.profiles.userId, userId));
+  const subjects = await database.select({ id: schema.subjects.id, name: schema.subjects.name }).from(schema.subjects).where(eq(schema.subjects.userId, userId));
+  let dayFormat: Intl.DateTimeFormat;
+  try { dayFormat = new Intl.DateTimeFormat("en-CA", { timeZone: profile?.timezone || "Australia/Sydney", year: "numeric", month: "2-digit", day: "2-digit" }); }
+  catch { dayFormat = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Sydney", year: "numeric", month: "2-digit", day: "2-digit" }); }
   let stored = 0;
+  const acceptedActivityIds: string[] = [];
 
   for (const item of items) {
+    if (!item || typeof item !== "object") continue;
     const seconds = Number(item.seconds);
     if (!Number.isFinite(seconds) || seconds <= 0 || seconds > 24 * 3600) continue;
 
-    const endedAt = Date.parse(String(item.endedAt ?? ""));
-    await database.insert(schema.studySessions).values({
+    const parsedEnd = Date.parse(String(item.endedAt ?? ""));
+    const endedAt = Number.isNaN(parsedEnd) ? Date.now() : parsedEnd;
+    if (endedAt > Date.now() + 5 * 60_000 || endedAt < 0) continue;
+    if (item.activityId !== undefined && (typeof item.activityId !== "string" || !/^[a-zA-Z0-9_-]{8,100}$/.test(item.activityId))) continue;
+    const subject = item.subject ? String(item.subject).trim().slice(0, 80) : null;
+    const knownSubject = subjects.find((row) => row.name.toLocaleLowerCase("en-AU") === subject?.toLocaleLowerCase("en-AU"));
+    const inserted = await database.insert(schema.studySessions).values({
       id: newId("ses"),
+      activityId: item.activityId || null,
+      localDay: dayFormat.format(new Date(endedAt)),
+      subjectKey: knownSubject ? `subject:${knownSubject.id}` : subject?.toLocaleLowerCase("en-AU") || null,
       userId,
       type: String(item.type ?? "focus").slice(0, 32),
       seconds: Math.round(seconds),
-      subject: item.subject ? String(item.subject).slice(0, 80) : null,
+      subject,
       goal: item.goal ? String(item.goal).slice(0, 200) : null,
       distractions: Number.isFinite(Number(item.distractions))
         ? Math.max(0, Math.round(Number(item.distractions)))
         : 0,
-      endedAt: Number.isNaN(endedAt) ? Date.now() : endedAt,
-    });
-    stored += 1;
+      endedAt,
+    }).onConflictDoNothing({ target: [schema.studySessions.userId, schema.studySessions.activityId] }).returning({ id: schema.studySessions.id });
+    stored += inserted.length;
+    if (item.activityId) acceptedActivityIds.push(item.activityId);
   }
 
-  return c.json({ ok: true, stored }, 201);
+  // The activity is already durable. Reconciliation can safely retry on a sky
+  // read if a transient failure occurs after saving the session.
+  await readStudySky(database, userId).catch((error) => console.error("[study-sky] Reconciliation deferred", error));
+  return c.json({ ok: true, stored, acceptedActivityIds }, 201);
 });
 
 studySessions.get("/", async (c) => {

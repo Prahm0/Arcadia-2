@@ -6,6 +6,7 @@ import { AU_STATES, countryName, countryOptions } from "@/lib/app/countries";
 import AppButton from "../AppButton";
 import PageTour from "../tour/PageTour";
 import type { SectionProps } from "./ProfileView";
+import { ProfileSkyBanner } from "../sky/ProfileSky";
 import {
   Avatar,
   ColourSwatches,
@@ -47,6 +48,7 @@ export default function ProfileHeader({ data, replace, replanned }: SectionProps
       className="rounded-lg"
       style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
     >
+      <ProfileSkyBanner />
       <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:p-6">
         <Avatar name={profile.name} colour={profile.avatarColour} size={80} developer={profile.developerAccess} />
         <div className="min-w-0 flex-1">

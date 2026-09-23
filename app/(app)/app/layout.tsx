@@ -6,6 +6,7 @@ import AppShell from "@/components/app/AppShell";
 import Onboarding from "@/components/app/Onboarding";
 import { DashboardDataProvider, useDashboard } from "@/lib/app/DashboardProvider";
 import { useDashboardAutoRefresh } from "@/lib/app/useDashboardAutoRefresh";
+import { StudySkyProvider } from "@/lib/app/StudySkyProvider";
 
 // ThemeProvider is mounted one level up in app/(app)/layout.tsx so the auth
 // and legal pages share the dashboard's theme.
@@ -68,9 +69,11 @@ function Gate({ children }: { children: ReactNode }) {
   return (
     <DashboardDataProvider data={state.data} reload={reload} patch={patch}>
       {user.onboardingComplete ? (
-        <AppShell user={user} notices={notices}>
-          {children}
-        </AppShell>
+        <StudySkyProvider key={user.id}>
+          <AppShell user={user} notices={notices}>
+            {children}
+          </AppShell>
+        </StudySkyProvider>
       ) : (
         // Until onboarding (and its paywall) finishes, the whole app is the
         // onboarding flow: no sidebar, no nav, no other routes reachable.

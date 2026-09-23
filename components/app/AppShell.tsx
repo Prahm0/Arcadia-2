@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { api, saveCsrf } from "@/lib/api/client";
+import { analytics } from "@/lib/analytics/events";
 import type { AuthUser, Notice } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { useStreak } from "@/lib/app/useStreak";
@@ -116,6 +117,17 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
   const [sidebarOpen, setSidebarOpen] = useState(readSidebarPref);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const socialSignupTracked = useRef(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("signup") !== "completed" || socialSignupTracked.current) return;
+    socialSignupTracked.current = true;
+    analytics.signupCompleted();
+    const url = new URL(window.location.href);
+    url.searchParams.delete("signup");
+    window.history.replaceState({}, "", url.toString());
+  }, []);
 
   const toggleSidebar = useCallback(() => {
     setSidebarOpen((open) => {

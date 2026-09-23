@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api/client";
+import { analytics } from "@/lib/analytics/events";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { isGuestEmail } from "@/lib/auth/guest";
 import PageHeader from "./PageHeader";
@@ -131,6 +132,7 @@ export default function PricingView() {
         body: JSON.stringify({ plan, interval }),
       });
       if (response?.url) {
+        analytics.checkoutStarted(plan, interval);
         window.location.href = response.url;
         return;
       }

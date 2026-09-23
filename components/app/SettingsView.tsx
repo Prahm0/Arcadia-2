@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, ApiError, saveCsrf } from "@/lib/api/client";
+import { analytics } from "@/lib/analytics/events";
 import type { CalendarFeed } from "@/lib/api/types";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { useTheme, type ThemeMode } from "@/lib/app/theme";
@@ -116,6 +117,23 @@ export default function SettingsView() {
   const [billingBusy, setBillingBusy] = useState(false);
   const [billingNotice, setBillingNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  const subscriptionTracked = useRef(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (
+      params.get("upgrade") !== "success" ||
+      tier === "free" ||
+      subscriptionTracked.current
+    ) {
+      return;
+    }
+    subscriptionTracked.current = true;
+    analytics.subscriptionActivated(tier);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("upgrade");
+    window.history.replaceState({}, "", url.toString());
+  }, [tier]);
 
   async function openBillingPortal() {
     setBillingBusy(true);

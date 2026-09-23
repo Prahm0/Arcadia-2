@@ -42,13 +42,17 @@ export default function SocialAuthButtons({ from, next }: SocialAuthButtonsProps
 
   function href(provider: "google" | "apple") {
     const params = new URLSearchParams({ from });
-    if (next?.startsWith("/") && !next.startsWith("//") && !next.includes("\\")) {
-      params.set("next", next);
+    const destination = safeNext();
+    if (destination !== "/app") {
+      params.set("next", destination);
     }
     return `/api/auth/oauth/${provider}?${params.toString()}`;
   }
 
   function safeNext(): string {
+    // Browser OAuth leaves the page and comes back through the server. Mark a
+    // successful social signup so AppShell can record it exactly once.
+    if (from === "register") return "/app?signup=completed";
     return next?.startsWith("/") && !next.startsWith("//") && !next.includes("\\")
       ? next
       : "/app";

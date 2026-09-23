@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import AuthShell from "@/components/app/AuthShell";
 import Field from "@/components/app/Field";
 import PrimaryButton from "@/components/app/PrimaryButton";
 import SocialAuthButtons from "@/components/app/SocialAuthButtons";
 import { api } from "@/lib/api/client";
+import { analytics } from "@/lib/analytics/events";
 import { continueAsGuest } from "@/lib/auth/guest";
 
 interface RegisterResponse {
@@ -56,6 +57,15 @@ function RegisterInner({
   const [verifying, setVerifying] = useState(Boolean(initialToken));
   const [verifyFailed, setVerifyFailed] = useState(false);
   const [guestLoading, setGuestLoading] = useState(false);
+  const signupStarted = useRef(false);
+
+  useEffect(() => {
+    // A page visit is the cleanest single signal for a signup attempt. Do not
+    // count the later verification-link visit as another signup start.
+    if (initialToken || signupStarted.current) return;
+    signupStarted.current = true;
+    analytics.signupStarted();
+  }, [initialToken]);
 
   // Consume the token from the verification email on first render. On
   // success bounce to /login?verified=1 (which shows the "Email verified"
@@ -67,7 +77,10 @@ function RegisterInner({
     (async () => {
       try {
         await api(`/api/auth/verify?token=${encodeURIComponent(initialToken)}`);
-        if (!cancelled) router.replace("/login?verified=1");
+        if (!cancelled) {
+          analytics.emailVerified();
+          router.replace("/login?verified=1");
+        }
       } catch (err) {
         if (cancelled) return;
         // The raw backend message ("Internal Server Error", "Token not
@@ -106,6 +119,7 @@ function RegisterInner({
     setError(null);
     try {
       await api(`/api/auth/verify?token=${encodeURIComponent(token)}`);
+      analytics.emailVerified();
       router.replace("/login?verified=1");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Verification failed.");
@@ -122,6 +136,7 @@ function RegisterInner({
         method: "POST",
         body: JSON.stringify({ name, email, password }),
       });
+      analytics.signupCompleted();
       setResult(response);
       if (response.verificationToken) {
         void autoVerify(response.verificationToken);

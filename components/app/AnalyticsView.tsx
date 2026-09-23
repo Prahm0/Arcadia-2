@@ -1,16 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import PageHeader from "./PageHeader";
-import { useStreak } from "@/lib/app/useStreak";
-import { STREAK_MILESTONES } from "@/lib/app/streaks";
-import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
 import ConsistencyHeatmap from "./ConsistencyHeatmap";
-import AppButton from "./AppButton";
-import StudySky, { formatMinutes, type SkyTotals } from "./StudySky";
-import Link from "next/link";
+import { formatMinutes } from "./StudySky";
 
 interface DailyBucket {
   date: string;
@@ -34,7 +29,6 @@ interface AnalyticsResponse {
   subjects: SubjectBucket[];
   missReasons: Array<{ reason: string; count: number }>;
   streaks: { current: number; longest: number };
-  sky: SkyTotals;
   previous: { minutes: number; sessions: number; averageMinutes: number };
   current: { minutes: number; sessions: number; averageMinutes: number };
   analytics?: Record<string, unknown>;
@@ -42,9 +36,12 @@ interface AnalyticsResponse {
 
 type Period = "week" | "month";
 
+/**
+ * The numbers: focus time, sessions, when and what you studied. The study
+ * sky and streaks live on their own page (/app/streaks).
+ */
 export default function AnalyticsView() {
   const { data } = useDashboardData();
-  const streak = useStreak();
   const [period, setPeriod] = useState<Period>("week");
   const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -65,169 +62,103 @@ export default function AnalyticsView() {
 
   useEffect(() => { void load(); }, [load]);
 
-  const totalMinutes = analytics?.current.minutes ?? 0;
   const hasPaidPlan = data.user.tier === "pro" || data.user.tier === "max";
-  const prevMinutes = analytics?.previous.minutes ?? 0;
-  const delta = prevMinutes ? Math.round(((totalMinutes - prevMinutes) / prevMinutes) * 100) : null;
-  const sky = analytics?.sky ?? { sessions: 0, minutes: 0, subjects: [] };
-  const focusStreak = analytics?.streaks.current ?? 0;
-  const subjectColours = new Map(
-    data.subjects.map((subject, index) => [subject.name, subject.colour || SUBJECT_COLORS[index % SUBJECT_COLORS.length]]),
-  );
+  const current = analytics?.current ?? { minutes: 0, sessions: 0, averageMinutes: 0 };
+  const previous = analytics?.previous ?? { minutes: 0, sessions: 0, averageMinutes: 0 };
+  const daily = analytics?.daily ?? [];
+  const previousDaily = analytics?.previousDaily ?? [];
+  const activeDays = daily.filter((day) => day.minutes > 0).length;
+  const previousActiveDays = previousDaily.filter((day) => day.minutes > 0).length;
+  const lastLabel = period === "week" ? "last week" : "last month";
+  const show = (value: string) => (loading && !analytics ? "–" : value);
 
   return (
     <>
       <PageHeader width={1140}
         eyebrow="Progress"
         title="Analytics"
-        meta={`${period === "week" ? "This week" : "This month"}${analytics ? ` · ${formatMinutes(totalMinutes)} of focused study` : ""}`}
+        meta={`${period === "week" ? "Last 7 days" : "Last 30 days"}${analytics ? ` · ${formatMinutes(current.minutes)} of focused study` : ""}`}
         tour="analytics"
         action={<AnalyticsPeriodPicker period={period} setPeriod={setPeriod} />}
       />
 
-      <StudySky sky={sky} streak={focusStreak} loading={loading} subjectColours={subjectColours} />
-      {loading || sky.sessions >= 3 ? (
-      <>
-      <div className="mx-auto grid w-full max-w-[1140px] gap-6 px-6 py-8 sm:px-10 lg:grid-cols-3">
-        <StatCard label="Focus time" value={formatMinutes(totalMinutes)} delta={delta} />
-        <StatCard label="Sessions" value={String(analytics?.current.sessions ?? 0)} delta={
-          analytics?.previous.sessions ? Math.round(((analytics.current.sessions - analytics.previous.sessions) / analytics.previous.sessions) * 100) : null
-        } />
-        <StatCard label="Current streak" value={`${streak.current}`} unit={streak.current === 1 ? "day" : "days"} />
+      {error ? (
+        <p className="mx-auto w-full max-w-[1140px] px-6 pt-4 text-[13px] sm:px-10" style={{ color: "var(--app-danger)" }}>{error}</p>
+      ) : null}
+
+      <div className="mx-auto grid w-full max-w-[1140px] grid-cols-2 gap-3 px-6 pt-8 sm:px-10 lg:grid-cols-4 lg:gap-4">
+        <StatCard label="Focus time" value={show(formatMinutes(current.minutes))} delta={change(current.minutes, previous.minutes)} was={`${formatMinutes(previous.minutes)} ${lastLabel}`} />
+        <StatCard label="Sessions" value={show(String(current.sessions))} delta={change(current.sessions, previous.sessions)} was={`${previous.sessions} ${lastLabel}`} />
+        <StatCard label="Avg session" value={show(formatMinutes(current.averageMinutes))} delta={change(current.averageMinutes, previous.averageMinutes)} was={`${formatMinutes(previous.averageMinutes)} ${lastLabel}`} />
+        <StatCard label="Active days" value={show(`${activeDays}/${daily.length || (period === "week" ? 7 : 30)}`)} delta={change(activeDays, previousActiveDays)} was={`${previousActiveDays} ${lastLabel}`} />
       </div>
 
-      <div className="mx-auto grid w-full max-w-[1140px] gap-6 px-6 pb-8 sm:px-10 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <div className="rounded-lg p-6" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
-          <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Daily focus</p>
-          <p className="mt-2 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-            Minutes of focused study each day this {period}.
-          </p>
-          <div className="mt-6">
-            {loading ? (
-              <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>Loading…</p>
-            ) : error ? (
-              <p className="text-[13px]" style={{ color: "var(--app-danger)" }}>{error}</p>
-            ) : (
-              <BarChart daily={analytics?.daily ?? []} />
-            )}
-          </div>
-        </div>
-
-        <div className="rounded-lg p-6" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
-          <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>By subject</p>
-          {!analytics || analytics.subjects.length === 0 ? (
-            <p className="mt-4 text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
-              No study time logged yet. Use the Focus timer to start tracking.
-            </p>
-          ) : (
-            <ul className="mt-4 flex flex-col gap-3">
-              {analytics.subjects.map((s) => {
-                const pct = analytics.subjects[0]?.minutes ? (s.minutes / analytics.subjects[0].minutes) * 100 : 0;
-                return (
-                  <li key={s.subject}>
-                    <div className="flex items-baseline justify-between text-[13.5px]">
-                      <span style={{ color: "var(--app-text)" }}>{s.subject}</span>
-                      <span className="tabular-nums" style={{ color: "var(--app-text-muted)" }}>{formatMinutes(s.minutes)}</span>
-                    </div>
-                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-[1px]" style={{ background: "var(--app-border)" }}>
-                      <div className="h-full" style={{ width: `${pct}%`, background: "var(--app-accent)" }} />
-                    </div>
-                  </li>
-                );
+      <div className="mx-auto grid w-full max-w-[1140px] gap-4 px-6 pt-4 sm:px-10 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <Panel title="Daily focus" note={<Legend />}>
+          {loading && !analytics ? <Muted>Loading…</Muted> : (
+            <Bars
+              height={200}
+              label={`Minutes focused per day, last ${daily.length} days`}
+              bars={daily.map((day, index) => {
+                const before = previousDaily[index];
+                return {
+                  key: day.date,
+                  value: day.minutes,
+                  ghost: before?.minutes ?? 0,
+                  label: period === "week" ? shortDay(day.date) : index % 5 === 0 || index === daily.length - 1 ? dayOfMonth(day.date) : "",
+                  tip: (
+                    <>
+                      <TipTitle>{longDay(day.date)}</TipTitle>
+                      <TipLine>{formatMinutes(day.minutes)} · {day.sessions} session{day.sessions === 1 ? "" : "s"}</TipLine>
+                      {before ? <TipLine muted>{formatMinutes(before.minutes)} same day {lastLabel}</TipLine> : null}
+                    </>
+                  ),
+                };
               })}
-            </ul>
+            />
           )}
-        </div>
+        </Panel>
+
+        <Panel title="By subject" note={analytics?.subjects.length ? <span className="tabular-nums">{analytics.subjects.length} subject{analytics.subjects.length === 1 ? "" : "s"}</span> : null}>
+          {loading && !analytics ? <Muted>Loading…</Muted> : !analytics || analytics.subjects.length === 0 ? (
+            <Muted>No focus time logged this {period}.</Muted>
+          ) : (
+            <SubjectBreakdown subjects={analytics.subjects} total={current.minutes} />
+          )}
+        </Panel>
+      </div>
+
+      <div className="mx-auto w-full max-w-[1140px] px-6 pt-4 sm:px-10">
+        <Panel title="Time of day" note={<PeakHour hourly={analytics?.hourly ?? []} />}>
+          {loading && !analytics ? <Muted>Loading…</Muted> : (
+            <Bars
+              height={140}
+              label="Minutes focused by hour of day"
+              bars={(analytics?.hourly ?? []).map((slot) => ({
+                key: String(slot.hour),
+                value: slot.minutes,
+                label: slot.hour % 3 === 0 ? hourLabel(slot.hour) : "",
+                tip: (
+                  <>
+                    <TipTitle>{hourLabel(slot.hour)}–{hourLabel((slot.hour + 1) % 24)}</TipTitle>
+                    <TipLine>{formatMinutes(slot.minutes)}</TipLine>
+                  </>
+                ),
+              }))}
+            />
+          )}
+        </Panel>
       </div>
 
       {hasPaidPlan ? (
-        <div className="mx-auto w-full max-w-[1140px] px-6 pb-8 sm:px-10">
+        <div className="mx-auto w-full max-w-[1140px] px-6 pt-4 sm:px-10">
           <MissReasonBreakdown reasons={analytics?.missReasons ?? []} />
         </div>
       ) : null}
 
-      <div className="mx-auto w-full max-w-[1140px] px-6 pb-6 sm:px-10">
+      <div className="mx-auto w-full max-w-[1140px] px-6 pb-16 pt-4 sm:px-10">
         <ConsistencyHeatmap />
       </div>
-
-      <div className="mx-auto w-full max-w-[1140px] px-6 pb-16 sm:px-10">
-        <div className="rounded-lg p-6" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
-          <div className="flex items-baseline justify-between">
-            <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Streaks</p>
-            <p className="type-mono-label" style={{ color: "var(--app-text-muted)" }}>
-              ≥70% of planned study minutes = consistent day
-            </p>
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-6">
-            <div>
-              <p className="text-[32px] tabular-nums font-medium" style={{ color: "var(--app-text)" }}>
-                {streak.current}
-              </p>
-              <p className="mt-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-                Current
-              </p>
-            </div>
-            <div>
-              <p className="text-[32px] tabular-nums font-medium" style={{ color: "var(--app-text)" }}>
-                {streak.longest}
-              </p>
-              <p className="mt-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-                Longest
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Milestones</p>
-            <ul className="mt-2.5 flex flex-wrap gap-2">
-              {STREAK_MILESTONES.map((m) => {
-                const hit = streak.current >= m || streak.longest >= m;
-                const active = streak.current >= m;
-                return (
-                  <li
-                    key={m}
-                    className="flex items-center gap-1.5 rounded-md px-3 py-1 text-[12.5px] font-medium"
-                    style={{
-                      background: active
-                        ? "var(--app-accent)"
-                        : hit
-                          ? "var(--app-accent-soft)"
-                          : "var(--app-surface-soft)",
-                      color: active
-                        ? "white"
-                        : hit
-                          ? "var(--app-accent-strong)"
-                          : "var(--app-text-muted)",
-                      border: `1px solid ${active || hit ? "transparent" : "var(--app-border)"}`,
-                    }}
-                  >
-                    <span aria-hidden="true">{hit ? "★" : "☆"}</span>
-                    {m}-day
-                  </li>
-                );
-              })}
-            </ul>
-            {streak.nextMilestone && streak.daysToNext ? (
-              <p className="mt-3 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-                <span className="tabular-nums">{streak.daysToNext}</span> more consistent {streak.daysToNext === 1 ? "day" : "days"} to hit {streak.nextMilestone}.
-              </p>
-            ) : null}
-          </div>
-
-          {streak.current === 0 && streak.lastPlannedDay?.missReason ? (
-            <p className="mt-4 rounded-md px-3 py-2.5 text-[13px]"
-              style={{
-                background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)",
-                color: "var(--app-text-soft)",
-              }}
-            >
-              Streak reset, {streak.lastPlannedDay.missReason}.
-            </p>
-          ) : null}
-        </div>
-      </div>
-      </>
-      ) : <SkyLaunchPad sessions={sky.sessions} minutes={sky.minutes} />}
     </>
   );
 }
@@ -254,47 +185,164 @@ function AnalyticsPeriodPicker({ period, setPeriod }: { period: Period; setPerio
   );
 }
 
-function SkyLaunchPad({ sessions, minutes }: { sessions: number; minutes: number }) {
-  const remaining = Math.max(0, 3 - sessions);
+function Panel({ title, note, children }: { title: string; note?: ReactNode; children: ReactNode }) {
   return (
-    <div className="mx-auto w-full max-w-[820px] px-6 py-8 sm:px-10 sm:py-10">
-      <section className="rounded-lg p-5 sm:p-6" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
-        <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Your launch sequence</p>
-        <div className="mt-3 flex flex-wrap items-end justify-between gap-5">
-          <div>
-            <h2 className="text-[19px] font-semibold tracking-[-0.02em]" style={{ color: "var(--app-text)" }}>
-              {sessions === 0 ? "Light three stars to reveal your patterns." : "Your sky is taking shape."}
-            </h2>
-            <p className="mt-1.5 max-w-[500px] text-[13.5px] leading-[1.55]" style={{ color: "var(--app-text-muted)" }}>
-              {sessions === 0
-                ? "Your first session lights the first star. After three sessions, Arcadia starts showing your daily patterns, subject clusters and consistency map."
-                : `${sessions} of 3 early stars lit. You have ${formatMinutes(minutes)} focused so far. ${remaining} more session${remaining === 1 ? "" : "s"} opens your first study patterns.`}
-            </p>
+    <section className="min-w-0 rounded-lg p-5 sm:p-6" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>{title}</h2>
+        {note ? <div className="text-[12px]" style={{ color: "var(--app-text-muted)" }}>{note}</div> : null}
+      </div>
+      <div className="mt-5">{children}</div>
+    </section>
+  );
+}
+
+function Muted({ children }: { children: ReactNode }) {
+  return <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>{children}</p>;
+}
+
+function Legend() {
+  return (
+    <span className="flex items-center gap-3">
+      <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[2px]" style={{ background: "var(--app-accent)" }} />This period</span>
+      <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-[2px]" style={{ boxShadow: "inset 0 0 0 1px var(--app-border-strong)" }} />Previous</span>
+    </span>
+  );
+}
+
+interface Bar {
+  key: string;
+  value: number;
+  /** The same slot in the previous period, drawn as an outline behind. */
+  ghost?: number;
+  label: string;
+  tip: ReactNode;
+}
+
+/** Bar chart with a minute scale, previous-period outlines and hover readouts. */
+function Bars({ bars, height, label }: { bars: Bar[]; height: number; label: string }) {
+  const [hovered, setHovered] = useState<number | null>(null);
+  const top = niceMax(Math.max(1, ...bars.map((bar) => Math.max(bar.value, bar.ghost ?? 0))));
+  const ticks = [top, top / 2, 0];
+  const gap = bars.length > 12 ? "gap-[3px]" : "gap-2 sm:gap-3";
+
+  return (
+    <div className="flex gap-2" role="img" aria-label={label}>
+      <div className="relative w-9 shrink-0" style={{ height }}>
+        {ticks.map((tick) => (
+          <span
+            key={tick}
+            className="absolute right-0 -translate-y-1/2 text-[10.5px] tabular-nums"
+            style={{ top: `${(1 - tick / top) * 100}%`, color: "var(--app-text-faint)" }}
+          >
+            {tick === 0 ? "0" : formatAxis(tick)}
+          </span>
+        ))}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="relative" style={{ height }} onPointerLeave={() => setHovered(null)}>
+          {ticks.map((tick) => (
+            <div
+              key={tick}
+              className="absolute inset-x-0 border-t"
+              style={{ top: `${(1 - tick / top) * 100}%`, borderColor: "var(--app-border)", borderTopStyle: tick === 0 ? "solid" : "dashed" }}
+            />
+          ))}
+          <div className={`absolute inset-0 flex items-end ${gap}`}>
+            {bars.map((bar, index) => {
+              const active = hovered === index;
+              return (
+                <div
+                  key={bar.key}
+                  className="relative flex h-full flex-1 items-end justify-center rounded-t-[3px]"
+                  style={{ background: active ? "var(--app-accent-soft)" : "transparent" }}
+                  onPointerEnter={() => setHovered(index)}
+                >
+                  {bar.ghost ? (
+                    <div
+                      className="absolute bottom-0 w-full rounded-t-[3px]"
+                      style={{ height: `${(bar.ghost / top) * 100}%`, boxShadow: "inset 0 0 0 1px var(--app-border-strong)" }}
+                    />
+                  ) : null}
+                  <div
+                    className={`relative rounded-t-[3px] transition-[height,opacity] duration-500 ease-out ${bar.ghost !== undefined ? "w-[64%]" : "w-full"}`}
+                    style={{
+                      height: bar.value > 0 ? `max(2px, ${(bar.value / top) * 100}%)` : 0,
+                      background: "var(--app-accent)",
+                      opacity: hovered === null || active ? 1 : 0.55,
+                    }}
+                  />
+                  {active ? (
+                    <div
+                      className="pointer-events-none absolute bottom-full z-10 mb-2 w-max max-w-[200px] rounded-md px-2.5 py-1.5"
+                      style={{
+                        background: "var(--app-elev)",
+                        boxShadow: "var(--elev-2)",
+                        ...(index < bars.length * 0.2 ? { left: 0 } : index > bars.length * 0.8 ? { right: 0 } : { left: "50%", transform: "translateX(-50%)" }),
+                      }}
+                    >
+                      {bar.tip}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
-          <Link href="/app/focus" className="shrink-0">
-            <AppButton variant="secondary">Start a focus session</AppButton>
-          </Link>
         </div>
-        <ol className="mt-5 grid grid-cols-3 gap-2">
-          {[1, 2, 3].map((step) => {
-            const complete = sessions >= step;
-            return (
-              <li
-                key={step}
-                className="rounded-md px-3 py-3 text-center"
-                style={{
-                  background: complete ? "var(--app-arcad-soft)" : "var(--app-surface-soft)",
-                  color: complete ? "var(--app-arcad-strong)" : "var(--app-text-muted)",
-                }}
-              >
-                <p className="text-[15px] font-semibold">{complete ? "✦" : step}</p>
-                <p className="mt-1 text-[11.5px] font-medium">{step === 1 ? "First light" : step === 2 ? "Second star" : "Patterns open"}</p>
-              </li>
-            );
-          })}
-        </ol>
-      </section>
+        <div className={`mt-2 flex ${gap}`}>
+          {bars.map((bar, index) => (
+            <span
+              key={bar.key}
+              className="flex-1 whitespace-nowrap text-center text-[11px] tabular-nums"
+              style={{ color: hovered === index ? "var(--app-text)" : "var(--app-text-muted)" }}
+            >
+              {bar.label}
+            </span>
+          ))}
+        </div>
+      </div>
     </div>
+  );
+}
+
+function TipTitle({ children }: { children: ReactNode }) {
+  return <p className="text-[12px] font-semibold" style={{ color: "var(--app-text)" }}>{children}</p>;
+}
+
+function TipLine({ children, muted }: { children: ReactNode; muted?: boolean }) {
+  return <p className="text-[12px] tabular-nums" style={{ color: muted ? "var(--app-text-muted)" : "var(--app-text-soft)" }}>{children}</p>;
+}
+
+function PeakHour({ hourly }: { hourly: Array<{ hour: number; minutes: number }> }) {
+  const peak = hourly.reduce<{ hour: number; minutes: number } | null>((best, slot) => (slot.minutes > (best?.minutes ?? 0) ? slot : best), null);
+  if (!peak) return null;
+  return <span className="tabular-nums">Peak {hourLabel(peak.hour)}–{hourLabel((peak.hour + 1) % 24)} · {formatMinutes(peak.minutes)}</span>;
+}
+
+function SubjectBreakdown({ subjects, total }: { subjects: SubjectBucket[]; total: number }) {
+  const top = subjects[0]?.minutes || 1;
+  return (
+    <ul className="flex flex-col gap-3.5">
+      {subjects.map((s) => (
+        <li key={s.subject}>
+          <div className="flex items-baseline justify-between gap-3 text-[13.5px]">
+            <span className="min-w-0 truncate" style={{ color: "var(--app-text)" }}>{s.subject}</span>
+            <span className="shrink-0 tabular-nums" style={{ color: "var(--app-text-muted)" }}>
+              {formatMinutes(s.minutes)}
+              <span className="ml-2 inline-block w-9 text-right" style={{ color: "var(--app-text-faint)" }}>
+                {total ? Math.round((s.minutes / total) * 100) : 0}%
+              </span>
+            </span>
+          </div>
+          <div className="mt-1.5 h-1.5 overflow-hidden rounded-[1px]" style={{ background: "var(--app-border)" }}>
+            <div className="h-full" style={{ width: `${(s.minutes / top) * 100}%`, background: "var(--app-accent)" }} />
+          </div>
+          <p className="mt-1 text-[11.5px] tabular-nums" style={{ color: "var(--app-text-faint)" }}>
+            {s.sessions} session{s.sessions === 1 ? "" : "s"} · avg {formatMinutes(s.sessions ? Math.round(s.minutes / s.sessions) : 0)}
+          </p>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -341,57 +389,58 @@ function MissReasonBreakdown({ reasons }: { reasons: Array<{ reason: string; cou
   );
 }
 
-function StatCard({ label, value, unit, delta }: { label: string; value: string; unit?: string; delta?: number | null }) {
+function StatCard({ label, value, delta, was }: { label: string; value: string; delta: number | null; was: string }) {
   const isUp = typeof delta === "number" && delta > 0;
   const isDown = typeof delta === "number" && delta < 0;
   return (
-    <div className="rounded-lg p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
+    <div className="min-w-0 rounded-lg p-4 sm:p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
       <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>{label}</p>
-      <div className="mt-3 flex items-baseline gap-2">
-        <p className="text-[32px] tabular-nums font-medium leading-none" style={{ color: "var(--app-text)" }}>{value}</p>
-        {unit ? <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>{unit}</p> : null}
-      </div>
-      {typeof delta === "number" ? (
-        <p
-          className="mt-2 text-[12px] font-medium"
-          style={{ color: isUp ? "var(--app-success)" : isDown ? "var(--app-danger)" : "var(--app-text-muted)" }}
-        >
-          {isUp ? "↑" : isDown ? "↓" : "→"} {Math.abs(delta)}% vs. previous
-        </p>
-      ) : null}
+      <p className="mt-3 truncate text-[26px] font-medium leading-none tabular-nums sm:text-[30px]" style={{ color: "var(--app-text)" }}>{value}</p>
+      <p className="mt-2.5 truncate text-[12px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
+        {typeof delta === "number" ? (
+          <span className="mr-1.5 font-medium" style={{ color: isUp ? "var(--app-success)" : isDown ? "var(--app-danger)" : "var(--app-text-muted)" }}>
+            {isUp ? "↑" : isDown ? "↓" : "→"} {Math.abs(delta)}%
+          </span>
+        ) : null}
+        {was}
+      </p>
     </div>
   );
 }
 
-function BarChart({ daily }: { daily: DailyBucket[] }) {
-  const max = Math.max(1, ...daily.map((d) => d.minutes));
-  return (
-    <div className="flex h-[180px] items-end gap-2">
-      {daily.map((d) => {
-        const height = (d.minutes / max) * 100;
-        return (
-          <div key={d.date} className="flex flex-1 flex-col items-center gap-2">
-            <div className="relative flex w-full flex-1 items-end">
-              <div
-                className="w-full rounded-t-[4px] transition-[height]"
-                style={{
-                  height: `${Math.max(2, height)}%`,
-                  background: d.minutes > 0 ? "var(--app-accent)" : "var(--app-border)",
-                }}
-                title={`${formatMinutes(d.minutes)} · ${d.date}`}
-              />
-            </div>
-            <span className="text-[11px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
-              {shortDay(d.date)}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
+/** Percentage change, or null when there's nothing to compare against. */
+function change(now: number, before: number): number | null {
+  return before ? Math.round(((now - before) / before) * 100) : null;
+}
+
+/** Round a chart's top up to a readable minute value. */
+function niceMax(value: number): number {
+  const step = value <= 60 ? 15 : value <= 180 ? 30 : value <= 600 ? 60 : 120;
+  return Math.ceil(value / step) * step;
+}
+
+function formatAxis(minutes: number): string {
+  if (minutes < 60) return `${Math.round(minutes)}m`;
+  const hours = minutes / 60;
+  return `${Number.isInteger(hours) ? hours : hours.toFixed(1)}h`;
+}
+
+function hourLabel(hour: number): string {
+  const suffix = hour < 12 ? "am" : "pm";
+  const h = hour % 12 === 0 ? 12 : hour % 12;
+  return `${h}${suffix}`;
 }
 
 function shortDay(iso: string): string {
   const d = new Date(`${iso}T12:00:00Z`);
   return new Intl.DateTimeFormat("en-AU", { weekday: "short" }).format(d).slice(0, 3);
+}
+
+function dayOfMonth(iso: string): string {
+  return String(Number(iso.slice(8, 10)));
+}
+
+function longDay(iso: string): string {
+  const d = new Date(`${iso}T12:00:00Z`);
+  return new Intl.DateTimeFormat("en-AU", { weekday: "short", day: "numeric", month: "short" }).format(d);
 }

@@ -143,7 +143,7 @@ export default function RoomView({ code }: RoomViewProps) {
   if (notFound) {
     return (
       <>
-        <PageHeader eyebrow="Rooms" title="No room with that code" />
+        <PageHeader width={860} eyebrow="Rooms" title="No room with that code" />
         <div className="mx-auto w-full max-w-[860px] px-6 py-8 sm:px-10">
           <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
             It may have been closed when the last person left. Double-check the code, or start a new room.
@@ -158,7 +158,7 @@ export default function RoomView({ code }: RoomViewProps) {
 
   return (
     <>
-      <PageHeader
+      <PageHeader width={860}
         eyebrow="Rooms"
         title={dash ? dash.room.name : "Loading…"}
         tour="rooms"
@@ -357,7 +357,7 @@ function MemberCard({
             {studying ? "This session" : member.activity === "break" ? "Break" : "Session"}
           </p>
           <p
-            className="font-mono text-[22px] tabular-nums tracking-[-0.01em]"
+            className="tabular-nums text-[22px]  tracking-[-0.01em]"
             style={{ color: member.activity === "idle" ? "var(--app-text-faint)" : "var(--app-text)" }}
           >
             {member.activity === "idle" ? "," : formatClock(elapsed)}
@@ -365,7 +365,7 @@ function MemberCard({
         </div>
         <div className="text-right">
           <p className="type-eyebrow" style={{ color: "var(--app-text-faint)" }}>Today</p>
-          <p className="font-mono text-[22px] tabular-nums tracking-[-0.01em]" style={{ color: "var(--app-text)" }}>
+          <p className="tabular-nums text-[22px]  tracking-[-0.01em]" style={{ color: "var(--app-text)" }}>
             {formatDuration(liveTodaySeconds(member, now))}
           </p>
         </div>

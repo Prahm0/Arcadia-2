@@ -252,7 +252,7 @@ export default function ArcadView() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader width={1140}
         eyebrow="Arcad"
         title="Chat"
         meta={activeConversationTitle}
@@ -516,7 +516,7 @@ function MessageBubble({ message }: { message: Message }) {
           </Link>
         ) : null}
         <span
-          className="mt-1 px-1 text-[10.5px] font-mono opacity-0 transition-opacity group-hover:opacity-100"
+          className="mt-1 px-1 text-[10.5px] tabular-nums opacity-0 transition-opacity group-hover:opacity-100"
           style={{ color: "var(--app-text-faint)" }}
         >
           {timeLabel}
@@ -610,7 +610,7 @@ function ContextPanel({ data }: { data: DashboardResponse }) {
           <p className="text-[14.5px]" style={{ color: "var(--app-text)" }}>
             {data.user.name} · {data.profile?.grade || "Grade not set"}
           </p>
-          <p className="mt-1 text-[12.5px] font-mono" style={{ color: "var(--app-text-muted)" }}>
+          <p className="mt-1 text-[12.5px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
             Timezone {timezone}
           </p>
         </ContextRow>
@@ -649,7 +649,7 @@ function ContextPanel({ data }: { data: DashboardResponse }) {
               {data.focusTasks.slice(0, 3).map((task) => (
                 <li key={task.id}>
                   <p className="text-[14px]" style={{ color: "var(--app-text)" }}>{task.title}</p>
-                  <p className="text-[12px] font-mono" style={{ color: "var(--app-text-muted)" }}>
+                  <p className="text-[12px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
                     {task.subject ? `${task.subject} · ` : ""}
                     {formatDueSoon(task.dueAt, timezone)}
                   </p>
@@ -678,19 +678,19 @@ function MiniContext({ data }: { data: DashboardResponse }) {
       <ul className="mt-3 flex flex-col gap-2 text-[12.5px]" style={{ color: "var(--app-text-soft)" }}>
         <li className="flex justify-between">
           <span>Subjects</span>
-          <span className="font-mono" style={{ color: "var(--app-text)" }}>{data.subjects.length}</span>
+          <span className="tabular-nums" style={{ color: "var(--app-text)" }}>{data.subjects.length}</span>
         </li>
         <li className="flex justify-between">
           <span>Open tasks</span>
-          <span className="font-mono" style={{ color: "var(--app-text)" }}>{data.tasks.filter((t) => t.status === "pending").length}</span>
+          <span className="tabular-nums" style={{ color: "var(--app-text)" }}>{data.tasks.filter((t) => t.status === "pending").length}</span>
         </li>
         <li className="flex justify-between">
           <span>Streak</span>
-          <span className="font-mono" style={{ color: "var(--app-text)" }}>{streak.current}</span>
+          <span className="tabular-nums" style={{ color: "var(--app-text)" }}>{streak.current}</span>
         </li>
         <li className="flex justify-between">
           <span>Today</span>
-          <span className="font-mono" style={{ color: "var(--app-text)" }}>{data.analytics?.todayMinutes ?? 0} min</span>
+          <span className="tabular-nums" style={{ color: "var(--app-text)" }}>{data.analytics?.todayMinutes ?? 0} min</span>
         </li>
       </ul>
     </div>
@@ -710,7 +710,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="text-[11px]" style={{ color: "var(--app-text-muted)" }}>{label}</p>
-      <p className="mt-1 text-[16px] font-mono font-medium" style={{ color: "var(--app-text)" }}>{value}</p>
+      <p className="mt-1 text-[16px] tabular-nums font-medium" style={{ color: "var(--app-text)" }}>{value}</p>
     </div>
   );
 }
@@ -746,7 +746,7 @@ function HistoryPanel({
                   <p className="truncate text-[14.5px] font-medium" style={{ color: active ? "var(--app-arcad-strong)" : "var(--app-text)" }}>
                     {conv.title || "Untitled chat"}
                   </p>
-                  <p className="mt-0.5 text-[12px] font-mono" style={{ color: "var(--app-text-muted)" }}>
+                  <p className="mt-0.5 text-[12px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
                     {new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(new Date(conv.updatedAt))}
                   </p>
                 </div>

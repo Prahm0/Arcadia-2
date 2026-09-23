@@ -7,6 +7,7 @@ import { formatClock } from "@/lib/api/time";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { studyTitle, subjectColour } from "@/lib/app/subjectColour";
 import { useSessionPlan } from "@/lib/app/useSessionPlan";
+import { SubjectTag } from "./cards/shared";
 import SyllabusNudge from "./SyllabusNudge";
 
 /**
@@ -28,7 +29,7 @@ export default function StartNowCard() {
 
   if (!target) return null;
 
-  const colour = subjectColour(data.subjects, target.subject) ?? "var(--app-accent)";
+  const colour = subjectColour(data.subjects, target.subject);
   const minutes = Math.round((Date.parse(target.endAt) - Date.parse(target.startAt)) / 60000);
   const startsIn = Math.round((Date.parse(target.startAt) - now) / 60000);
   const when = isNow
@@ -40,40 +41,39 @@ export default function StartNowCard() {
   return (
     <section
       aria-label="Your next study session"
-      className="mb-6 overflow-hidden rounded-lg"
+      className="mb-8 overflow-hidden rounded-xl"
       style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
     >
-      <div className="flex">
-        <span aria-hidden="true" className="w-1.5 shrink-0" style={{ background: colour }} />
-        <div className="min-w-0 flex-1 p-5 sm:p-6">
-          <p className="flex flex-wrap items-center gap-x-2 text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>
-            <span className="inline-flex items-center gap-1.5" style={{ color: "var(--app-text-soft)" }}>
-              <span aria-hidden="true" className="h-2 w-2 rounded-full" style={{ background: colour }} />
-              {target.subject ?? "Study"}
-            </span>
+      <div>
+        <div className="min-w-0 p-6 sm:p-7">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
+            <SubjectTag subject={{ name: target.subject ?? "Study", colour: colour ?? "" }} />
+            <span className="ml-1">{when}</span>
             <span aria-hidden="true">·</span>
-            <span className="font-mono">{minutes} min</span>
-            <span aria-hidden="true">·</span>
-            <span>{when}</span>
+            <span className="tabular-nums">{minutes} min</span>
           </p>
 
           {plan ? (
             <>
-              <h2 className="mt-2 text-[22px] font-semibold leading-tight tracking-[-0.015em]" style={{ color: "var(--app-text)" }}>
+              <h2 className="mt-4 text-[28px] font-semibold leading-[1.1] tracking-[-0.025em]" style={{ color: "var(--app-text)" }}>
                 {plan.topic}
               </h2>
               {plan.why ? (
-                <p className="mt-1 text-[14px]" style={{ color: "var(--app-text-soft)" }}>
+                <p className="mt-1.5 text-[15px]" style={{ color: "var(--app-text-muted)" }}>
                   {plan.why}
                 </p>
               ) : null}
-              <ol className="mt-4 flex flex-col gap-1.5">
+              <ol className="mt-5 flex flex-col">
                 {plan.steps.map((step, index) => (
-                  <li key={index} className="flex items-baseline gap-3 text-[13.5px]">
-                    <span className="w-9 shrink-0 font-mono text-[12px]" style={{ color: "var(--app-text-muted)" }}>
-                      {step.minutes}m
+                  <li
+                    key={index}
+                    className="flex items-baseline gap-4 border-t py-2.5 text-[14px]"
+                    style={{ borderColor: "var(--app-border)" }}
+                  >
+                    <span style={{ color: "var(--app-text)" }} className="min-w-0 flex-1">{step.text}</span>
+                    <span className="shrink-0 tabular-nums text-[13px]" style={{ color: "var(--app-text-muted)" }}>
+                      {step.minutes} min
                     </span>
-                    <span style={{ color: "var(--app-text)" }}>{step.text}</span>
                   </li>
                 ))}
               </ol>
@@ -81,7 +81,7 @@ export default function StartNowCard() {
             </>
           ) : (
             <div className="mt-2" role="status">
-              <h2 className="text-[22px] font-semibold leading-tight tracking-[-0.015em]" style={{ color: "var(--app-text)" }}>
+              <h2 className="mt-2 text-[28px] font-semibold leading-[1.1] tracking-[-0.025em]" style={{ color: "var(--app-text)" }}>
                 {studyTitle(target)}
               </h2>
               <p className="mt-1 text-[14px]" style={{ color: "var(--app-text-muted)" }}>
@@ -90,7 +90,7 @@ export default function StartNowCard() {
             </div>
           )}
 
-          <div className="mt-5 flex flex-wrap items-center gap-3">
+          <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link
               href={`/app/focus?eventId=${encodeURIComponent(target.id)}&start=1`}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-md px-5 text-[14px] font-medium transition-colors hover:bg-[var(--app-accent-strong)]"

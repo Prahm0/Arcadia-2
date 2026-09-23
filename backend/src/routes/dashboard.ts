@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte } from "drizzle-orm";
+import { and, desc, eq, gte, lte, ne, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../db";
 import { rebuildSchedule, subjectKey, uniqueSubjects, weeklyBudget, type WeeklyBudget } from "../lib/scheduler";
@@ -106,7 +106,25 @@ dashboard.get("/", async (c) => {
       sessions.filter((s) => localDateKey(s.endedAt, timezone) === todayKey),
     ),
     weekMinutes: minutesBetween(sessions.filter((s) => s.endedAt >= weekStart)),
+    // Focus minutes for each of the last seven days, oldest first, ending today.
+    days: Array.from({ length: 7 }, (_, index) => {
+      const key = localDateKey(now - (6 - index) * DAY, timezone);
+      return {
+        date: key,
+        minutes: minutesBetween(
+          sessions.filter((s) => s.type !== "break" && localDateKey(s.endedAt, timezone) === key),
+        ),
+      };
+    }),
   };
+
+  // The companion grows with all the focus time ever logged, not just recent.
+  const [{ seconds: focusSeconds } = { seconds: 0 }] = await database
+    .select({ seconds: sql<number>`coalesce(sum(${schema.studySessions.seconds}), 0)` })
+    .from(schema.studySessions)
+    .where(and(eq(schema.studySessions.userId, userId), ne(schema.studySessions.type, "break")));
+  const focusedMinutes = Math.round(Number(focusSeconds) / 60);
+  const level = COMPANION_LEVELS.filter((threshold) => focusedMinutes >= threshold).length;
 
   const conversationRows = await database
     .select()
@@ -146,7 +164,11 @@ dashboard.get("/", async (c) => {
       budget: profile ? weeklyBudget(profile, subjectRows) : null,
     }),
     analytics,
-    companion: companionRow[0]
+    companion: {
+      focusedMinutes,
+      level,
+      nextLevelMinutes: COMPANION_LEVELS[level] ?? null,
+      ...(companionRow[0]
       ? {
           profile: {
             name: companionRow[0].name,
@@ -160,7 +182,8 @@ dashboard.get("/", async (c) => {
           },
           mood: companionRow[0].mood,
         }
-      : null,
+      : { profile: null }),
+    },
     csrfToken,
     assistant: {
       configured: Boolean(c.env.OPENAI_API_KEY),
@@ -195,6 +218,9 @@ dashboard.get("/", async (c) => {
     })),
   });
 });
+
+/** Focus minutes each companion level starts at: 0, 5h, 20h, 50h. */
+const COMPANION_LEVELS = [0, 300, 1200, 3000];
 
 export interface Notice {
   /** Changes when what the notice says changes, so a snoozed one comes back if it's different. */

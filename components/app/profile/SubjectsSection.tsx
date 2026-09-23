@@ -93,7 +93,7 @@ function SubjectCard({ subject, fallback }: { subject: ProfileSubject; fallback:
           "No weekly study time"
         ) : (
           <>
-            <span className="font-mono">{formatWeekly(subject.weeklyMinutes)}</span> a week
+            <span className="tabular-nums">{formatWeekly(subject.weeklyMinutes)}</span> a week
             {subject.weeklyMinutesSuggested ? (
               <span style={{ color: "var(--app-text-muted)" }}> · suggested</span>
             ) : null}

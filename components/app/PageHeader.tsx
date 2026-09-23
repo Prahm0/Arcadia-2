@@ -13,17 +13,21 @@ interface PageHeaderProps {
   action?: ReactNode;
   /** The page's "How it works" tour: auto-opens on first visit. */
   tour?: TourId;
+  /** Match the page's content column so the title lines up with it. */
+  width?: number | "full";
+  /** Show the student's notices under the title. Today only, so they don't follow you into Focus. */
+  notices?: boolean;
 }
 
 /**
  * The top of every page: where you are, what this is, and the page's actions
  * on the right. Deliberately static, a tool's chrome shouldn't animate in.
  */
-export default function PageHeader({ eyebrow, title, meta, action, tour }: PageHeaderProps) {
+export default function PageHeader({ eyebrow, title, meta, action, tour, width = 1160, notices = false }: PageHeaderProps) {
   return (
     <header
-      className="border-b px-6 py-5 sm:px-10"
-      style={{ borderColor: "var(--app-border)", background: "var(--app-surface)" }}
+      className="mx-auto w-full px-6 pb-2 pt-8 sm:px-10 sm:pt-10"
+      style={{ maxWidth: width === "full" ? undefined : width }}
     >
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
       <div className="min-w-0">
@@ -33,13 +37,13 @@ export default function PageHeader({ eyebrow, title, meta, action, tour }: PageH
           </p>
         ) : null}
         <h1
-          className="mt-1 text-[22px] font-semibold leading-tight tracking-[-0.015em]"
+          className="mt-1 text-[30px] font-semibold leading-[1.1] tracking-[-0.03em]"
           style={{ color: "var(--app-text)" }}
         >
           {title}
         </h1>
         {meta ? (
-          <p className="mt-1 text-[13px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
+          <p className="mt-1.5 text-[14px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
             {meta}
           </p>
         ) : null}
@@ -51,7 +55,7 @@ export default function PageHeader({ eyebrow, title, meta, action, tour }: PageH
         </div>
       ) : null}
       </div>
-      <HeaderNotices />
+      {notices ? <HeaderNotices /> : null}
     </header>
   );
 }

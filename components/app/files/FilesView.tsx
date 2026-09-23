@@ -21,7 +21,7 @@ export default function FilesView() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader width={820}
         eyebrow="Resources"
         title="Files"
         meta={state.status === "ready" && subjects.length ? `${count} ${count === 1 ? "file" : "files"} across ${subjects.length} ${subjects.length === 1 ? "subject" : "subjects"}` : undefined}

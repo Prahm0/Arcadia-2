@@ -232,7 +232,7 @@ function AnswerButton({
       className="flex h-12 items-center justify-center gap-2 rounded-lg text-[14.5px] font-medium transition-[background-color,box-shadow] duration-100 hover:shadow-[0_0_0_1px_currentColor]"
       style={{ background: `color-mix(in oklab, ${colour} 10%, var(--app-surface))`, color: colour, boxShadow: "var(--elev-1)" }}
     >
-      <span aria-hidden="true" className="hidden font-mono text-[12px] opacity-70 sm:inline">
+      <span aria-hidden="true" className="hidden tabular-nums text-[12px] opacity-70 sm:inline">
         {hint}
       </span>
       {children}

@@ -124,6 +124,8 @@ export interface DashboardResponse {
     longestStreak?: number;
     weekMinutes?: number;
     todayMinutes?: number;
+    /** The last seven days, oldest first, ending today. */
+    days?: Array<{ date: string; minutes: number }>;
     [key: string]: unknown;
   };
   companion: {
@@ -135,6 +137,8 @@ export interface DashboardResponse {
     } | null;
     focusedMinutes?: number;
     level?: number;
+    /** Focus minutes the next level starts at; null at the top level. */
+    nextLevelMinutes?: number | null;
     currentStreak?: number;
     state?: "ready" | "recovering";
     [key: string]: unknown;

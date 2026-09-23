@@ -242,7 +242,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
                       strokeWidth="1.7"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      className="transition-transform group-open:rotate-90"
+                      className="opacity-0 transition-[transform,opacity] group-hover:opacity-100 group-open:rotate-90"
                       style={{ color: "var(--app-text-faint)" }}
                     >
                       <path d="M7 4l6 6-6 6" />
@@ -290,94 +290,19 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
             })}
           </nav>
 
-          <div className="mt-auto flex flex-col gap-2 px-2 pb-3 pt-4">
-            {streak > 0 ? (
-              <div
-                className="rounded-md p-3"
-                style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
+          <div className="mt-auto flex flex-col gap-1 px-2 pb-3 pt-4">
+            {user?.tier === "pro" || user?.tier === "max" ? null : (
+              <Link
+                href="/app/pricing"
+                className="ui-hover flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px]"
+                style={{ color: "var(--app-text-soft)" }}
               >
-                <div className="flex items-center justify-between">
-                  <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>
-                    Streak
-                  </p>
-                  {streakSummary.hitMilestone ? (
-                    <span
-                      className="rounded px-1.5 py-0.5 text-[10.5px] font-medium"
-                      style={{
-                        background: "var(--app-accent)",
-                        color: "var(--app-accent-on)",
-                      }}
-                    >
-                      {streakSummary.hitMilestone}-day
-                    </span>
-                  ) : null}
-                </div>
-                <p className="mt-1.5 text-[18px] font-semibold leading-none tabular-nums" style={{ color: "var(--app-text)" }}>
-                  {streak} <span className="text-[13px] font-normal" style={{ color: "var(--app-text-muted)" }}>consistent {streak === 1 ? "day" : "days"}</span>
-                </p>
-                {streakSummary.nextMilestone && streakSummary.daysToNext ? (
-                  <p className="mt-1.5 text-[11.5px]" style={{ color: "var(--app-text-muted)" }}>
-                    {streakSummary.daysToNext} more to {streakSummary.nextMilestone}
-                  </p>
-                ) : null}
-              </div>
-            ) : streakSummary.lastPlannedDay?.missReason ? (
-              <div
-                className="rounded-md p-3"
-                style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
-              >
-                <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>
-                  Streak reset
-                </p>
-                <p className="mt-1.5 text-[12.5px] leading-snug" style={{ color: "var(--app-text-soft)" }}>
-                  {streakSummary.lastPlannedDay.missReason}, 70% locks the day in.
-                </p>
-              </div>
-            ) : null}
-            <Link
-              href="/app/pricing"
-              aria-label="Upgrade plan"
-              className="group flex items-center justify-between rounded-md px-2.5 py-2 ui-pressable"
-              style={{
-                background: "var(--app-surface)",
-                boxShadow: "var(--elev-1)",
-                color: "var(--app-text)",
-              }}
-            >
-              <span className="flex min-w-0 items-center gap-2.5">
-                <span
-                  aria-hidden="true"
-                  className="grid h-6 w-6 shrink-0 place-items-center rounded-md"
-                  style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}
-                >
-                  <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M10 2.5l1.15 4.15L15.5 8l-4.35 1.35L10 13.5 8.85 9.35 4.5 8l4.35-1.35L10 2.5z" />
-                    <path d="M15.5 13l.55 1.95L18 15.5l-1.95.55L15.5 18l-.55-1.95L13 15.5l1.95-.55L15.5 13z" />
-                  </svg>
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-[13px] font-medium leading-tight">Upgrade plan</span>
-                  <span className="mt-0.5 block truncate text-[11.5px]" style={{ color: "var(--app-text-muted)" }}>
-                    Unlock all features
-                  </span>
-                </span>
-              </span>
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 20 20"
-                width="14"
-                height="14"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="shrink-0"
-                style={{ color: "var(--app-text-faint)" }}
-              >
-                <path d="M7 4l6 6-6 6" />
-              </svg>
-            </Link>
+                <svg aria-hidden="true" viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--app-text-muted)" }}>
+                  <path d="M10 2.5l1.15 4.15L15.5 8l-4.35 1.35L10 13.5 8.85 9.35 4.5 8l4.35-1.35L10 2.5z" />
+                </svg>
+                Upgrade to Pro
+              </Link>
+            )}
             {user ? (
               <div
                 className="mt-1 flex items-center gap-1 border-t pt-2"

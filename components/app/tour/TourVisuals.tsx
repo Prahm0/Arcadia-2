@@ -181,7 +181,7 @@ export function Stat({ label, value, sub }: { label: string; value: string; sub?
       <p className="text-[9.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>
         {label}
       </p>
-      <p className="mt-0.5 font-mono text-[15px] leading-tight tabular-nums" style={{ color: "var(--app-text)" }}>
+      <p className="mt-0.5 tabular-nums text-[15px] leading-tight " style={{ color: "var(--app-text)" }}>
         {value}
       </p>
       {sub ? (
@@ -247,7 +247,7 @@ export function TimerRing({
         <p className="text-[9px] font-medium" style={{ color: "var(--app-text-muted)" }}>
           {label}
         </p>
-        <p className="font-mono text-[22px] leading-none tabular-nums" style={{ color: "var(--app-text)" }}>
+        <p className="tabular-nums text-[22px] leading-none " style={{ color: "var(--app-text)" }}>
           {time}
         </p>
       </div>
@@ -450,7 +450,7 @@ export function Meter({ label, value, fraction }: { label: string; value: string
     <div>
       <div className="flex justify-between text-[10px]">
         <span style={{ color: "var(--app-text)" }}>{label}</span>
-        <span className="font-mono tabular-nums" style={{ color: "var(--app-text-muted)" }}>
+        <span className="tabular-nums" style={{ color: "var(--app-text-muted)" }}>
           {value}
         </span>
       </div>

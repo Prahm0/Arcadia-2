@@ -78,7 +78,7 @@ export default function AnalyticsView() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader width={1140}
         eyebrow="Progress"
         title="Analytics"
         meta={`${period === "week" ? "This week" : "This month"}${analytics ? ` · ${formatMinutes(totalMinutes)} of focused study` : ""}`}
@@ -162,7 +162,7 @@ export default function AnalyticsView() {
                   <li key={s.subject}>
                     <div className="flex items-baseline justify-between text-[13.5px]">
                       <span style={{ color: "var(--app-text)" }}>{s.subject}</span>
-                      <span className="font-mono" style={{ color: "var(--app-text-muted)" }}>{formatMinutes(s.minutes)}</span>
+                      <span className="tabular-nums" style={{ color: "var(--app-text-muted)" }}>{formatMinutes(s.minutes)}</span>
                     </div>
                     <div className="mt-1.5 h-1.5 overflow-hidden rounded-full" style={{ background: "var(--app-border)" }}>
                       <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "var(--app-accent)" }} />
@@ -195,7 +195,7 @@ export default function AnalyticsView() {
           </div>
           <div className="mt-3 grid grid-cols-2 gap-6">
             <div>
-              <p className="text-[32px] font-mono font-medium" style={{ color: "var(--app-text)" }}>
+              <p className="text-[32px] tabular-nums font-medium" style={{ color: "var(--app-text)" }}>
                 {streak.current}
               </p>
               <p className="mt-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
@@ -203,7 +203,7 @@ export default function AnalyticsView() {
               </p>
             </div>
             <div>
-              <p className="text-[32px] font-mono font-medium" style={{ color: "var(--app-text)" }}>
+              <p className="text-[32px] tabular-nums font-medium" style={{ color: "var(--app-text)" }}>
                 {streak.longest}
               </p>
               <p className="mt-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
@@ -244,7 +244,7 @@ export default function AnalyticsView() {
             </ul>
             {streak.nextMilestone && streak.daysToNext ? (
               <p className="mt-3 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-                <span className="font-mono">{streak.daysToNext}</span> more consistent {streak.daysToNext === 1 ? "day" : "days"} to hit {streak.nextMilestone}.
+                <span className="tabular-nums">{streak.daysToNext}</span> more consistent {streak.daysToNext === 1 ? "day" : "days"} to hit {streak.nextMilestone}.
               </p>
             ) : null}
           </div>
@@ -294,7 +294,7 @@ function MissReasonBreakdown({ reasons }: { reasons: Array<{ reason: string; cou
             <li key={item.reason}>
               <div className="flex items-baseline justify-between gap-3 text-[13.5px]">
                 <span style={{ color: "var(--app-text)" }}>{MISS_REASON_LABEL[item.reason] ?? "Other"}</span>
-                <span className="font-mono" style={{ color: "var(--app-text-muted)" }}>{item.count}</span>
+                <span className="tabular-nums" style={{ color: "var(--app-text-muted)" }}>{item.count}</span>
               </div>
               <div className="mt-1.5 h-2 overflow-hidden rounded-full" style={{ background: "var(--app-border)" }}>
                 <div
@@ -317,7 +317,7 @@ function StatCard({ label, value, unit, delta }: { label: string; value: string;
     <div className="rounded-lg p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
       <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>{label}</p>
       <div className="mt-3 flex items-baseline gap-2">
-        <p className="text-[32px] font-mono font-medium leading-none" style={{ color: "var(--app-text)" }}>{value}</p>
+        <p className="text-[32px] tabular-nums font-medium leading-none" style={{ color: "var(--app-text)" }}>{value}</p>
         {unit ? <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>{unit}</p> : null}
       </div>
       {typeof delta === "number" ? (
@@ -350,7 +350,7 @@ function BarChart({ daily }: { daily: DailyBucket[] }) {
                 title={`${formatMinutes(d.minutes)} · ${d.date}`}
               />
             </div>
-            <span className="text-[11px] font-mono" style={{ color: "var(--app-text-muted)" }}>
+            <span className="text-[11px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
               {shortDay(d.date)}
             </span>
           </div>

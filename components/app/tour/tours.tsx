@@ -21,7 +21,7 @@ import {
 
 function Mono({ children }: { children: ReactNode }) {
   return (
-    <span className="font-mono text-[10px]" style={{ color: "var(--app-text)" }}>
+    <span className="tabular-nums text-[10px]" style={{ color: "var(--app-text)" }}>
       {children}
     </span>
   );
@@ -412,10 +412,10 @@ export const TOURS: Record<TourId, Tour> = {
         body: "Choose a preset: Deep focus (50 + 10), Classic (25 + 5), Long block (90 + 15), or set your own.",
         visual: (
           <Window width={240} title="Preset">
-            <Row title="Deep focus" right={<span className="font-mono text-[9.5px]" style={{ color: "var(--app-text-muted)" }}>50m · 10m</span>} highlight />
-            <Row title="Classic" right={<span className="font-mono text-[9.5px]" style={{ color: "var(--app-text-muted)" }}>25m · 5m</span>} />
-            <Row title="Long block" right={<span className="font-mono text-[9.5px]" style={{ color: "var(--app-text-muted)" }}>90m · 15m</span>} />
-            <Row title="Custom" right={<span className="font-mono text-[9.5px]" style={{ color: "var(--app-text-muted)" }}>your call</span>} />
+            <Row title="Deep focus" right={<span className="tabular-nums text-[9.5px]" style={{ color: "var(--app-text-muted)" }}>50m · 10m</span>} highlight />
+            <Row title="Classic" right={<span className="tabular-nums text-[9.5px]" style={{ color: "var(--app-text-muted)" }}>25m · 5m</span>} />
+            <Row title="Long block" right={<span className="tabular-nums text-[9.5px]" style={{ color: "var(--app-text-muted)" }}>90m · 15m</span>} />
+            <Row title="Custom" right={<span className="tabular-nums text-[9.5px]" style={{ color: "var(--app-text-muted)" }}>your call</span>} />
           </Window>
         ),
       },
@@ -454,7 +454,7 @@ export const TOURS: Record<TourId, Tour> = {
               className="rounded-full px-3 py-1 text-[10.5px] font-medium"
               style={{ border: "1px dashed var(--app-border-strong)", color: "var(--app-text-muted)", background: "var(--app-surface)" }}
             >
-              Distraction · <span className="font-mono">2</span>
+              Distraction · <span className="tabular-nums">2</span>
             </span>
           </div>
         ),
@@ -499,7 +499,7 @@ export const TOURS: Record<TourId, Tour> = {
                 </div>
                 <Chip tone="accent">Studying</Chip>
               </div>
-              <p className="mt-2 font-mono text-[15px]" style={{ color: "var(--app-text)" }}>24:08</p>
+              <p className="mt-2 tabular-nums text-[15px]" style={{ color: "var(--app-text)" }}>24:08</p>
             </Window>
             <Window width={152}>
               <div className="flex items-center gap-2">
@@ -510,7 +510,7 @@ export const TOURS: Record<TourId, Tour> = {
                 </div>
                 <Chip tone="success">Break</Chip>
               </div>
-              <p className="mt-2 font-mono text-[15px]" style={{ color: "var(--app-text)" }}>06:12</p>
+              <p className="mt-2 tabular-nums text-[15px]" style={{ color: "var(--app-text)" }}>06:12</p>
             </Window>
           </div>
         ),
@@ -520,9 +520,9 @@ export const TOURS: Record<TourId, Tour> = {
         body: "Each card shows how long that person has studied today. Whoever's studying is listed first.",
         visual: (
           <Window width={270} title="Year 12 grind · 2 studying now">
-            <Row title="Josh" meta="Studying · Chemistry" right={<span className="font-mono text-[11px]" style={{ color: "var(--app-text)" }}>2h 10m</span>} />
-            <Row title="You" meta="Studying · Physics" right={<span className="font-mono text-[11px]" style={{ color: "var(--app-text)" }}>1h 25m</span>} />
-            <Row title="Priya" meta="Idle" right={<span className="font-mono text-[11px]" style={{ color: "var(--app-text)" }}>1h 45m</span>} />
+            <Row title="Josh" meta="Studying · Chemistry" right={<span className="tabular-nums text-[11px]" style={{ color: "var(--app-text)" }}>2h 10m</span>} />
+            <Row title="You" meta="Studying · Physics" right={<span className="tabular-nums text-[11px]" style={{ color: "var(--app-text)" }}>1h 25m</span>} />
+            <Row title="Priya" meta="Idle" right={<span className="tabular-nums text-[11px]" style={{ color: "var(--app-text)" }}>1h 45m</span>} />
           </Window>
         ),
       },

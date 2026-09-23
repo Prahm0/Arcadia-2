@@ -382,7 +382,7 @@ export default function SettingsView() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader width={720}
         eyebrow="Settings"
         title="Account & preferences"
         meta={

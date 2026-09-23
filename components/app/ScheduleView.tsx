@@ -119,7 +119,7 @@ export default function ScheduleView() {
         meta={`${weekLabel.title} ${weekLabel.subtitle}`}
         tour="schedule"
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <div className="flex items-center rounded-md" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
               <IconButton label="Previous week" onClick={() => setWeekOffset((v) => v - 1)}>
                 <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M12 5l-5 5 5 5" strokeLinecap="round" strokeLinejoin="round" /></svg>

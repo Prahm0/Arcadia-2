@@ -26,9 +26,9 @@ export default function ThinkingSection() {
     <section id="how-it-works" aria-labelledby="thinking-heading" className="bg-black text-white">
       {reduced ? (
         <Container className="py-[120px] lg:py-[160px]">
-          <SectionLabel>How Arcadia thinks</SectionLabel>
+          <SectionLabel>How the plan stays useful</SectionLabel>
           <h2 id="thinking-heading" className="type-display mt-8 max-w-[900px]">
-            From scattered to certain.
+            A plan that changes with you.
           </h2>
           <div className="mt-16 grid gap-12 lg:grid-cols-12 lg:gap-6">
             <ol className="flex flex-col gap-10 lg:col-span-5">
@@ -50,9 +50,9 @@ export default function ThinkingSection() {
             <Container className="flex h-full flex-col justify-center pb-6 pt-20 lg:pt-[88px]">
               <div className="grid flex-1 grid-cols-1 items-center gap-6 lg:grid-cols-12">
                 <div className="order-2 lg:order-1 lg:col-span-5">
-                  <SectionLabel>How Arcadia thinks</SectionLabel>
+                  <SectionLabel>How the plan stays useful</SectionLabel>
                   <h2 id="thinking-heading" className="sr-only">
-                    How Arcadia thinks
+                    How the plan stays useful
                   </h2>
                   <ol className="mt-4 flex flex-col sm:mt-10" aria-live="polite">
                     {stages.map((s, i) => {

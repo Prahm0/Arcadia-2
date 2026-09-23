@@ -83,7 +83,7 @@ export default function ScheduleDemo() {
 
   return (
     <section
-      id="schedule"
+      id="recovery"
       aria-labelledby="schedule-heading"
       className="section-seam bg-dusk py-[120px] text-white lg:py-[160px]"
     >
@@ -91,13 +91,13 @@ export default function ScheduleDemo() {
         <div className="grid grid-cols-12 gap-x-6">
           <div className="col-span-12 lg:col-span-8">
             <FadeIn>
-              <SectionLabel time="Wed 9 Sep · 3:15 pm">Adaptive schedule</SectionLabel>
+              <SectionLabel time="Wed 9 Sep · 3:15 pm">The recovery moment</SectionLabel>
             </FadeIn>
             <RevealText
               id="schedule-heading"
               as="h2"
-              lines={["Training moved.", "So did everything after it."]}
-              accent="everything after it."
+              lines={["Training moved.", "Your plan still works."]}
+              accent="still works."
               className="type-display mt-8"
               delay={0.1}
             />
@@ -105,8 +105,8 @@ export default function ScheduleDemo() {
           <div className="col-span-12 mt-8 lg:col-span-4 lg:mt-0 lg:self-end">
             <FadeIn delay={0.2}>
               <p className="type-body-lg max-w-[420px] text-white/60">
-                Basketball shifts half an hour. Arcadia re-flows the evening, keeps your test
-                prep ahead of Friday and still has you in bed by 10:30.
+                Tell Arcadia what changed. It rebuilds the affected study blocks, keeps your
+                Friday test in view and shows you one clear next step.
               </p>
             </FadeIn>
           </div>
@@ -147,6 +147,9 @@ export default function ScheduleDemo() {
                 <div className="lg:hidden">
                   <ChangeStrip applied={applied} updated={updated} reduced={reduced} />
                 </div>
+                <AnimatePresence initial={false}>
+                  {updated ? <NextBlock reduced={reduced} /> : null}
+                </AnimatePresence>
               </div>
             </div>
 
@@ -174,9 +177,9 @@ function StatusLine({ showBanner, updated, reduced }: { showBanner: boolean; upd
             className="flex items-center gap-2 text-[13px] text-ui-text"
           >
             <span aria-hidden="true" className="size-1.5 shrink-0 border border-ui-text" />
-            <span className="type-mono-label hidden text-ui-muted sm:inline">Calendar</span>
-            <span className="hidden sm:inline">Basketball training moved to 5:30 PM.</span>
-            <span className="tabular text-[12px] sm:hidden">Training → 5:30 pm</span>
+            <span className="type-mono-label hidden text-ui-muted sm:inline">You said</span>
+            <span className="hidden sm:inline">Training moved to 5:30 pm.</span>
+            <span className="tabular text-[12px] sm:hidden">Training moved</span>
           </motion.p>
         )}
         {updated && (
@@ -189,7 +192,7 @@ function StatusLine({ showBanner, updated, reduced }: { showBanner: boolean; upd
             className="flex items-center gap-2 text-[13px] font-medium text-ui-text"
           >
             <ArcadiaIndicator />
-            Schedule updated.
+            Plan rebuilt.
           </motion.p>
         )}
       </AnimatePresence>
@@ -328,7 +331,7 @@ function DiffRail({ applied, updated, reduced }: { applied: number; updated: boo
           transition={{ duration: 0.5 }}
           className="mt-auto border-t border-white/[0.1] pt-4 text-white/55"
         >
-          <span className="text-white/35">= </span>Sleep kept · 10:30 pm
+          <span className="text-white/35">= </span>Friday test kept in view
         </motion.p>
       )}
     </div>
@@ -365,9 +368,28 @@ function ChangeStrip({ applied, updated, reduced }: { applied: number; updated: 
           transition={{ duration: 0.5 }}
           className="tabular ml-auto text-[11px] text-ui-muted"
         >
-          Sleep kept · 10:30 pm
+          Friday test kept in view
         </motion.span>
       )}
     </div>
+  );
+}
+
+function NextBlock({ reduced }: { reduced: boolean }) {
+  return (
+    <motion.div
+      key="next-block"
+      initial={{ opacity: 0, y: reduced ? 0 : 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: reduced ? 0 : -6 }}
+      transition={{ duration: reduced ? 0 : 0.55, ease: EASE_OUT }}
+      className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-ui-border bg-ui-surface/70 px-4 py-3.5 sm:px-6"
+      aria-live="polite"
+    >
+      <ArcadiaIndicator />
+      <span className="type-mono-label text-ui-muted">Your next block</span>
+      <span className="text-[14px] font-medium text-ui-text">Methods practice</span>
+      <span className="tabular text-[12px] text-ui-muted">40 min · Thursday 5:50 pm</span>
+    </motion.div>
   );
 }

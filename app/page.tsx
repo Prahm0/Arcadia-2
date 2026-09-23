@@ -1,9 +1,7 @@
 import ArcadiaInput from "@/components/ArcadiaInput";
-import ConnectionsSection from "@/components/ConnectionsSection";
 import FinalCTA from "@/components/FinalCTA";
 import Footer from "@/components/Footer";
 import Hero from "@/components/Hero";
-import MentorSection from "@/components/MentorSection";
 import Navbar from "@/components/Navbar";
 import PricingSection from "@/components/PricingSection";
 import ProblemSection from "@/components/ProblemSection";
@@ -24,16 +22,12 @@ export default function Home() {
       <main>
         <Hero />
         <ProblemSection />
-        <ThinkingSection />
-        <TodayDemo />
-        <ArcadiaInput />
-        <MentorSection />
         <LazyMount minHeight="100svh" className="bg-dusk">
           <ScheduleDemo />
         </LazyMount>
-        <LazyMount minHeight="260vh" className="bg-dusk">
-          <ConnectionsSection />
-        </LazyMount>
+        <ThinkingSection />
+        <TodayDemo />
+        <ArcadiaInput />
         <TesterNotesSection />
         <PricingSection />
         <FinalCTA />

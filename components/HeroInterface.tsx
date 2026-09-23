@@ -134,7 +134,7 @@ function Card({ staticBlocks }: { staticBlocks: ScheduleBlock[] }) {
         </div>
         <div className="tabular flex items-center gap-2 text-[11px] text-ui-muted">
           <ArcadiaMark size={9} animate="twinkle" className="text-accent" />
-          <span className="hidden sm:inline">Live ·</span> Up to date
+          <span>Week plan</span>
         </div>
       </div>
 

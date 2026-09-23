@@ -36,9 +36,9 @@ export const today = {
 
 export const tellArcadia = {
   student:
-    "I have training after school tomorrow and probably won’t be home until 7.",
+    "Training moved to Thursday.",
   arcadia:
-    "Done. I moved Chemistry to Thursday, shortened tonight’s English session and kept your Methods revision before Friday’s test.",
+    "Done. I moved Chemistry to Thursday, kept your Methods revision before Friday’s test and left the rest of your week intact.",
 };
 
 export type TellDay = "Tue" | "Wed" | "Thu";

@@ -29,16 +29,15 @@ export default function FinalCTA() {
           <RevealText
             id="cta-heading"
             as="h2"
-            lines={["Stop planning your study.", "Start following the plan."]}
-            accent="following"
+            lines={["When the week moves,", "you still know what to do."]}
+            accent="know"
             className="type-display"
             stagger={0.14}
           />
           <FadeIn delay={0.15}>
             <p className="type-body-lg mt-8 max-w-[560px] text-white/60">
-              Free tier, no credit card. Two Arcad messages a day, the full
-              planner, calendar sync when you're ready. Upgrade to Pro when
-              you want more.
+              Start with your subjects, deadlines and commitments. Arcadia turns them into a
+              study plan that can adjust when your week does.
             </p>
           </FadeIn>
           <FadeIn delay={0.25} className="mt-10 flex w-full max-w-[520px] flex-col items-center gap-4 sm:flex-row sm:justify-center">

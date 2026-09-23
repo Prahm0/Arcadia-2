@@ -9,23 +9,23 @@ export interface Stage {
 export const stages: Stage[] = [
   {
     index: "01",
-    title: "Understand",
-    body: "Your classes, deadlines, assignments and commitments become part of one system.",
+    title: "See the week",
+    body: "Your school, deadlines, sport, work and commitments live in one plan.",
   },
   {
     index: "02",
-    title: "Plan",
-    body: "Arcadia determines what needs to happen, when it should happen and how much can realistically fit into your day.",
+    title: "Build the plan",
+    body: "Arcadia turns what you need to do into study blocks you can follow.",
   },
   {
     index: "03",
-    title: "Adapt",
-    body: "When something changes, Arcadia reorganises what comes next.",
+    title: "Recover the week",
+    body: "Tell Arcadia what changed and it rebuilds the part of your plan that needs to move.",
   },
   {
     index: "04",
-    title: "Guide",
-    body: "Your AI Mentor helps you understand what matters now and what you should focus on next.",
+    title: "Start next",
+    body: "Your next study block is clear, so you can stop rearranging and start studying.",
   },
 ];
 

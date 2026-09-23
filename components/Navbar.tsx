@@ -13,7 +13,7 @@ import Logo from "./ui/Logo";
 // travelling, never sends them back up the page mid-scroll.
 const links = [
   { label: "How it works", href: "#how-it-works" },
-  { label: "Product", href: "#today" },
+  { label: "Product", href: "#recovery" },
   { label: "Students", href: "#students" },
   { label: "Pricing", href: "#pricing" },
   { label: "About", href: "#about" },

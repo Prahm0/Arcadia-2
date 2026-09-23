@@ -58,7 +58,10 @@ export default function ProactiveArcadCards({ limit = 2, compact = false }: Proa
 
   function onAction(card: ProactiveCard, action: NonNullable<ProactiveCard["actions"]>[number]) {
     dismiss(card.id);
-    if (action.href) {
+    if (action.lifeReason) {
+      // Today listens for this and opens the recovery sheet, pre-run.
+      window.dispatchEvent(new CustomEvent("arcadia:life", { detail: action.lifeReason }));
+    } else if (action.href) {
       router.push(action.href);
     } else if (action.arcadPrompt) {
       router.push(`/app/arcad?prompt=${encodeURIComponent(action.arcadPrompt)}`);

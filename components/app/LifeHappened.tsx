@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import AppButton from "./AppButton";
@@ -35,7 +35,16 @@ function timeLabel(iso: string, tz: string): string {
     .replace(/\s/g, "");
 }
 
-export default function LifeHappened({ open, onClose }: { open: boolean; onClose: () => void }) {
+export default function LifeHappened({
+  open,
+  onClose,
+  autoReason = null,
+}: {
+  open: boolean;
+  onClose: () => void;
+  /** When opened from a proactive nudge, run this reason straight away. */
+  autoReason?: string | null;
+}) {
   const { data, reload } = useDashboardData();
   const tz = data.profile?.timezone || (typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "Australia/Brisbane");
 
@@ -51,6 +60,25 @@ export default function LifeHappened({ open, onClose }: { open: boolean; onClose
   const [result, setResult] = useState<RecoveryResult | null>(null);
 
   const subjects: string[] = (data.subjects ?? []).map((s) => s.name).filter(Boolean);
+
+  // Opened from a proactive nudge: preselect the reason, and run it straight
+  // away when it needs no extra input, so the fix is one tap from the card.
+  const ranAuto = useRef(false);
+  useEffect(() => {
+    if (!open) {
+      ranAuto.current = false;
+      return;
+    }
+    if (ranAuto.current || result || !autoReason) return;
+    const match = REASONS.find((r) => r.key === autoReason);
+    if (!match) return;
+    ranAuto.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setReason(match.key);
+    if (!match.needsInput) void run(match.key);
+    // run is stable for our purposes; guarded by ranAuto so it fires once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, autoReason, result]);
 
   if (!open) return null;
 

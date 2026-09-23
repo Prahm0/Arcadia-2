@@ -39,6 +39,7 @@ export default function TodayView() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [showTaskSheet, setShowTaskSheet] = useState(false);
   const [showLife, setShowLife] = useState(false);
+  const [lifeAutoReason, setLifeAutoReason] = useState<string | null>(null);
   const [celebrateId, setCelebrateId] = useState<{ id: string; at: number } | null>(null);
   const [openEventId, setOpenEventId] = useState<string | null>(null);
   const [openEventForReason, setOpenEventForReason] = useState(false);
@@ -80,6 +81,18 @@ export default function TodayView() {
     url.searchParams.delete("openEvent");
     url.searchParams.delete("missReason");
     window.history.replaceState({}, "", url.toString());
+  }, []);
+
+  // A proactive "your day slipped" card (or anywhere else) can ask Today to
+  // open the recovery sheet pre-run, so the fix is one tap from the nudge.
+  useEffect(() => {
+    const onLife = (event: Event) => {
+      const reason = (event as CustomEvent<string>).detail ?? null;
+      setLifeAutoReason(typeof reason === "string" ? reason : null);
+      setShowLife(true);
+    };
+    window.addEventListener("arcadia:life", onLife);
+    return () => window.removeEventListener("arcadia:life", onLife);
   }, []);
 
   const openedEvent = openEventId ? data.events.find((event) => event.id === openEventId) ?? null : null;
@@ -190,7 +203,14 @@ export default function TodayView() {
       </div>
 
       <NewTaskSheet open={showTaskSheet} onClose={() => setShowTaskSheet(false)} />
-      <LifeHappened open={showLife} onClose={() => setShowLife(false)} />
+      <LifeHappened
+        open={showLife}
+        autoReason={lifeAutoReason}
+        onClose={() => {
+          setShowLife(false);
+          setLifeAutoReason(null);
+        }}
+      />
       <EventDetailSheet
         event={openedEvent}
         timezone={timezone}

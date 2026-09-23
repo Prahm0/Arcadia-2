@@ -34,6 +34,7 @@ export default function ScheduleView() {
   const { data, patch, reload } = useDashboardData();
   const timezone = data.profile?.timezone || "Australia/Sydney";
   const [weekOffset, setWeekOffset] = useState(0);
+  const [mobileDayIndex, setMobileDayIndex] = useState(() => (new Date().getDay() + 6) % 7);
   const [now, setNow] = useState(new Date());
   const [showTaskSheet, setShowTaskSheet] = useState(false);
   const [newTaskDefaultDate, setNewTaskDefaultDate] = useState<string | null>(null);
@@ -110,6 +111,25 @@ export default function ScheduleView() {
 
   const weekLabel = weekLabelFor(week);
   const upToDate = weekOffset === 0;
+  const todayDayIndex = (new Date(`${dateKey(now.toISOString(), timezone)}T12:00:00Z`).getUTCDay() + 6) % 7;
+
+  const moveMobileDay = useCallback((direction: -1 | 1) => {
+    const next = mobileDayIndex + direction;
+    if (next < 0) {
+      setWeekOffset((value) => value - 1);
+      setMobileDayIndex(6);
+    } else if (next > 6) {
+      setWeekOffset((value) => value + 1);
+      setMobileDayIndex(0);
+    } else {
+      setMobileDayIndex(next);
+    }
+  }, [mobileDayIndex]);
+
+  const goToToday = useCallback(() => {
+    setWeekOffset(0);
+    setMobileDayIndex(todayDayIndex);
+  }, [todayDayIndex]);
 
   return (
     <>
@@ -120,13 +140,13 @@ export default function ScheduleView() {
         tour="schedule"
         action={
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <div className="flex items-center rounded-md" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
+            <div className="hidden items-center rounded-md md:flex" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
               <IconButton label="Previous week" onClick={() => setWeekOffset((v) => v - 1)}>
                 <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M12 5l-5 5 5 5" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </IconButton>
               <button
                 type="button"
-                onClick={() => setWeekOffset(0)}
+                onClick={goToToday}
                 className="h-9 border-x px-3 text-[13px] font-medium"
                 style={{ borderColor: "var(--app-border)", color: "var(--app-text-soft)" }}
               >
@@ -150,7 +170,24 @@ export default function ScheduleView() {
         }
       />
 
-      <div className="px-4 py-6 sm:px-10 sm:py-8">
+      <div className="px-4 py-6 md:hidden">
+        <MobileDaySchedule
+          days={week}
+          events={events}
+          subjects={data.subjects}
+          timezone={timezone}
+          selectedDayIndex={mobileDayIndex}
+          currentPosition={currentPosition}
+          onSelectDay={setMobileDayIndex}
+          onPreviousDay={() => moveMobileDay(-1)}
+          onNextDay={() => moveMobileDay(1)}
+          onToday={goToToday}
+          onSelectEvent={setSelectedEvent}
+          onCreateAtDay={openNewTaskForDay}
+        />
+      </div>
+
+      <div className="hidden px-4 py-6 md:block md:px-10 md:py-8">
         <div
           className="overflow-x-auto rounded-lg"
           style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
@@ -514,6 +551,175 @@ function WeekGrid({
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * A full seven-day grid is useful on a laptop but makes every column too
+ * narrow on a phone. The mobile view keeps the same schedule data, with one
+ * large, tappable day at a time and a date strip for jumping around the week.
+ */
+function MobileDaySchedule({
+  days,
+  events,
+  subjects,
+  timezone,
+  selectedDayIndex,
+  currentPosition,
+  onSelectDay,
+  onPreviousDay,
+  onNextDay,
+  onToday,
+  onSelectEvent,
+  onCreateAtDay,
+}: {
+  days: DayColumn[];
+  events: PlannerEvent[];
+  subjects: DashboardResponse["subjects"];
+  timezone: string;
+  selectedDayIndex: number;
+  currentPosition: { dayIndex: number; top: number } | null;
+  onSelectDay: (index: number) => void;
+  onPreviousDay: () => void;
+  onNextDay: () => void;
+  onToday: () => void;
+  onSelectEvent: (event: PlannerEvent) => void;
+  onCreateAtDay: (dayKey: string) => void;
+}) {
+  const HEIGHT = 960;
+  const selectedDay = days[selectedDayIndex];
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const blocks = events
+    .map((event) => ({ event, position: positionFor(event, days, timezone) }))
+    .filter(({ position }) => position.visible && position.dayIndex === selectedDayIndex);
+
+  function handleTouchEnd(event: React.TouchEvent<HTMLDivElement>) {
+    const start = touchStart.current;
+    touchStart.current = null;
+    const touch = event.changedTouches[0];
+    if (!start || !touch) return;
+    const x = touch.clientX - start.x;
+    const y = touch.clientY - start.y;
+    if (Math.abs(x) < 56 || Math.abs(x) <= Math.abs(y)) return;
+    if (x > 0) onPreviousDay();
+    else onNextDay();
+  }
+
+  return (
+    <section aria-label="Daily schedule">
+      <div className="flex items-center justify-between gap-2">
+        <IconButton label="Previous day" onClick={onPreviousDay}>
+          <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 5l-5 5 5 5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </IconButton>
+        <button
+          type="button"
+          onClick={onToday}
+          className="h-10 rounded-md px-3 text-[13px] font-medium"
+          style={{ color: "var(--app-text-soft)", background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
+        >
+          Today
+        </button>
+        <IconButton label="Next day" onClick={onNextDay}>
+          <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M8 5l5 5-5 5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </IconButton>
+      </div>
+
+      <div className="mt-4 grid grid-cols-7 gap-1" role="tablist" aria-label="Days this week">
+        {days.map((day, index) => {
+          const active = index === selectedDayIndex;
+          return (
+            <button
+              key={day.key}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              aria-label={`${day.label}${day.isToday ? ", today" : ""}`}
+              onClick={() => onSelectDay(index)}
+              className="flex min-h-12 flex-col items-center justify-center rounded-md text-[11px] transition-colors"
+              style={{
+                background: active ? "var(--app-accent-soft)" : "transparent",
+                color: active ? "var(--app-accent-strong)" : "var(--app-text-muted)",
+                boxShadow: active ? "inset 0 0 0 1px color-mix(in oklab, var(--app-accent) 28%, transparent)" : undefined,
+              }}
+            >
+              <span className="font-medium">{day.weekday}</span>
+              <span className="mt-0.5 text-[13px] tabular-nums">{day.date}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-5 overflow-hidden rounded-lg" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
+        <div className="flex items-center justify-between gap-3 border-b px-4 py-3" style={{ borderColor: "var(--app-border)" }}>
+          <div>
+            <p className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>{selectedDay.weekday}, {selectedDay.label}</p>
+            <p className="mt-0.5 text-[12px]" style={{ color: "var(--app-text-muted)" }}>Swipe between days. Tap a block for details.</p>
+          </div>
+          {selectedDay.isToday ? <span className="text-[11px] font-medium" style={{ color: "var(--app-accent-strong)" }}>Today</span> : null}
+        </div>
+
+        <div
+          className="relative touch-pan-y select-none"
+          style={{ height: HEIGHT }}
+          onTouchStart={(event) => {
+            const touch = event.touches[0];
+            if (touch) touchStart.current = { x: touch.clientX, y: touch.clientY };
+          }}
+          onTouchEnd={handleTouchEnd}
+        >
+          {HOUR_MARKS.map((hour) => {
+            const top = ((hour - HOUR_START) / HOUR_SPAN) * 100;
+            return (
+              <div key={hour} className="pointer-events-none absolute inset-x-0" style={{ top: `${top}%` }}>
+                <span className="absolute -top-[8px] left-3 text-[11px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
+                  {formatHourLabel(hour)}
+                </span>
+                <div className="ml-14 h-px" style={{ background: "color-mix(in oklab, var(--app-border) 80%, transparent)" }} />
+              </div>
+            );
+          })}
+
+          <button
+            type="button"
+            aria-label={`Add a task due ${selectedDay.label}`}
+            onClick={() => onCreateAtDay(selectedDay.key)}
+            className="absolute bottom-0 left-14 right-0 top-0 z-0 cursor-copy active:bg-[color:var(--app-accent-soft)]/40"
+          />
+
+          {blocks.map(({ event, position }) => {
+            const hue = event.category === "study" ? subjectColour(subjects, event.subject) : null;
+            const styles = hue ? hueBlock(hue) : CATEGORY_STYLE[event.category] ?? CATEGORY_STYLE.other;
+            const completed = event.outcome === "completed";
+            const missed = event.outcome === "missed";
+            return (
+              <button
+                key={event.id}
+                type="button"
+                onClick={() => onSelectEvent(event)}
+                className={cn("absolute left-[60px] right-2 z-10 overflow-hidden rounded-md px-3 py-2 text-left active:scale-[0.99]", completed && "opacity-55", missed && "opacity-40")}
+                style={{
+                  top: `${position.top}%`,
+                  height: `${Math.max(position.height, 4.4)}%`,
+                  background: styles.bg,
+                  color: styles.text,
+                  border: `1px ${event.category === "sleep" ? "dashed" : "solid"} ${styles.border}`,
+                }}
+              >
+                <span className="block truncate text-[13px] font-medium">{event.category === "study" ? studyTitle(event) : event.title}</span>
+                <span className="mt-0.5 block text-[11px] tabular-nums opacity-70">{formatClock(event.startAt, timezone)}–{formatClock(event.endAt, timezone)}</span>
+              </button>
+            );
+          })}
+
+          {currentPosition?.dayIndex === selectedDayIndex ? (
+            <div aria-hidden="true" className="pointer-events-none absolute left-14 right-0 z-20" style={{ top: `${currentPosition.top}%` }}>
+              <span className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-full" style={{ background: "var(--app-accent)", boxShadow: "0 0 0 3px color-mix(in oklab, var(--app-accent) 25%, transparent)" }} />
+              <div className="h-px" style={{ background: "var(--app-accent)" }} />
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </section>
   );
 }
 

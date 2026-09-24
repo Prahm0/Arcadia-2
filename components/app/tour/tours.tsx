@@ -743,8 +743,8 @@ export const TOURS: Record<TourId, Tour> = {
         ),
       },
       {
-        title: "Your sky keeps the rest",
-        body: "Every minute of focus lights stars in your constellations. A finished one becomes a card that's yours for good. A streak can break; stars stay lit.",
+        title: "Streak cards keep the rest",
+        body: "Every minute of focus lights stars on your streak cards. A finished one that's yours for good. A streak can break; stars stay lit.",
         visual: (
           <Window width={260}>
             <div className="flex items-center justify-between">

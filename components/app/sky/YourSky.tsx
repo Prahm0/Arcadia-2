@@ -94,8 +94,8 @@ export default function YourSky({
       <section id="sky" aria-labelledby="sky-heading" className="mt-10 scroll-mt-6">
         <Heading
           id="sky-heading"
-          title="Your sky"
-          body="Every minute of focus lights stars here. Unlike a streak, they never go out."
+          title="Streak cards"
+          body="Every minute of focus lights stars on your streak cards. Unlike a daily streak, they never go out."
           aside={sky ? (
             <label className="flex items-center gap-2 text-[12px]" style={{ color: "var(--app-text-muted)" }}>
               <input
@@ -111,14 +111,14 @@ export default function YourSky({
 
         {error || (actionError && !detail) ? (
           <div role="alert" className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border p-4 text-[13px]" style={{ borderColor: "var(--app-border)", color: "var(--app-text)" }}>
-            <span>{actionError || error}{sky && error ? " Your last saved sky is shown below." : ""}</span>
+            <span>{actionError || error}{sky && error ? " Your last saved progress is shown below." : ""}</span>
             {error ? <AppButton onClick={() => void refresh()}>Try again</AppButton> : null}
           </div>
         ) : null}
 
         {!sky || !followed || !definition ? (
           <div role="status" className="grid min-h-[320px] place-items-center rounded-xl text-[13px]" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)", color: "var(--app-text-muted)" }}>
-            {loading ? "Reading your sky…" : "Your sky will appear when the connection returns."}
+            {loading ? "Loading your streaks…" : "Your streak cards will appear when the connection returns."}
           </div>
         ) : (
           <div className="overflow-hidden rounded-xl" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)", color: "var(--app-text)" }}>
@@ -142,7 +142,7 @@ export default function YourSky({
 
               <div className="flex flex-col justify-center p-6 sm:p-8">
                 <p className="text-[11px] uppercase tracking-[.13em]" style={{ color: "var(--app-text-muted)" }}>
-                  {followed.earnedAt ? "Yours to keep" : "Forming now"}
+                  {followed.earnedAt ? "Yours to keep" : "Next streak card"}
                 </p>
                 <h3 className="mt-2 text-[26px] font-medium tracking-[-.035em]">{definition.name}</h3>
                 <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--app-text-muted)" }}>{definition.story}</p>
@@ -178,7 +178,7 @@ export default function YourSky({
                   ) : (
                     <Link href="/app/focus" className={appButtonClass("primary")}>Start focus</Link>
                   )}
-                  <AppButton onClick={browse}>Change constellation</AppButton>
+                  <AppButton onClick={browse}>Change card</AppButton>
                 </div>
                 {!followed.earnedAt ? (
                   <button type="button" className="mt-4 self-start text-[12px] underline underline-offset-4" onClick={() => open(followed)} style={{ color: "var(--app-text-muted)" }}>
@@ -228,8 +228,8 @@ export default function YourSky({
         <section id="constellations" aria-labelledby="constellations-heading" className="mt-10 scroll-mt-6">
           <Heading
             id="constellations-heading"
-            title="Constellations"
-            body="Different ways of studying, each with a place in your sky. Everything you do advances all of them; following one just brings it into view."
+            title="All streak cards"
+            body="Different ways of studying, each with its own card. Everything you do advances all of them; following one just brings it into view."
             aside={
               <div role="group" aria-label="Show" className="flex flex-wrap gap-1">
                 {FILTERS.map((item) => (
@@ -266,7 +266,7 @@ export default function YourSky({
           ) : (
             <div className="rounded-xl border border-dashed p-8 text-center" style={{ borderColor: "var(--app-border)", color: "var(--app-text)" }}>
               <h3 className="text-[17px] font-medium">
-                {filter === "favourites" ? "Keep your favourites close" : filter === "forming" ? "Your sky is complete for now" : "Your first card is taking shape"}
+                {filter === "favourites" ? "Keep your favourites close" : filter === "forming" ? "Every card is collected for now" : "Your first card is taking shape"}
               </h3>
               <p className="mx-auto mt-2 max-w-sm text-[13px] leading-relaxed" style={{ color: "var(--app-text-muted)" }}>
                 {filter === "favourites"
@@ -301,7 +301,7 @@ export default function YourSky({
               <p className="mt-4 text-[13px] leading-relaxed" style={{ color: "var(--app-text-muted)" }}>{detailDefinition.requirement}</p>
               <div className="my-6 border-y py-4 text-[12px] leading-relaxed" style={{ borderColor: "var(--app-border)", color: "var(--app-text-muted)" }}>
                 <p className="font-medium" style={{ color: "var(--app-text)" }}>Your rewards</p>
-                <p className="mt-1">A permanent card, profile emblem and constellation backdrop.</p>
+                <p className="mt-1">A permanent card, profile emblem and backdrop.</p>
                 {detail.earnedAt ? (
                   <p className="mt-2">
                     Formed {skyDate(detail.earnedAt)}
@@ -339,7 +339,7 @@ export default function YourSky({
                       document.getElementById("sky")?.scrollIntoView({ behavior: "smooth", block: "start" });
                     })}
                   >
-                    {sky.preferences.followed === detail.id ? "Continue this constellation" : "Follow this constellation"}
+                    {sky.preferences.followed === detail.id ? "Continue this card" : "Follow this card"}
                   </AppButton>
                 )}
               </div>

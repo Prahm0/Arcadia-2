@@ -3,14 +3,16 @@
 import { useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import Link from "next/link";
 import { formatMinutes } from "@/lib/api/time";
+import { STREAK_GOLD } from "@/shared/constellations";
 import { CONSISTENCY_THRESHOLD, type DayConsistency, type StreakSummary } from "@/lib/app/streaks";
 
 /** Two weeks: enough to see a run form and where the last one broke. */
 const DAYS = 14;
 /** A gentle wave, so the run of days reads as a constellation rather than a chart. */
 const WAVE = [68, 50, 62, 40, 56, 44, 66, 48, 60, 38, 54, 42, 64, 46];
-const GOLD = "#e6c78f";
-const SAGE = "#a7d1b0";
+const GOLD = STREAK_GOLD;
+// Recovered days keep the same gold; the caption says what happened.
+const SAGE = GOLD;
 const STAR = "#fff8ea";
 /** The panel is always night-dark, so its buttons don't follow the app theme. */
 const BUTTON = "inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-md px-3.5 text-[13px] font-medium transition-colors duration-100";

@@ -56,7 +56,7 @@ export default function StreaksView() {
   const meta = [
     streak.current > 0 ? `${streak.current}-day streak` : "No streak yet",
     streak.longest > 0 ? `best ${streak.longest}` : null,
-    collected === undefined ? null : `${collected} ${collected === 1 ? "constellation" : "constellations"} collected`,
+    collected === undefined ? null : `${collected} streak ${collected === 1 ? "card" : "cards"} collected`,
   ].filter(Boolean).join(" · ");
 
   return (

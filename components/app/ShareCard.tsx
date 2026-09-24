@@ -7,7 +7,7 @@ export interface WeeklyRecap {
   sessions: number;
   streak: number;
   recoveries: number;
-  /** All-time stars lit, so the recap carries the user's real Study Sky. */
+  /** All-time stars lit, so the recap carries the user's real streak stars. */
   starsLit: number;
 }
 
@@ -83,7 +83,7 @@ export default function ShareCard({ recap, onClose }: { recap: WeeklyRecap; onCl
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="type-eyebrow" style={{ color: "var(--app-arcad-strong)" }}>Share your progress</p>
+            <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Share your progress</p>
             <h2 id="share-week-title" className="mt-1 text-[19px] font-semibold tracking-[-0.02em]" style={{ color: "var(--app-text)" }}>
               Your Arcadia week
             </h2>
@@ -107,7 +107,7 @@ export default function ShareCard({ recap, onClose }: { recap: WeeklyRecap; onCl
           ))}
         </div>
 
-        <div className="mt-4 overflow-hidden rounded-lg" style={{ background: "#110b26" }}>
+        <div className="mt-4 overflow-hidden rounded-lg" style={{ background: "#0c1017" }}>
           <canvas
             ref={canvasRef}
             aria-label={`${format === "story" ? "Story" : "Square"} preview of your Arcadia weekly recap`}
@@ -116,7 +116,7 @@ export default function ShareCard({ recap, onClose }: { recap: WeeklyRecap; onCl
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => void share()} disabled={sharing} className="inline-flex h-10 items-center justify-center gap-2 rounded-md px-3 text-[13px] font-semibold disabled:opacity-60" style={{ background: "var(--app-arcad)", color: "var(--app-arcad-on)" }}>
+          <button type="button" onClick={() => void share()} disabled={sharing} className="inline-flex h-10 items-center justify-center gap-2 rounded-md px-3 text-[13px] font-semibold disabled:opacity-60" style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}>
             <ShareIcon />
             {sharing ? "Preparing" : "Share image"}
           </button>
@@ -149,26 +149,26 @@ function drawRecap(canvas: HTMLCanvasElement, recap: WeeklyRecap, format: CardFo
   const stars = Math.min(STAR_PATH.length, recap.starsLit);
 
   const background = ctx.createLinearGradient(0, 0, width, height);
-  background.addColorStop(0, "#100820");
-  background.addColorStop(0.5, "#1c1040");
-  background.addColorStop(1, "#0a102b");
+  background.addColorStop(0, "#0c1017");
+  background.addColorStop(0.5, "#131a24");
+  background.addColorStop(1, "#0c1017");
   ctx.fillStyle = background;
   ctx.fillRect(0, 0, width, height);
-  drawNebula(ctx, width, height, 180, 300, 440, "rgba(139, 92, 246, 0.28)");
-  drawNebula(ctx, width, height, 900, compact ? 260 : 600, 390, "rgba(96, 165, 250, 0.17)");
+  drawNebula(ctx, width, height, 180, 300, 440, "rgba(230, 199, 143, 0.14)");
+  drawNebula(ctx, width, height, 900, compact ? 260 : 600, 390, "rgba(38, 51, 71, 0.45)");
   drawField(ctx, width, height);
 
-  ctx.fillStyle = "#f8f7ff";
+  ctx.fillStyle = "#f1f3f6";
   ctx.font = "600 32px ui-sans-serif, system-ui, sans-serif";
   ctx.fillText("✦  ARCADIA", 76, 100);
-  ctx.fillStyle = "rgba(235, 229, 255, 0.7)";
+  ctx.fillStyle = "rgba(214, 220, 229, 0.7)";
   ctx.font = "500 24px ui-sans-serif, system-ui, sans-serif";
   ctx.fillText("MY STUDY WEEK", 76, 154);
 
   ctx.fillStyle = "#ffffff";
   ctx.font = `${compact ? 700 : 700} ${compact ? 62 : 74}px ui-sans-serif, system-ui, sans-serif`;
-  ctx.fillText("My study sky", 76, compact ? 218 : 255);
-  ctx.fillStyle = "rgba(235, 229, 255, 0.72)";
+  ctx.fillText("My streak", 76, compact ? 218 : 255);
+  ctx.fillStyle = "rgba(214, 220, 229, 0.72)";
   ctx.font = "500 27px ui-sans-serif, system-ui, sans-serif";
   ctx.fillText("Every focused session lights another star.", 78, compact ? 266 : 305);
 
@@ -193,11 +193,11 @@ function drawRecap(canvas: HTMLCanvasElement, recap: WeeklyRecap, format: CardFo
   });
 
   const footerY = height - 90;
-  ctx.fillStyle = "rgba(235, 229, 255, 0.84)";
+  ctx.fillStyle = "rgba(214, 220, 229, 0.84)";
   ctx.font = "600 24px ui-sans-serif, system-ui, sans-serif";
   ctx.fillText("Your study plan survives real life.", 76, footerY);
   ctx.textAlign = "right";
-  ctx.fillStyle = "#c7b6ff";
+  ctx.fillStyle = "#e6c78f";
   ctx.font = "600 22px ui-sans-serif, system-ui, sans-serif";
   ctx.fillText("arcadiahq.app", width - 76, footerY);
   ctx.textAlign = "left";
@@ -212,7 +212,7 @@ function drawConstellation(ctx: CanvasRenderingContext2D, width: number, top: nu
     ctx.beginPath();
     ctx.moveTo(from.x, from.y);
     ctx.lineTo(to.x, to.y);
-    ctx.strokeStyle = index < lit ? "rgba(194, 169, 255, 0.82)" : "rgba(218, 209, 255, 0.18)";
+    ctx.strokeStyle = index < lit ? "rgba(230, 199, 143, 0.82)" : "rgba(220, 229, 244, 0.18)";
     ctx.setLineDash(index < lit ? [] : [7, 14]);
     ctx.stroke();
   }
@@ -221,14 +221,14 @@ function drawConstellation(ctx: CanvasRenderingContext2D, width: number, top: nu
     const on = index < lit;
     if (on) {
       const glow = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, 45);
-      glow.addColorStop(0, "rgba(203, 184, 255, 0.8)");
-      glow.addColorStop(1, "rgba(139, 92, 246, 0)");
+      glow.addColorStop(0, "rgba(230, 199, 143, 0.8)");
+      glow.addColorStop(1, "rgba(230, 199, 143, 0)");
       ctx.fillStyle = glow;
       ctx.beginPath();
       ctx.arc(point.x, point.y, 45, 0, Math.PI * 2);
       ctx.fill();
     }
-    drawStar(ctx, point.x, point.y, on ? (index % 5 === 0 ? 18 : 12) : 7, on ? "#f5f1ff" : "rgba(225, 216, 255, 0.34)");
+    drawStar(ctx, point.x, point.y, on ? (index % 5 === 0 ? 18 : 12) : 7, on ? "#fff8ea" : "rgba(220, 229, 244, 0.34)");
   });
 }
 
@@ -236,10 +236,10 @@ function drawMetric(ctx: CanvasRenderingContext2D, x: number, y: number, width: 
   roundedRect(ctx, x, y, width, height, 24);
   ctx.fillStyle = "rgba(255, 255, 255, 0.09)";
   ctx.fill();
-  ctx.strokeStyle = "rgba(224, 212, 255, 0.22)";
+  ctx.strokeStyle = "rgba(220, 229, 244, 0.22)";
   ctx.lineWidth = 1.5;
   ctx.stroke();
-  ctx.fillStyle = "rgba(231, 223, 255, 0.68)";
+  ctx.fillStyle = "rgba(214, 220, 229, 0.68)";
   ctx.font = "600 20px ui-sans-serif, system-ui, sans-serif";
   ctx.fillText(label, x + 26, y + 48);
   ctx.fillStyle = "#ffffff";
@@ -265,7 +265,7 @@ function drawField(ctx: CanvasRenderingContext2D, width: number, height: number)
     const x = random() * width;
     const y = random() * height;
     const size = random() < 0.12 ? 3.5 : random() < 0.48 ? 2 : 1;
-    ctx.fillStyle = `rgba(237, 231, 255, ${0.18 + random() * 0.55})`;
+    ctx.fillStyle = `rgba(220, 229, 244, ${0.18 + random() * 0.55})`;
     ctx.beginPath();
     ctx.arc(x, y, size, 0, Math.PI * 2);
     ctx.fill();

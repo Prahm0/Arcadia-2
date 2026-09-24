@@ -44,4 +44,6 @@ export const analytics = {
    */
   recoveryUsed: (reason: string, moved: number, onboarding = false) =>
     track("recovery_used", { reason, moved, onboarding }),
+  studyWithMeStarted: (scene: string) => track("study_with_me_started", { scene }),
+  studyWithMeShared: () => track("study_with_me_shared"),
 };

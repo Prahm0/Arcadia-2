@@ -1,5 +1,5 @@
 import Starfield from "./Starfield";
-import Button from "./ui/Button";
+import { PlatformChoice } from "./PlatformLinks";
 import Container from "./ui/Container";
 import FadeIn from "./ui/FadeIn";
 import RevealText from "./ui/RevealText";
@@ -40,10 +40,8 @@ export default function FinalCTA() {
               study plan that can adjust when your week does.
             </p>
           </FadeIn>
-          <FadeIn delay={0.25} className="mt-10 flex w-full max-w-[520px] flex-col items-center gap-4 sm:flex-row sm:justify-center">
-            <Button tone="dark" href="/register" className="sm:min-w-[180px]">
-              Start free
-            </Button>
+          <FadeIn delay={0.25} className="mt-10 flex w-full max-w-[560px] flex-col items-center gap-4">
+            <PlatformChoice />
             <a
               href="/login"
               className="text-[14.5px] font-medium text-white/70 transition-colors duration-200 hover:text-white"

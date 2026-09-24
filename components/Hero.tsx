@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 import HeroInterface from "./HeroInterface";
 import LiveNow from "./LiveNow";
 import Starfield from "./Starfield";
+import { PlatformNote } from "./PlatformLinks";
 import Button from "./ui/Button";
 import Container from "./ui/Container";
 
@@ -148,6 +149,7 @@ export default function Hero() {
                   </span>
                 </a>
               </div>
+              <PlatformNote className="mt-5" />
             </CopyItem>
           </motion.div>
         </Container>

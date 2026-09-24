@@ -431,7 +431,7 @@ export default function SettingsView() {
     if (state !== "granted") return;
     showNotification({
       title: "Test reminder",
-      body: "This is what a session reminder will look like.",
+      body: "This is what a schedule reminder will look like.",
       tag: "arcadia:test",
     });
   }
@@ -816,7 +816,7 @@ export default function SettingsView() {
         </Card>
 
         <Card>
-          <SectionHeader label="Session reminders" />
+          <SectionHeader label="Schedule reminders" />
           {!notificationsSupported() ? (
             <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
               This browser doesn't support notifications. On iOS Safari, add the app to your Home Screen to unlock them.
@@ -826,10 +826,10 @@ export default function SettingsView() {
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>
-                    Remind me before each study block
+                    Remind me before study and sleep
                   </p>
                   <p className="mt-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-                    A quick browser notification while Arcadia is open in a tab. Push notifications while the app is closed are a follow-up.
+                    A quick browser notification before study blocks and bedtime while Arcadia is open in a tab.
                   </p>
                 </div>
                 <button
@@ -899,7 +899,7 @@ export default function SettingsView() {
             {!hasPaidPlan ? (
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-[13.5px] leading-5" style={{ color: "var(--app-text-muted)" }}>
-                  Get a check-in before a study block and follow-ups when a session needs logging. Included with Pro and Max.
+                  Get a check-in before study or sleep and follow-ups when a study session needs logging. Included with Pro and Max.
                 </p>
                 <AppButton type="button" variant="secondary" onClick={() => router.push("/app/pricing")}>See plans</AppButton>
               </div>
@@ -929,8 +929,8 @@ export default function SettingsView() {
                   <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Notification types</p>
                   <div className="mt-3 flex flex-col gap-4">
                     <PreferenceToggle
-                      label="Before a study block"
-                      detail="A heads-up five minutes before your next session."
+                      label="Before study or sleep"
+                      detail="A heads-up five minutes before your next study block or bedtime."
                       checked={pushPreferences.sessionStartEnabled}
                       disabled={pushBusy || !pushPreferences.checkinsEnabled}
                       onChange={(sessionStartEnabled) => void savePushPreferences({ ...pushPreferences, sessionStartEnabled })}

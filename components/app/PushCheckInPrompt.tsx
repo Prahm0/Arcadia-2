@@ -70,7 +70,7 @@ export default function PushCheckInPrompt() {
           Want Arcad to keep you on track?
         </h2>
         <p className="mt-2 text-[14px] leading-6" style={{ color: "var(--app-text-muted)" }}>
-          Get a heads-up before study blocks and a quick follow-up when a session needs logging.
+          Get a heads-up before study blocks and bedtime, plus a quick follow-up when a study session needs logging.
         </p>
         {error ? <p className="mt-3 text-[13px]" style={{ color: "var(--app-danger)" }}>{error}</p> : null}
         <div className="mt-6 flex items-center justify-end gap-2">

@@ -27,6 +27,7 @@ import ShortcutsDialog from "./ShortcutsDialog";
 import PushCheckInPrompt from "./PushCheckInPrompt";
 import SearchDialog, { SEARCH_ICON, useModKey } from "./SearchDialog";
 import SessionStartModal from "./SessionStartModal";
+import SleepStartPrompt from "./SleepStartPrompt";
 import Kbd from "./Kbd";
 import Logo from "@/components/ui/Logo";
 import { Avatar } from "./profile/ui";
@@ -595,6 +596,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
         timezone={sessionStart.timezone}
         onClose={sessionStart.dismiss}
       />
+      <SleepStartPrompt blocked={Boolean(sessionStart.event)} />
     </div>
   );
 }

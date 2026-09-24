@@ -2,9 +2,12 @@ import { and, asc, desc, eq, ne } from "drizzle-orm";
 import { schema, type Database } from "../db";
 import type { Env } from "../types";
 import { newId } from "./ids";
-import { ARCAD_VOICE, aiConfigured, completeJson } from "./openai";
+import { ARCAD_VOICE, aiConfigured, completeJson, isReasoningModel, type ChatMessage } from "./openai";
+import { monthPlanEffort, replyBudget, type PlanEffort } from "./plan-tier";
 import { subjectKey, uniqueSubjects, weeklyTargetMinutes } from "./scheduler";
+import { studyHabits } from "./study-context";
 import { inTerm, termWeekOf } from "./terms";
+import { getUserTier } from "./tiers";
 import { DAY, localDateKey, nextLocalDay, startOfLocalDay, startOfLocalWeek } from "./time";
 
 type Subject = typeof schema.subjects.$inferSelect;
@@ -75,6 +78,8 @@ interface PlanInputs {
   goals: string[];
   memories: string[];
   capacity: number;
+  /** Share of marked study they've got done lately, or null without enough history. */
+  keptShare: number | null;
 }
 
 /** "Term 4, week 1", "School holidays", "Holidays, then Term 4 week 1", or "". */
@@ -104,6 +109,7 @@ async function gatherInputs(database: Database, userId: string): Promise<PlanInp
   if (!profile) return null;
 
   const tz = profile.timezone;
+  const habits = await studyHabits(database, userId, tz);
   const now = Date.now();
   const today = startOfLocalDay(now, tz);
   const end = today + PLAN_SPAN_DAYS * DAY;
@@ -152,6 +158,7 @@ async function gatherInputs(database: Database, userId: string): Promise<PlanInp
     goals: goalRows.map((goal) => goal.title),
     memories: profile.memoryEnabled ? memoryRows.map((row) => row.content) : [],
     capacity: Math.max(0, profile.maxDailyStudyMinutes) * 7,
+    keptShare: habits.keptShare,
   };
 }
 
@@ -283,6 +290,9 @@ function describe(inputs: PlanInputs): string {
         }`,
     ),
   ];
+  if (inputs.keptShare !== null) {
+    lines.push("", `Over the last four weeks they got ${Math.round(inputs.keptShare * 100)}% of their marked study done.`);
+  }
   if (profile.atarTarget) lines.push("", `ATAR target ${profile.atarTarget.toFixed(2)}.`);
   if (goals.length) lines.push(`Goals: ${goals.join("; ")}.`);
   if (profile.arcadAbout.trim()) lines.push(`About them: ${clip(profile.arcadAbout, 600)}`);
@@ -290,31 +300,47 @@ function describe(inputs: PlanInputs): string {
   return lines.join("\n");
 }
 
-async function arcadPlan(env: Env, inputs: PlanInputs): Promise<MonthPlan | null> {
-  const reply = await completeJson<{
-    summary: string;
-    weeks: Array<{ focus: string; subjects: Array<{ name: string; minutes: number }> }>;
-  }>(
-    env,
-    [
-      {
-        role: "system",
-        content: [
-          ARCAD_VOICE,
-          "",
-          `Plan the student's next ${inputs.weeks.length} weeks of study. Deadline work is booked separately, so you're splitting their regular subject time across the weeks.`,
-          "Reply with:",
-          "- summary: one or two short sentences on how the month is set up and why.",
-          `- weeks: exactly ${inputs.weeks.length}, in order. For each, focus: one line under 100 characters on what that week is about (a deadline coming, a subject getting extra, holidays), and subjects: every subject with its minutes that week.`,
-          "How to split: start each subject at its usual minutes. Give more in the week or two before its deadlines and to subjects they're finding hard or aiming high in, less straight after a deadline. Keep each subject between half and one and a half times its usual week, in steps of 15, and each week's total within their weekly limit. In the holidays there's more room, so it's a good time to get ahead on hard subjects.",
-          "Only mention deadlines, subjects and goals from the details. Never name topics, chapters, texts or assessments that aren't written there.",
-        ].join("\n"),
-      },
-      { role: "user", content: describe(inputs) },
-    ],
-    PLAN_SCHEMA,
-    1400,
-  );
+type PlanReply = {
+  summary: string;
+  weeks: Array<{ focus: string; subjects: Array<{ name: string; minutes: number }> }>;
+};
+
+async function arcadPlan(env: Env, inputs: PlanInputs, effort: PlanEffort): Promise<MonthPlan | null> {
+  const messages: ChatMessage[] = [
+    {
+      role: "system",
+      content: [
+        ARCAD_VOICE,
+        "",
+        `Plan the student's next ${inputs.weeks.length} weeks of study. Deadline work is booked separately, so you're splitting their regular subject time across the weeks.`,
+        "Reply with:",
+        "- summary: one or two short sentences on how the month is set up and why.",
+        `- weeks: exactly ${inputs.weeks.length}, in order. For each, focus: one line under 100 characters on what that week is about (a deadline coming, a subject getting extra, holidays), and subjects: every subject with its minutes that week.`,
+        "How to split: start each subject at its usual minutes. Give more in the week or two before its deadlines and to subjects they're finding hard or aiming high in, less straight after a deadline. Keep each subject between half and one and a half times its usual week, in steps of 15, and each week's total within their weekly limit. In the holidays there's more room, so it's a good time to get ahead on hard subjects.",
+        "If they've been getting well under their planned study done, don't pile extra onto ordinary weeks: move time toward deadline weeks rather than adding it.",
+        "Only mention deadlines, subjects and goals from the details. Never name topics, chapters, texts or assessments that aren't written there.",
+      ].join("\n"),
+    },
+    { role: "user", content: describe(inputs) },
+  ];
+
+  let reply: PlanReply | null = null;
+  for (const [index, model] of effort.models.entries()) {
+    const premium = effort.premium && index === 0;
+    try {
+      reply = await completeJson<PlanReply>(
+        env,
+        messages,
+        PLAN_SCHEMA,
+        isReasoningModel(model) ? replyBudget(true, premium) : 1400,
+        { model, reasoningEffort: effort.reasoningEffort },
+      );
+      break;
+    } catch (err) {
+      if (index === effort.models.length - 1) throw err;
+      console.error(`[month-plan] ${model} failed, trying the next model`, err);
+    }
+  }
   if (!reply || !Array.isArray(reply.weeks) || reply.weeks.length === 0) return null;
 
   const weeks = inputs.weeks.map((week, index) => {
@@ -358,7 +384,7 @@ export async function makeMonthPlan(env: Env, database: Database, userId: string
   let plan: MonthPlan | null = null;
   if (aiConfigured(env) && inputs.subjects.length > 0) {
     try {
-      plan = await arcadPlan(env, inputs);
+      plan = await arcadPlan(env, inputs, monthPlanEffort(env, await getUserTier(database, userId)));
     } catch (err) {
       console.error("[month-plan] Arcad failed, using the fallback", err);
     }

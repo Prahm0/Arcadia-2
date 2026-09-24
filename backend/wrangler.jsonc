@@ -17,6 +17,10 @@
     "OPENAI_MODEL": "gpt-4o-mini",
     // Laying out the week is a real planning problem, so it gets a reasoning model.
     "OPENAI_PLAN_MODEL": "gpt-5-mini",
+    // Pro and Max students plan on a stronger model, a few layouts a day
+    // (lib/plan-tier.ts). Max also thinks harder with it.
+    "OPENAI_PLAN_MODEL_PRO": "gpt-5",
+    "OPENAI_PLAN_MODEL_MAX": "gpt-5",
     // Stripe price IDs — not secret. Live-mode ids, copied over from the
     // sandbox products after the account was activated. Amounts match the
     // sandbox: Pro $4.95/$12.82/$49.40, Max $9.95/$34.54/$205.40 (AUD).

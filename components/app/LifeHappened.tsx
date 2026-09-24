@@ -5,7 +5,11 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import { analytics } from "@/lib/analytics/events";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
+import { RECOVERY_SHARE_DEFAULT, type RecoveryReason, type RecoveryResult } from "@/lib/app/recovery";
+import type { DashboardResponse } from "@/lib/api/types";
 import AppButton from "./AppButton";
+import RecoveryShareCard from "./RecoveryShareCard";
+import RecoveryWeekStrip from "./RecoveryWeekStrip";
 
 /**
  * The Recovery Loop, front of house. The student says what changed, Arcad
@@ -13,13 +17,7 @@ import AppButton from "./AppButton";
  * and we show what it protected and moved plus the one next thing to do. This
  * is the product's signature moment: life happened, and the plan adjusted.
  */
-type Reason = "missed" | "less_time" | "tired" | "busy" | "new_deadline";
-
-interface RecoveryResult {
-  lines: string[];
-  moved: number;
-  nextBlock: { subject: string | null; title: string; startAt: string; minutes: number } | null;
-}
+type Reason = RecoveryReason;
 
 const REASONS: { key: Reason; label: string; hint: string; needsInput?: boolean }[] = [
   { key: "missed", label: "I missed a study block", hint: "Reflow the work you didn't get to" },
@@ -56,6 +54,7 @@ export default function LifeHappened({
   const [dlSubject, setDlSubject] = useState("");
   const [dlDue, setDlDue] = useState("");
   const [dlSize, setDlSize] = useState<"small" | "medium" | "large">("medium");
+  const [excuse, setExcuse] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<RecoveryResult | null>(null);
@@ -91,6 +90,7 @@ export default function LifeHappened({
     setDlSubject("");
     setDlDue("");
     setDlSize("medium");
+    setExcuse("");
     setError(null);
     setResult(null);
     setLoading(false);
@@ -145,7 +145,7 @@ export default function LifeHappened({
         onClick={(e) => e.stopPropagation()}
       >
         {result ? (
-          <Result result={result} tz={tz} onDone={close} />
+          <Result result={result} tz={tz} reason={reason ?? "busy"} excuse={excuse || RECOVERY_SHARE_DEFAULT[reason ?? "busy"]} subjects={data.subjects ?? []} onDone={close} />
         ) : (
           <>
             <div className="flex items-start justify-between gap-3">
@@ -175,8 +175,8 @@ export default function LifeHappened({
                   type="button"
                   onClick={() => {
                     setReason(r.key);
+                    setExcuse("");
                     setError(null);
-                    if (!r.needsInput) void run(r.key);
                   }}
                   disabled={loading}
                   className="flex flex-col rounded-lg px-4 py-3 text-left transition-colors disabled:opacity-60"
@@ -218,6 +218,21 @@ export default function LifeHappened({
                   />
                 </label>
               </div>
+            ) : null}
+
+            {selected ? (
+              <label className="mt-4 block text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
+                What happened? (optional)
+                <input
+                  type="text"
+                  value={excuse}
+                  onChange={(event) => setExcuse(event.target.value.slice(0, 60))}
+                  maxLength={60}
+                  placeholder="e.g. Training ran late"
+                  className="mt-1 w-full rounded-md px-3 py-2 text-[14px]"
+                  style={{ background: "var(--app-surface-soft)", color: "var(--app-text)", border: "1px solid var(--app-border)" }}
+                />
+              </label>
             ) : null}
 
             {selected?.key === "new_deadline" ? (
@@ -277,7 +292,7 @@ export default function LifeHappened({
               </p>
             ) : null}
 
-            {selected?.needsInput ? (
+            {selected ? (
               <div className="mt-5">
                 <AppButton variant="primary" onClick={() => reason && run(reason)} loading={loading} disabled={!deadlineReady} className="w-full">
                   Fix my week
@@ -291,8 +306,12 @@ export default function LifeHappened({
   );
 }
 
-function Result({ result, tz, onDone }: { result: RecoveryResult; tz: string; onDone: () => void }) {
+function Result({ result, tz, reason, excuse, subjects, onDone }: { result: RecoveryResult; tz: string; reason: Reason; excuse: string; subjects: DashboardResponse["subjects"]; onDone: () => void }) {
   const { lines, moved, nextBlock } = result;
+  // A rolling web and Worker deploy can briefly return an older response.
+  // The result stays usable while the new visual data becomes available.
+  const changes = result.changes ?? [];
+  const [shareOpen, setShareOpen] = useState(false);
   return (
     <div className="text-center">
       <div
@@ -307,6 +326,8 @@ function Result({ result, tz, onDone }: { result: RecoveryResult; tz: string; on
       <h2 className="mt-4 text-[24px] font-semibold tracking-[-0.015em]" style={{ color: "var(--app-text)" }}>
         {moved > 0 ? "Your week's back on track." : "You're still on track."}
       </h2>
+
+      <RecoveryWeekStrip changes={changes} subjects={subjects} timeZone={tz} className="mt-5 text-left" />
 
       <ul className="mt-5 flex flex-col gap-2 text-left">
         {lines.map((line) => (
@@ -344,6 +365,16 @@ function Result({ result, tz, onDone }: { result: RecoveryResult; tz: string; on
         >
           Start your next block
         </Link>
+        {moved > 0 ? (
+          <button
+            type="button"
+            onClick={() => setShareOpen(true)}
+            className="flex h-10 w-full items-center justify-center rounded-lg border text-[13.5px] font-semibold ui-hover"
+            style={{ borderColor: "var(--app-border-strong)", color: "var(--app-text-soft)" }}
+          >
+            Share this rebuild
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={onDone}
@@ -353,6 +384,7 @@ function Result({ result, tz, onDone }: { result: RecoveryResult; tz: string; on
           Back to today
         </button>
       </div>
+      {shareOpen ? <RecoveryShareCard reason={reason} excuse={excuse} changes={changes} lines={lines} subjects={subjects} onClose={() => setShareOpen(false)} /> : null}
     </div>
   );
 }

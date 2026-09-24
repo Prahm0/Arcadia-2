@@ -42,12 +42,20 @@ export interface RecoverySessionChange {
 export interface RecoveryResult {
   /** What changed, in plain words, most important first. */
   lines: string[];
-  /** How many upcoming sessions Arcad rearranged. */
+  /** Sessions whose day changed or whose start moved by at least 15 minutes. */
   moved: number;
+  /** Sessions newly added to the visible week. */
+  added: number;
+  /** Sessions removed from the visible week. */
+  removed: number;
   /** The one thing to do next. */
   nextBlock: RecoveryBlock | null;
   /** Actual study-session changes in the week the student can see. */
   changes: RecoverySessionChange[];
+  /** The deadline that caused this recovery, when one was added. */
+  deadline: { title: string; subject: string | null; dueAt: string; prepSessions: number } | null;
+  /** The local day that was made unavailable, when applicable. */
+  affectedDay: string | null;
 }
 
 const SIZE_MINUTES: Record<NonNullable<RecoveryInput["size"]>, number> = {
@@ -191,7 +199,7 @@ export async function recoverPlan(
 
   // 1. Apply the change deterministically.
   let freedToday = 0;
-  let addedDeadline: { name: string; dueAt: number } | null = null;
+  let addedDeadline: { id: string; name: string; subject: string | null; dueAt: number } | null = null;
 
   if (input.reason === "missed") {
     // Mark the most recent block that has already started today as missed, so
@@ -253,16 +261,18 @@ export async function recoverPlan(
     const dueAt = input.dueOn
       ? startOfLocalDay(Date.parse(`${input.dueOn}T12:00:00Z`), tz) + DAY - MINUTE
       : now + 7 * DAY;
+    const taskId = newId("tsk");
+    const subject = input.subject || null;
     await database.insert(schema.tasks).values({
-      id: newId("tsk"),
+      id: taskId,
       userId,
       title: name,
-      subject: input.subject || null,
+      subject,
       taskType: "assignment",
       dueAt,
       estimatedMinutes: SIZE_MINUTES[input.size ?? "medium"],
     });
-    addedDeadline = { name, dueAt };
+    addedDeadline = { id: taskId, name, subject, dueAt };
   }
 
   // 2. Reflow, deterministically. No model call sits between the student and a
@@ -272,23 +282,17 @@ export async function recoverPlan(
   // 3. Read the new plan and describe the change.
   const after = await upcomingStudy(database, userId, now);
   const changes = recoveryChanges(before, after);
-  const moved = changes.filter((change) => change.before && change.after).length;
+  const moved = changes.filter((change) => {
+    if (!change.before || !change.after) return false;
+    const dayChanged = localDateKey(Date.parse(change.before.startAt), tz) !== localDateKey(Date.parse(change.after.startAt), tz);
+    const startShifted = Math.abs(Date.parse(change.before.startAt) - Date.parse(change.after.startAt)) >= 15 * MINUTE;
+    return dayChanged || startShifted;
+  }).length;
+  const added = changes.filter((change) => !change.before && change.after).length;
+  const removed = changes.filter((change) => change.before && !change.after).length;
 
-  const lines: string[] = [];
-  if (moved > 0) {
-    lines.push(`Moved ${moved} ${moved === 1 ? "session" : "sessions"} around your week`);
-  } else {
-    lines.push("Your week still works, nothing needed moving");
-  }
-
-  if (addedDeadline) {
-    lines.push(`Booked prep for ${addedDeadline.name} before ${dateLabel(addedDeadline.dueAt, tz)}`);
-  }
-
-  // The nearest real deadline that still has study booked before it: the thing
-  // the student most needs protected. Named with its due date, because
-  // "Protected your English essay, due Fri 3 Oct" is the line that sells the
-  // recovery. Skip it when we just added the deadline (covered above).
+  // The nearest real deadline that still has study booked before it is the
+  // reassurance we should lead with after the week has shifted.
   const [nearestTask] = await database
     .select({
       id: schema.tasks.id,
@@ -300,11 +304,28 @@ export async function recoverPlan(
     .where(and(eq(schema.tasks.userId, userId), eq(schema.tasks.status, "pending"), gte(schema.tasks.dueAt, now)))
     .orderBy(asc(schema.tasks.dueAt))
     .limit(1);
-  if (nearestTask && (!addedDeadline || nearestTask.title !== addedDeadline.name)) {
+
+  const lines: string[] = [];
+  if (addedDeadline) {
+    const prepSessions = after.filter((event) => event.taskId === addedDeadline.id && event.startAt <= addedDeadline.dueAt).length;
+    if (prepSessions > 0) {
+      lines.push(`${addedDeadline.name} due ${dateLabel(addedDeadline.dueAt, tz)}: ${prepSessions} prep ${prepSessions === 1 ? "session" : "sessions"} booked`);
+    } else {
+      lines.push(`${addedDeadline.name} is in your plan`);
+    }
+  } else if (nearestTask) {
     const bookedBeforeDue = after.some((e) => e.taskId === nearestTask.id && e.startAt <= nearestTask.dueAt);
     if (bookedBeforeDue) {
-      lines.push(`Protected your ${label(nearestTask)}, due ${dateLabel(nearestTask.dueAt, tz)}`);
+      lines.push(`${label(nearestTask)} due ${dateLabel(nearestTask.dueAt, tz)} is still on track`);
     }
+  }
+
+  if (moved > 0) {
+    lines.push(`Shifted ${moved} ${moved === 1 ? "session" : "sessions"} to make room`);
+  } else if (addedDeadline || added > 0 || removed > 0) {
+    lines.push("Your plan already had room");
+  } else {
+    lines.push("Your week still works as it is");
   }
 
   if (input.reason === "less_time" || input.reason === "tired") {
@@ -324,7 +345,23 @@ export async function recoverPlan(
       }
     : null;
 
-  return { lines, moved, nextBlock, changes };
+  return {
+    lines,
+    moved,
+    added,
+    removed,
+    nextBlock,
+    changes,
+    deadline: addedDeadline
+      ? {
+          title: addedDeadline.name,
+          subject: addedDeadline.subject,
+          dueAt: new Date(addedDeadline.dueAt).toISOString(),
+          prepSessions: after.filter((event) => event.taskId === addedDeadline.id && event.startAt <= addedDeadline.dueAt).length,
+        }
+      : null,
+    affectedDay: input.reason === "busy" || input.reason === "less_time" || input.reason === "tired" ? today : null,
+  };
 }
 
 export { timeLabel };

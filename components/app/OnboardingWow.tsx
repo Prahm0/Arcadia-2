@@ -84,7 +84,7 @@ export default function OnboardingWow({ onContinue }: { onContinue: () => void }
             You told Arcad what changed and it rebuilt your week in seconds. This is what happens every time life gets in the way.
           </p>
 
-          <RecoveryWeekStrip changes={result.changes ?? []} subjects={data.subjects ?? []} timeZone={tz} className="mt-5" />
+          <RecoveryWeekStrip changes={result.changes ?? []} subjects={data.subjects ?? []} timeZone={tz} deadline={result.deadline} affectedDay={result.affectedDay} className="mt-5" />
 
           <ul className="mt-6 flex flex-col gap-2">
             {result.lines.map((line) => (

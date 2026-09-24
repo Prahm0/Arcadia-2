@@ -8,18 +8,22 @@ export interface RecoverySessionChange {
   after: { startAt: string; endAt: string } | null;
 }
 
+export interface RecoveryDeadline {
+  title: string;
+  subject: string | null;
+  dueAt: string;
+  prepSessions: number;
+}
+
 export interface RecoveryResult {
   lines: string[];
   moved: number;
+  added: number;
+  removed: number;
   nextBlock: { subject: string | null; title: string; startAt: string; minutes: number } | null;
   changes: RecoverySessionChange[];
+  /** Present only when the recovery added a new deadline. */
+  deadline: RecoveryDeadline | null;
+  /** The local date that was affected by a time or energy change. */
+  affectedDay: string | null;
 }
-
-/** Human words used only in a share card when a student leaves the note blank. */
-export const RECOVERY_SHARE_DEFAULT: Record<RecoveryReason, string> = {
-  missed: "A study block slipped",
-  less_time: "Something came up tonight",
-  tired: "I needed an easier night",
-  busy: "My plans changed",
-  new_deadline: "A new deadline landed",
-};

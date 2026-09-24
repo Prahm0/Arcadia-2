@@ -555,71 +555,102 @@ html[data-app-theme] {
   }
 }
 
-/* The recovery loop's before-and-after strip. The initial delay lets a
-   student register the old plan before the new one glides into place. */
-.recovery-before-pill,
-.recovery-after-pill {
+/* The recovery strip keeps context in the motion. Ghosts exist only while a
+   block settles, so the finished plan stays calm. */
+.recovery-bar {
   position: absolute;
-  display: flex;
+  z-index: 2;
+  display: block;
   min-width: 0;
-  overflow: hidden;
-  align-items: center;
-  gap: 2px;
-  border-radius: 4px;
-  padding: 1px 3px;
-  font-size: 8px;
-  font-weight: 650;
-  line-height: 1;
-  white-space: nowrap;
+  border-radius: 999px;
+  cursor: pointer;
 }
 
-.recovery-before-pill {
-  background: color-mix(in oklab, var(--app-text-muted) 28%, transparent);
-  color: var(--app-text-muted);
+.recovery-bar:focus-visible,
+.recovery-replay:focus-visible {
+  outline: 2px solid var(--app-arcad);
+  outline-offset: 2px;
 }
 
-.recovery-before-pill span,
-.recovery-after-pill span {
-  overflow: hidden;
-  text-overflow: ellipsis;
+.recovery-bar-before {
+  z-index: 1;
+  border: 1.5px dashed var(--bar-colour);
+  background: color-mix(in oklab, var(--bar-colour) 12%, transparent);
+  animation: recovery-ghost-out 1050ms ease-out both;
 }
 
-.recovery-after-pill {
-  color: white;
-  box-shadow: 0 3px 7px -4px color-mix(in oklab, var(--app-text) 70%, transparent);
+.recovery-bar-after {
+  background: var(--bar-colour);
+  box-shadow: 0 3px 9px -5px color-mix(in oklab, var(--bar-colour) 85%, transparent);
 }
 
-.recovery-after-pill small {
-  margin-left: auto;
-  font-size: 7px;
-  opacity: 0.8;
+.recovery-bar-glide { animation: recovery-bar-glide 1120ms cubic-bezier(0.2, 0.82, 0.2, 1) both; }
+.recovery-bar-pop { animation: recovery-bar-pop 620ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+.recovery-deadline-flag {
+  position: absolute;
+  z-index: 4;
+  top: 24px;
+  color: var(--app-arcad-strong);
+  filter: drop-shadow(0 3px 5px color-mix(in oklab, var(--app-arcad) 38%, transparent));
+  transform-origin: 3px 1px;
+  animation: recovery-flag-drop 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.recovery-before-fade { animation: recovery-before-fade 950ms ease-out both; }
-.recovery-after-glide { animation: recovery-after-glide 1050ms cubic-bezier(0.2, 0.82, 0.2, 1) both; }
-.recovery-after-pop { animation: recovery-after-pop 520ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.recovery-affected-day { animation: recovery-day-dim 900ms ease-out both; }
 
-@keyframes recovery-before-fade {
-  0%, 24% { opacity: 0.82; }
-  100% { opacity: 0.16; }
+.recovery-bar-tooltip {
+  position: absolute;
+  z-index: 8;
+  display: flex;
+  max-width: min(150px, 46vw);
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid var(--app-border-strong);
+  border-radius: 7px;
+  padding: 5px 7px;
+  background: var(--app-surface);
+  color: var(--app-text);
+  box-shadow: var(--elev-2);
+  font-size: 10px;
+  line-height: 1.25;
+  pointer-events: none;
 }
 
-@keyframes recovery-after-glide {
-  0%, 22% { opacity: 0; transform: translate(var(--recovery-from-x), var(--recovery-from-y)) scale(0.96); }
-  42% { opacity: 0.94; }
+.recovery-bar-tooltip span { color: var(--app-text-muted); }
+
+@keyframes recovery-ghost-out {
+  0%, 30% { opacity: 0.92; }
+  100% { opacity: 0; }
+}
+
+@keyframes recovery-bar-glide {
+  0%, 24% { opacity: 0; transform: translate(var(--recovery-from-x), var(--recovery-from-y)) scale(0.96); }
+  46% { opacity: 1; }
   100% { opacity: 1; transform: translate(0, 0) scale(1); }
 }
 
-@keyframes recovery-after-pop {
-  0%, 22% { opacity: 0; transform: scale(0.72); }
+@keyframes recovery-bar-pop {
+  0%, 28% { opacity: 0; transform: scale(0.7); }
   100% { opacity: 1; transform: scale(1); }
 }
 
+@keyframes recovery-flag-drop {
+  0% { opacity: 0; transform: translateY(-12px) rotate(-10deg); }
+  100% { opacity: 1; transform: translateY(0) rotate(0); }
+}
+
+@keyframes recovery-day-dim {
+  0%, 28% { background: color-mix(in oklab, var(--app-text-muted) 15%, transparent); }
+  100% { background: transparent; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .recovery-before-fade,
-  .recovery-after-glide,
-  .recovery-after-pop { animation: none; }
-  .recovery-before-fade { opacity: 0.16; }
+  .recovery-bar-before { opacity: 0; animation: none; }
+  .recovery-bar-glide,
+  .recovery-bar-pop,
+  .recovery-deadline-flag,
+  .recovery-affected-day { animation: none; }
 }
 
 /* The landing's "one emphasised word in a serif italic" idiom has no place in

@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Arcadia uses the microphone so you can speak to Arcad instead of typing.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Arcadia turns what you say into text so you can talk to Arcad instead of typing.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
   <key>CAPACITOR_DEBUG</key>

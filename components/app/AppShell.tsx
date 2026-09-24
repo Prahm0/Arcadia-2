@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent, type PointerEvent, type ReactNode } from "react";
 import { api, saveCsrf } from "@/lib/api/client";
 import { analytics } from "@/lib/analytics/events";
 import type { AuthUser, Notice, PlannerEvent } from "@/lib/api/types";
@@ -24,7 +24,9 @@ import NotificationCentre from "./NotificationCentre";
 import PageMount from "./PageMount";
 import ShortcutsDialog from "./ShortcutsDialog";
 import PushCheckInPrompt from "./PushCheckInPrompt";
+import SearchDialog, { SEARCH_ICON, useModKey } from "./SearchDialog";
 import SessionStartModal from "./SessionStartModal";
+import Kbd from "./Kbd";
 import Logo from "@/components/ui/Logo";
 import { Avatar } from "./profile/ui";
 import { isGuestEmail } from "@/lib/auth/guest";
@@ -123,6 +125,8 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
   const [sidebarOpen, setSidebarOpen] = useState(readSidebarPref);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const modKey = useModKey();
   const socialSignupTracked = useRef(false);
 
   // The native shell identifies RevenueCat with Arcadia's own user ID. This
@@ -153,11 +157,15 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
   const openNewTask = useCallback(() => setNewTaskOpen(true), []);
   const openShortcuts = useCallback(() => setShortcutsOpen(true), []);
   const closeShortcuts = useCallback(() => setShortcutsOpen(false), []);
+  const openSearch = useCallback(() => setSearchOpen(true), []);
+  const toggleSearch = useCallback(() => setSearchOpen((open) => !open), []);
+  const closeSearch = useCallback(() => setSearchOpen(false), []);
 
   useAppShortcuts({
     onNewTask: openNewTask,
     onShowShortcuts: openShortcuts,
     onToggleSidebar: toggleSidebar,
+    onSearch: toggleSearch,
   });
 
   async function signOut() {
@@ -186,6 +194,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
         onToggleSidebar={toggleSidebar}
         onNewTask={openNewTask}
         onShowShortcuts={openShortcuts}
+        onSearch={openSearch}
         onSignOut={() => void signOut()}
       />
 
@@ -196,6 +205,15 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
       >
         <BrandMark />
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={openSearch}
+            aria-label="Search"
+            className="grid h-8 w-8 place-items-center rounded-md ui-hover"
+            style={{ color: "var(--app-text-muted)" }}
+          >
+            {SEARCH_ICON}
+          </button>
           {streak > 0 ? (
             <div
               className="flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[12px] font-medium"
@@ -242,7 +260,30 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
             borderRight: "1px solid var(--app-border)",
           }}
         >
-          <nav className="flex flex-col gap-0.5 px-2 pt-3" aria-label="Primary">
+          <div className="flex items-center gap-1 px-2 pt-3">
+            <button
+              type="button"
+              onClick={openSearch}
+              className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md border px-2.5 text-[13px] transition-colors hover:border-[var(--app-border-strong)]"
+              style={{ background: "var(--app-surface)", borderColor: "var(--app-border)", color: "var(--app-text-muted)" }}
+            >
+              <span aria-hidden="true" className="[&>svg]:h-[14px] [&>svg]:w-[14px]">{SEARCH_ICON}</span>
+              <span className="flex-1 truncate text-left">Search</span>
+              <Kbd keys={[modKey, "K"]} />
+            </button>
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              aria-label="Collapse sidebar"
+              title="Collapse sidebar ( [ )"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-md ui-hover"
+              style={{ color: "var(--app-text-muted)" }}
+            >
+              {PANEL_ICON}
+            </button>
+          </div>
+
+          <nav className="flex flex-col gap-0.5 px-2 pt-2" aria-label="Primary">
             <Link
               href={TODAY.href}
               aria-current={pathname === TODAY.href ? "page" : undefined}
@@ -526,6 +567,10 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
           </div>
         </aside>
 
+        {sidebarOpen ? null : (
+          <SidebarRail user={user} pathname={pathname} onExpand={toggleSidebar} onSearch={openSearch} />
+        )}
+
         <main
           className="flex-1 min-w-0 pb-[calc(env(safe-area-inset-bottom,0)+72px)] lg:pb-0"
         >
@@ -539,6 +584,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
       <MobileBottomNav />
       <NewTaskSheet open={newTaskOpen} onClose={() => setNewTaskOpen(false)} />
       <ShortcutsDialog open={shortcutsOpen} onClose={closeShortcuts} />
+      <SearchDialog open={searchOpen} onClose={closeSearch} onNewTask={openNewTask} onShowShortcuts={openShortcuts} />
       <ContextMenuHost />
       <PushCheckInPrompt />
       <SessionStartModal
@@ -553,6 +599,163 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
 
 /** Selected nav row: a neutral tint, so the accent stays for icons and actions. */
 const ACTIVE_BG = "color-mix(in oklab, var(--app-text) 8%, transparent)";
+
+/** A panel with its left column marked: collapse or expand the sidebar. */
+const PANEL_ICON = icon(<><rect x="3" y="3.5" width="14" height="13" rx="2" /><path d="M8 3.5v13" /></>);
+
+const SPARK_ICON = (
+  <svg viewBox="0 0 20 20" width="16" height="16" fill="currentColor">
+    <path d="M10 2.5l1.15 4.15L15.5 8l-4.35 1.35L10 13.5 8.85 9.35 4.5 8l4.35-1.35L10 2.5z" />
+  </svg>
+);
+
+interface RailTip {
+  label: string;
+  top: number;
+  left: number;
+}
+
+/**
+ * The collapsed sidebar: one icon per page, grouped the way the full sidebar
+ * groups them, with a label beside each icon on hover or focus. The label is
+ * fixed-positioned so the rail's own scrolling can't clip it.
+ */
+function SidebarRail({
+  user,
+  pathname,
+  onExpand,
+  onSearch,
+}: {
+  user: AuthUser | null;
+  pathname: string;
+  onExpand: () => void;
+  onSearch: () => void;
+}) {
+  const [tip, setTip] = useState<RailTip | null>(null);
+
+  const tipProps = (label: string) => ({
+    "aria-label": label,
+    onPointerEnter: (event: PointerEvent<HTMLElement>) => showTip(event.currentTarget, label),
+    onPointerLeave: () => setTip(null),
+    onFocus: (event: FocusEvent<HTMLElement>) => showTip(event.currentTarget, label),
+    onBlur: () => setTip(null),
+  });
+
+  function showTip(target: HTMLElement, label: string) {
+    const rect = target.getBoundingClientRect();
+    setTip({ label, top: rect.top + rect.height / 2, left: rect.right + 10 });
+  }
+
+  const isActive = (href: string) => (href === "/app" ? pathname === "/app" : pathname.startsWith(href));
+  const sections: NavItem[][] = [
+    [TODAY, ...NAV_GROUPS.filter((group) => group.href).map((group) => ({ label: group.label, href: group.href!, icon: group.icon }))],
+    ...NAV_GROUPS.filter((group) => !group.href).map((group) => group.items),
+  ];
+  const paid = user?.tier === "pro" || user?.tier === "max";
+
+  return (
+    <aside
+      className="hidden lg:sticky lg:top-10 lg:flex lg:h-[calc(100svh-2.5rem)] lg:w-[56px] lg:shrink-0 lg:flex-col lg:overflow-hidden"
+      style={{ background: "var(--app-surface-soft)", borderRight: "1px solid var(--app-border)" }}
+    >
+      <div className="flex flex-col items-center gap-1 px-2 pt-3">
+        <button type="button" onClick={onExpand} className={RAIL_BUTTON} style={{ color: "var(--app-text-muted)" }} {...tipProps("Expand sidebar")}>
+          {PANEL_ICON}
+        </button>
+        <button type="button" onClick={onSearch} className={RAIL_BUTTON} style={{ color: "var(--app-text-muted)" }} {...tipProps("Search")}>
+          {SEARCH_ICON}
+        </button>
+      </div>
+
+      {/* Only the pages scroll on a short window; search and the account stay put. */}
+      <nav
+        className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-2 [scrollbar-width:none]"
+        aria-label="Primary"
+        onScroll={() => setTip(null)}
+      >
+        {sections.map((items, index) => (
+          <div key={index} className="flex flex-col items-center gap-1">
+            <div aria-hidden="true" className="my-2 h-px w-7" style={{ background: "var(--app-border)" }} />
+            {items.map((item) => {
+              const active = isActive(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(RAIL_BUTTON, !active && "ui-hover")}
+                  style={{
+                    color: active ? "var(--app-accent)" : "var(--app-text-muted)",
+                    background: active ? ACTIVE_BG : undefined,
+                  }}
+                  {...tipProps(item.label)}
+                >
+                  {item.icon}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
+      </nav>
+
+      <div className="flex flex-col items-center gap-1 px-2 pb-3">
+        <div aria-hidden="true" className="my-2 h-px w-7" style={{ background: "var(--app-border)" }} />
+        <Link
+          href={paid ? "/app/settings#billing" : "/app/pricing"}
+          className={cn(RAIL_BUTTON, "transition-opacity hover:opacity-90")}
+          style={
+            paid
+              ? { background: "var(--app-arcad-soft)", color: "var(--app-arcad-strong)" }
+              : { background: "var(--app-arcad)", color: "var(--app-arcad-on)" }
+          }
+          {...tipProps(paid ? `Arcadia ${user?.tier === "max" ? "Max" : "Pro"}, manage subscription` : "Upgrade to Pro")}
+        >
+          {SPARK_ICON}
+        </Link>
+        {user ? (
+          <>
+            <Link
+              href="/app/settings"
+              aria-current={pathname.startsWith("/app/settings") ? "page" : undefined}
+              className={cn(RAIL_BUTTON, !pathname.startsWith("/app/settings") && "ui-hover")}
+              style={{
+                color: pathname.startsWith("/app/settings") ? "var(--app-text)" : "var(--app-text-muted)",
+                background: pathname.startsWith("/app/settings") ? ACTIVE_BG : undefined,
+              }}
+              {...tipProps("Settings")}
+            >
+              <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="10" cy="10" r="2.5" />
+                <path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4" />
+              </svg>
+            </Link>
+            <Link
+              href="/app/profile"
+              aria-current={pathname.startsWith("/app/profile") ? "page" : undefined}
+              className={cn(RAIL_BUTTON, "ui-hover")}
+              style={{ background: pathname.startsWith("/app/profile") ? ACTIVE_BG : undefined }}
+              {...tipProps(`Your profile, ${user.name}`)}
+            >
+              <Avatar name={user.name} colour={user.avatarColour} size={28} developer={user.developerAccess} />
+            </Link>
+          </>
+        ) : null}
+      </div>
+
+      {tip ? (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed z-50 -translate-y-1/2 whitespace-nowrap rounded-md px-2 py-1 text-[12px] font-medium"
+          style={{ top: tip.top, left: tip.left, background: "var(--app-elev)", color: "var(--app-text)", boxShadow: "var(--elev-2)" }}
+        >
+          {tip.label}
+        </div>
+      ) : null}
+    </aside>
+  );
+}
+
+const RAIL_BUTTON = "grid h-9 w-9 shrink-0 place-items-center rounded-lg [&>svg]:h-[18px] [&>svg]:w-[18px]";
 
 /**
  * The sidebar should do more than list destinations. This small live cue keeps

@@ -8,6 +8,7 @@ interface Handlers {
   onNewTask: () => void;
   onShowShortcuts: () => void;
   onToggleSidebar: () => void;
+  onSearch: () => void;
 }
 
 /** How long after pressing G the second key still counts. */
@@ -18,18 +19,28 @@ const SEQUENCE_MS = 1200;
  * a field or with a modifier held, so they can't fight the browser or text
  * input. The menu bar shows the same keys next to each entry.
  */
-export function useAppShortcuts({ onNewTask, onShowShortcuts, onToggleSidebar }: Handlers): void {
+export function useAppShortcuts({ onNewTask, onShowShortcuts, onToggleSidebar, onSearch }: Handlers): void {
   const router = useRouter();
   const pendingG = useRef(0);
-  const handlers = useRef({ onNewTask, onShowShortcuts, onToggleSidebar });
+  const handlers = useRef({ onNewTask, onShowShortcuts, onToggleSidebar, onSearch });
 
   useEffect(() => {
-    handlers.current = { onNewTask, onShowShortcuts, onToggleSidebar };
+    handlers.current = { onNewTask, onShowShortcuts, onToggleSidebar, onSearch };
   });
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.defaultPrevented) return;
+      // Ctrl/⌘ K works even from a text field, like every other app's search.
+      // It toggles search, but won't open it over another dialog.
+      if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === "k") {
+        const modal = document.querySelector('[aria-modal="true"]');
+        if (modal && !modal.hasAttribute("data-search")) return;
+        event.preventDefault();
+        handlers.current.onSearch();
+        return;
+      }
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (isTypingTarget(event.target)) return;
       // A dialog or sheet owns the keyboard while it's open.
       if (document.querySelector('[aria-modal="true"]')) return;
@@ -50,7 +61,10 @@ export function useAppShortcuts({ onNewTask, onShowShortcuts, onToggleSidebar }:
         pendingG.current = Date.now();
         return;
       }
-      if (event.key === "?") {
+      if (event.key === "/") {
+        event.preventDefault();
+        handlers.current.onSearch();
+      } else if (event.key === "?") {
         event.preventDefault();
         handlers.current.onShowShortcuts();
       } else if (key === "n") {

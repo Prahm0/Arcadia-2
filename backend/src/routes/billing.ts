@@ -10,6 +10,7 @@ import {
   type StripeSubscription,
 } from "../lib/stripe";
 import { activeRevenueCatEntitlement, fetchRevenueCatSubscriber } from "../lib/revenuecat";
+import { isValidTier } from "../lib/tiers";
 import type { Env, Variables } from "../types";
 
 const billing = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -17,6 +18,32 @@ const billing = new Hono<{ Bindings: Env; Variables: Variables }>();
 type Plan = "pro" | "max";
 type Interval = "week" | "month" | "year";
 const MANAGEABLE_SUBSCRIPTION_STATUSES = new Set(["active", "trialing", "past_due", "incomplete", "unpaid"]);
+
+/** Lets allowlisted developers switch feature tiers without touching billing. */
+billing.post("/developer-tier", async (c) => {
+  const { userId } = c.get("session");
+  const body = await c.req.json<{ tier?: unknown }>().catch(() => null);
+  const tierValue = typeof body?.tier === "string" ? body.tier : null;
+  if (!isValidTier(tierValue)) {
+    return c.json({ error: "Choose Free, Pro or Max." }, 400);
+  }
+
+  const database = db(c.env.DB);
+  const [user] = await database
+    .select({ developerAccess: schema.users.developerAccess })
+    .from(schema.users)
+    .where(eq(schema.users.id, userId))
+    .limit(1);
+  if (!user) return c.json({ error: "Account not found." }, 404);
+  if (!user.developerAccess) return c.json({ error: "Developer access required." }, 403);
+
+  const tier = tierValue;
+  await database
+    .update(schema.users)
+    .set({ developerTier: tier })
+    .where(eq(schema.users.id, userId));
+  return c.json({ tier });
+});
 
 /**
  * Returns the price ID for the {plan, interval} combo from the Worker's

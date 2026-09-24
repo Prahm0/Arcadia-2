@@ -229,8 +229,8 @@ studyRooms.get("/", async (c) => {
 
   const now = Date.now();
   const ownerIds = [...new Set(mine.map(({ room }) => room.ownerUserId))];
-  const tiers = await database.select({ id: schema.users.id, tier: schema.users.tier, developerAccess: schema.users.developerAccess, proBonusUntil: schema.users.proBonusUntil }).from(schema.users).where(inArray(schema.users.id, ownerIds));
-  const capacityByOwner = new Map(tiers.map((row) => [row.id, ROOM_CAPACITY[effectiveTier(row.tier, row.developerAccess, row.proBonusUntil)]]));
+  const tiers = await database.select({ id: schema.users.id, tier: schema.users.tier, developerAccess: schema.users.developerAccess, developerTier: schema.users.developerTier, proBonusUntil: schema.users.proBonusUntil }).from(schema.users).where(inArray(schema.users.id, ownerIds));
+  const capacityByOwner = new Map(tiers.map((row) => [row.id, ROOM_CAPACITY[effectiveTier(row.tier, row.developerAccess, row.proBonusUntil, Date.now(), row.developerTier)]]));
   return c.json({
     rooms: mine.map(({ room, joinedAt }) => {
       const members = memberRows.filter((row) => row.roomId === room.id);

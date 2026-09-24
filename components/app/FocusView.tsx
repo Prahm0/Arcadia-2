@@ -566,7 +566,7 @@ function FocusViewInner() {
           ) : null}
           {pipBlocked && !pip.pipWindow ? (
             <p role="status" className="app-enter absolute right-4 top-12 max-w-[220px] text-right text-[12px]" style={{ color: "var(--app-text-muted)" }}>
-              This browser wouldn&rsquo;t open the pop-out. Try Chrome or Edge.
+              Your browser blocked the pop-out. Allow pop-ups for this site and try again.
             </p>
           ) : null}
 

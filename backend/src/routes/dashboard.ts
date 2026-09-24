@@ -16,6 +16,9 @@ import { termsAround } from "../lib/terms";
 import { computeStreaks, minutesBetween } from "../lib/analytics";
 import type { Env, Variables } from "../types";
 
+/** How far back planner events are sent, for streaks and this week's history. */
+const STREAK_HISTORY_DAYS = 60;
+
 const dashboard = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 dashboard.get("/", async (c) => {
@@ -56,7 +59,10 @@ dashboard.get("/", async (c) => {
         .where(
           and(
             eq(schema.events.userId, userId),
-            gte(schema.events.startAt, start),
+            // Past days are needed for the streak (lib/app/streaks.ts walks
+            // back through completed blocks); without them no streak could
+            // ever count more than today.
+            gte(schema.events.startAt, start - STREAK_HISTORY_DAYS * DAY),
             lte(schema.events.startAt, end),
           ),
         ),

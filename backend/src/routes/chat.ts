@@ -7,7 +7,7 @@ import { ARCAD_VOICE, PROPOSE_TOOL, REMEMBER_TOOL, complete, type ChatMessage } 
 import { replan } from "../lib/replan";
 import { subjectKey, weeklyTargetMinutes } from "../lib/scheduler";
 import { describeBrief, recentMissReasonContext, subjectBriefs } from "../lib/study-context";
-import { DAILY_MESSAGE_CAP, getUserTier, refundMessage, tryConsumeMessage } from "../lib/tiers";
+import { DAILY_MESSAGE_CAP, getMessageUsage, getUserTier, messageUsageSnapshot, refundMessage, tryConsumeMessage } from "../lib/tiers";
 import { DAY, iso, parseClock } from "../lib/time";
 import type { Env, Variables } from "../types";
 
@@ -95,6 +95,13 @@ chat.get("/", async (c) => {
   });
 });
 
+chat.get("/usage", async (c) => {
+  const { userId } = c.get("session");
+  const database = db(c.env.DB);
+  const tier = await getUserTier(database, userId);
+  return c.json(await getMessageUsage(database, userId, tier));
+});
+
 chat.post("/", async (c) => {
   const { userId } = c.get("session");
   const body = await c.req
@@ -134,6 +141,7 @@ chat.post("/", async (c) => {
         upgradeTier: tier === "free" ? "pro" : tier === "pro" ? "max" : null,
         cap: cap.cap,
         used: cap.used,
+        usage: messageUsageSnapshot(tier, cap.used, cap.day),
       },
       429,
     );
@@ -303,6 +311,7 @@ chat.post("/", async (c) => {
             content,
             createdAt: new Date().toISOString(),
           },
+          usage: messageUsageSnapshot(tier, cap.used, cap.day),
           ...(proposalPayload ? { proposal: proposalPayload } : {}),
           ...(remembered.length > 0 ? { remembered } : {}),
         });

@@ -77,6 +77,33 @@ export async function getUserTier(
   return effectiveTier(user?.tier, user?.developerAccess ?? false, user?.proBonusUntil);
 }
 
+export function messageUsageSnapshot(tier: Tier, used: number, day = todayUtc()) {
+  const [year, month, date] = day.split("-").map(Number);
+  const resetAt = new Date(Date.UTC(year, month - 1, date + 1)).toISOString();
+  return {
+    tier,
+    used,
+    cap: DAILY_MESSAGE_CAP[tier],
+    upgradeTier: tier === "free" ? "pro" : tier === "pro" ? "max" : null,
+    resetAt,
+  };
+}
+
+export async function getMessageUsage(
+  database: ReturnType<typeof makeDb>,
+  userId: string,
+  tier: Tier,
+): Promise<ReturnType<typeof messageUsageSnapshot>> {
+  const day = todayUtc();
+  const [row] = await database
+    .select({ count: schema.arcadUsage.count })
+    .from(schema.arcadUsage)
+    .where(and(eq(schema.arcadUsage.userId, userId), eq(schema.arcadUsage.day, day)))
+    .limit(1);
+
+  return messageUsageSnapshot(tier, row?.count ?? 0, day);
+}
+
 export interface CapCheckResult {
   allowed: boolean;
   tier: Tier;

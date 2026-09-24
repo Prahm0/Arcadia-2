@@ -46,6 +46,7 @@ interface NavGroup {
   key: string;
   label: string;
   icon: ReactNode;
+  href?: string;
   items: NavItem[];
 }
 
@@ -68,9 +69,8 @@ const NAV_GROUPS: NavGroup[] = [
     key: "arcad",
     label: "Arcad",
     icon: icon(<path d="M4 5h12v9H8l-4 3V5z" />),
-    items: [
-      { label: "Plan and chat", href: "/app/arcad", icon: icon(<path d="M4 5h12v9H8l-4 3V5z" />) },
-    ],
+    href: "/app/arcad",
+    items: [],
   },
   {
     key: "plan",
@@ -265,6 +265,29 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
             </Link>
 
             {NAV_GROUPS.map((group) => {
+              if (group.href) {
+                const active = pathname.startsWith(group.href);
+                return (
+                  <Link
+                    key={group.key}
+                    href={group.href}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13.5px] font-medium",
+                      !active && "ui-hover",
+                    )}
+                    style={{
+                      color: active ? "var(--app-text)" : "var(--app-text-soft)",
+                      background: active ? ACTIVE_BG : "transparent",
+                    }}
+                  >
+                    <span aria-hidden="true" style={{ color: active ? "var(--app-accent)" : "var(--app-text-muted)" }}>
+                      {group.icon}
+                    </span>
+                    {group.label}
+                  </Link>
+                );
+              }
               const groupActive = group.items.some((item) =>
                 item.href === "/app" ? pathname === "/app" : pathname.startsWith(item.href),
               );
@@ -404,6 +427,53 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
                 Upgrade to Pro
               </Link>
             )}
+            {user && !isGuestEmail(user.email) ? (
+              <Link
+                href="/app/invite"
+                aria-current={pathname.startsWith("/app/invite") ? "page" : undefined}
+                className="ui-hover mt-1 flex items-center justify-between gap-2 rounded-lg border px-3.5 py-2.5"
+                style={{
+                  borderColor: "color-mix(in srgb, var(--app-arcad) 26%, var(--app-border))",
+                  background: "color-mix(in srgb, var(--app-arcad-soft) 72%, transparent)",
+                }}
+              >
+                <span className="flex min-w-0 items-center gap-2.5">
+                  <span
+                    className="grid h-7 w-7 shrink-0 place-items-center rounded-full"
+                    style={{ background: "var(--app-arcad)", color: "var(--app-arcad-on)" }}
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="6.25" cy="10" r="2.25" />
+                      <circle cx="13.75" cy="6.25" r="2.25" />
+                      <circle cx="13.75" cy="13.75" r="2.25" />
+                      <path d="M8.25 8.9l3.5-1.55M8.25 11.1l3.5 1.55" />
+                    </svg>
+                  </span>
+                  <span className="flex min-w-0 flex-col leading-tight">
+                    <span className="text-[13px] font-semibold" style={{ color: "var(--app-arcad-strong)" }}>
+                      Invite friends
+                    </span>
+                    <span className="truncate text-[11px]" style={{ color: "var(--app-text-muted)" }}>
+                      Earn 7 days of Pro per friend
+                    </span>
+                  </span>
+                </span>
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 20 20"
+                  width="13"
+                  height="13"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ color: "var(--app-text-faint)" }}
+                >
+                  <path d="M7 4l6 6-6 6" />
+                </svg>
+              </Link>
+            ) : null}
             {user ? (
               <div
                 className="mt-1 flex items-center gap-1 border-t pt-2"

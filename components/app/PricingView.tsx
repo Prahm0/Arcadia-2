@@ -7,6 +7,7 @@ import { analytics } from "@/lib/analytics/events";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { isGuestEmail } from "@/lib/auth/guest";
 import { useNativeIOS } from "@/lib/capacitor/platform";
+import { PAID_PRICING } from "@/lib/app/pricing";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import IosPricingView from "./IosPricingView";
@@ -51,10 +52,7 @@ const TIERS: Tier[] = [
     key: "pro",
     name: "Pro",
     headline: "Planning on autopilot, Arcad in the loop.",
-    // Prices target a per-week display of $4.95 / $2.95 / $0.95. The
-    // monthly figure is 2.95 × (365.25 ÷ 12 ÷ 7) ≈ 12.82; the yearly
-    // is 0.95 × 52 = 49.40.
-    pricing: { weekly: 4.95, monthly: 12.82, yearly: 49.4 },
+    pricing: PAID_PRICING.pro,
     features: [
       "Everything in Free",
       "Arcad, 20 messages a day, 10x the free plan",
@@ -73,9 +71,7 @@ const TIERS: Tier[] = [
     key: "max",
     name: "Max",
     headline: "The learning layer. Study, not just plan.",
-    // Per-week display of $9.95 / $7.95 / $3.95. Monthly = 7.95 ×
-    // 4.345 ≈ 34.54; yearly = 3.95 × 52 = 205.40.
-    pricing: { weekly: 9.95, monthly: 34.54, yearly: 205.4 },
+    pricing: PAID_PRICING.max,
     features: [
       "Everything in Pro",
       "Arcad, 100 messages a day, 50x the free plan",

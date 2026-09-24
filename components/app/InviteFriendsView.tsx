@@ -58,7 +58,7 @@ export default function InviteFriendsView() {
 
   async function shareInvite() {
     if (!summary) return;
-    const text = "Arcadia keeps your study plan useful when life changes. Join with my link and we both get 14 days of Pro after you finish setup.";
+    const text = "Arcadia keeps your study plan useful when life changes. Join with my link, then invite a friend of your own to unlock 7 days of Pro.";
     if (navigator.share) {
       try {
         await navigator.share({ title: "Plan with Arcadia", text, url: summary.inviteLink });
@@ -74,9 +74,9 @@ export default function InviteFriendsView() {
     <>
       <PageHeader
         width={760}
-        eyebrow="Community"
+        eyebrow="Pass it on"
         title="Invite friends"
-        meta="Give each other more room to plan."
+        meta="Invite a friend and earn more time to plan."
       />
       <main className="mx-auto w-full max-w-[760px] px-6 pb-12 pt-6 sm:px-10">
         {status === "loading" ? <LoadingCard /> : null}
@@ -103,13 +103,13 @@ export default function InviteFriendsView() {
               <div className="relative max-w-[510px]">
                 <div className="flex items-center gap-2 text-[13px] font-medium" style={{ color: "var(--app-accent-strong)" }}>
                   <StarsIcon />
-                  A little more time, together
+                  Your invite chain
                 </div>
                 <h2 className="mt-3 text-[27px] font-semibold tracking-[-0.03em] sm:text-[32px]" style={{ color: "var(--app-text)" }}>
-                  Give a friend 14 days of Pro.
+                  Invite a friend. Earn 7 days of Pro.
                 </h2>
                 <p className="mt-3 text-[14.5px] leading-6" style={{ color: "var(--app-text-soft)" }}>
-                  When they create a new account, verify their email and finish setup, you both receive 14 days of Pro time.
+                  When they create a new account, verify their email and finish setup, you receive 7 days of Pro time. They unlock their own 7 days by inviting the next friend.
                 </p>
               </div>
 
@@ -136,7 +136,7 @@ export default function InviteFriendsView() {
               </div>
               <p className="mt-4 text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
                 {summary.qualifiedReferrals === 0
-                  ? "Your first completed invite unlocks Pro time for both of you."
+                  ? "Your first completed invite unlocks 7 days of Pro."
                   : `${summary.qualifiedReferrals} ${summary.qualifiedReferrals === 1 ? "friend has" : "friends have"} joined through your link.`}
               </p>
             </section>

@@ -30,4 +30,5 @@ export interface SendError {
   message: string;
   /** Out of messages for today: show the upgrade, not a retry. */
   capped?: boolean;
+  upgradeTier?: "pro" | "max" | null;
 }

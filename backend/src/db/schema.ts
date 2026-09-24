@@ -666,6 +666,50 @@ export const studyRoomMessages = sqliteTable(
   (t) => [index("study_room_messages_room_time_idx").on(t.roomId, t.createdAt)],
 );
 
+/** Evidence snapshot for a room message report. It outlives message removal. */
+export const roomReports = sqliteTable(
+  "room_reports",
+  {
+    id: text("id").primaryKey(),
+    roomId: text("room_id").notNull().references(() => studyRooms.id, { onDelete: "cascade" }),
+    messageId: text("message_id").notNull(),
+    reporterUserId: text("reporter_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    reportedUserId: text("reported_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    reason: text("reason").notNull(),
+    note: text("note").notNull().default(""),
+    messageBody: text("message_body").notNull(),
+    createdAt: integer("created_at").notNull().default(now),
+    status: text("status").notNull().default("open"),
+  },
+  (t) => [
+    uniqueIndex("room_reports_reporter_message_idx").on(t.reporterUserId, t.messageId),
+    index("room_reports_reporter_created_idx").on(t.reporterUserId, t.createdAt),
+    index("room_reports_status_created_idx").on(t.status, t.createdAt),
+  ],
+);
+
+/** A block applies everywhere a student encounters that person's room chat. */
+export const userBlocks = sqliteTable(
+  "user_blocks",
+  {
+    blockerUserId: text("blocker_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    blockedUserId: text("blocked_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [primaryKey({ columns: [t.blockerUserId, t.blockedUserId] }), index("user_blocks_blocked_idx").on(t.blockedUserId)],
+);
+
+/** An owner removal stops the same invite code being used to rejoin. */
+export const studyRoomRemovedMembers = sqliteTable(
+  "study_room_removed_members",
+  {
+    roomId: text("room_id").notNull().references(() => studyRooms.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    removedAt: integer("removed_at").notNull().default(now),
+  },
+  (t) => [primaryKey({ columns: [t.roomId, t.userId] }), index("study_room_removed_members_user_idx").on(t.userId)],
+);
+
 // One row per user, written by the focus timer and read by every room the
 // user is in. A focus/break row older than PRESENCE_STALE_MS reads as idle.
 export const userPresence = sqliteTable("user_presence", {

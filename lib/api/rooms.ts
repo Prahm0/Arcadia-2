@@ -71,8 +71,16 @@ export interface RoomMemberProfile {
   sessions: number;
 }
 
+export interface BlockedRoomPerson {
+  userId: string;
+  displayName: string;
+  blockedAt: string;
+}
+
+export type RoomReportReason = "bullying_harassment" | "hateful_sexual" | "spam" | "other";
+
 export type RoomDashboard =
-  | { isMember: true; room: StudyRoom; members: StudyRoomMember[] }
+  | { isMember: true; room: StudyRoom; members: StudyRoomMember[]; removedMembers: Array<{ userId: string; displayName: string; removedAt: string }> }
   | { isMember: false; room: RoomPreview; members: [] };
 
 export async function listRooms(): Promise<StudyRoom[]> {
@@ -110,6 +118,34 @@ export async function sendRoomMessage(code: string, body: string): Promise<RoomM
 
 export async function deleteRoomMessage(code: string, messageId: string): Promise<void> {
   await api(`/api/study-rooms/${encodeURIComponent(code)}/messages/${encodeURIComponent(messageId)}`, { method: "DELETE" });
+}
+
+export async function reportRoomMessage(code: string, messageId: string, reason: RoomReportReason, note: string): Promise<{ message: string }> {
+  return api<{ message: string }>(`/api/study-rooms/${encodeURIComponent(code)}/messages/${encodeURIComponent(messageId)}/report`, {
+    method: "POST",
+    body: JSON.stringify({ reason, note }),
+  });
+}
+
+export async function blockRoomMember(code: string, memberId: string): Promise<void> {
+  await api(`/api/study-rooms/${encodeURIComponent(code)}/members/${encodeURIComponent(memberId)}/block`, { method: "POST" });
+}
+
+export async function removeRoomMember(code: string, memberId: string): Promise<void> {
+  await api(`/api/study-rooms/${encodeURIComponent(code)}/members/${encodeURIComponent(memberId)}/remove`, { method: "POST" });
+}
+
+export async function allowRoomMember(code: string, memberId: string): Promise<void> {
+  await api(`/api/study-rooms/${encodeURIComponent(code)}/members/${encodeURIComponent(memberId)}/removal`, { method: "DELETE" });
+}
+
+export async function listBlockedRoomPeople(): Promise<BlockedRoomPerson[]> {
+  const response = await api<{ people: BlockedRoomPerson[] }>("/api/study-rooms/blocked");
+  return response.people;
+}
+
+export async function unblockRoomPerson(userId: string): Promise<void> {
+  await api(`/api/study-rooms/blocked/${encodeURIComponent(userId)}`, { method: "DELETE" });
 }
 
 export async function getRoomMemberProfile(code: string, memberId: string): Promise<RoomMemberProfile> {

@@ -69,6 +69,13 @@ export default function SupportPage() {
         </li>
       </ul>
 
+      <h2>Safety in study rooms</h2>
+      <p>
+        Keep study rooms kind and focused. Use the message menu to report something that
+        isn&rsquo;t okay or block a person. Reports are reviewed within 24 hours. You can leave a
+        room at any time from its header, and unblock people later in Settings.
+      </p>
+
       <h2>Parents and guardians</h2>
       <p>
         Arcadia is for high-school students aged 13 and over. If you&rsquo;re a parent or

@@ -8,7 +8,9 @@ import { useDashboardData } from "@/lib/app/DashboardProvider";
 import {
   getRoom,
   joinRoom,
+  allowRoomMember,
   leaveRoom,
+  removeRoomMember,
   type RoomDashboard,
   type StudyRoomMember,
 } from "@/lib/api/rooms";
@@ -114,6 +116,28 @@ export default function RoomView({ code }: RoomViewProps) {
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Couldn't leave the room.");
       setLeaving(false);
+    }
+  }
+
+  async function removeMember(member: StudyRoomMember) {
+    if (!confirm(`Remove ${member.displayName} from this room? They won't be able to rejoin until you allow them back.`)) return;
+    setActionError(null);
+    try {
+      await removeRoomMember(code, member.userId);
+      setSelectedMemberId(null);
+      await load();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Couldn't remove that member.");
+    }
+  }
+
+  async function allowMember(memberId: string) {
+    setActionError(null);
+    try {
+      await allowRoomMember(code, memberId);
+      await load();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Couldn't allow that person back in.");
     }
   }
 
@@ -278,10 +302,14 @@ export default function RoomView({ code }: RoomViewProps) {
                   now={now}
                   isYou={member.userId === data.user.id}
                   isOwner={member.userId === dash.room.ownerUserId}
+                  canRemove={dash.room.ownerUserId === data.user.id && member.userId !== data.user.id}
                   onProfile={() => setSelectedMemberId(member.userId)}
+                  onRemove={() => void removeMember(member)}
                 />
               ))}
             </ul>
+
+            {dash.room.ownerUserId === data.user.id && dash.removedMembers.length > 0 ? <section className="rounded-lg p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}><h2 className="text-[16px] font-semibold" style={{ color: "var(--app-text)" }}>Removed members</h2><p className="mt-1 text-[12px]" style={{ color: "var(--app-text-muted)" }}>Allow someone back in if you want them to use the room code again.</p><ul className="mt-3 flex flex-col gap-2">{dash.removedMembers.map((member) => <li key={member.userId} className="flex items-center justify-between gap-3 rounded-md px-3 py-2" style={{ background: "var(--app-surface-soft)" }}><span className="text-[13px]" style={{ color: "var(--app-text)" }}>{member.displayName}</span><AppButton variant="ghost" onClick={() => void allowMember(member.userId)}>Allow back</AppButton></li>)}</ul></section> : null}
 
             {selectedMemberId && members.some((member) => member.userId === selectedMemberId) ? <RoomMemberProfilePanel key={selectedMemberId} code={code} member={members.find((member) => member.userId === selectedMemberId)!} onClose={() => setSelectedMemberId(null)} /> : null}
 
@@ -308,13 +336,17 @@ function MemberCard({
   now,
   isYou,
   isOwner,
+  canRemove,
   onProfile,
+  onRemove,
 }: {
   member: StudyRoomMember;
   now: number;
   isYou: boolean;
   isOwner: boolean;
+  canRemove: boolean;
   onProfile: () => void;
+  onRemove: () => void;
 }) {
   const elapsed = elapsedSeconds(member, now);
   const studying = member.activity === "focus";
@@ -347,6 +379,8 @@ function MemberCard({
       }}
     >
       <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2">
+        {canRemove ? <button type="button" onClick={onRemove} className="text-[11px] underline underline-offset-2" style={{ color: "var(--app-danger)" }}>Remove</button> : null}
         <span
           aria-hidden
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[14px] font-semibold"
@@ -372,6 +406,7 @@ function MemberCard({
         >
           {chip.label}
         </span>
+        </div>
       </div>
 
       <div className="flex items-end justify-between gap-3">

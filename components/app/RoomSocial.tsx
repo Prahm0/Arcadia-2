@@ -1,19 +1,24 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
+  blockRoomMember,
   deleteRoomMessage,
   getRoomMemberProfile,
   listRoomMessages,
+  reportRoomMessage,
   sendRoomMessage,
   updateRoom,
   type RoomDashboard,
   type RoomMemberProfile,
   type RoomMessage,
+  type RoomReportReason,
   type StudyRoomMember,
 } from "@/lib/api/rooms";
 import { ROOM_COLOURS, roomColour } from "@/lib/app/roomColours";
 import AppButton from "./AppButton";
+import { showContextMenu } from "./ContextMenu";
 import { Avatar, DeveloperTag } from "./profile/ui";
 
 export function RoomSettings({ code, room, isPaid, onSaved }: {
@@ -41,8 +46,8 @@ export function RoomSettings({ code, room, isPaid, onSaved }: {
         ...(isPaid ? { icon, weeklyGoalMinutes: goalHours ? Math.round(Number(goalHours) * 60) : null } : {}),
       }));
       setOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't save room settings.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Couldn't save room settings.");
     } finally {
       setSaving(false);
     }
@@ -59,16 +64,11 @@ export function RoomSettings({ code, room, isPaid, onSaved }: {
         <textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={300} rows={2} className="mt-1 block w-full rounded-md p-2.5" style={{ background: "var(--app-surface-soft)", color: "var(--app-text)" }} />
       </label>
       <fieldset className="mt-4"><legend className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>Colour</legend>
-        <div className="mt-2 flex flex-wrap gap-2">{Object.entries(ROOM_COLOURS).map(([key, hex]) => <label key={key} className="cursor-pointer rounded-md px-3 py-2 text-[12px]" style={{ border: colour === key ? `2px solid ${hex}` : "2px solid transparent", background: "var(--app-surface-soft)", color: "var(--app-text)" }}>
-          <input type="radio" name="room-colour" value={key} checked={colour === key} onChange={() => setColour(key)} className="sr-only" />
-          <span className="mr-2 inline-block h-3 w-3 rounded-full align-middle" style={{ background: hex }} />{key}
-        </label>)}</div>
+        <div className="mt-2 flex flex-wrap gap-2">{Object.entries(ROOM_COLOURS).map(([key, hex]) => <label key={key} className="cursor-pointer rounded-md px-3 py-2 text-[12px]" style={{ border: colour === key ? `2px solid ${hex}` : "2px solid transparent", background: "var(--app-surface-soft)", color: "var(--app-text)" }}><input type="radio" name="room-colour" value={key} checked={colour === key} onChange={() => setColour(key)} className="sr-only" /><span className="mr-2 inline-block h-3 w-3 rounded-full align-middle" style={{ background: hex }} />{key}</label>)}</div>
       </fieldset>
       {isPaid ? <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <label className="block text-[13px]" style={{ color: "var(--app-text-muted)" }}>Room icon
-          <select value={icon} onChange={(event) => setIcon(event.target.value)} className="mt-1 block w-full rounded-md p-2.5" style={{ background: "var(--app-surface-soft)", color: "var(--app-text)" }}>
-            {["", "📚", "🎯", "🧪", "✏️", "🌙", "⚡"].map((value) => <option key={value} value={value}>{value || "None"}</option>)}
-          </select>
+          <select value={icon} onChange={(event) => setIcon(event.target.value)} className="mt-1 block w-full rounded-md p-2.5" style={{ background: "var(--app-surface-soft)", color: "var(--app-text)" }}>{["", "📚", "🎯", "🧪", "✏️", "🌙", "⚡"].map((value) => <option key={value} value={value}>{value || "None"}</option>)}</select>
         </label>
         <label className="block text-[13px]" style={{ color: "var(--app-text-muted)" }}>Shared 7-day focus goal · hours
           <input type="number" min={1} max={1000} step={1} value={goalHours} onChange={(event) => setGoalHours(event.target.value)} placeholder="No goal" className="mt-1 block w-full rounded-md p-2.5" style={{ background: "var(--app-surface-soft)", color: "var(--app-text)" }} />
@@ -79,6 +79,13 @@ export function RoomSettings({ code, room, isPaid, onSaved }: {
     </form> : null}
   </>;
 }
+
+const REPORT_OPTIONS: Array<{ value: RoomReportReason; label: string }> = [
+  { value: "bullying_harassment", label: "Bullying or harassment" },
+  { value: "hateful_sexual", label: "Hateful or sexual content" },
+  { value: "spam", label: "Spam" },
+  { value: "other", label: "Something else" },
+];
 
 export function RoomChat({ code, userId, ownerUserId, memberIds, onMemberClick }: {
   code: string;
@@ -91,16 +98,28 @@ export function RoomChat({ code, userId, ownerUserId, memberIds, onMemberClick }
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [reporting, setReporting] = useState<RoomMessage | null>(null);
+  const [reportReason, setReportReason] = useState<RoomReportReason>("bullying_harassment");
+  const [reportNote, setReportNote] = useState("");
+  const [reportingBusy, setReportingBusy] = useState(false);
   const load = useCallback(async () => {
-    try { setMessages(await listRoomMessages(code)); setError(null); }
-    catch (err) { setError(err instanceof Error ? err.message : "Couldn't load chat."); }
+    try {
+      setMessages(await listRoomMessages(code));
+      setError(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Couldn't load chat.");
+    }
   }, [code]);
 
   useEffect(() => {
-    void listRoomMessages(code).then(setMessages).catch((err) => setError(err instanceof Error ? err.message : "Couldn't load chat."));
-    const interval = window.setInterval(() => { if (!document.hidden) void load(); }, 10000);
-    return () => window.clearInterval(interval);
-  }, [code, load]);
+    const initialLoad = window.setTimeout(() => void load(), 0);
+    const interval = window.setInterval(() => { if (!document.hidden) void load(); }, 10_000);
+    return () => {
+      window.clearTimeout(initialLoad);
+      window.clearInterval(interval);
+    };
+  }, [load]);
 
   async function send(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -111,30 +130,94 @@ export function RoomChat({ code, userId, ownerUserId, memberIds, onMemberClick }
       const message = await sendRoomMessage(code, body.trim());
       setMessages((current) => [...current.filter((item) => item.id !== message.id), message].slice(-50));
       setBody("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't send message.");
-    } finally { setSending(false); }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Couldn't send message.");
+    } finally {
+      setSending(false);
+    }
   }
 
   async function remove(messageId: string) {
     try {
       await deleteRoomMessage(code, messageId);
-      setMessages((current) => current.filter((item) => item.id !== messageId));
-    } catch (err) { setError(err instanceof Error ? err.message : "Couldn't remove message."); }
+      setMessages((current) => current.filter((message) => message.id !== messageId));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Couldn't remove message.");
+    }
+  }
+
+  async function submitReport(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!reporting) return;
+    setReportingBusy(true);
+    try {
+      const response = await reportRoomMessage(code, reporting.id, reportReason, reportNote.trim());
+      setMessages((current) => current.filter((message) => message.id !== reporting.id));
+      setReporting(null);
+      setNotice(response.message);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Couldn't send that report.");
+    } finally {
+      setReportingBusy(false);
+    }
+  }
+
+  async function block(message: RoomMessage) {
+    if (!confirm(`Block ${message.displayName}? Their messages will be hidden in every room.`)) return;
+    try {
+      await blockRoomMember(code, message.userId);
+      setMessages((current) => current.filter((item) => item.userId !== message.userId));
+      setNotice(`${message.displayName} is blocked. You can unblock them in Settings.`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Couldn't block that person.");
+    }
+  }
+
+  function actionsFor(message: RoomMessage) {
+    if (message.userId === userId) return [{ kind: "item" as const, label: "Delete message", onSelect: () => void remove(message.id) }];
+    return [
+      { kind: "item" as const, label: "Report message", onSelect: () => { setReporting(message); setReportReason("bullying_harassment"); setReportNote(""); } },
+      { kind: "item" as const, label: "Block person", onSelect: () => void block(message) },
+      ownerUserId === userId ? { kind: "separator" as const } : null,
+      ownerUserId === userId ? { kind: "item" as const, label: "Delete message", onSelect: () => void remove(message.id) } : null,
+    ];
   }
 
   return <section className="rounded-lg p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }} aria-label="Room chat">
     <div className="flex items-center justify-between gap-3"><h2 className="text-[17px] font-semibold" style={{ color: "var(--app-text)" }}>Room chat</h2><span className="text-[11px]" style={{ color: "var(--app-text-faint)" }}>Members only</span></div>
+    <p className="mt-2 text-[12px]" style={{ color: "var(--app-text-muted)" }}>Be kind. <Link href="/support" className="underline underline-offset-2">Report anything that isn&apos;t okay.</Link></p>
     <div className="mt-4 flex max-h-[360px] min-h-[120px] flex-col gap-3 overflow-y-auto" aria-live="polite">
-      {messages.length === 0 ? <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>No messages yet. Say hello to your room.</p> : messages.map((message) => <div key={message.id} className="rounded-md px-3 py-2" style={{ background: "var(--app-surface-soft)" }}>
-        <div className="flex items-center gap-2 text-[11px]">{memberIds.includes(message.userId) ? <button type="button" onClick={() => onMemberClick(message.userId)} className="font-semibold underline underline-offset-2" style={{ color: "var(--app-text)" }}>{message.displayName}</button> : <span className="font-semibold" style={{ color: "var(--app-text)" }}>{message.displayName}</span>}<time style={{ color: "var(--app-text-faint)" }} dateTime={message.createdAt}>{new Date(message.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</time>
-          {(message.userId === userId || ownerUserId === userId) ? <button type="button" onClick={() => void remove(message.id)} className="ml-auto underline underline-offset-2" style={{ color: "var(--app-text-muted)" }} aria-label={`Remove message from ${message.displayName}`}>Remove</button> : null}
-        </div><p className="mt-1 whitespace-pre-wrap break-words text-[13px]" style={{ color: "var(--app-text-soft)" }}>{message.body}</p>
+      {messages.length === 0 ? <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>No messages yet. Say hello to your room.</p> : messages.map((message) => <div key={message.id} onContextMenu={(event) => showContextMenu(event, actionsFor(message), `${message.displayName}'s message`)} className="rounded-md px-3 py-2" style={{ background: "var(--app-surface-soft)" }}>
+        <div className="flex items-center gap-2 text-[11px]">
+          {memberIds.includes(message.userId) ? <button type="button" onClick={() => onMemberClick(message.userId)} className="font-semibold underline underline-offset-2" style={{ color: "var(--app-text)" }}>{message.displayName}</button> : <span className="font-semibold" style={{ color: "var(--app-text)" }}>{message.displayName}</span>}
+          <time style={{ color: "var(--app-text-faint)" }} dateTime={message.createdAt}>{new Date(message.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</time>
+          <button type="button" onClick={(event) => showContextMenu(event, actionsFor(message), `${message.displayName}'s message`)} className="ml-auto rounded px-1.5 py-0.5 text-[13px]" style={{ color: "var(--app-text-muted)" }} aria-label={`Actions for ${message.displayName}'s message`}>•••</button>
+        </div>
+        <p className="mt-1 whitespace-pre-wrap break-words text-[13px]" style={{ color: "var(--app-text-soft)" }}>{message.body}</p>
       </div>)}
     </div>
+    {reporting ? <ReportForm reason={reportReason} note={reportNote} busy={reportingBusy} onReason={setReportReason} onNote={setReportNote} onCancel={() => setReporting(null)} onSubmit={submitReport} /> : null}
     <form onSubmit={send} className="mt-4 flex gap-2"><input value={body} onChange={(event) => setBody(event.target.value)} maxLength={500} placeholder="Message the room" aria-label="Message the room" className="min-w-0 flex-1 rounded-md px-3 py-2 text-[13px]" style={{ background: "var(--app-surface-soft)", color: "var(--app-text)" }} /><AppButton type="submit" variant="primary" loading={sending} disabled={!body.trim()}>Send</AppButton></form>
+    {notice ? <p className="mt-2 text-[12px]" style={{ color: "var(--app-success)" }}>{notice}</p> : null}
     {error ? <p className="mt-2 text-[12px]" style={{ color: "var(--app-danger)" }}>{error}</p> : null}
   </section>;
+}
+
+function ReportForm({ reason, note, busy, onReason, onNote, onCancel, onSubmit }: {
+  reason: RoomReportReason;
+  note: string;
+  busy: boolean;
+  onReason: (value: RoomReportReason) => void;
+  onNote: (value: string) => void;
+  onCancel: () => void;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+}) {
+  return <form onSubmit={onSubmit} className="mt-4 rounded-md p-4" style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)" }}>
+    <div className="flex items-start justify-between gap-3"><div><p className="text-[13px] font-medium" style={{ color: "var(--app-text)" }}>Report message</p><p className="mt-1 text-[12px]" style={{ color: "var(--app-text-muted)" }}>This message will be hidden for you. We review reports within 24 hours.</p></div><button type="button" onClick={onCancel} className="text-[12px] underline underline-offset-2" style={{ color: "var(--app-text-muted)" }}>Cancel</button></div>
+    <div className="mt-3 grid gap-2 sm:grid-cols-2">{REPORT_OPTIONS.map((option) => <label key={option.value} className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-[12px]" style={{ background: reason === option.value ? "var(--app-accent-soft)" : "var(--app-surface)", color: "var(--app-text-soft)" }}><input type="radio" name="report-reason" value={option.value} checked={reason === option.value} onChange={() => onReason(option.value)} />{option.label}</label>)}</div>
+    <textarea value={note} onChange={(event) => onNote(event.target.value)} maxLength={300} rows={2} placeholder="Add a note (optional)" className="mt-3 w-full rounded-md px-3 py-2 text-[13px] outline-none" style={{ background: "var(--app-surface)", color: "var(--app-text)" }} />
+    <div className="mt-3"><AppButton type="submit" variant="primary" loading={busy}>Send report</AppButton></div>
+  </form>;
 }
 
 export function RoomMemberProfilePanel({ code, member, onClose }: { code: string; member: StudyRoomMember; onClose: () => void }) {
@@ -142,14 +225,12 @@ export function RoomMemberProfilePanel({ code, member, onClose }: { code: string
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
-    void getRoomMemberProfile(code, member.userId).then((value) => { if (active) setProfile(value); }).catch((err) => { if (active) setError(err instanceof Error ? err.message : "Couldn't load profile."); });
+    void getRoomMemberProfile(code, member.userId).then((value) => { if (active) setProfile(value); }).catch((caught) => { if (active) setError(caught instanceof Error ? caught.message : "Couldn't load profile."); });
     return () => { active = false; };
   }, [code, member.userId]);
   return <section className="rounded-lg p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)", borderLeft: `4px solid ${roomColour("blue")}` }} aria-label={`${member.displayName}'s room profile`}>
     <div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-center gap-3">{profile ? <Avatar name={member.displayName} colour={profile.avatarColour} size={44} developer={profile.developerAccess} /> : null}<div className="min-w-0"><p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Room member</p><div className="mt-1 flex min-w-0 items-center gap-2"><h2 className="truncate text-[20px] font-semibold" style={{ color: "var(--app-text)" }}>{member.displayName}</h2>{profile?.developerAccess ? <DeveloperTag size="sm" /> : null}</div></div></div><AppButton variant="ghost" onClick={onClose}>Close</AppButton></div>
-    {error ? <p className="mt-3 text-[13px]" style={{ color: "var(--app-danger)" }}>{error}</p> : !profile ? <p className="mt-3 text-[13px]" style={{ color: "var(--app-text-muted)" }}>Loading profile…</p> : <div className="mt-4 grid grid-cols-2 gap-4 text-[13px] sm:grid-cols-4">
-      <Stat label="Today" value={duration(member.todaySeconds)} /><Stat label="Past 7 days" value={duration(profile.weekSeconds)} /><Stat label="All-time focus" value={duration(profile.totalSeconds)} /><Stat label="Sessions" value={String(profile.sessions)} />
-    </div>}
+    {error ? <p className="mt-3 text-[13px]" style={{ color: "var(--app-danger)" }}>{error}</p> : !profile ? <p className="mt-3 text-[13px]" style={{ color: "var(--app-text-muted)" }}>Loading profile…</p> : <div className="mt-4 grid grid-cols-2 gap-4 text-[13px] sm:grid-cols-4"><Stat label="Today" value={duration(member.todaySeconds)} /><Stat label="Past 7 days" value={duration(profile.weekSeconds)} /><Stat label="All-time focus" value={duration(profile.totalSeconds)} /><Stat label="Sessions" value={String(profile.sessions)} /></div>}
   </section>;
 }
 

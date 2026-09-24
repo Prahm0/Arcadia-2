@@ -47,9 +47,12 @@ export default function StudyWithMe({
   todosDone,
   todosTotal,
   complete,
+  onToggle,
 }: {
   open: boolean;
   onExit: () => void;
+  /** Start, pause or resume the session without leaving the scene. */
+  onToggle: () => void;
   running: boolean;
   remaining: number;
   total: number;
@@ -123,7 +126,7 @@ export default function StudyWithMe({
     <div className="fixed inset-0 z-[90] overflow-hidden" style={{ background: palette.background, color: palette.text }} onPointerMove={revealControls} onPointerDown={revealControls}>
       <div className="absolute inset-0 opacity-50" aria-hidden="true" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, rgba(255,255,255,.6) 0 1px, transparent 1.5px), radial-gradient(circle at 70% 35%, rgba(255,255,255,.45) 0 1px, transparent 1.5px)", backgroundSize: "93px 109px, 137px 149px" }} />
       <div className="relative mx-auto flex min-h-svh w-full max-w-[1200px] flex-col justify-between px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))] sm:px-10">
-        <header className={`flex items-center justify-between transition-opacity duration-300 ${controls ? "opacity-100" : "pointer-events-none opacity-0"}`}>
+        <header className={`flex items-center justify-between transition-opacity duration-300 ${controls ? "opacity-100" : "opacity-0"}`}>
           <div className="flex rounded-full p-1" style={{ background: palette.panel }}>
             {(Object.keys(SCENES) as Scene[]).map((option) => <button key={option} type="button" onClick={() => chooseScene(option)} className="rounded-full px-3 py-1.5 text-[12px] font-medium" style={{ background: scene === option ? "rgba(255,255,255,.18)" : "transparent", color: palette.text }}>{SCENES[option].label}</button>)}
           </div>
@@ -137,6 +140,21 @@ export default function StudyWithMe({
           <h1 className="mt-3 max-w-2xl text-balance text-[18px] font-medium sm:text-[22px]" style={{ color: palette.text }}>{goal || "One focused block at a time"}</h1>
           <Constellation definition={definition} progress={progress} scene={scene} />
           <div className="mt-4 text-[clamp(76px,18vw,210px)] font-medium leading-none tracking-[-.07em] tabular-nums" style={{ color: palette.text }}>{clock(remaining)}</div>
+          {!complete ? (
+            <button
+              type="button"
+              onClick={onToggle}
+              aria-label={running ? "Pause" : "Start"}
+              className={`mt-6 grid h-14 w-14 place-items-center rounded-full transition-opacity duration-300 ${controls || !running ? "opacity-100" : "opacity-0"}`}
+              style={{ background: palette.panel, color: palette.text }}
+            >
+              {running ? (
+                <svg viewBox="0 0 20 20" width="20" height="20" fill="currentColor" aria-hidden="true"><rect x="5" y="4" width="3.5" height="12" rx="1" /><rect x="11.5" y="4" width="3.5" height="12" rx="1" /></svg>
+              ) : (
+                <svg viewBox="0 0 20 20" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M6.5 4.2v11.6a.6.6 0 0 0 .9.5l9-5.8a.6.6 0 0 0 0-1L7.4 3.7a.6.6 0 0 0-.9.5Z" /></svg>
+              )}
+            </button>
+          ) : null}
           {todosTotal ? <p className="mt-5 rounded-full px-4 py-2 text-[13px]" style={{ background: palette.panel, color: palette.muted }}>{todosDone} of {todosTotal} session steps</p> : null}
           {complete ? <div className="mt-6"><p className="text-[17px] font-semibold">Session complete · {Math.round(total / 60)} min · {subject}</p><button type="button" onClick={() => setShareOpen(true)} className="mt-3 rounded-full px-5 py-2.5 text-[13px] font-semibold" style={{ background: palette.text, color: scene === "paper" ? "#22222b" : "#11111a" }}>Share</button></div> : null}
         </main>

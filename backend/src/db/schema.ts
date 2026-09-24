@@ -230,6 +230,8 @@ export const tasks = sqliteTable(
     estimatedMinutes: integer("estimated_minutes").notNull().default(60),
     completedMinutes: integer("completed_minutes").notNull().default(0),
     status: text("status").notNull().default("pending"),
+    /** When the task was last marked complete; null while pending. */
+    completedAt: integer("completed_at"),
     createdAt: integer("created_at").notNull().default(now),
   },
   (t) => [index("tasks_user_due_idx").on(t.userId, t.dueAt)],

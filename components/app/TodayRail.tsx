@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 import type { CompanionProfile, PlannerTask } from "@/lib/api/types";
 import { formatDueSoon, formatDurationMinutes } from "@/lib/api/time";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
+import { START_STREAK_HINT } from "@/lib/app/streaks";
 import { useStreak } from "@/lib/app/useStreak";
 import Companion from "./Companion";
 import CompanionSheet from "./CompanionSheet";
@@ -75,7 +76,7 @@ function CompanionSection() {
         type="button"
         onClick={() => setOpen(true)}
         className="ui-hover flex w-full items-center gap-4 px-5 pb-4 pt-5 text-left"
-        aria-label={`${profile.name}, level ${level}. Customise your companion`}
+        aria-label={`${profile.name}, stage ${level}. Customise your companion`}
       >
         <Companion
           form={profile.form}
@@ -91,7 +92,7 @@ function CompanionSection() {
               {profile.name}
             </span>
             <span className="shrink-0 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
-              Level {level}
+              Stage {level}
             </span>
           </span>
           <span
@@ -106,7 +107,7 @@ function CompanionSection() {
           </span>
           <span className="mt-1.5 block text-[12.5px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
             {next
-              ? `${formatDurationMinutes(Math.max(1, next - focused))} of focus to level ${level + 1}`
+              ? `${formatDurationMinutes(Math.max(1, next - focused))} of focus to stage ${level + 1}`
               : `${formatDurationMinutes(focused)} focused, fully grown`}
           </span>
         </span>
@@ -171,9 +172,7 @@ function StreakSection() {
       </p>
       <p className="mt-2 text-[12.5px] leading-snug" style={{ color: "var(--app-text-muted)" }}>
         {streak.current === 0
-          ? streak.lastPlannedDay?.missReason
-            ? `Reset, ${streak.lastPlannedDay.missReason}. Do 70% of a day's plan to restart it.`
-            : "Do 70% of a day's plan to start one."
+          ? START_STREAK_HINT
           : streak.nextMilestone && streak.daysToNext
             ? `${streak.daysToNext} more to ${streak.nextMilestone}`
             : "Past every milestone"}

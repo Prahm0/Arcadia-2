@@ -122,6 +122,18 @@ export function periodPosition(period: TermPeriod, key: string): string {
   return `${period.name} · Week ${week.number}`;
 }
 
+/**
+ * " · Holidays, back 6 Oct" while today sits in the holidays at the end of
+ * this period (term periods run on through the break that follows them).
+ */
+export function holidayNote(period: TermPeriod, today: string): string {
+  if (!period.isTerm || !period.termEnd || today <= period.termEnd || today > period.end) return "";
+  const back = new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short", timeZone: "UTC" }).format(
+    new Date(`${addDays(period.end, 1)}T12:00:00Z`),
+  );
+  return ` · Holidays, back ${back}`;
+}
+
 /** "21 Jul – 25 Sep" for the school days, or the whole span for a quarter. */
 export function periodDates(period: TermPeriod): string {
   const format = (key: string) =>

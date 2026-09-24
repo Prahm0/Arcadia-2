@@ -12,8 +12,9 @@ import { computeStreak, type StreakSummary } from "@/lib/app/streaks";
 export function useStreak(): StreakSummary {
   const { data } = useDashboardData();
   const timezone = data.profile?.timezone || data.user.timezone || "Australia/Sydney";
+  const recoveryDays = data.analytics?.recoveryDays;
   return useMemo(
-    () => computeStreak(data.events, timezone),
-    [data.events, timezone],
+    () => computeStreak(data.events, timezone, new Date(), new Set(recoveryDays ?? [])),
+    [data.events, timezone, recoveryDays],
   );
 }

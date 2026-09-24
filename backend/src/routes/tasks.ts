@@ -88,6 +88,7 @@ tasks.patch("/:id", async (c) => {
   }
   if (typeof body.status === "string" && ["pending", "complete", "cancelled"].includes(body.status)) {
     patch.status = body.status;
+    if (body.status !== existing.status) patch.completedAt = body.status === "complete" ? Date.now() : null;
   }
 
   if (Object.keys(patch).length > 0) {

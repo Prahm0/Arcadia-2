@@ -22,6 +22,8 @@ export interface DayConsistency {
   consistent: boolean;
   /** A missed block did not end the day because 70% of the plan was still done. */
   recovered: boolean;
+  /** The student used Life happened that day and still studied, so it counts. */
+  protectedByRecovery: boolean;
   /** True while the day is still in progress, protects it from breaking a streak. */
   isInProgress: boolean;
   /** Set when the day had a plan but fell short, phrased for direct display. */
@@ -52,6 +54,7 @@ export function computeConsistency(
   events: PlannerEvent[],
   timezone: string,
   todayKey: string,
+  recoveryDays: ReadonlySet<string> = new Set(),
 ): DayConsistency[] {
   const study = events.filter((event) => event.category === "study");
   if (study.length === 0) return [];
@@ -78,7 +81,8 @@ export function computeConsistency(
     const planned = Math.round(bucket.planned);
     const actual = Math.round(bucket.actual);
     const ratio = planned > 0 ? actual / planned : 0;
-    const consistent = planned > 0 && ratio >= CONSISTENCY_THRESHOLD;
+    const protectedByRecovery = planned > 0 && ratio < CONSISTENCY_THRESHOLD && recoveryDays.has(key) && actual > 0;
+    const consistent = planned > 0 && (ratio >= CONSISTENCY_THRESHOLD || protectedByRecovery);
     const dayEndMs = new Date(`${key}T23:59:59Z`).getTime();
     const isInProgress = key === todayKey && nowMs < dayEndMs;
     return {
@@ -90,6 +94,7 @@ export function computeConsistency(
       ratio,
       consistent,
       recovered: consistent && bucket.missedBlocks > 0,
+      protectedByRecovery,
       isInProgress,
       missReason:
         planned > 0 && !consistent
@@ -110,9 +115,10 @@ export function computeStreak(
   events: PlannerEvent[],
   timezone: string,
   now: Date = new Date(),
+  recoveryDays: ReadonlySet<string> = new Set(),
 ): StreakSummary {
   const todayKey = dateKey(now.toISOString(), timezone);
-  const history = computeConsistency(events, timezone, todayKey);
+  const history = computeConsistency(events, timezone, todayKey, recoveryDays);
   const byKey = new Map(history.map((day) => [day.key, day]));
 
   // Current streak: walk backwards from today, jumping over planless days.
@@ -171,6 +177,9 @@ export function computeStreak(
     history,
   };
 }
+
+/** What to say when there's no streak right now. Never "reset": it's a fresh start. */
+export const START_STREAK_HINT = "Do 70% of a day's plan to start a streak.";
 
 function highestMilestone(current: number): number | null {
   let hit: number | null = null;

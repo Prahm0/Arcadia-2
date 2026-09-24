@@ -236,7 +236,7 @@ export default function YourSky({
           <Heading
             id="constellations-heading"
             title="All streak cards"
-            body="Five cards for different ways of studying, then all 88 constellations of the night sky, formed one after another as your focus adds up. Following a card just brings it into view."
+            body="A handful of cards for different ways of studying, then all 88 constellations of the night sky, formed one after another as your focus adds up. Following a card just brings it into view."
             aside={
               <div role="group" aria-label="Show" className="flex flex-wrap gap-1">
                 {FILTERS.map((item) => (

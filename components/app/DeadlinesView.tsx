@@ -15,6 +15,7 @@ import EmptyState, { ExampleRow } from "./EmptyState";
 import NewTaskSheet from "./NewTaskSheet";
 import TaskDetailSheet from "./TaskDetailSheet";
 import { categoryColor } from "@/lib/app/categoryColors";
+import { subjectCount } from "@/lib/app/subjectCount";
 
 export default function DeadlinesView() {
   const { data, patch, reload } = useDashboardData();
@@ -133,7 +134,7 @@ export default function DeadlinesView() {
         meta={
           total === 0
             ? "No open tasks"
-            : `${total} open ${total === 1 ? "task" : "tasks"} · ${formatDurationMinutes(totalMinutes)} of work across ${data.subjects.length} ${data.subjects.length === 1 ? "subject" : "subjects"}`
+            : `${total} open ${total === 1 ? "task" : "tasks"} · ${formatDurationMinutes(totalMinutes)} of work across ${subjectCount(data)} ${subjectCount(data) === 1 ? "subject" : "subjects"}`
         }
         tour="deadlines"
         action={

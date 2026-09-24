@@ -24,7 +24,7 @@ import HabitsPanel, { HabitsCard } from "./schedule/HabitsPanel";
 import { HabitsProvider, useHabits } from "./schedule/habits";
 import { MobileDaySchedule, MobileWeekSchedule } from "./schedule/MobileSchedule";
 import { usePlanner } from "./schedule/usePlanner";
-import { periodDates, periodFor, periodPosition, stepPeriod } from "./schedule/period";
+import { holidayNote, periodDates, periodFor, periodPosition, stepPeriod } from "./schedule/period";
 import { ChevronIcon } from "./schedule/bits";
 import {
   addDays,
@@ -313,7 +313,7 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
 
   const title =
     mode === "term" ? `${period.name}${period.isTerm ? `, ${period.year}` : ` ${period.year}`}` : mode === "week" ? weekTitle(days) : dayTitle(anchor);
-  const meta = mode === "term" ? periodDates(period) : periodPosition(period, anchor);
+  const meta = mode === "term" ? `${periodDates(period)}${holidayNote(period, today)}` : periodPosition(period, anchor);
   const stripDay = mode === "day" ? anchor : today;
   const stripRange =
     mode === "term"

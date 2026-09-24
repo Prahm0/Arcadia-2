@@ -10,6 +10,8 @@ export interface IosPurchaseOption {
   productIdentifier: string;
   priceString: string;
   title: string;
+  /** Apple introductory price (e.g. first month discounted), when one is set up. */
+  introPriceString: string | null;
 }
 
 const IOS_API_KEY = process.env.NEXT_PUBLIC_REVENUECAT_IOS_API_KEY?.trim() ?? "";
@@ -98,7 +100,13 @@ export async function getIosPurchaseOptions(userId: string): Promise<IosPurchase
   return packages.flatMap((aPackage) => {
     const target = targetForProduct(aPackage.product.identifier);
     return target
-      ? [{ ...target, productIdentifier: aPackage.product.identifier, priceString: aPackage.product.priceString, title: aPackage.product.title }]
+      ? [{
+          ...target,
+          productIdentifier: aPackage.product.identifier,
+          priceString: aPackage.product.priceString,
+          title: aPackage.product.title,
+          introPriceString: aPackage.product.introPrice?.priceString ?? null,
+        }]
       : [];
   });
 }
@@ -118,6 +126,19 @@ export async function purchaseIosOption(
   );
   if (!aPackage) throw new Error("This App Store plan is not available right now. Try again shortly.");
   await purchases.purchasePackage({ aPackage });
+}
+
+/**
+ * Whether this Apple ID can still get the introductory price for a product.
+ * Apple grants it once per subscription group, so anyone who has subscribed
+ * before pays the normal price; we only advertise the offer when it's real.
+ */
+export async function iosIntroOfferEligible(userId: string, productIdentifier: string): Promise<boolean> {
+  const purchases = (await purchasesFor(userId))?.purchases;
+  if (!purchases) return false;
+  const result = await purchases.checkTrialOrIntroductoryPriceEligibility({ productIdentifiers: [productIdentifier] });
+  // 2 = INTRO_ELIGIBILITY_STATUS_ELIGIBLE
+  return result[productIdentifier]?.status === 2;
 }
 
 export async function restoreIosPurchases(userId: string): Promise<void> {

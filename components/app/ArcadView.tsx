@@ -21,6 +21,7 @@ import ChatRail, { PANEL_ICON } from "./arcad/ChatRail";
 import Composer, { type ComposerHandle } from "./arcad/Composer";
 import { MessageRow, ThinkingRow } from "./arcad/ChatMessage";
 import type { ArcadUsage, ChatMessage, Conversation, Proposal, SendError } from "./arcad/types";
+import { subjectCount } from "@/lib/app/subjectCount";
 
 type View = "chat" | "month";
 
@@ -733,7 +734,7 @@ function proposalsFor(message: ChatMessage, messages: ChatMessage[], proposals: 
 
 /** What Arcad works from, so it's clear it isn't guessing. */
 function KnowsLine({ data }: { data: ReturnType<typeof useDashboardData>["data"] }) {
-  const subjects = data.subjects.length;
+  const subjects = subjectCount(data);
   const open = data.tasks.filter((t) => t.status === "pending").length;
   const parts = [
     subjects ? `your ${subjects} subject${subjects === 1 ? "" : "s"}` : null,

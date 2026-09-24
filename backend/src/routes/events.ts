@@ -66,7 +66,11 @@ async function applyOutcome(database: Database, event: EventRow, outcome: Outcom
 
   await database
     .update(schema.tasks)
-    .set({ completedMinutes: completed, status: completed >= task.estimatedMinutes ? "complete" : "pending" })
+    .set({
+      completedMinutes: completed,
+      status: completed >= task.estimatedMinutes ? "complete" : "pending",
+      completedAt: completed >= task.estimatedMinutes ? (task.completedAt ?? Date.now()) : null,
+    })
     .where(eq(schema.tasks.id, task.id));
 }
 

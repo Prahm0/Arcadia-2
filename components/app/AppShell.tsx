@@ -578,7 +578,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
           {isGuestEmail(user?.email) ? (
             <GuestBanner />
           ) : null}
-          <DailyWelcome />
+          {pathname === "/app" ? <DailyWelcome /> : null}
           <PageMount>{children}</PageMount>
         </main>
         <ArcadFloatingButton />

@@ -30,6 +30,10 @@ const BUILT_IN_PRESETS = [
   { label: "Long block", focus: 90 * 60, break: 15 * 60 },
 ];
 
+/** Free plan: Classic 25/5 (and a scheduled block's own length). The rest are Pro. */
+const PRO_PRESETS = new Set(["Deep focus", "Long block", "Custom"]);
+const CLASSIC_INDEX = BUILT_IN_PRESETS.findIndex((preset) => preset.label === "Classic");
+
 const CUSTOM_KEY = "arcadia:focus:custom";
 const CUSTOM_DEFAULT = { focusMin: 30, breakMin: 5 };
 // Skip the "you barely started" case: reset only logs a session if the user
@@ -151,7 +155,10 @@ function FocusViewInner() {
     [customPreset, linkedMinutes, breakSeconds],
   );
   const customIndex = PRESETS.length - 1;
-  const [presetIndex, setPresetIndex] = useState(0);
+  const paidPlan = data.user.tier === "pro" || data.user.tier === "max";
+  const presetLocked = (label: string) => !paidPlan && PRO_PRESETS.has(label);
+  // Free students start on Classic; a scheduled block always opens on its own length.
+  const [presetIndex, setPresetIndex] = useState(() => (linkedMinutes || paidPlan ? 0 : CLASSIC_INDEX));
   const [phase, setPhase] = useState<Phase>("idle");
   useEffect(() => { if (phase === "focus") activityId.current = crypto.randomUUID(); }, [phase]);
   const [remaining, setRemaining] = useState(PRESETS[presetIndex].focus);
@@ -494,8 +501,9 @@ function FocusViewInner() {
   function detach() {
     setRunning(false);
     setPhase("idle");
-    setPresetIndex(0);
-    setRemaining(BUILT_IN_PRESETS[0].focus);
+    const index = paidPlan ? 0 : CLASSIC_INDEX;
+    setPresetIndex(index);
+    setRemaining(BUILT_IN_PRESETS[index].focus);
     router.replace("/app/focus");
   }
 
@@ -794,6 +802,10 @@ function FocusViewInner() {
                   key={p.label}
                   type="button"
                   onClick={() => {
+                    if (presetLocked(p.label)) {
+                      router.push("/app/pricing");
+                      return;
+                    }
                     setPresetIndex(i);
                     setPhase("idle");
                     setRemaining(p.focus);
@@ -809,9 +821,15 @@ function FocusViewInner() {
                   }}
                 >
                   <span>{p.label}</span>
-                  <span className="tabular-nums text-[12px]" style={{ color: "var(--app-text-muted)" }}>
-                    {p.focus / 60}m · {p.break / 60}m
-                  </span>
+                  {presetLocked(p.label) ? (
+                    <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: "var(--app-arcad-soft)", color: "var(--app-arcad-strong)" }}>
+                      Pro
+                    </span>
+                  ) : (
+                    <span className="tabular-nums text-[12px]" style={{ color: "var(--app-text-muted)" }}>
+                      {p.focus / 60}m · {p.break / 60}m
+                    </span>
+                  )}
                 </button>
               ))}
             </div>

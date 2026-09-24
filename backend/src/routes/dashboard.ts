@@ -101,8 +101,22 @@ dashboard.get("/", async (c) => {
   const todayKey = localDateKey(now, timezone);
   const weekStart = start - 6 * DAY;
 
+  // Days the student used Life happened. A day they recovered and still
+  // studied is protected on the streak (lib/app/streaks.ts).
+  const recoveryRows = await database
+    .select({ createdAt: schema.xpEvents.createdAt })
+    .from(schema.xpEvents)
+    .where(
+      and(
+        eq(schema.xpEvents.userId, userId),
+        eq(schema.xpEvents.source, "recovery"),
+        gte(schema.xpEvents.createdAt, now - 120 * DAY),
+      ),
+    );
+
   const analytics = {
     ...computeStreaks(sessions, timezone),
+    recoveryDays: [...new Set(recoveryRows.map((row) => localDateKey(row.createdAt, timezone)))],
     todayMinutes: minutesBetween(
       sessions.filter((s) => localDateKey(s.endedAt, timezone) === todayKey),
     ),

@@ -4,7 +4,7 @@ import { useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } fro
 import Link from "next/link";
 import { formatMinutes } from "@/lib/api/time";
 import { STREAK_GOLD } from "@/shared/constellations";
-import { CONSISTENCY_THRESHOLD, type DayConsistency, type StreakSummary } from "@/lib/app/streaks";
+import { CONSISTENCY_THRESHOLD, START_STREAK_HINT, type DayConsistency, type StreakSummary } from "@/lib/app/streaks";
 
 /** Two weeks: enough to see a run form and where the last one broke. */
 const DAYS = 14;
@@ -78,9 +78,7 @@ export default function StreakChain({ streak, today }: { streak: StreakSummary; 
           </p>
           <p className="mt-3 text-[13px] leading-[1.5] text-[#b6bfcb]">
             {streak.current === 0
-              ? streak.lastPlannedDay?.missReason
-                ? `Reset, ${streak.lastPlannedDay.missReason}. Do 70% of a day's plan to restart it.`
-                : "Do 70% of a day's plan to start one."
+              ? START_STREAK_HINT
               : target && streak.daysToNext
                 ? `${streak.daysToNext} more ${streak.daysToNext === 1 ? "day" : "days"} to a ${target}-day streak.`
                 : "Past every milestone. Keep the chain going."}
@@ -223,7 +221,7 @@ function buildDays(streak: StreakSummary, today: string): ChainDay[] {
     const isToday = key === today;
     let state: State = "rest";
     if (record && record.plannedMinutes > 0) {
-      if (record.consistent) state = record.recovered ? "recovered" : "kept";
+      if (record.consistent) state = record.recovered || record.protectedByRecovery ? "recovered" : "kept";
       else if (isToday || record.isInProgress) state = "pending";
       else state = "missed";
     }
@@ -272,6 +270,7 @@ function caption(day: ChainDay): string {
       : "Nothing planned. Rest days don't break a streak.";
   }
   const done = `${formatMinutes(record.actualMinutes)} of ${formatMinutes(record.plannedMinutes)} planned`;
+  if (record.protectedByRecovery) return `${done}. Protected by Life happened: you adjusted your plan and still studied, so it counted.`;
   if (day.state === "recovered") return `${done}. A block slipped, but you still did ${Math.round(record.ratio * 100)}%, so it counted.`;
   if (day.state === "kept") return `${done}. Counted.`;
   if (day.state === "pending") {

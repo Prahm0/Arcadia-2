@@ -26,6 +26,10 @@ export const ACHIEVEMENTS: AchievementDefinition[] = [
   { id: "tasks_5", title: "Deadline keeper", description: "Finish 5 tasks", category: "Deadlines", target: 5, icon: "✓" },
   { id: "tasks_early_3", title: "Ahead of schedule", description: "Finish 3 tasks at least two days early", category: "Deadlines", target: 3, icon: "↑" },
   { id: "subject_first", title: "First course", description: "Add your first subject", category: "Explorer", target: 1, icon: "◇" },
+  { id: "syllabus_first", title: "Mapped out", description: "Add a syllabus to a subject", category: "Explorer", target: 1, icon: "▤" },
+  { id: "sheet_first", title: "On one page", description: "Make your first summary sheet", category: "Explorer", target: 1, icon: "▭" },
+  { id: "arcad_first", title: "First words", description: "Start a chat with Arcad", category: "Explorer", target: 1, icon: "✧" },
+  { id: "invite_first", title: "Better together", description: "Invite a friend who joins", category: "Explorer", target: 1, icon: "⚭" },
   { id: "weekend", title: "Weekend window", description: "Focus on a weekend", category: "Weekend", target: 1, icon: "◒" },
 ];
 

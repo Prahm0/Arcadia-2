@@ -156,9 +156,7 @@ export default function WeeklyReviewCard({
           message={
             streak.current > 0
               ? `${streak.current} consistent ${streak.current === 1 ? "day" : "days"} · longest ${streak.longest}`
-              : streak.lastPlannedDay?.missReason
-                ? `Reset, ${streak.lastPlannedDay.missReason}.`
-                : `Longest ${streak.longest} ${streak.longest === 1 ? "day" : "days"}`
+              : `Longest ${streak.longest} ${streak.longest === 1 ? "day" : "days"}`
           }
           tone="accent"
         />

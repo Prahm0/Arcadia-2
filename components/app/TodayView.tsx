@@ -124,6 +124,10 @@ export default function TodayView() {
   const laterEvents = laterCandidates.filter(
     (event) => event.category !== "sleep" || event === sleepEvent,
   );
+  // Already under way (school, practice): shown as "Now", not by start time.
+  const inProgressIds = new Set(
+    laterEvents.filter((event) => Date.parse(event.startAt) <= now.getTime()).map((event) => event.id),
+  );
 
   const remaining = studyBlocks.filter((event) => event.outcome === "planned");
   const completed = studyBlocks.filter((event) => event.outcome === "completed");
@@ -214,6 +218,7 @@ export default function TodayView() {
             completedCount={completed.length}
             studyBlocks={studyBlocks}
             laterEvents={laterEvents}
+            inProgressIds={inProgressIds}
             busyId={busyId}
             celebrate={celebrateId}
             timezone={timezone}
@@ -264,6 +269,7 @@ interface TodayCardProps {
   completedCount: number;
   studyBlocks: PlannerEvent[];
   laterEvents: PlannerEvent[];
+  inProgressIds: Set<string>;
   busyId: string | null;
   celebrate: { id: string; at: number } | null;
   timezone: string;
@@ -277,7 +283,7 @@ interface TodayCardProps {
 function TodayCard(props: TodayCardProps) {
   const {
     date, weekProgress, totalMinutes, remainingCount, completedCount,
-    studyBlocks, laterEvents, busyId, celebrate, timezone, hasTasks,
+    studyBlocks, laterEvents, inProgressIds, busyId, celebrate, timezone, hasTasks,
     onNewTask, onComplete, onMiss, onOpen,
   } = props;
 
@@ -391,9 +397,14 @@ function TodayCard(props: TodayCardProps) {
                   className="tabular-nums w-[80px] shrink-0"
                   style={{ color: "var(--app-text-muted)" }}
                 >
-                  {formatClock(event.startAt, timezone)}
+                  {inProgressIds.has(event.id) ? "Now" : formatClock(event.startAt, timezone)}
                 </span>
-                <span className="truncate" style={{ color: "var(--app-text)" }}>{event.title}</span>
+                <span className="truncate" style={{ color: "var(--app-text)" }}>
+                  {event.title}
+                  {inProgressIds.has(event.id) ? (
+                    <span style={{ color: "var(--app-text-muted)" }}> · until {formatClock(event.endAt, timezone)}</span>
+                  ) : null}
+                </span>
               </li>
             ))}
           </ul>

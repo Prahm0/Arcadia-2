@@ -130,6 +130,8 @@ export interface DashboardResponse {
     todayMinutes?: number;
     /** The last seven days, oldest first, ending today. */
     days?: Array<{ date: string; minutes: number }>;
+    /** Local dates the student used Life happened, for protected streak days. */
+    recoveryDays?: string[];
     [key: string]: unknown;
   };
   companion: {

@@ -18,30 +18,37 @@ export async function readStudySky(database: Database, userId: string): Promise<
   // Unique keys make concurrent reconcilers harmless. Each insert is durable;
   // a failed request is replayable from the persisted source sessions.
   const previous = await database.select().from(schema.constellationMilestones).where(eq(schema.constellationMilestones.userId, userId));
+  const savedStars = new Map(previous.map((row) => [`${row.constellationId}:${row.starIndex}`, row.earnedAt]));
+  const newStars: (typeof schema.constellationMilestones.$inferInsert)[] = [];
+  const newCards: (typeof schema.constellationCards.$inferInsert)[] = [];
   for (const card of cards) {
     for (const star of card.milestones) {
-      const saved = previous.find((row) => row.constellationId === card.id && row.starIndex === star.index);
-      if (saved) star.earnedAt = saved.earnedAt;
-      else if (star.earnedAt !== null) {
-        await database.insert(schema.constellationMilestones).values({ userId, constellationId: card.id, starIndex: star.index, earnedAt: star.earnedAt }).onConflictDoNothing();
-      }
+      const saved = savedStars.get(`${card.id}:${star.index}`);
+      if (saved !== undefined) star.earnedAt = saved;
+      else if (star.earnedAt !== null) newStars.push({ userId, constellationId: card.id, starIndex: star.index, earnedAt: star.earnedAt });
     }
     if (card.milestones.every((star) => star.earnedAt !== null)) {
-      await database.insert(schema.constellationCards).values({ userId, constellationId: card.id, earnedAt: Math.max(...card.milestones.map((star) => star.earnedAt!)), addedAt: Date.now() }).onConflictDoNothing();
+      newCards.push({ userId, constellationId: card.id, earnedAt: Math.max(...card.milestones.map((star) => star.earnedAt!)), addedAt: Date.now() });
     }
   }
+  // A long study history can light hundreds of stars at once. D1 allows 100
+  // bound values per statement and a card row takes 5, so write 16 rows at a time.
+  for (let i = 0; i < newStars.length; i += 16) await database.insert(schema.constellationMilestones).values(newStars.slice(i, i + 16)).onConflictDoNothing();
+  for (let i = 0; i < newCards.length; i += 16) await database.insert(schema.constellationCards).values(newCards.slice(i, i + 16)).onConflictDoNothing();
   // A second request may have inserted milestones while this one was reconciling.
   // Read the final persisted state so both requests return the same earned stars.
   const [earned, owned] = await Promise.all([
     database.select().from(schema.constellationMilestones).where(eq(schema.constellationMilestones.userId, userId)),
     database.select().from(schema.constellationCards).where(eq(schema.constellationCards.userId, userId)),
   ]);
+  const earnedStars = new Map(earned.map((row) => [`${row.constellationId}:${row.starIndex}`, row.earnedAt]));
+  const ownedCards = new Map(owned.map((row) => [row.constellationId, row]));
   for (const card of cards) {
     for (const star of card.milestones) {
-      const savedStar = earned.find((row) => row.constellationId === card.id && row.starIndex === star.index);
-      if (savedStar) star.earnedAt = savedStar.earnedAt;
+      const savedStar = earnedStars.get(`${card.id}:${star.index}`);
+      if (savedStar !== undefined) star.earnedAt = savedStar;
     }
-    const saved = owned.find((row) => row.constellationId === card.id);
+    const saved = ownedCards.get(card.id);
     card.earnedAt = saved?.earnedAt ?? null;
     card.addedAt = saved?.addedAt ?? null;
     card.seen = saved?.seenAt != null;

@@ -17,7 +17,7 @@ export function SkyBanner({ preferences, cards }: { preferences: SkyPreferences;
   if (!backdrop && !featured) return null;
   const definition = constellationById((featured || backdrop)!.id)!;
   return <div className={styles.banner}>
-    {backdrop && <div className={styles.bannerArt}><ConstellationArtwork definition={constellationById(backdrop.id)!} card={backdrop} /></div>}
+    {backdrop && <div className={styles.bannerArt}><ConstellationArtwork definition={constellationById(backdrop.id)!} card={backdrop} frame={false} /></div>}
     <div className={styles.bannerText}><p className="text-[10px] uppercase tracking-[.16em] text-[#a8b4c4]">{featured ? "Featured streak card" : "Your streaks"}</p><p className="mt-3 text-[22px] font-medium tracking-[-.03em]">✦ {definition.name}</p><p className="mt-2 text-[11px] text-[#b6bfcb]">{definition.story}</p></div>
   </div>;
 }

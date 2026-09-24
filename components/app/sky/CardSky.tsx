@@ -39,10 +39,12 @@ function compose(definition: ConstellationDefinition, starScale: number) {
   };
 }
 
-export default function CardSky({ definition, lit, collected, starScale = 1 }: {
+export default function CardSky({ definition, lit, collected, starScale = 1, small = false }: {
   definition: ConstellationDefinition; lit: (index: number) => boolean; collected: boolean;
-  /** Larger stars for small renders, like the Today banner, where the disc is under 100px. */
+  /** Larger stars for small renders, like the Today rail, where the disc is under 100px. */
   starScale?: number;
+  /** Under 100px: crop to the disc and drop detail finer than a pixel (dust, grid, rim ticks), which only blurs. */
+  small?: boolean;
 }) {
   const sky = useMemo(() => compose(definition, starScale), [definition, starScale]);
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
@@ -52,7 +54,7 @@ export default function CardSky({ definition, lit, collected, starScale = 1 }: {
   const [lx1, ly1] = polar(R - 5, 232), [lx2, ly2] = polar(R - 5, 318);
   const [bx1, by1] = polar(R - 6, 140), [bx2, by2] = polar(R - 6, 220);
   return (
-    <svg viewBox="0 0 400 400" fill="none" aria-hidden="true">
+    <svg viewBox={small ? `${C - R - 3} ${C - R - 3} ${2 * R + 6} ${2 * R + 6}` : "0 0 400 400"} fill="none" aria-hidden="true">
       <defs>
         <clipPath id={id("disc")}><circle cx={C} cy={C} r={R} /></clipPath>
         <radialGradient id={id("sky")} cx="44%" cy="38%" r="70%">
@@ -77,29 +79,33 @@ export default function CardSky({ definition, lit, collected, starScale = 1 }: {
         </g>
         <circle cx={sky.warm[0]} cy={sky.warm[1]} r={110} fill={`url(#${id("warm")})`} />
         <circle cx={sky.cool[0]} cy={sky.cool[1]} r={90} fill={`url(#${id("cool")})`} />
-        <g transform={`rotate(${sky.tilt} ${C} ${C})`} stroke="#dce5f4" strokeOpacity=".07" strokeWidth=".7">
-          <ellipse cx={C} cy={C} rx={R * .38} ry={R} /><ellipse cx={C} cy={C} rx={R * .76} ry={R} />
-          <path d={`M${C} ${C - R}V${C + R}M${C - R} ${C}H${C + R}M${C - R} ${C - 64}H${C + R}M${C - R} ${C + 64}H${C + R}M${C - R} ${C - 124}H${C + R}M${C - R} ${C + 124}H${C + R}`} strokeDasharray="1 5" />
-        </g>
-        <Dust paths={sky.dust} />
-        {sky.glints.map(([x, y], i) => <path key={i} d={`M${x - 5} ${y}H${x + 5}M${x} ${y - 5}V${y + 5}`} stroke="#fff" strokeOpacity=".45" strokeWidth=".5" />)}
+        {!small && <>
+          <g transform={`rotate(${sky.tilt} ${C} ${C})`} stroke="#dce5f4" strokeOpacity=".07" strokeWidth=".7">
+            <ellipse cx={C} cy={C} rx={R * .38} ry={R} /><ellipse cx={C} cy={C} rx={R * .76} ry={R} />
+            <path d={`M${C} ${C - R}V${C + R}M${C - R} ${C}H${C + R}M${C - R} ${C - 64}H${C + R}M${C - R} ${C + 64}H${C + R}M${C - R} ${C - 124}H${C + R}M${C - R} ${C + 124}H${C + R}`} strokeDasharray="1 5" />
+          </g>
+          <Dust paths={sky.dust} />
+          {sky.glints.map(([x, y], i) => <path key={i} d={`M${x - 5} ${y}H${x + 5}M${x} ${y - 5}V${y + 5}`} stroke="#fff" strokeOpacity=".45" strokeWidth=".5" />)}
+        </>}
         <Figure definition={definition} points={sky.points} sizes={sky.sizes} lit={lit} />
         <circle cx={C} cy={C} r={R} fill={`url(#${id("vignette")})`} />
-        <path d={`M${lx1} ${ly1}A${R - 5} ${R - 5} 0 0 1 ${lx2} ${ly2}`} stroke={`url(#${id("glint")})`} strokeWidth="2" strokeLinecap="round" />
+        {!small && <path d={`M${lx1} ${ly1}A${R - 5} ${R - 5} 0 0 1 ${lx2} ${ly2}`} stroke={`url(#${id("glint")})`} strokeWidth="2" strokeLinecap="round" />}
         {/* The glass dome: a soft highlight up top and a thin rim light below, sliding against the tilt. */}
         <ellipse className={styles.dome} cx={C} cy={C - 78} rx={R * .74} ry={R * .42} fill={`url(#${id("dome")})`} />
         <path className={styles.domeLow} d={`M${bx1} ${by1}A${R - 6} ${R - 6} 0 0 1 ${bx2} ${by2}`} stroke="#fff4dc" strokeOpacity=".16" strokeWidth="1.4" strokeLinecap="round" />
       </g>
 
-      <circle cx={C} cy={C} r={R + 1.5} stroke={`url(#${id("rim")})`} strokeWidth="1.6" />
-      <circle cx={C} cy={C} r={R + 8} stroke={gold} strokeOpacity={.26 * rim} strokeWidth=".6" />
-      <path d={sky.ticks} stroke={gold} strokeOpacity={.42 * rim} strokeWidth=".7" />
-      <circle cx={C} cy={C} r={R + 23} stroke={gold} strokeOpacity={.18 * rim} strokeWidth=".5" strokeDasharray="1 3" />
-      {/* North, east and west; south would crowd the divider under the disc. */}
-      {[0, 90, 270].map((deg) => {
-        const [x, y] = polar(R + 23, deg);
-        return <path key={deg} d={`M${x} ${y - 4.5}L${x + 2.6} ${y}L${x} ${y + 4.5}L${x - 2.6} ${y}Z`} transform={`rotate(${deg} ${x} ${y})`} fill={gold} fillOpacity={.8 * rim} stroke="#07090d" strokeWidth="1.2" paintOrder="stroke" />;
-      })}
+      <circle cx={C} cy={C} r={R + 1.5} stroke={`url(#${id("rim")})`} strokeWidth="1.6" vectorEffect={small ? "non-scaling-stroke" : undefined} />
+      {!small && <>
+        <circle cx={C} cy={C} r={R + 8} stroke={gold} strokeOpacity={.26 * rim} strokeWidth=".6" />
+        <path d={sky.ticks} stroke={gold} strokeOpacity={.42 * rim} strokeWidth=".7" />
+        <circle cx={C} cy={C} r={R + 23} stroke={gold} strokeOpacity={.18 * rim} strokeWidth=".5" strokeDasharray="1 3" />
+        {/* North, east and west; south would crowd the divider under the disc. */}
+        {[0, 90, 270].map((deg) => {
+          const [x, y] = polar(R + 23, deg);
+          return <path key={deg} d={`M${x} ${y - 4.5}L${x + 2.6} ${y}L${x} ${y + 4.5}L${x - 2.6} ${y}Z`} transform={`rotate(${deg} ${x} ${y})`} fill={gold} fillOpacity={.8 * rim} stroke="#07090d" strokeWidth="1.2" paintOrder="stroke" />;
+        })}
+      </>}
     </svg>
   );
 }

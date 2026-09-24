@@ -8,6 +8,8 @@ import { draftSheet, stashDraft } from "@/lib/api/sheets";
 import { cn } from "@/lib/cn";
 import { SECTION_PRESETS } from "@/shared/sheets";
 import AppButton from "../AppButton";
+import InlineUpload from "../files/InlineUpload";
+import { useRefreshOnUpload } from "../files/UploadProvider";
 import { Label, Select, Sheet, TextInput } from "../profile/ui";
 import { useSubjects } from "../cards/shared";
 
@@ -35,7 +37,8 @@ export default function NewSheetSheet({
 function NewSheetForm({ onClose, initialSubject }: { onClose: () => void; initialSubject: string | null }) {
   const router = useRouter();
   const { subjects } = useSubjects();
-  const { state: profileState } = useProfile();
+  const { state: profileState, refresh: refreshProfile } = useProfile();
+  useRefreshOnUpload(refreshProfile);
   const { state: decksState } = useDecks();
   const [title, setTitle] = useState("");
   const [subjectId, setSubjectId] = useState(initialSubject ?? subjects[0]?.id ?? "");
@@ -141,20 +144,29 @@ function NewSheetForm({ onClose, initialSubject }: { onClose: () => void; initia
         {start === "arcad" ? (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Draft from">
-              <Option selected={source === "file"} onSelect={() => setSource("file")} title="File" body="Uploaded notes" />
+              <Option selected={source === "file"} onSelect={() => setSource("file")} title="Notes" body="A file you've uploaded" />
               <Option selected={source === "deck"} onSelect={() => setSource("deck")} title="Deck" body="Flashcards" />
             </div>
             {source === "file" ? (
-              <Label text="Uploaded file" hint="Files that have been read and stored.">
-                <Select value={fileId} onChange={setFileId}>
-                  <option value="">{profileState.status === "loading" ? "Loading files…" : "Choose a file"}</option>
-                  {files.map((file) => (
-                    <option key={file.id} value={file.id}>
-                      {file.label}
-                    </option>
-                  ))}
-                </Select>
-              </Label>
+              <div className="space-y-3">
+                {files.length || profileState.status !== "ready" ? (
+                  <Label text="Your notes" hint="Files Arcad has read. Or upload another below.">
+                    <Select value={fileId} onChange={setFileId}>
+                      <option value="">{profileState.status === "loading" ? "Loading files…" : "Choose a file"}</option>
+                      {files.map((file) => (
+                        <option key={file.id} value={file.id}>
+                          {file.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </Label>
+                ) : null}
+                <InlineUpload
+                  subjectId={subjectId}
+                  title={files.length ? "Upload other notes" : "Upload the notes to draft from"}
+                  onRead={setFileId}
+                />
+              </div>
             ) : (
               <Label text="Flashcard deck">
                 <Select value={deckId} onChange={setDeckId}>

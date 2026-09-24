@@ -10,6 +10,7 @@ import { StudySkyProvider } from "@/lib/app/StudySkyProvider";
 import { isOnboardingOfferPending, setOnboardingOfferPending } from "@/lib/app/onboarding-offer";
 import OnboardingPaywall from "@/components/app/OnboardingPaywall";
 import { FocusSessionProvider } from "@/components/app/focus/FocusSession";
+import UploadProvider from "@/components/app/files/UploadProvider";
 
 // ThemeProvider is mounted one level up in app/(app)/layout.tsx so the auth
 // and legal pages share the dashboard's theme.
@@ -86,9 +87,12 @@ function Gate({ children }: { children: ReactNode }) {
         <StudySkyProvider key={user.id}>
           {/* Above the pages, so a focus timer and its pop-out survive moving between them. */}
           <FocusSessionProvider>
-            <AppShell user={user} notices={notices}>
-              {children}
-            </AppShell>
+            {/* Likewise an upload, which keeps going while the student moves on. */}
+            <UploadProvider>
+              <AppShell user={user} notices={notices}>
+                {children}
+              </AppShell>
+            </UploadProvider>
           </FocusSessionProvider>
         </StudySkyProvider>
       ) : (

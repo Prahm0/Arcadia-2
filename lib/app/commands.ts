@@ -35,6 +35,7 @@ export const GO_TARGETS: GoTarget[] = [
   { label: "Rooms", href: "/app/rooms", key: "r" },
   { label: "Cards", href: "/app/cards", key: "c" },
   { label: "Files", href: "/app/files", key: "i" },
+  { label: "Sheets", href: "/app/sheets", key: "e" },
   { label: "Analytics", href: "/app/analytics", key: "a" },
   { label: "Streaks", href: "/app/streaks", key: "k" },
   { label: "Weekly review", href: "/app/review", key: "w" },

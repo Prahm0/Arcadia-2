@@ -11,6 +11,7 @@ import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
 import { formatWeekly, suggestedWeeklyMinutes } from "@/lib/app/studyTargets";
 import AppButton from "../AppButton";
 import ResourcesSection from "./ResourcesSection";
+import SubjectSheets from "../sheets/SubjectSheets";
 import SyllabusSection from "./SyllabusSection";
 import { ColourSwatches, Label, Section, TextArea, TextInput, WeeklyStepper, formatHoursMinutes } from "./ui";
 
@@ -186,6 +187,7 @@ function SubjectEditor({
 
       <SyllabusSection subject={subject} refresh={refresh} replanned={async () => void (await Promise.all([refresh(), reload()]))} />
       <ResourcesSection subject={subject} refresh={refresh} />
+      <SubjectSheets subjectId={subject.id} subjectName={subject.name} />
 
       <Section id="time" title="Time and target">
         <div className="space-y-5">

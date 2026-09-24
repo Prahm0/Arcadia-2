@@ -66,6 +66,7 @@ export type TourId =
   | "focus"
   | "rooms"
   | "cards"
+  | "sheets"
   | "analytics"
   | "streaks"
   | "review";
@@ -601,6 +602,51 @@ export const TOURS: Record<TourId, Tour> = {
               <p className="mt-1.5 text-[9.5px]" style={{ color: "var(--app-text-muted)" }}>Physics · 12:30</p>
             </Window>
           </div>
+        ),
+      },
+    ],
+  },
+
+  sheets: {
+    title: "Sheets",
+    steps: [
+      {
+        title: "One page per topic",
+        body: "A summary sheet holds what you need the night before: key ideas, formulas, definitions and common mistakes. It prints on one A4 page.",
+        visual: (
+          <Window width={280} title="Stoichiometry">
+            <Stack gap={6}>
+              <Row bar={CAT.study} title="Formulas" meta="n = m / M · c = n / V" />
+              <Row bar={CAT.study} title="Definitions" meta="Mole · Limiting reagent" />
+              <Row bar={CAT.study} title="Common mistakes" meta="Balance the equation first" />
+            </Stack>
+          </Window>
+        ),
+      },
+      {
+        title: "Arcad drafts, you check",
+        body: "Arcad can draft a sheet from a syllabus topic, a file you uploaded or one of your decks, using only what's in them. You read it and fix it before it's saved.",
+        visual: (
+          <Window width={270} title="New sheet">
+            <Stack gap={6}>
+              <MockInput label="Draft from" value="Syllabus topic · 3.2 Limiting reagents" />
+              <div className="flex justify-end">
+                <MockButton variant="primary">Draft sheet</MockButton>
+              </div>
+            </Stack>
+          </Window>
+        ),
+      },
+      {
+        title: "Sheets to flashcards",
+        body: "Write one \"term: meaning\" per line under Definitions or Formulas, and Make flashcards turns them into a deck.",
+        visual: (
+          <Window width={260}>
+            <p className="text-[10.5px]" style={{ color: "var(--app-text)" }}>- Mole: 6.022 × 10²³ particles</p>
+            <div className="mt-2 flex justify-end">
+              <Chip tone="accent">12 cards made</Chip>
+            </div>
+          </Window>
         ),
       },
     ],

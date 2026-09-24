@@ -35,9 +35,11 @@ function start(): void {
     capture_pageview: false,
     respect_dnt: true,
     session_recording: {
-      // Never record what people type. We want to see where they get stuck,
-      // not their notes, passwords or personal details.
+      // Never record what people type or read. We want to see where they get
+      // stuck, not their notes, names, chats or other personal details (our
+      // users are mostly minors).
       maskAllInputs: true,
+      maskTextSelector: "*",
     },
   });
 }

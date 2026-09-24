@@ -431,7 +431,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
                       Invite friends
                     </span>
                     <span className="truncate text-[11px]" style={{ color: "var(--app-text-muted)" }}>
-                      Both get 14 days of Pro
+                      Both get 7 days of Pro
                     </span>
                   </span>
                 </span>

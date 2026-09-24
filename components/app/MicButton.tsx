@@ -11,6 +11,7 @@ interface MicButtonProps {
   targetRef?: React.RefObject<HTMLTextAreaElement | null>;
   /** Compact variant (used in the floating orb sheet). */
   compact?: boolean;
+  disabled?: boolean;
 }
 
 /**
@@ -18,7 +19,7 @@ interface MicButtonProps {
  * value. Silent no-op on browsers without the API (Firefox), so pass it into
  * any composer and it either shows a working mic or nothing at all.
  */
-export default function MicButton({ value, onChange, targetRef, compact = false }: MicButtonProps) {
+export default function MicButton({ value, onChange, targetRef, compact = false, disabled = false }: MicButtonProps) {
   // Track the initial value at the start of a listening session so we can
   // stitch each transcript chunk onto it instead of appending to whatever
   // interim chunks have already landed.
@@ -48,6 +49,10 @@ export default function MicButton({ value, onChange, targetRef, compact = false 
   // Stop the mic if the component unmounts mid-listen.
   useEffect(() => () => stop(), [stop]);
 
+  useEffect(() => {
+    if (disabled) stop();
+  }, [disabled, stop]);
+
   if (!supported) return null;
 
   const size = compact ? 32 : 36;
@@ -56,6 +61,7 @@ export default function MicButton({ value, onChange, targetRef, compact = false 
     <button
       type="button"
       onClick={toggle}
+      disabled={disabled}
       aria-pressed={listening}
       aria-label={listening ? "Stop voice input" : "Start voice input"}
       title={error ?? (listening ? "Listening, tap to stop" : "Voice input")}

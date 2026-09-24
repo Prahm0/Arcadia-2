@@ -54,12 +54,13 @@ const Composer = forwardRef<
     onChange: (value: string) => void;
     onSend: () => void;
     sending: boolean;
+    disabled?: boolean;
     placeholder: string;
     autoFocus?: boolean;
     /** Bump to focus the box with the caret at the end, e.g. after the page fills it in. */
     focusRequest?: number;
   }
->(function Composer({ value, onChange, onSend, sending, placeholder, autoFocus, focusRequest }, ref) {
+>(function Composer({ value, onChange, onSend, sending, disabled = false, placeholder, autoFocus, focusRequest }, ref) {
   const { data } = useDashboardData();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -97,6 +98,13 @@ const Composer = forwardRef<
   }, [autoFocus]);
 
   useEffect(() => {
+    if (disabled) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMenu("closed");
+    }
+  }, [disabled]);
+
+  useEffect(() => {
     if (menu === "closed") return;
     const onDown = (event: MouseEvent) => {
       if (!menuRef.current?.contains(event.target as Node)) setMenu("closed");
@@ -121,7 +129,7 @@ const Composer = forwardRef<
     onChange(value.trim() ? `${value.trimEnd()} ${text}` : text);
   }
 
-  const canSend = value.trim().length > 0 && !sending;
+  const canSend = value.trim().length > 0 && !sending && !disabled;
 
   return (
     <form
@@ -148,6 +156,7 @@ const Composer = forwardRef<
         }}
         rows={1}
         placeholder={placeholder}
+        disabled={disabled}
         className="block max-h-[220px] min-h-[52px] w-full resize-none bg-transparent px-4 pb-1 pt-3.5 text-[15px] leading-[1.5] outline-none placeholder:text-[var(--app-text-faint)]"
         style={{ color: "var(--app-text)" }}
       />
@@ -160,6 +169,7 @@ const Composer = forwardRef<
             aria-expanded={menu !== "closed"}
             aria-label="What Arcad can do"
             title="What Arcad can do"
+            disabled={disabled}
             className="grid h-8 w-8 place-items-center rounded-full ui-hover"
             style={{ color: "var(--app-text-soft)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
           >
@@ -168,7 +178,7 @@ const Composer = forwardRef<
             </svg>
           </button>
 
-          {menu !== "closed" ? (
+          {menu !== "closed" && !disabled ? (
             <div
               role="menu"
               className="absolute bottom-[calc(100%+8px)] left-0 z-30 w-[min(372px,calc(100vw-48px))] overflow-hidden rounded-lg p-1.5"
@@ -257,7 +267,7 @@ const Composer = forwardRef<
         </span>
 
         <div className="ml-auto flex items-center gap-1">
-          <MicButton value={value} onChange={onChange} targetRef={inputRef} compact />
+          <MicButton value={value} onChange={onChange} targetRef={inputRef} compact disabled={disabled} />
           <button
             type="submit"
             disabled={!canSend}

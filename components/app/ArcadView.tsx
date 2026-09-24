@@ -20,7 +20,7 @@ import ChangeCard from "./arcad/ChangeCard";
 import ChatRail, { PANEL_ICON } from "./arcad/ChatRail";
 import Composer, { type ComposerHandle } from "./arcad/Composer";
 import { MessageRow, ThinkingRow } from "./arcad/ChatMessage";
-import type { ChatMessage, Conversation, Proposal, SendError } from "./arcad/types";
+import type { ArcadUsage, ChatMessage, Conversation, Proposal, SendError } from "./arcad/types";
 
 type View = "chat" | "month";
 
@@ -61,6 +61,8 @@ function ArcadPage() {
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [draft, setDraft] = useState("");
+  const [draftReady, setDraftReady] = useState(false);
+  const [usage, setUsage] = useState<ArcadUsage | null>(null);
   const [sending, setSending] = useState(false);
   const [loadingThread, setLoadingThread] = useState(false);
   const [sendError, setSendError] = useState<SendError | null>(null);
@@ -82,11 +84,63 @@ function ArcadPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const threadRef = useRef<HTMLDivElement>(null);
   const stickRef = useRef(true);
+  const sentDuringMountRef = useRef(false);
   /** Bumped whenever the open thread changes, so a late reply can't land in the wrong chat. */
   const threadKey = useRef(0);
+  const draftKey = `arcadia:arcad-draft:${data.user.id}`;
+  const limitReached = Boolean(usage && usage.used >= usage.cap);
 
   const starters = useMemo(() => buildContextualStarters(data, streak), [data, streak]);
   const greeting = useMemo(() => buildGreeting(data, streak), [data, streak]);
+
+  useEffect(() => {
+    let active = true;
+    let savedDraft = "";
+    try {
+      savedDraft = window.sessionStorage.getItem(draftKey) ?? "";
+    } catch {
+      // Draft persistence is best effort when browser storage is unavailable.
+    }
+
+    api<ArcadUsage>("/api/chat/usage")
+      .then((nextUsage) => {
+        if (!active) return;
+        if (!sentDuringMountRef.current) {
+          setUsage(nextUsage);
+          setDraft(nextUsage.used >= nextUsage.cap ? "" : savedDraft);
+        }
+        setDraftReady(true);
+      })
+      .catch(() => {
+        if (!active) return;
+        setDraft(savedDraft);
+        setDraftReady(true);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!draftReady) return;
+    try {
+      if (limitReached) window.sessionStorage.removeItem(draftKey);
+      else if (draft) window.sessionStorage.setItem(draftKey, draft);
+      else window.sessionStorage.removeItem(draftKey);
+    } catch {
+      // Draft persistence is best effort when browser storage is unavailable.
+    }
+  }, [draft, draftKey, draftReady, limitReached]);
+
+  useEffect(() => {
+    if (!limitReached || !usage) return;
+    const delay = Math.max(0, Date.parse(usage.resetAt) - Date.now()) + 250;
+    const timer = window.setTimeout(() => {
+      api<ArcadUsage>("/api/chat/usage").then(setUsage).catch(() => undefined);
+    }, delay);
+    return () => window.clearTimeout(timer);
+  }, [limitReached, usage]);
 
   const setUrl = useCallback((next: { c?: string | null; view?: View }) => {
     const url = new URL(window.location.href);
@@ -180,7 +234,8 @@ function ArcadPage() {
   const send = useCallback(
     async (text: string) => {
       const clean = text.trim();
-      if (!clean || sending) return;
+      if (!clean || sending || limitReached) return;
+      sentDuringMountRef.current = true;
       analytics.arcadMessageSent();
       const key = threadKey.current;
       const localId = `local-${Date.now()}`;
@@ -222,7 +277,15 @@ function ArcadPage() {
             error?: string;
             code?: string;
             upgradeTier?: PaidTier | null;
+            usage?: ArcadUsage;
           } | null;
+          if (payload?.code === "message_cap_reached" && payload.usage) {
+            setMessages((prev) => prev.filter((message) => message.id !== localId));
+            setDraft("");
+            setSendError(null);
+            setUsage(payload.usage);
+            return;
+          }
           markFailed({
             message: payload?.error || `Arcad couldn't answer (${response.status}).`,
             capped: payload?.code === "message_cap_reached",
@@ -252,6 +315,7 @@ function ArcadPage() {
               remembered?: string[];
               schedule?: unknown;
               action?: unknown;
+              usage?: ArcadUsage;
             };
             try {
               event = JSON.parse(line);
@@ -270,6 +334,7 @@ function ArcadPage() {
                 setUrl({ c: event.conversationId });
               }
               setMessages((prev) => [...prev, reply]);
+              if (event.usage) setUsage(event.usage);
               if (event.proposal) setProposals((prev) => [...prev, event.proposal!]);
               setRevealId(reply.id);
             } else if (event.type === "error") {
@@ -290,7 +355,7 @@ function ArcadPage() {
         setSending(false);
       }
     },
-    [loadConversations, reload, sending, setConversationId, setUrl],
+    [limitReached, loadConversations, reload, sending, setConversationId, setUrl],
   );
 
   async function respondToProposal(id: string, action: "apply" | "decline") {
@@ -507,12 +572,14 @@ function ArcadPage() {
               </div>
 
               <div className="mt-7">
+                {usage && limitReached ? <MessageLimitNotice usage={usage} /> : null}
                 <Composer
                   ref={composerRef}
                   value={draft}
                   onChange={setDraft}
                   onSend={() => void send(draft)}
                   sending={sending}
+                  disabled={!draftReady || limitReached}
                   focusRequest={focusRequest}
                   placeholder="Tell Arcad what's coming up"
                   autoFocus
@@ -525,7 +592,7 @@ function ArcadPage() {
                 <ProactiveArcadCards limit={1} compact />
               </div>
 
-              <Suggestions starters={starters} onPick={(starter) => void send(starter.message)} />
+              {draftReady && !limitReached ? <Suggestions starters={starters} onPick={(starter) => void send(starter.message)} /> : null}
             </div>
           </div>
         ) : (
@@ -598,12 +665,14 @@ function ArcadPage() {
                   {notice}
                 </p>
               ) : null}
+              {usage && limitReached ? <MessageLimitNotice usage={usage} /> : null}
               <Composer
                 ref={composerRef}
                 value={draft}
                 onChange={setDraft}
                 onSend={() => void send(draft)}
                 sending={sending}
+                disabled={!draftReady || limitReached}
                 focusRequest={focusRequest}
                 placeholder="Reply to Arcad"
               />
@@ -614,6 +683,32 @@ function ArcadPage() {
           </>
         )}
       </section>
+    </div>
+  );
+}
+
+function MessageLimitNotice({ usage }: { usage: ArcadUsage }) {
+  const tierName = usage.tier === "free" ? "free" : usage.tier === "pro" ? "Pro" : "Max";
+  const upgradeName = usage.upgradeTier === "pro" ? "Pro" : usage.upgradeTier === "max" ? "Max" : null;
+  const weeklyPrice = usage.upgradeTier ? PAID_PRICING[usage.upgradeTier].weekly : null;
+
+  return (
+    <div
+      role="status"
+      className="mb-3 rounded-lg px-3.5 py-3"
+      style={{
+        background: "color-mix(in oklab, var(--app-arcad) 7%, var(--app-surface))",
+        boxShadow: "inset 0 0 0 1px color-mix(in oklab, var(--app-arcad) 30%, var(--app-border))",
+      }}
+    >
+      <p className="text-[13.5px] font-medium" style={{ color: "var(--app-text)" }}>
+        You&apos;ve used your {usage.cap} {tierName} messages for today. Resets at midnight UTC.
+      </p>
+      {upgradeName && weeklyPrice !== null ? (
+        <Link href="/app/pricing" className="mt-1 inline-flex text-[12.5px] font-medium hover:underline" style={{ color: "var(--app-arcad)" }}>
+          Upgrade to {upgradeName} · ${weeklyPrice.toFixed(2)}/week
+        </Link>
+      ) : null}
     </div>
   );
 }

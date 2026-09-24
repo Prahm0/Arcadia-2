@@ -32,3 +32,11 @@ export interface SendError {
   capped?: boolean;
   upgradeTier?: "pro" | "max" | null;
 }
+
+export interface ArcadUsage {
+  tier: "free" | "pro" | "max";
+  used: number;
+  cap: number;
+  upgradeTier: "pro" | "max" | null;
+  resetAt: string;
+}

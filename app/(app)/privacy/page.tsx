@@ -37,6 +37,9 @@ export default function PrivacyPage() {
           card number.</li>
         <li><strong>Referral details</strong>, if you invite a friend or join with
           an invite link, we record who invited whom so we can apply rewards.</li>
+        <li><strong>Feedback you send</strong>, the message, its type and when it
+          was sent. Your account email is included for follow-up only if you
+          choose to let us contact you. The Arcadia team can read submissions.</li>
         <li><strong>Usage and diagnostics</strong>, page views, feature usage,
           error reports and performance metrics. When something goes wrong, we
           may keep a short recording of the screen around the error so we can

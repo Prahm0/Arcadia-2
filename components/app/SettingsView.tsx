@@ -33,6 +33,7 @@ import { isGuestEmail } from "@/lib/auth/guest";
 import DeleteAccountModal from "./DeleteAccountModal";
 import { isNative, useNativeIOS } from "@/lib/capacitor/platform";
 import { getIosSubscriptionManagementUrl, logOutRevenueCat } from "@/lib/capacitor/revenuecat";
+import { DeveloperFeedback, FeedbackForm } from "./Feedback";
 
 interface AccountResponse {
   account: {
@@ -54,6 +55,14 @@ export default function SettingsView() {
   const router = useRouter();
   const { data, patch, reload } = useDashboardData();
   const { mode, setMode } = useTheme();
+
+  useEffect(() => {
+    if (window.location.hash !== "#help-feedback") return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById("help-feedback")?.scrollIntoView({ block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
@@ -1036,6 +1045,18 @@ export default function SettingsView() {
             <AppButton variant="secondary" onClick={signOut}>Sign out</AppButton>
           </div>
         </Card>
+
+        <Card id="help-feedback" className="scroll-mt-24">
+          <SectionHeader label="Help & feedback" />
+          <FeedbackForm email={isGuest ? null : data.user.email} />
+        </Card>
+
+        {data.user.developerAccess ? (
+          <Card>
+            <SectionHeader label="Developer feedback" />
+            <DeveloperFeedback />
+          </Card>
+        ) : null}
 
         {isGuest ? null : (
           <Card>

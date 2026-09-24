@@ -38,8 +38,8 @@ export default function SupportPage() {
       <h2>Signing in</h2>
       <ul>
         <li>
-          <strong>Forgot your password?</strong> Email us from your account&rsquo;s address
-          and we&rsquo;ll help you get back in.
+          <strong>Forgot your password?</strong> Use <Link href="/forgot-password">Forgot password?</Link>{" "}
+          on the sign-in page to get a reset link by email.
         </li>
         <li>
           <strong>Signed up with Google or Apple?</strong> Use the same button to sign in

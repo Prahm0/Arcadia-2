@@ -15,6 +15,11 @@ export const users = sqliteTable(
     emailVerified: integer("email_verified", { mode: "boolean" }).notNull().default(false),
     verificationToken: text("verification_token"),
     verificationExpiresAt: integer("verification_expires_at"),
+    // Password reset tokens are stored as hashes, never as the raw value sent
+    // in an email link. A reset clears these fields so each link is single use.
+    passwordResetTokenHash: text("password_reset_token_hash"),
+    passwordResetExpiresAt: integer("password_reset_expires_at"),
+    passwordResetRequestedAt: integer("password_reset_requested_at"),
     createdAt: integer("created_at").notNull().default(now),
     lastSignInAt: integer("last_sign_in_at"),
     // Billing. `tier` is the source of truth the app reads. Stripe tracks web

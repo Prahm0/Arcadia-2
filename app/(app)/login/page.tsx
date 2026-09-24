@@ -131,6 +131,15 @@ function LoginForm() {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
         />
+        <div className="-mt-2 text-right">
+          <Link
+            href="/forgot-password"
+            className="text-[13px] underline underline-offset-4"
+            style={{ color: "var(--app-text-muted)" }}
+          >
+            Forgot password?
+          </Link>
+        </div>
         {needsVerification ? (
           <div
             role="alert"

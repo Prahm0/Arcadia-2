@@ -1,4 +1,4 @@
-import { ATLAS, MINUTES_PER_STAR, type AtlasFacts } from "./constellationAtlas.ts";
+import { ATLAS, minutesPerStar, type AtlasFacts } from "./constellationAtlas.ts";
 import { CONSTELLATION_ART } from "./constellationArt.ts";
 
 /** Shared, versioned rules and artwork. A followed card never gates earning. */
@@ -27,29 +27,30 @@ export interface ConstellationDefinition {
 }
 
 export const CONSTELLATIONS: ConstellationDefinition[] = [
-  { id: "first-light", version: 1, name: "First Light", family: "Beginnings", story: "Every sky begins somewhere.", description: "A small beginning, made permanent. Let your first moments of focus find their place in the sky.", requirement: "Save 20 minutes of focus in total. Short sessions count too.", colour: STREAK_GOLD, points: [[28, 68], [49, 29], [73, 57]], edges: [[0, 1], [1, 2]], thresholds: [5, 10, 20], metric: "minutes" },
+  { id: "first-light", version: 1, name: "First Light", family: "Beginnings", story: "Every sky begins somewhere.", description: "A small beginning, made permanent. Let your first moments of focus find their place in the sky.", requirement: "Save 10 minutes of focus in total. Short sessions count too.", colour: STREAK_GOLD, points: [[28, 68], [49, 29], [73, 57]], edges: [[0, 1], [1, 2]], thresholds: [2, 5, 10], metric: "minutes" },
   { id: "sentinel", version: 1, name: "The Sentinel", family: "Practices", story: "A rhythm built one return at a time.", description: "For the days you returned, at your own pace. Your stars stay lit through every pause.", requirement: "Study on 7 different days, with at least 5 minutes each day. They need not be consecutive.", colour: STREAK_GOLD, points: [[65, 19], [43, 23], [28, 40], [25, 61], [41, 78], [64, 79], [76, 61]], edges: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6]], thresholds: [1, 2, 3, 4, 5, 6, 7], metric: "days" },
-  { id: "scholar", version: 1, name: "The Scholar", family: "Journeys", story: "Understanding grows in the time you give it.", description: "A record of time devoted to learning. Breaks, distractions and fresh attempts are part of that journey.", requirement: "Build 10 hours of saved focus time. Each 100 minutes forms another star.", colour: STREAK_GOLD, points: [[50, 48], [27, 30], [73, 26], [30, 71], [72, 73], [50, 15]], edges: [[0, 1], [0, 2], [0, 3], [0, 4], [1, 5], [5, 2]], thresholds: [100, 200, 300, 400, 500, 600], metric: "minutes" },
-  { id: "voyager", version: 1, name: "The Voyager", family: "Practices", story: "There is more than one way to find your bearings.", description: "Follow your curiosity across subjects. Each new direction leaves a light behind.", requirement: "Save at least 15 focus minutes in each of 3 different subjects. There is no deadline.", colour: STREAK_GOLD, points: [[24, 69], [48, 30], [77, 57]], edges: [[0, 1], [1, 2]], thresholds: [1, 2, 3], metric: "subjects" },
+  { id: "scholar", version: 1, name: "The Scholar", family: "Journeys", story: "Understanding grows in the time you give it.", description: "A record of time devoted to learning. Breaks, distractions and fresh attempts are part of that journey.", requirement: "Build 3 hours of saved focus time. Each 30 minutes forms another star.", colour: STREAK_GOLD, points: [[50, 48], [27, 30], [73, 26], [30, 71], [72, 73], [50, 15]], edges: [[0, 1], [0, 2], [0, 3], [0, 4], [1, 5], [5, 2]], thresholds: [30, 60, 90, 120, 150, 180], metric: "minutes" },
+  { id: "voyager", version: 1, name: "The Voyager", family: "Practices", story: "There is more than one way to find your bearings.", description: "Follow your curiosity across subjects. Each new direction leaves a light behind.", requirement: "Save at least 10 focus minutes in each of 3 different subjects. There is no deadline.", colour: STREAK_GOLD, points: [[24, 69], [48, 30], [77, 57]], edges: [[0, 1], [1, 2]], thresholds: [1, 2, 3], metric: "subjects" },
   { id: "first-sky", version: 1, name: "Your First Sky", family: "Origins", story: "The sky you were already building.", description: "Your original Arcadia constellation, carried forward. Every star you lit still belongs here.", requirement: "Complete the original 16-session sky. Your earlier sessions are included.", colour: STREAK_GOLD, points: [[14, 62], [19, 38], [29, 53], [34, 22], [42, 45], [49, 29], [56, 48], [64, 20], [73, 37], [83, 59], [69, 65], [56, 76], [43, 67], [34, 81], [24, 70], [16, 82]], edges: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 12], [12, 13], [13, 14], [14, 15]], thresholds: Array.from({ length: 16 }, (_, i) => i + 1), metric: "sessions", legacy: true },
   ...atlasCards(),
 ];
 
 /**
- * The 88 constellations form in order along one long run of focus: each star
- * is one classic 25-minute focus, and a card starts where the last one ended.
+ * The 88 constellations form in order along one long run of focus. A card
+ * starts where the last one ended, and early cards cost fewer minutes a star.
  */
 function atlasCards(): ConstellationDefinition[] {
   let minutes = 0;
   return ATLAS.map((entry, order) => {
     const art = CONSTELLATION_ART[entry.abbr];
     const previous = ATLAS[order - 1];
-    const thresholds = art.points.map(() => (minutes += MINUTES_PER_STAR));
+    const cost = minutesPerStar(order);
+    const thresholds = art.points.map(() => (minutes += cost));
     return {
       id: entry.id, version: 1, name: entry.name, family: entry.family, story: entry.meaning, description: entry.description,
       requirement: previous
-        ? `Forms after ${previous.name}, in ${art.points.length} stars. Each star is another ${MINUTES_PER_STAR} minutes of focus.`
-        : `The first of the 88 constellations, in ${art.points.length} stars. Each star is ${MINUTES_PER_STAR} minutes of focus.`,
+        ? `Forms after ${previous.name}, in ${art.points.length} stars. Each star is another ${cost} minutes of focus.`
+        : `The first of the 88 constellations, in ${art.points.length} stars. Each star is ${cost} minutes of focus.`,
       colour: STREAK_GOLD, points: art.points, edges: art.edges, mags: art.mags, thresholds, metric: "minutes",
       atlas: { abbr: entry.abbr, brightest: entry.brightest, charted: entry.charted, areaPercent: entry.areaPercent, hemisphere: entry.hemisphere, bestMonth: entry.bestMonth, order },
     };
@@ -128,7 +129,7 @@ export function evaluateSky(sessions: SkySession[], timezone: string, legacy: bo
     days.set(day, (days.get(day) || 0) + session.seconds);
     const subject = session.subjectKey || session.subject?.trim().toLocaleLowerCase("en-AU");
     if (subject) subjects.set(subject, (subjects.get(subject) || 0) + session.seconds);
-    const values = { minutes: Math.floor(seconds / 60), days: [...days.values()].filter((value) => value >= 300).length, subjects: [...subjects.values()].filter((value) => value >= 900).length, sessions: count };
+    const values = { minutes: Math.floor(seconds / 60), days: [...days.values()].filter((value) => value >= 300).length, subjects: [...subjects.values()].filter((value) => value >= 600).length, sessions: count };
     definitions.forEach((definition, i) => {
       const card = cards[i];
       card.value = values[definition.metric];

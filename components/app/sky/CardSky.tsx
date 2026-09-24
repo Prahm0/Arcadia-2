@@ -12,7 +12,7 @@ const R = 166;
 
 const polar = (radius: number, degrees: number) => [round(C + radius * Math.sin((degrees * Math.PI) / 180)), round(C - radius * Math.cos((degrees * Math.PI) / 180))] as const;
 
-function compose(definition: ConstellationDefinition) {
+function compose(definition: ConstellationDefinition, starScale: number) {
   const random = seeded(definition.id);
   const band = Math.round(random() * 180);
   const dust = dustField(random, { count: 96, cx: C, cy: C, spread: [R, R], band: 70, angle: band, inside: (x, y) => Math.hypot(x - C, y - C) < R - 2 });
@@ -32,15 +32,19 @@ function compose(definition: ConstellationDefinition) {
   }
   return {
     band, dust, glints, points, ticks,
-    sizes: starSizes(definition),
+    sizes: starSizes(definition, starScale),
     tilt: Math.round(random() * 36 - 18),
     warm: polar(40 + random() * 60, random() * 360),
     cool: polar(50 + random() * 70, random() * 360),
   };
 }
 
-export default function CardSky({ definition, lit, collected }: { definition: ConstellationDefinition; lit: (index: number) => boolean; collected: boolean }) {
-  const sky = useMemo(() => compose(definition), [definition]);
+export default function CardSky({ definition, lit, collected, starScale = 1 }: {
+  definition: ConstellationDefinition; lit: (index: number) => boolean; collected: boolean;
+  /** Larger stars for small renders, like the Today banner, where the disc is under 100px. */
+  starScale?: number;
+}) {
+  const sky = useMemo(() => compose(definition, starScale), [definition, starScale]);
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
   const id = (name: string) => `${name}${uid}`;
   const gold = definition.colour;

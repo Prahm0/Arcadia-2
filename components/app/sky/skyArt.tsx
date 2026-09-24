@@ -1,5 +1,5 @@
 "use client";
-import { useId } from "react";
+import { useId, type CSSProperties } from "react";
 import type { ConstellationDefinition } from "@/shared/constellations";
 import styles from "./sky.module.css";
 
@@ -53,11 +53,13 @@ export function dustField(random: () => number, { count, cx, cy, spread, band, a
   return paths;
 }
 
+// Each brightness level twinkles on its own rhythm where motion is on (see sky.module.css).
+const TWINKLE = [styles.twinkleA, styles.twinkleB, styles.twinkleC];
 export function Dust({ paths, className }: { paths: string[]; className?: string }) {
   return <g className={className}>
-    <path d={paths[0]} fill="#dce5f4" opacity=".32" />
-    <path d={paths[1]} fill="#eef2fb" opacity=".6" />
-    <path d={paths[2]} fill="#fff4e2" opacity=".9" />
+    {[["#dce5f4", .32], ["#eef2fb", .6], ["#fff4e2", .9]].map(([fill, opacity], i) => (
+      <path key={i} className={TWINKLE[i]} d={paths[i]} fill={fill as string} opacity={opacity} style={{ "--o": opacity } as CSSProperties} />
+    ))}
   </g>;
 }
 
@@ -70,6 +72,9 @@ export function Figure({ definition, points, sizes, lit }: {
 }) {
   const glow = `glow${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const gold = definition.colour;
+  // Stars light in index order, so the first unlit one is the next to earn.
+  const next = points.findIndex((_, index) => !lit(index));
+  let drawn = 0;
   return <g>
     <defs>
       <radialGradient id={glow}><stop offset="0" stopColor={STAR_WHITE} stopOpacity=".9" /><stop offset=".22" stopColor={gold} stopOpacity=".38" /><stop offset="1" stopColor={gold} stopOpacity="0" /></radialGradient>
@@ -77,16 +82,20 @@ export function Figure({ definition, points, sizes, lit }: {
     {definition.edges.map(([from, to]) => {
       const [x1, y1] = points[from], [x2, y2] = points[to];
       return lit(from) && lit(to)
-        ? <g key={`${from}-${to}`}><line x1={x1} y1={y1} x2={x2} y2={y2} stroke={gold} strokeWidth="5" strokeOpacity=".07" strokeLinecap="round" /><line className={styles.line} x1={x1} y1={y1} x2={x2} y2={y2} stroke={gold} strokeWidth="1.1" strokeOpacity=".75" /></g>
+        ? <g key={`${from}-${to}`}><line x1={x1} y1={y1} x2={x2} y2={y2} stroke={gold} strokeWidth="5" strokeOpacity=".07" strokeLinecap="round" /><line className={`${styles.line} ${styles.drawn}`} style={{ "--i": drawn++ } as CSSProperties} pathLength={1} x1={x1} y1={y1} x2={x2} y2={y2} stroke={gold} strokeWidth="1.1" strokeOpacity=".75" /></g>
         : <line key={`${from}-${to}`} className={styles.line} x1={x1} y1={y1} x2={x2} y2={y2} stroke={gold} strokeWidth=".9" strokeOpacity=".28" strokeDasharray="1.5 6" strokeLinecap="round" />;
     })}
     {points.map(([x, y], index) => {
       const r = sizes[index];
-      if (!lit(index)) return <g key={index}><circle className={styles.star} cx={x} cy={y} r={r + .6} fill="#0a0e15" stroke={gold} strokeWidth=".9" strokeOpacity=".55" /><circle cx={x} cy={y} r=".7" fill={gold} opacity=".4" /></g>;
+      if (!lit(index)) return <g key={index}>
+        {index === next && <circle className={styles.nextRing} cx={x} cy={y} r={r + 3} stroke={gold} strokeOpacity=".7" strokeWidth=".8" />}
+        <circle className={styles.star} cx={x} cy={y} r={r + .6} fill="#0a0e15" stroke={gold} strokeWidth=".9" strokeOpacity={index === next ? .9 : .55} />
+        <circle cx={x} cy={y} r=".7" fill={gold} opacity=".4" />
+      </g>;
       const bright = index === 0 || (definition.mags?.[index] ?? 9) < 1.6;
       const s = r * 5.2;
       return <g key={index}>
-        <circle cx={x} cy={y} r={r * 7} fill={`url(#${glow})`} opacity=".55" />
+        <circle className={styles.halo} style={{ "--i": index } as CSSProperties} cx={x} cy={y} r={r * 7} fill={`url(#${glow})`} opacity=".55" />
         {bright && <path d={`M${x - r * 6.5} ${y}H${x + r * 6.5}M${x} ${y - r * 6.5}V${y + r * 6.5}`} stroke={STAR_WHITE} strokeOpacity=".5" strokeWidth=".6" />}
         {bright && <path d={`M${x - r * 2.6} ${y - r * 2.6}L${x + r * 2.6} ${y + r * 2.6}M${x - r * 2.6} ${y + r * 2.6}L${x + r * 2.6} ${y - r * 2.6}`} stroke={STAR_WHITE} strokeOpacity=".25" strokeWidth=".5" />}
         {index === 0 && <>

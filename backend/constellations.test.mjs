@@ -10,11 +10,11 @@ test("short sessions accumulate, breaks are excluded and duplicate records do no
   const rows = [first, first, session("b", 1), session("break", 99999, { type: "break" })];
   const result = card(rows, "first-light");
   assert.equal(result.value, 5);
-  assert.deepEqual(result.milestones.map((item) => item.earnedAt), [base, null, null]);
+  assert.deepEqual(result.milestones.map((item) => item.earnedAt), [base, base, null]);
   assert.equal(result.earnedAt, null);
 });
 test("completion dates follow chronological activity even when uploads arrive out of order", () => {
-  const result = card([session("later", 600, { endedAt: base + 86400000 }), session("earlier", 600)], "first-light");
+  const result = card([session("later", 300, { endedAt: base + 86400000 }), session("earlier", 300)], "first-light");
   assert.equal(result.milestones[1].earnedAt, base);
   assert.equal(result.earnedAt, base + 86400000);
 });
@@ -29,8 +29,8 @@ test("saved local dates survive timezone changes and midnight boundaries", () =>
   const rows = [session("a", 300, { endedAt: Date.parse("2026-09-01T13:59:00Z"), localDay: "2026-09-01" }), session("b", 300, { endedAt: Date.parse("2026-09-01T14:01:00Z"), localDay: "2026-09-02" })];
   assert.equal(evaluateSky(rows, "America/Los_Angeles", false).find((item) => item.id === "sentinel").value, 2);
 });
-test("Voyager requires fifteen minutes per distinct subject and stable subject keys survive renaming", () => {
-  const rows = [session("a", 450, { subject: "Maths", subjectKey: "subject:1" }), session("b", 450, { subject: "Mathematics", subjectKey: "subject:1" }), session("c", 899, { subject: "Biology" }), session("d", 900, { subject: "English" })];
+test("Voyager requires ten minutes per distinct subject and stable subject keys survive renaming", () => {
+  const rows = [session("a", 300, { subject: "Maths", subjectKey: "subject:1" }), session("b", 300, { subject: "Mathematics", subjectKey: "subject:1" }), session("c", 599, { subject: "Biology" }), session("d", 600, { subject: "English" })];
   assert.equal(card(rows, "voyager").value, 2);
   rows.push(session("e", 1, { subject: " biology " }));
   assert.ok(card(rows, "voyager").earnedAt);
@@ -41,7 +41,7 @@ test("legacy sky is only available to existing students and does not cap other p
   assert.ok(card(rows, "first-sky", true).earnedAt);
   assert.ok(card(rows, "scholar", true).earnedAt);
 });
-test("the 88 constellations form one after another, a star per 25 minutes", async () => {
+test("the 88 constellations form one after another, early cards fast", async () => {
   const { CONSTELLATIONS } = await import("../shared/constellations.ts");
   const atlas = CONSTELLATIONS.filter((item) => item.atlas);
   assert.equal(atlas.length, 88);
@@ -52,7 +52,10 @@ test("the 88 constellations form one after another, a star per 25 minutes", asyn
     assert.ok(item.edges.every(([a, b]) => a < item.points.length && b < item.points.length));
   }
   const [first, second] = atlas;
-  const minutes = (first.points.length + 1) * 25;
+  // The first card forms inside ten minutes, so one short session earns a card.
+  assert.ok(first.thresholds.at(-1) <= 10);
+  assert.ok(atlas.at(-1).thresholds.at(-1) > atlas[43].thresholds.at(-1));
+  const minutes = first.thresholds.at(-1) + (second.thresholds[0] - first.thresholds.at(-1));
   const cards = evaluateSky([session("long", minutes * 60)], "Australia/Sydney", false);
   assert.ok(cards.find((item) => item.id === first.id).earnedAt);
   assert.deepEqual(cards.find((item) => item.id === second.id).milestones.map((star) => star.earnedAt !== null).slice(0, 2), [true, false]);

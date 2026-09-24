@@ -1,7 +1,13 @@
 import { CONSTELLATION_ART } from "./constellationArt.ts";
 
-/** Every star on the 88 cards is one classic 25-minute focus. */
-export const MINUTES_PER_STAR = 25;
+/**
+ * Minutes of focus per star, by a card's place in the order. The first cards
+ * come fast (one focus session forms about three), then each stretch of the
+ * sky asks a little more: roughly 170 hours for all 88.
+ */
+export function minutesPerStar(order: number) {
+  return order < 6 ? 3 : order < 20 ? 5 : order < 44 ? 10 : 15;
+}
 const SKY_SQUARE_DEGREES = 41253;
 
 export type Hemisphere = "Northern" | "Southern" | "Equator";

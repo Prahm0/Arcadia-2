@@ -24,6 +24,7 @@ export interface Env {
   STRIPE_WINBACK_COUPON_ID?: string;
   REVENUECAT_ENTITLEMENT_PRO: string;
   REVENUECAT_ENTITLEMENT_MAX: string;
+  APPLE_BUNDLE_ID: string;
 
   // secrets (wrangler secret put)
   OPENAI_API_KEY?: string;

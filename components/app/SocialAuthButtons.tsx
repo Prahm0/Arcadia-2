@@ -7,6 +7,7 @@ import { isNative } from "@/lib/capacitor/platform";
 interface ProviderConfig {
   google: boolean;
   nativeGoogle: boolean;
+  nativeApple: boolean;
   googleClientId: string | null;
   apple: boolean;
 }
@@ -21,6 +22,8 @@ export default function SocialAuthButtons({ from, next, referralCode }: SocialAu
   const [providers, setProviders] = useState<ProviderConfig | null>(null);
   const [nativeGoogleLoading, setNativeGoogleLoading] = useState(false);
   const [nativeGoogleError, setNativeGoogleError] = useState<string | null>(null);
+  const [nativeAppleLoading, setNativeAppleLoading] = useState(false);
+  const [nativeAppleError, setNativeAppleError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -38,8 +41,10 @@ export default function SocialAuthButtons({ from, next, referralCode }: SocialAu
   }, []);
 
   const useNativeGoogle = isNative();
+  const useNativeApple = isNative();
   const showGoogle = useNativeGoogle ? providers?.nativeGoogle : providers?.google;
-  if (!providers || (!showGoogle && !providers.apple)) return null;
+  const showApple = useNativeApple ? providers?.nativeApple : providers?.apple;
+  if (!providers || (!showGoogle && !showApple)) return null;
 
   function href(provider: "google" | "apple") {
     const params = new URLSearchParams({ from });
@@ -90,8 +95,31 @@ export default function SocialAuthButtons({ from, next, referralCode }: SocialAu
     }
   }
 
+  async function signInWithNativeApple() {
+    if (nativeAppleLoading) return;
+    setNativeAppleLoading(true);
+    setNativeAppleError(null);
+    try {
+      const nonce = await api<{ nonceToken: string; hashedNonce: string }>("/api/auth/oauth/apple/native/nonce");
+      const { AppleSignIn } = await import("@/lib/capacitor/apple-sign-in");
+      const result = await AppleSignIn.signIn({ nonce: nonce.hashedNonce });
+      await api("/api/auth/oauth/apple/native", { method: "POST", body: JSON.stringify({ ...result, nonceToken: nonce.nonceToken, referralCode: from === "register" ? referralCode : undefined }) });
+      window.location.assign(safeNext());
+    } catch (error) {
+      const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+      if (code === "1001" || code === "CANCELED") return;
+      setNativeAppleError("Apple sign-in did not work. Please try again or use email.");
+    } finally { setNativeAppleLoading(false); }
+  }
+
   return (
     <div className="space-y-3">
+      {showApple && useNativeApple ? (
+        <button type="button" onClick={signInWithNativeApple} disabled={nativeAppleLoading} className="ui-pressable flex w-full items-center justify-center gap-3 rounded-md px-4 py-3 text-[14.5px] font-medium disabled:cursor-not-allowed disabled:opacity-60" style={{ background: "var(--app-text)", color: "var(--app-bg)" }}>
+          <AppleMark />
+          {nativeAppleLoading ? "Opening Apple…" : "Continue with Apple"}
+        </button>
+      ) : null}
       {showGoogle ? (
         useNativeGoogle ? (
           <button
@@ -123,7 +151,7 @@ export default function SocialAuthButtons({ from, next, referralCode }: SocialAu
           </a>
         )
       ) : null}
-      {providers.apple ? (
+      {showApple && !useNativeApple ? (
         <a
           href={href("apple")}
           className="ui-pressable flex w-full items-center justify-center gap-3 rounded-md px-4 py-3 text-[14.5px] font-medium"
@@ -146,6 +174,7 @@ export default function SocialAuthButtons({ from, next, referralCode }: SocialAu
           {nativeGoogleError}
         </p>
       ) : null}
+      {nativeAppleError ? <p role="alert" className="text-center text-[12px]" style={{ color: "var(--app-danger)" }}>{nativeAppleError}</p> : null}
     </div>
   );
 }

@@ -106,6 +106,8 @@ export const oauthAccounts = sqliteTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     createdAt: integer("created_at").notNull().default(now),
+    refreshTokenEncrypted: text("refresh_token_encrypted"),
+    clientId: text("client_id"),
   },
   (t) => [
     primaryKey({ columns: [t.provider, t.providerUserId] }),

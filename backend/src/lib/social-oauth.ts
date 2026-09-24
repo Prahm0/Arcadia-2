@@ -1,4 +1,5 @@
 import { SignJWT, createRemoteJWKSet, importPKCS8, jwtVerify } from "jose";
+import { sha256Hex } from "./ids";
 import type { Env } from "../types";
 
 export type OAuthProvider = "google" | "apple";
@@ -14,7 +15,7 @@ export interface OAuthState {
 export interface SocialIdentity {
   provider: OAuthProvider;
   providerUserId: string;
-  email: string;
+  email: string | null;
   name: string;
 }
 
@@ -159,15 +160,15 @@ export function appleRedirectUri(env: Env): string {
   return `${env.APP_ORIGIN}/api/auth/oauth/apple/callback`;
 }
 
-async function appleClientSecret(env: Env): Promise<string> {
-  if (!env.APPLE_CLIENT_ID || !env.APPLE_TEAM_ID || !env.APPLE_KEY_ID || !env.APPLE_PRIVATE_KEY) {
+export async function appleClientSecret(env: Env, clientId: string): Promise<string> {
+  if (!clientId || !env.APPLE_TEAM_ID || !env.APPLE_KEY_ID || !env.APPLE_PRIVATE_KEY) {
     throw new Error("Apple sign-in is not configured.");
   }
   const privateKey = await importPKCS8(env.APPLE_PRIVATE_KEY.replace(/\\n/g, "\n"), "ES256");
   return new SignJWT({})
     .setProtectedHeader({ alg: "ES256", kid: env.APPLE_KEY_ID })
     .setIssuer(env.APPLE_TEAM_ID)
-    .setSubject(env.APPLE_CLIENT_ID)
+    .setSubject(clientId)
     .setAudience(APPLE_ISSUER)
     .setIssuedAt()
     .setExpirationTime("5m")
@@ -187,7 +188,7 @@ export async function exchangeAppleCode(
     body: new URLSearchParams({
       code,
       client_id: env.APPLE_CLIENT_ID,
-      client_secret: await appleClientSecret(env),
+      client_secret: await appleClientSecret(env, env.APPLE_CLIENT_ID),
       redirect_uri: appleRedirectUri(env),
       grant_type: "authorization_code",
     }),
@@ -218,4 +219,55 @@ export async function exchangeAppleCode(
     email: payload.email.trim().toLowerCase(),
     name: suppliedName.trim().slice(0, 120),
   };
+}
+
+export async function signNativeAppleNonce(env: Env, rawNonce: string): Promise<string> {
+  return new SignJWT({ nonce: rawNonce })
+    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .setAudience("arcadia-native-apple")
+    .setIssuedAt()
+    .setExpirationTime("10m")
+    .sign(stateKey(env));
+}
+
+export async function verifyNativeAppleIdentity(
+  env: Env,
+  identityToken: string,
+  nonceToken: string,
+): Promise<SocialIdentity> {
+  if (!env.APPLE_BUNDLE_ID) throw new Error("Apple sign-in is not configured.");
+  const { payload: noncePayload } = await jwtVerify(nonceToken, stateKey(env), {
+    algorithms: ["HS256"], audience: "arcadia-native-apple",
+  });
+  if (typeof noncePayload.nonce !== "string") throw new Error("Invalid Apple sign-in nonce.");
+  const { payload } = await jwtVerify(identityToken, APPLE_KEYS, {
+    algorithms: ["RS256"], issuer: APPLE_ISSUER, audience: env.APPLE_BUNDLE_ID,
+  });
+  if (typeof payload.sub !== "string" || payload.nonce !== await sha256Hex(noncePayload.nonce)) {
+    throw new Error("Apple did not return a valid identity.");
+  }
+  return {
+    provider: "apple",
+    providerUserId: payload.sub,
+    email: typeof payload.email === "string" ? payload.email.trim().toLowerCase() : null,
+    name: "",
+  };
+}
+
+export async function exchangeNativeAppleCode(env: Env, code: string): Promise<string | null> {
+  if (!env.APPLE_BUNDLE_ID) return null;
+  const response = await fetch("https://appleid.apple.com/auth/token", {
+    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ code, client_id: env.APPLE_BUNDLE_ID, client_secret: await appleClientSecret(env, env.APPLE_BUNDLE_ID), grant_type: "authorization_code" }),
+  });
+  const token: Record<string, unknown> = await response.json<Record<string, unknown>>().catch(() => ({}));
+  return response.ok && typeof token.refresh_token === "string" ? token.refresh_token : null;
+}
+
+export async function revokeAppleRefreshToken(env: Env, refreshToken: string, clientId: string): Promise<void> {
+  const response = await fetch("https://appleid.apple.com/auth/revoke", {
+    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ token: refreshToken, token_type_hint: "refresh_token", client_id: clientId, client_secret: await appleClientSecret(env, clientId) }),
+  });
+  if (!response.ok) throw new Error(`Apple revoke failed with ${response.status}`);
 }

@@ -120,7 +120,11 @@ async function grantProBonus(database: Database, userId: string, now: number): P
     .where(eq(schema.users.id, userId));
 }
 
-/** Qualify exactly once after a verified invitee has completed onboarding. */
+/**
+ * Qualify exactly once after a verified invitee has completed onboarding.
+ * The reward goes to the person who shared this link. The invitee unlocks
+ * their own Pro time by sharing their new link with the next student.
+ */
 export async function qualifyReferral(database: Database, inviteeUserId: string): Promise<boolean> {
   const [invitee] = await database
     .select({ email: schema.users.email, emailVerified: schema.users.emailVerified })
@@ -143,11 +147,7 @@ export async function qualifyReferral(database: Database, inviteeUserId: string)
     .returning({ referrerUserId: schema.referrals.referrerUserId });
   if (!qualified) return false;
 
-  const now = Date.now();
-  await Promise.all([
-    grantProBonus(database, qualified.referrerUserId, now),
-    grantProBonus(database, inviteeUserId, now),
-  ]);
+  await grantProBonus(database, qualified.referrerUserId, Date.now());
   return true;
 }
 

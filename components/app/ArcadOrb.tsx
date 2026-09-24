@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import ArcadFace, { type ArcadExpression } from "./ArcadFace";
 
 interface ArcadOrbProps {
   /** idle = floats and twinkles; thinking = head-tilt + orbiting spark; alert = little hops. */
@@ -20,12 +21,26 @@ const GLINTS = [
 
 /* One-shot moves played on the mood layer. Fidgets are the idle ones he
    picks at random; the rest are reactions. */
-const FIDGETS = ["spin", "double-hop", "peek", "jelly"] as const;
+const FIDGETS = ["spin", "double-hop", "peek", "jelly", "wink"] as const;
 // Two boop names so back-to-back taps restart the animation.
 type Move = (typeof FIDGETS)[number] | "boop" | "boop-alt" | "cheer" | "startle" | "hello";
 const MOVES = new Set<string>(
   [...FIDGETS, "boop", "boop-alt", "cheer", "startle", "hello"].map((m) => `arcad-orb-${m}`),
 );
+
+/* What his face does during each move. */
+const MOVE_FACE: Record<Move, ArcadExpression> = {
+  hello: "wink",
+  wink: "wink",
+  boop: "happy",
+  "boop-alt": "happy",
+  cheer: "happy",
+  spin: "happy",
+  jelly: "happy",
+  "double-hop": "excited",
+  peek: "idle",
+  startle: "surprised",
+};
 
 const SLEEP_AFTER_MS = 60_000;
 const BURST = 7;
@@ -83,6 +98,9 @@ function subscribe(fn: () => void) {
  * and star glints. Each layer owns one transform so they stack instead of
  * fighting. Keyframes live in globals.css under `.arcad-orb`.
  *
+ * The body art has no face; ArcadFace draws it live so it can blink, glance,
+ * follow the cursor and change expression with his state and moves.
+ *
  * At 30px and up he's "lively": he watches the cursor, fidgets now and then,
  * dozes off when the page goes quiet and startles awake. Any orb reacts to a
  * tap on it (or the button it sits in), and cheers when thinking ends.
@@ -137,6 +155,8 @@ export default function ArcadOrb({ state = "idle", size = 40, className }: Arcad
       if (!canHover || !root || !look) return;
       if (activity.x < 0 || live.current.asleep) {
         look.style.transform = "";
+        root.style.removeProperty("--lx");
+        root.style.removeProperty("--ly");
         return;
       }
       const r = root.getBoundingClientRect();
@@ -148,6 +168,10 @@ export default function ArcadOrb({ state = "idle", size = 40, className }: Arcad
       const x = (dx / dist) * pull;
       const y = (dy / dist) * pull;
       look.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) rotate(${(x * 0.9).toFixed(2)}deg)`;
+      // The face turns further than the body and the eyes further still (see .arcad-face).
+      const reach = Math.min(dist / 320, 1);
+      root.style.setProperty("--lx", ((dx / dist) * reach).toFixed(3));
+      root.style.setProperty("--ly", ((dy / dist) * reach).toFixed(3));
     });
   }, [lively, size]);
 
@@ -159,6 +183,8 @@ export default function ArcadOrb({ state = "idle", size = 40, className }: Arcad
       if (!a && s === "idle" && Date.now() - activity.last > SLEEP_AFTER_MS) {
         setAsleep(true);
         if (lookRef.current) lookRef.current.style.transform = "";
+        rootRef.current?.style.removeProperty("--lx");
+        rootRef.current?.style.removeProperty("--ly");
       }
     }, 5000);
     return () => window.clearInterval(id);
@@ -201,6 +227,15 @@ export default function ArcadOrb({ state = "idle", size = 40, className }: Arcad
   // Glints and Zs read as noise on the tiny chat-bullet sizes.
   const showDetail = size >= 28;
   const spark = Math.max(3, Math.round(size * 0.1));
+  const expression: ArcadExpression = move
+    ? MOVE_FACE[move]
+    : asleep
+      ? "sleep"
+      : state === "thinking"
+        ? "think"
+        : state === "alert"
+          ? "excited"
+          : "idle";
 
   return (
     <span
@@ -233,7 +268,7 @@ export default function ArcadOrb({ state = "idle", size = 40, className }: Arcad
         >
           <span className="arcad-orb-float absolute inset-0">
             <Image
-              src="/brand/arcad-orb-mark.png"
+              src="/brand/arcad-orb-body.png"
               alt=""
               width={size}
               height={size}
@@ -242,6 +277,7 @@ export default function ArcadOrb({ state = "idle", size = 40, className }: Arcad
               style={{ width: size, height: size }}
               aria-hidden="true"
             />
+            <ArcadFace expression={expression} />
             <span className="arcad-orb-sheen" />
             {showDetail
               ? GLINTS.map((g) => (

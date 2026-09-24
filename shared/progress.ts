@@ -24,3 +24,11 @@ export function levelTitle(level: number) {
   if (level < 16) return "Skykeeper";
   return "Constellation Maker";
 }
+
+/** Cosmetic previews only. They never gate study tools or subscriptions. */
+export function nextLevelUnlock(level: number): string {
+  if (level < 3) return "Next up: a new Study with me scene";
+  if (level < 6) return "Next up: an Aurora scene";
+  if (level < 10) return "Next up: constellation frames";
+  return "Keep lighting your sky";
+}

@@ -9,6 +9,8 @@ export interface WeeklyRecap {
   recoveries: number;
   /** All-time stars lit, so the recap carries the user's real streak stars. */
   starsLit: number;
+  /** Only shown when this week genuinely beat the previous one. */
+  beatLastWeekBy?: number;
 }
 
 type CardFormat = "story" | "square";
@@ -171,6 +173,11 @@ function drawRecap(canvas: HTMLCanvasElement, recap: WeeklyRecap, format: CardFo
   ctx.fillStyle = "rgba(214, 220, 229, 0.72)";
   ctx.font = "500 27px ui-sans-serif, system-ui, sans-serif";
   ctx.fillText("Every focused session lights another star.", 78, compact ? 266 : 305);
+  if (recap.beatLastWeekBy && recap.beatLastWeekBy > 0) {
+    ctx.fillStyle = "#e6c78f";
+    ctx.font = "600 24px ui-sans-serif, system-ui, sans-serif";
+    ctx.fillText(`You beat last week by ${displayMinutes(recap.beatLastWeekBy)}.`, 78, compact ? 300 : 340);
+  }
 
   drawConstellation(ctx, width, constellationTop, constellationHeight, stars);
 

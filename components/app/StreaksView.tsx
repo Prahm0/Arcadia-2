@@ -17,6 +17,7 @@ import YourSky, { type FocusTotals } from "./sky/YourSky";
 interface AnalyticsResponse {
   sky: FocusTotals;
   current: { minutes: number; sessions: number };
+  previous: { minutes: number; sessions: number };
 }
 
 interface Achievement {
@@ -56,6 +57,7 @@ export default function StreaksView() {
     data.subjects.map((subject, index) => [subject.name, subject.colour || SUBJECT_COLORS[index % SUBJECT_COLORS.length]]),
   );
   const weekly = response?.current ?? { minutes: 0, sessions: 0 };
+  const previous = response?.previous ?? { minutes: 0, sessions: 0 };
   const recoveries = useMemo(() => recoveriesThisWeek(streak, today), [streak, today]);
   const collected = sky?.cards.filter((card) => card.earnedAt !== null).length;
   const canShareWeek = !loading && weekly.minutes > 0 && weekly.sessions > 0;
@@ -95,6 +97,7 @@ export default function StreaksView() {
             streak: streak.current,
             recoveries,
             starsLit: totals.sessions,
+            beatLastWeekBy: Math.max(0, weekly.minutes - previous.minutes),
           }}
           onClose={() => setShareOpen(false)}
         />

@@ -17,6 +17,7 @@ import ArcadFloatingButton from "./ArcadFloatingButton";
 import ContextMenuHost from "./ContextMenu";
 import GuestBanner from "./GuestBanner";
 import OfflineBanner from "./OfflineBanner";
+import DailyWelcome from "./DailyWelcome";
 import MenuBar from "./MenuBar";
 import MobileBottomNav from "./MobileBottomNav";
 import NewTaskSheet from "./NewTaskSheet";
@@ -577,6 +578,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
           {isGuestEmail(user?.email) ? (
             <GuestBanner />
           ) : null}
+          <DailyWelcome />
           <PageMount>{children}</PageMount>
         </main>
         <ArcadFloatingButton />

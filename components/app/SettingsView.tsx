@@ -479,7 +479,7 @@ export default function SettingsView() {
                 Open profile
               </AppButton>
             </div>
-            {!isGuest ? (
+            {!isGuest && !data.user.hasSubscription ? (
               <div
                 className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"
                 style={{ borderColor: "var(--app-border)" }}

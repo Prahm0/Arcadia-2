@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api/client";
+import { useDashboardData } from "@/lib/app/DashboardProvider";
 import AppButton from "./AppButton";
 import PageHeader from "./PageHeader";
 
@@ -15,12 +17,19 @@ interface ReferralSummary {
 type Status = "loading" | "ready" | "error";
 
 export default function InviteFriendsView() {
+  const router = useRouter();
+  const { data } = useDashboardData();
   const [summary, setSummary] = useState<ReferralSummary | null>(null);
   const [status, setStatus] = useState<Status>("loading");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
+    if (data.user?.hasSubscription) router.replace("/app/today");
+  }, [data.user?.hasSubscription, router]);
+
+  useEffect(() => {
+    if (data.user?.hasSubscription) return;
     let active = true;
     api<ReferralSummary>("/api/referrals")
       .then((next) => {
@@ -36,7 +45,9 @@ export default function InviteFriendsView() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [data.user?.hasSubscription]);
+
+  if (data.user?.hasSubscription) return null;
 
   async function copyInviteLink() {
     if (!summary) return;

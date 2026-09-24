@@ -1155,6 +1155,152 @@ html[data-app-theme] .type-mono-label {
   100% { opacity: 0; transform: rotate(var(--a)) translateY(calc(var(--r) * -1)) scale(0.9) rotate(90deg); }
 }
 
+/* A wink with a little head tilt toward it (his brand pose). */
+.arcad-orb .arcad-orb-mood[data-move="wink"] { animation: arcad-orb-wink 1.5s ease-in-out; }
+@keyframes arcad-orb-wink {
+  0%, 100% { transform: rotate(0) scale(1); }
+  20%, 75% { transform: rotate(7deg) scale(1.04); }
+}
+
+/* His face (ArcadFace.tsx). Every variant is always drawn; data-face picks
+   which are visible, and they cross-fade with a squash so expressions morph
+   rather than cut. */
+.arcad-face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+.arcad-face :where(g, path, ellipse, circle) {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+/* The face turns toward the cursor further than the body does, and the eyes
+   further still. --lx/--ly (-1..1) are set by ArcadOrb.tsx. */
+.arcad-face-all {
+  transform: translate(calc(var(--lx, 0) * 30px), calc(var(--ly, 0) * 22px));
+  transition: transform 650ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.arcad-face-eyes {
+  transform: translate(calc(var(--lx, 0) * 14px), calc(var(--ly, 0) * 12px));
+  transition: transform 450ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.arcad-face-eye-open,
+.arcad-face-eye-happy,
+.arcad-face-eye-closed,
+.arcad-face-eye-wink,
+.arcad-face-mouth-smile,
+.arcad-face-mouth-o,
+.arcad-face-mouth-hmm,
+.arcad-face-mouth-closed,
+.arcad-face-blush {
+  transition: opacity 140ms ease, transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+/* Hidden variants squash flat so the swap reads as a blink-into-shape. */
+.arcad-face-eye-happy,
+.arcad-face-eye-closed,
+.arcad-face-eye-wink,
+.arcad-face-mouth-o,
+.arcad-face-mouth-hmm,
+.arcad-face-mouth-closed {
+  opacity: 0;
+  transform: scaleY(0.2);
+}
+.arcad-face-blush { opacity: 0; }
+
+/* Blinks: a double blink, a pause, then a single. */
+.arcad-face-eye-open {
+  animation: arcad-face-blink 6.4s infinite;
+}
+@keyframes arcad-face-blink {
+  0%, 52%, 56%, 60%, 92%, 97%, 100% { transform: scaleY(1); }
+  54%, 58%, 94.5% { transform: scaleY(0.08); }
+}
+
+/* happy: ^ ^ eyes, a bigger grin, rosy cheeks. */
+.arcad-face[data-face="happy"] .arcad-face-eye-open,
+.arcad-face[data-face="sleep"] .arcad-face-eye-open,
+.arcad-face[data-face="wink"] .arcad-face-eyes > g:last-child .arcad-face-eye-open {
+  opacity: 0;
+  transform: scaleY(0.2);
+  animation: none;
+}
+.arcad-face[data-face="happy"] .arcad-face-eye-happy,
+.arcad-face[data-face="sleep"] .arcad-face-eye-closed,
+.arcad-face[data-face="wink"] .arcad-face-eye-wink {
+  opacity: 1;
+  transform: none;
+}
+.arcad-face[data-face="happy"] .arcad-face-mouth-smile,
+.arcad-face[data-face="excited"] .arcad-face-mouth-smile { transform: scale(1.22); }
+.arcad-face[data-face="happy"] .arcad-face-blush,
+.arcad-face[data-face="excited"] .arcad-face-blush,
+.arcad-face[data-face="wink"] .arcad-face-blush { opacity: 0.4; }
+
+/* excited: wide eyes (alert). surprised: wider, with an O mouth (startle). */
+.arcad-face[data-face="excited"] .arcad-face-eye-open { transform: scale(1.12); animation: none; }
+.arcad-face[data-face="surprised"] .arcad-face-eye-open { transform: scale(1.22); animation: none; }
+.arcad-face[data-face="surprised"] .arcad-face-mouth-smile,
+.arcad-face[data-face="think"] .arcad-face-mouth-smile,
+.arcad-face[data-face="sleep"] .arcad-face-mouth-smile {
+  opacity: 0;
+  transform: scaleY(0.2);
+}
+.arcad-face[data-face="surprised"] .arcad-face-mouth-o,
+.arcad-face[data-face="think"] .arcad-face-mouth-hmm,
+.arcad-face[data-face="sleep"] .arcad-face-mouth-closed {
+  opacity: 1;
+  transform: none;
+}
+
+/* think: a "hmm" mouth, eyes glancing up and about. */
+.arcad-face[data-face="think"] .arcad-face-eyes {
+  animation: arcad-face-ponder 3.2s ease-in-out infinite;
+}
+@keyframes arcad-face-ponder {
+  0%, 38% { transform: translate(14px, -18px); }
+  48%, 82% { transform: translate(-12px, -20px); }
+  92%, 100% { transform: translate(14px, -18px); }
+}
+
+/* sleep: closed eyes, and the mouth slowly breathes open and shut. */
+.arcad-face[data-face="sleep"] .arcad-face-mouth-closed {
+  animation: arcad-face-snore 3s ease-in-out infinite;
+}
+@keyframes arcad-face-snore {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(0.8, 1.6); }
+}
+
+/* peek: the eyes lead the look-around. */
+.arcad-orb-mood[data-move="peek"] .arcad-face-eyes {
+  animation: arcad-face-peek 1.8s ease-in-out;
+}
+@keyframes arcad-face-peek {
+  0%, 100% { transform: translate(0, 0); }
+  12%, 38% { transform: translate(-22px, 0); }
+  50%, 75% { transform: translate(22px, 0); }
+}
+
+/* Pointing at his button makes him smile with his eyes. */
+@media (hover: hover) {
+  :is(button, a):hover .arcad-face[data-face="idle"] .arcad-face-eye-open,
+  .arcad-orb:hover .arcad-face[data-face="idle"] .arcad-face-eye-open {
+    opacity: 0;
+    transform: scaleY(0.2);
+    animation: none;
+  }
+  :is(button, a):hover .arcad-face[data-face="idle"] .arcad-face-eye-happy,
+  .arcad-orb:hover .arcad-face[data-face="idle"] .arcad-face-eye-happy {
+    opacity: 1;
+    transform: none;
+  }
+  :is(button, a):hover .arcad-face[data-face="idle"] .arcad-face-blush,
+  .arcad-orb:hover .arcad-face[data-face="idle"] .arcad-face-blush { opacity: 0.35; }
+}
+
 /* Thinking makes his stars twinkle faster too. */
 .arcad-orb[data-state="thinking"] .arcad-orb-glint {
   animation-duration: 1.8s;
@@ -1254,7 +1400,12 @@ html[data-app-theme] .type-mono-label {
   .arcad-orb-sheen::after,
   .arcad-orb-orbit-x,
   .arcad-orb-orbit-y { animation: none !important; }
-  .arcad-orb-look { transition: none; }
+  .arcad-orb-look,
+  .arcad-face-all,
+  .arcad-face-eyes { transition: none; }
+  .arcad-face .arcad-face-eye-open,
+  .arcad-face .arcad-face-eyes,
+  .arcad-face .arcad-face-mouth-closed { animation: none !important; }
   .arcad-orb-glint,
   .arcad-orb-orbit,
   .arcad-orb-zzz,

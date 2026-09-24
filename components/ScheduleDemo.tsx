@@ -105,7 +105,7 @@ export default function ScheduleDemo() {
           <div className="col-span-12 mt-8 lg:col-span-4 lg:mt-0 lg:self-end">
             <FadeIn delay={0.2}>
               <p className="type-body-lg max-w-[420px] text-white/60">
-                Tell Arcadia what changed. It rebuilds the affected study blocks, keeps your
+                Tell Arcad what changed. It rebuilds the affected study blocks, keeps your
                 Friday test in view and shows you one clear next step.
               </p>
             </FadeIn>

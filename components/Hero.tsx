@@ -119,7 +119,8 @@ export default function Hero() {
             >
               <p className="type-body-lg max-w-[640px] text-white/65">
                 Arcadia plans around your school, deadlines, sport, work and the rest of your
-                week. When something changes, it rebuilds the plan and shows you what to do next.
+                week. When something changes, Arcad, your study coach, rebuilds the plan and shows
+                you what to do next.
               </p>
             </CopyItem>
 

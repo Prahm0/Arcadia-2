@@ -7,6 +7,7 @@ import FadeIn from "./ui/FadeIn";
 import RevealText from "./ui/RevealText";
 import SectionLabel from "./ui/SectionLabel";
 import Button from "./ui/Button";
+import { PAID_PRICING, TIER_COPY } from "@/lib/app/pricing";
 
 type Interval = "week" | "month" | "year";
 
@@ -31,33 +32,17 @@ const TIERS: Tier[] = [
   {
     key: "free",
     name: "Free",
-    headline: "Get organised, on your own.",
+    headline: TIER_COPY.free.headline,
     pricing: null,
-    features: [
-      "Auto-scheduled daily plan",
-      "Tasks & deadlines",
-      "Classic focus timer",
-      "2 Arcad messages / day",
-      "1 flashcard deck",
-      "Study rooms for up to 12, with chat and room colours",
-    ],
+    features: [...TIER_COPY.free.features],
     cta: "Start free",
   },
   {
     key: "pro",
     name: "Pro",
-    headline: "Planning on autopilot, Arcad in the loop.",
-    pricing: { weekly: 4.95, monthly: 12.82, yearly: 49.4 },
-    features: [
-      "Everything in Free",
-      "20 Arcad messages a day, 10x the free plan",
-      "Google · Apple · Canvas calendar sync",
-      "Upload PDFs & notes, Arcad answers from them",
-      "Study rooms for up to 30, with shared timers",
-      "Room icon and shared 7-day focus goal",
-      "Full analytics, streaks, subjects, trends",
-      "Up to 3 flashcard decks",
-    ],
+    headline: TIER_COPY.pro.headline,
+    pricing: PAID_PRICING.pro,
+    features: [...TIER_COPY.pro.features],
     cta: "Start Pro",
     highlighted: true,
     badge: "Most popular",
@@ -65,15 +50,9 @@ const TIERS: Tier[] = [
   {
     key: "max",
     name: "Max",
-    headline: "The learning layer. Study, not just plan.",
-    pricing: { weekly: 9.95, monthly: 34.54, yearly: 205.4 },
-    features: [
-      "Everything in Pro",
-      "100 Arcad messages a day, 50x the free plan",
-      "Unlimited flashcard decks",
-      "New study tools land here first",
-      "Study rooms for up to 50",
-    ],
+    headline: TIER_COPY.max.headline,
+    pricing: PAID_PRICING.max,
+    features: [...TIER_COPY.max.features],
     cta: "Go Max",
   },
 ];

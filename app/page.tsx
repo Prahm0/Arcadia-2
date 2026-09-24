@@ -5,6 +5,7 @@ import Hero from "@/components/Hero";
 import Navbar from "@/components/Navbar";
 import PricingSection from "@/components/PricingSection";
 import ProblemSection from "@/components/ProblemSection";
+import ProductTour from "@/components/ProductTour";
 import ScheduleDemo from "@/components/ScheduleDemo";
 import ThinkingSection from "@/components/ThinkingSection";
 import TesterNotesSection from "@/components/TesterNotesSection";
@@ -13,7 +14,7 @@ import LazyMount from "@/components/ui/LazyMount";
 
 /**
  * One week, top to bottom. The background follows the hours of the day:
- * night → dawn → noon → evening lamp light → dusk → night.
+ * night → dusk → dawn → noon → night.
  */
 export default function Home() {
   return (
@@ -28,6 +29,7 @@ export default function Home() {
         <ThinkingSection />
         <TodayDemo />
         <ArcadiaInput />
+        <ProductTour />
         <TesterNotesSection />
         <PricingSection />
         <FinalCTA />

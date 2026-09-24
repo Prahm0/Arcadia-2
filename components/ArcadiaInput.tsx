@@ -105,7 +105,7 @@ export default function ArcadiaInput() {
 
   return (
     <section
-      id="students"
+      id="arcad"
       aria-labelledby="tell-heading"
       className="section-seam-light bg-noon py-[120px] text-day-text lg:py-[160px]"
     >
@@ -114,13 +114,13 @@ export default function ArcadiaInput() {
           <div className="col-span-12 lg:col-span-7">
             <FadeIn>
               <SectionLabel tone="light" time="Tue 8 Sep · 3:52 pm">
-                Tell Arcadia
+                Tell Arcad
               </SectionLabel>
             </FadeIn>
             <RevealText
               id="tell-heading"
               as="h2"
-              lines={["Tell Arcadia", "what changed."]}
+              lines={["Tell Arcad", "what changed."]}
               accent="what changed."
               className="type-display mt-8 text-day-text"
               delay={0.1}
@@ -130,8 +130,8 @@ export default function ArcadiaInput() {
             <FadeIn delay={0.25}>
               <div className="flex items-end gap-4">
                 <p className="type-body-lg max-w-[340px] text-day-text/60">
-                  Say it plainly. Arcadia finds the affected blocks, rebuilds the plan and shows
-                  you what comes next.
+                  Say it how you&rsquo;d text a mate. Arcad finds the blocks it touches, rebuilds
+                  the plan and shows you what comes next.
                 </p>
                 <Image
                   src="/brand/arcad-orb-mark.png"
@@ -220,7 +220,7 @@ export default function ArcadiaInput() {
                     )}
                   >
                     <label htmlFor="tell-arcadia" className="sr-only">
-                      Tell Arcadia what changed
+                      Tell Arcad what changed
                     </label>
                     <div className="relative min-h-[44px] flex-1 py-2.5">
                       <input
@@ -228,7 +228,7 @@ export default function ArcadiaInput() {
                         type="text"
                         value={answered || inFlight ? "" : typed}
                         readOnly
-                        placeholder={answered ? "Tell Arcadia what changed…" : ""}
+                        placeholder={answered ? "Tell Arcad what changed…" : ""}
                         className="w-full bg-transparent text-[15px] leading-6 text-ui-text outline-none placeholder:text-ui-muted"
                         aria-describedby="tell-example"
                       />
@@ -236,7 +236,7 @@ export default function ArcadiaInput() {
                     <button
                       type="submit"
                       disabled={step !== "idle" || typed.length === 0}
-                      aria-label="Send to Arcadia"
+                      aria-label="Send to Arcad"
                       className="flex size-9 shrink-0 items-center justify-center rounded-[8px] bg-black text-white transition-[opacity,transform] duration-200 hover:-translate-y-px disabled:opacity-30 disabled:hover:translate-y-0"
                     >
                       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">

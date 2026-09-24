@@ -19,6 +19,10 @@ interface AnalyticsResponse {
   current: { minutes: number; sessions: number };
 }
 
+interface Achievement {
+  id: string; title: string; description: string; category: string; target: number; icon: string; current: number; unlockedAt: number | null;
+}
+
 /**
  * The motivating side of progress, in one place. On top, the streak: days
  * you did at least 70% of what you planned, drawn as a chain of stars. Under
@@ -32,6 +36,7 @@ export default function StreaksView() {
   const [response, setResponse] = useState<AnalyticsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -41,6 +46,7 @@ export default function StreaksView() {
       .catch((err: unknown) => { if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load."); });
     return () => { cancelled = true; };
   }, []);
+  useEffect(() => { void api<{ achievements: Achievement[] }>("/api/progress").then((value) => setAchievements(value.achievements)).catch(() => {}); }, []);
 
   const loading = !response && !error;
   const totals = response?.sky ?? { sessions: 0, minutes: 0, subjects: [] };
@@ -78,6 +84,7 @@ export default function StreaksView() {
         ) : null}
         <StreakChain streak={streak} today={today} />
         <YourSky totals={totals} totalsLoading={loading} subjectColours={subjectColours} />
+        <AchievementsCollection achievements={achievements} />
       </div>
 
       {shareOpen ? (
@@ -94,6 +101,20 @@ export default function StreaksView() {
       ) : null}
     </>
   );
+}
+
+function AchievementsCollection({ achievements }: { achievements: Achievement[] }) {
+  if (!achievements.length) return null;
+  const unlocked = achievements.filter((achievement) => achievement.unlockedAt).length;
+  return <section id="achievements" className="mt-7 rounded-xl border p-5 sm:p-6" style={{ background: "var(--app-surface)", borderColor: "var(--app-border)" }}>
+    <div className="flex items-end justify-between gap-3"><div><p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Your collection</p><h2 className="mt-1 text-xl font-semibold tracking-tight">Achievements</h2></div><p className="text-sm tabular-nums" style={{ color: "var(--app-text-muted)" }}>{unlocked}/{achievements.length}</p></div>
+    <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {achievements.map((achievement) => { const locked = !achievement.unlockedAt; const percentage = Math.min(100, Math.round((achievement.current / achievement.target) * 100)); return <article key={achievement.id} className="rounded-lg border p-4" style={{ borderColor: "var(--app-border)", opacity: locked ? 0.72 : 1, background: locked ? "var(--app-surface-soft)" : "color-mix(in oklab, var(--app-arcad-soft) 34%, var(--app-surface))" }}>
+        <div className="flex items-start gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-full text-lg" style={{ background: locked ? "var(--app-border)" : "var(--app-arcad)", color: locked ? "var(--app-text-muted)" : "white" }}>{locked ? "🔒" : achievement.icon}</span><div><p className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-text-muted)" }}>{achievement.category}</p><h3 className="mt-0.5 text-sm font-semibold">{achievement.title}</h3><p className="mt-1 text-xs leading-5" style={{ color: "var(--app-text-muted)" }}>{achievement.description}</p></div></div>
+        {locked ? <><div className="mt-4 h-1.5 overflow-hidden rounded-full" style={{ background: "var(--app-border)" }}><div className="h-full rounded-full" style={{ width: `${percentage}%`, background: "var(--app-arcad)" }} /></div><p className="mt-1.5 text-[11px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>{achievement.current} of {achievement.target}</p></> : <p className="mt-4 text-[11px] font-semibold" style={{ color: "var(--app-arcad)" }}>Unlocked</p>}
+      </article>; })}
+    </div>
+  </section>;
 }
 
 function recoveriesThisWeek(streak: StreakSummary, today: string) {

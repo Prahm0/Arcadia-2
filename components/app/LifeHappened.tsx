@@ -54,6 +54,7 @@ export default function LifeHappened({
   const [dlDue, setDlDue] = useState("");
   const [dlSize, setDlSize] = useState<"small" | "medium" | "large">("medium");
   const [loading, setLoading] = useState(false);
+  const recoveryAttempt = useRef<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<RecoveryResult | null>(null);
 
@@ -81,6 +82,7 @@ export default function LifeHappened({
   if (!open) return null;
 
   function reset() {
+    recoveryAttempt.current = null;
     setReason(null);
     setBusyStart("");
     setBusyEnd("");
@@ -102,7 +104,8 @@ export default function LifeHappened({
     setLoading(true);
     setError(null);
     try {
-      const body: Record<string, unknown> = { reason: r };
+      recoveryAttempt.current ??= `rec_${crypto.randomUUID().replace(/-/g, "")}`;
+      const body: Record<string, unknown> = { reason: r, recoveryId: recoveryAttempt.current };
       if (r === "busy") {
         if (busyStart) body.busyStart = busyStart;
         if (busyEnd) body.busyEnd = busyEnd;

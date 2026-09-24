@@ -346,6 +346,12 @@ export const xpEvents = sqliteTable("xp_events", {
   createdAt: integer("created_at").notNull().default(now),
 }, (t) => [uniqueIndex("xp_events_user_source_unique").on(t.userId, t.source, t.sourceId), index("xp_events_user_created_idx").on(t.userId, t.createdAt)]);
 
+export const userAchievements = sqliteTable("user_achievements", {
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  achievementId: text("achievement_id").notNull(),
+  unlockedAt: integer("unlocked_at").notNull().default(now),
+}, (t) => [primaryKey({ columns: [t.userId, t.achievementId] })]);
+
 export const constellationPreferences = sqliteTable("constellation_preferences", {
   userId: text("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
   followed: text("followed").notNull().default("first-light"),

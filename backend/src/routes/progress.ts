@@ -3,6 +3,8 @@ import { Hono } from "hono";
 import { CONSISTENCY_THRESHOLD, levelForXp, XP } from "../../../shared/progress";
 import { db, schema } from "../db";
 import { awardXp } from "../lib/rewards";
+import { syncAchievements } from "../lib/achievements";
+import { computeStreaks } from "../lib/analytics";
 import { DAY, MINUTE, startOfLocalDay } from "../lib/time";
 import type { Env, Variables } from "../types";
 
@@ -24,7 +26,11 @@ progress.get("/", async (c) => {
   const closed = doneMinutes >= Math.ceil(goalMinutes * CONSISTENCY_THRESHOLD);
   const ringReward = closed ? await awardXp(database, userId, "ring_closed", String(start), XP.ringClosed) : [];
   const xp = Number(totals[0]?.xp ?? 0) + ringReward.reduce((sum, reward) => sum + reward.xp, 0); const level = levelForXp(xp);
-  return c.json({ xp, level: level.level, title: level.title, levelProgress: { current: level.progress, needed: level.needed }, todayRing: { doneMinutes, goalMinutes, closed }, streak: { days: 0, freezes: 0, protectedToday: false }, achievements: [], personalBests: {}, recentUnlocks: [] });
+  const allSessions = await database.select().from(schema.studySessions).where(eq(schema.studySessions.userId, userId));
+  const streaks = computeStreaks(allSessions, profile?.timezone || "Australia/Brisbane");
+  const achievements = await syncAchievements(database, userId, profile?.timezone || "Australia/Brisbane");
+  const earnedFreezes = Math.min(2, Math.floor(streaks.longestStreak / 7));
+  return c.json({ xp, level: level.level, title: level.title, levelProgress: { current: level.progress, needed: level.needed }, todayRing: { doneMinutes, goalMinutes, closed }, streak: { days: streaks.currentStreak, freezes: earnedFreezes, protectedToday: false }, achievements, personalBests: { longestFocus: Math.max(0, ...allSessions.map((session) => Math.round(session.seconds / 60))), longestStreak: streaks.longestStreak }, recentUnlocks: achievements.filter((achievement) => achievement.unlockedAt && achievement.unlockedAt >= now - DAY) });
 });
 
 export default progress;

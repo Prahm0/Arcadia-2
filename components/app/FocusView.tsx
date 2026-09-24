@@ -4,77 +4,21 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
-import { setPresence } from "@/lib/api/presence";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
-import type { DashboardResponse, PlannerEvent } from "@/lib/api/types";
+import type { PlannerEvent } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { formatClock as formatWallClock } from "@/lib/api/time";
-import { subjectColour } from "@/lib/app/subjectColour";
-import { useReplaceEvent, useSessionPlan } from "@/lib/app/useSessionPlan";
-import CheckoutSheet from "./CheckoutSheet";
-import EventDetailSheet from "./EventDetailSheet";
+import { useReplaceEvent } from "@/lib/app/useSessionPlan";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import SyllabusNudge from "./SyllabusNudge";
 import SessionSheetLink from "./sheets/SessionSheetLink";
-import PipTimer, { PIP_COMPACT_HEIGHT, PIP_WIDTH, PlayPauseIcon } from "./focus/PipTimer";
-import SessionTodos, { useOwnTodos, type TodoItem } from "./focus/SessionTodos";
-import { useDocumentPip } from "./focus/useDocumentPip";
-import { useStudySessionSave } from "@/lib/app/useStudySessionSave";
+import { PlayPauseIcon } from "./focus/PipTimer";
+import SessionTodos from "./focus/SessionTodos";
+import { clampMinutes, formatClock, useFocusSession, type FocusSession } from "./focus/FocusSession";
 import { isNative } from "@/lib/capacitor/platform";
 import StudyWithMe from "./focus/StudyWithMe";
 
-const BUILT_IN_PRESETS = [
-  { label: "Deep focus", focus: 50 * 60, break: 10 * 60 },
-  { label: "Classic", focus: 25 * 60, break: 5 * 60 },
-  { label: "Long block", focus: 90 * 60, break: 15 * 60 },
-];
-
-/** Free plan: Classic 25/5 (and a scheduled block's own length). The rest are Pro. */
-const PRO_PRESETS = new Set(["Deep focus", "Long block", "Custom"]);
-const CLASSIC_INDEX = BUILT_IN_PRESETS.findIndex((preset) => preset.label === "Classic");
-
-const CUSTOM_KEY = "arcadia:focus:custom";
-const CUSTOM_DEFAULT = { focusMin: 30, breakMin: 5 };
-// Skip the "you barely started" case: reset only logs a session if the user
-// actually spent time in focus. Sub-30s pokes stay unlogged so the recents
-// list doesn't fill with noise from misclicks.
-const RESET_LOG_MIN_SECONDS = 30;
-// Study-room presence keepalive. The server treats a timer quiet for 150s as
-// gone, so this leaves room for one missed beat.
-const PRESENCE_KEEPALIVE_MS = 60_000;
-
-function readCustomPreset(): { focusMin: number; breakMin: number } {
-  if (typeof window === "undefined") return CUSTOM_DEFAULT;
-  try {
-    const raw = window.localStorage.getItem(CUSTOM_KEY);
-    if (!raw) return CUSTOM_DEFAULT;
-    const parsed = JSON.parse(raw);
-    return {
-      focusMin: clampMinutes(parsed.focusMin, CUSTOM_DEFAULT.focusMin),
-      breakMin: clampMinutes(parsed.breakMin, CUSTOM_DEFAULT.breakMin),
-    };
-  } catch {
-    return CUSTOM_DEFAULT;
-  }
-}
-
-function writeCustomPreset(value: { focusMin: number; breakMin: number }) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(CUSTOM_KEY, JSON.stringify(value));
-  } catch {
-    /* ignore */
-  }
-}
-
-function clampMinutes(v: unknown, fallback: number): number {
-  const n = typeof v === "number" ? v : Number(v);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(240, Math.max(1, Math.round(n)));
-}
-
-type Phase = "focus" | "break" | "idle";
 type AsideTab = "setup" | "todo" | "recents";
 
 interface StudySession {
@@ -90,193 +34,65 @@ interface StudySession {
 export default function FocusView() {
   return (
     <Suspense fallback={null}>
-      <FocusViewInner />
+      <FocusViewRoute />
     </Suspense>
   );
 }
 
-const DONE_KEY = "arcadia:focus:done:";
-const TIMER_KEY = "arcadia:focus:timer:";
+/**
+ * The timer itself runs in FocusSessionProvider, so it and its pop-out keep
+ * going on other pages. This page points that session at the study block in
+ * the URL, and shows it once it's the one running.
+ */
+function FocusViewRoute() {
+  const params = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const { session, select } = useFocusSession();
+  const eventId = params.get("eventId");
 
-interface SavedTimer {
-  eventId: string | null;
-  phase: Phase;
-  running: boolean;
-  remaining: number;
-  endsAt: number | null;
-  presetLabel: string;
-  subject: string;
-  goal: string;
-  distractions: number;
-  activityId: string | null;
+  useEffect(() => {
+    // Coming back through a plain Focus link mid-session returns to that
+    // session rather than quietly starting a free timer beside it.
+    if (!eventId && session?.eventId && session.phase !== "idle") {
+      router.replace(`${pathname}?eventId=${encodeURIComponent(session.eventId)}`);
+      return;
+    }
+    if (session?.eventId !== eventId) select(eventId);
+  }, [eventId, session?.eventId, session?.phase, select, router, pathname]);
+
+  if (!session || session.eventId !== eventId) return null;
+  return <FocusViewInner session={session} />;
 }
 
-function readSavedTimer(key: string): SavedTimer | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const value = JSON.parse(window.localStorage.getItem(key) ?? "null") as Partial<SavedTimer> | null;
-    if (
-      !value ||
-      (value.phase !== "idle" && value.phase !== "focus" && value.phase !== "break") ||
-      typeof value.running !== "boolean" ||
-      typeof value.remaining !== "number" ||
-      !Number.isFinite(value.remaining)
-    ) return null;
-    return value as SavedTimer;
-  } catch {
-    return null;
-  }
-}
-
-function writeSavedTimer(key: string, value: SavedTimer) {
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    /* The timer still works for this visit when storage is unavailable. */
-  }
-}
-
-/** Plan steps ticked off in this browser, so a reload mid-session keeps them. */
-function readDoneSteps(eventId: string | null): number[] {
-  if (!eventId || typeof window === "undefined") return [];
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(DONE_KEY + eventId) ?? "[]");
-    return Array.isArray(parsed) ? parsed.filter((item) => Number.isInteger(item)) : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeDoneSteps(eventId: string | null, done: number[]) {
-  if (!eventId) return;
-  try {
-    window.localStorage.setItem(DONE_KEY + eventId, JSON.stringify(done));
-  } catch {
-    /* storage blocked; the ticks just won't survive a reload */
-  }
-}
-
-function FocusViewInner() {
-  const { data, reload, patch } = useDashboardData();
-  const studySave = useStudySessionSave(data.user.id);
-  const activityId = useRef<string | null>(null);
+function FocusViewInner({ session }: { session: FocusSession }) {
+  const { data } = useDashboardData();
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
   const timezone = data.profile?.timezone || data.user.timezone || "Australia/Sydney";
 
-  const eventId = params.get("eventId");
-  const timerSessionEventId = useRef(eventId);
-  const timerStorageKey = useRef(`${TIMER_KEY}${data.user.id}:${eventId ?? "free"}`).current;
-  const linkedEvent = useMemo<PlannerEvent | null>(() => {
-    if (!eventId) return null;
-    return data.events.find((event) => event.id === eventId) ?? null;
-  }, [data.events, eventId]);
+  const {
+    eventId, linkedEvent, linkedMinutes, studySave,
+    presets: PRESETS, presetIndex, customIndex, customPreset, presetLocked,
+    phase, remaining, running, progress, totalForPhase, phaseColour, colour,
+    subject, goal, sessionGoal, distractions,
+    plan, planLoading, planRefreshing, refreshPlan, todos,
+    start, pause, reset, skip, finishSession, pip,
+  } = session;
 
-  const linkedMinutes = linkedEvent
-    ? Math.round((Date.parse(linkedEvent.endAt) - Date.parse(linkedEvent.startAt)) / 60000)
-    : null;
-
-  const [customPreset, setCustomPreset] = useState(CUSTOM_DEFAULT);
-  useEffect(() => {
-    setCustomPreset(readCustomPreset());
-  }, []);
-  const breakSeconds = Math.max(5, Number(data.preferences?.breakMinutes ?? 10) || 10) * 60;
-  const PRESETS = useMemo(
-    () => [
-      // A scheduled session runs for its own length, not the nearest preset's.
-      ...(linkedMinutes ? [{ label: "This session", focus: linkedMinutes * 60, break: breakSeconds }] : []),
-      ...BUILT_IN_PRESETS,
-      {
-        label: "Custom",
-        focus: customPreset.focusMin * 60,
-        break: customPreset.breakMin * 60,
-      },
-    ],
-    [customPreset, linkedMinutes, breakSeconds],
-  );
-  const customIndex = PRESETS.length - 1;
-  const paidPlan = data.user.tier === "pro" || data.user.tier === "max";
-  const presetLocked = (label: string) => !paidPlan && PRO_PRESETS.has(label);
-  // Free students start on Classic; a scheduled block always opens on its own length.
-  const [presetIndex, setPresetIndex] = useState(() => (linkedMinutes || paidPlan ? 0 : CLASSIC_INDEX));
-  const [phase, setPhase] = useState<Phase>("idle");
-  useEffect(() => { if (phase === "focus") activityId.current = crypto.randomUUID(); }, [phase]);
-  const [remaining, setRemaining] = useState(PRESETS[presetIndex].focus);
-  const [running, setRunning] = useState(false);
-  const [subject, setSubject] = useState(
-    linkedEvent?.subject || data.subjects[0]?.name || "General",
-  );
-  const [goal, setGoal] = useState(linkedEvent?.title ?? "");
-  const [distractions, setDistractions] = useState(0);
   // A scheduled session already knows what it's on, so it opens on its to-dos.
   const [tab, setTab] = useState<AsideTab>(eventId ? "todo" : "setup");
   const [recents, setRecents] = useState<StudySession[] | null>(null);
   const [recentsError, setRecentsError] = useState(false);
-  const intervalRef = useRef<number | null>(null);
-  const timerEndsAtRef = useRef<number | null>(null);
-  const [timerRestored, setTimerRestored] = useState(false);
-  const preset = PRESETS[presetIndex] ?? PRESETS[0];
-
-  // Scheduled sessions: Arcad's plan, the steps ticked off so far (kept per
-  // session in this browser, in case the page reloads), and the check-out.
-  const { plan, loading: planLoading, refresh: refreshPlan, refreshing: planRefreshing } = useSessionPlan(linkedEvent);
   const replaceEvent = useReplaceEvent();
-  const [doneSteps, setDoneSteps] = useState<number[]>(() => readDoneSteps(eventId));
-  const [checkout, setCheckout] = useState<{ minutes: number } | null>(null);
-  const [missReasonEvent, setMissReasonEvent] = useState<PlannerEvent | null>(null);
-  const hasPaidPlan = data.user.tier === "pro" || data.user.tier === "max";
-  const sessionGoal = plan?.topic ?? goal;
-  const colour = linkedEvent ? subjectColour(data.subjects, linkedEvent.subject) ?? "var(--app-accent)" : null;
-
-  function toggleStep(index: number) {
-    setDoneSteps((prev) => {
-      const next = prev.includes(index) ? prev.filter((item) => item !== index) : [...prev, index];
-      writeDoneSteps(eventId, next);
-      return next;
-    });
-  }
-
-  // One to-do list for the session: Arcad's plan steps first, then whatever
-  // the student adds. Same list on the page and in the pop-out.
-  const ownTodos = useOwnTodos(eventId ?? "free");
-  const todos = useMemo<TodoItem[]>(() => [
-    ...(plan?.steps ?? []).map((step, index) => ({
-      key: `step:${index}`,
-      text: step.text,
-      minutes: step.minutes,
-      done: doneSteps.includes(index),
-      removable: false,
-    })),
-    ...ownTodos.items.map((item) => ({ key: `own:${item.id}`, text: item.text, done: item.done, removable: true })),
-  ], [plan, doneSteps, ownTodos.items]);
-
-  function toggleTodo(key: string) {
-    if (key.startsWith("step:")) toggleStep(Number(key.slice(5)));
-    else ownTodos.toggle(key.slice(4));
-  }
-
-  function removeTodo(key: string) {
-    if (key.startsWith("own:")) ownTodos.remove(key.slice(4));
-  }
-
-  const pip = useDocumentPip();
-  const [pipExpanded, setPipExpanded] = useState(false);
-  const [pipBlocked, setPipBlocked] = useState(false);
   const [studyWithMeOpen, setStudyWithMeOpen] = useState(false);
-  const [studyWithMeComplete, setStudyWithMeComplete] = useState(false);
-
-  async function popOut() {
-    setPipExpanded(false);
-    const win = await pip.open({ width: PIP_WIDTH, height: PIP_COMPACT_HEIGHT });
-    setPipBlocked(win === null);
-  }
 
   function openStudyWithMe() {
     if (!isNative() && document.documentElement.requestFullscreen) {
       void document.documentElement.requestFullscreen().catch(() => {});
     }
-    setStudyWithMeComplete(false);
+    session.clearComplete();
     setStudyWithMeOpen(true);
   }
 
@@ -296,63 +112,19 @@ function FocusViewInner() {
     }
   }, []);
 
+  // Again each time the session logs one, so it's at the top already.
   useEffect(() => {
     void loadRecents();
-  }, [loadRecents]);
-
-  // If the ?eventId= arrives after mount (rare but possible with client-side nav),
-  // sync the visible fields once, do not clobber values the user already edited.
-  const hasHydrated = useRef(false);
-  useEffect(() => {
-    if (hasHydrated.current) return;
-    if (!linkedEvent) {
-      hasHydrated.current = true;
-      return;
-    }
-    hasHydrated.current = true;
-    setPresetIndex(0);
-    // A session already under way (the page was reloaded) picks up the clock.
-    const left = linkedEvent.startedAt ? Math.round((Date.parse(linkedEvent.endAt) - Date.now()) / 1000) : 0;
-    setRemaining(left > 60 ? left : (linkedMinutes ?? 50) * 60);
-    if (left > 60) setPhase("focus");
-    setSubject(linkedEvent.subject || data.subjects[0]?.name || "General");
-    setGoal(linkedEvent.plan?.topic ?? linkedEvent.title);
-  }, [linkedEvent, linkedMinutes, data.subjects]);
-
-  // The app shell unmounts page content when switching sections. Keep the
-  // active session in this browser so its deadline and setup survive that.
-  const didRestoreTimer = useRef(false);
-  useEffect(() => {
-    if (didRestoreTimer.current) return;
-    didRestoreTimer.current = true;
-    const saved = readSavedTimer(timerStorageKey);
-    if (saved && saved.eventId === timerSessionEventId.current) {
-      const savedPresetIndex = PRESETS.findIndex((item) => item.label === saved.presetLabel);
-      if (savedPresetIndex >= 0) setPresetIndex(savedPresetIndex);
-      setPhase(saved.phase);
-      setSubject(saved.subject || linkedEvent?.subject || data.subjects[0]?.name || "General");
-      setGoal(saved.goal ?? linkedEvent?.title ?? "");
-      setDistractions(Number.isInteger(saved.distractions) ? saved.distractions : 0);
-      activityId.current = saved.activityId ?? null;
-      const left = saved.running && typeof saved.endsAt === "number"
-        ? Math.max(0, Math.ceil((saved.endsAt - Date.now()) / 1000))
-        : Math.max(0, Math.round(saved.remaining));
-      setRemaining(left);
-      setRunning(saved.running);
-      timerEndsAtRef.current = saved.running && typeof saved.endsAt === "number"
-        ? saved.endsAt
-        : null;
-    }
-    setTimerRestored(true);
-  // Restore once for the page/session key. The linked event is used only as a
-  // fallback for old or incomplete saved values.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadRecents, session.logged]);
 
   // "Start now" from Today: the block moves to now, and the timer runs
   // straight away. The flag comes off the URL so a reload doesn't restart it.
   const autoStarted = useRef(false);
   const wantsStart = params.get("start") === "1";
+  const beginNow = useRef(session.beginNow);
+  useEffect(() => {
+    beginNow.current = session.beginNow;
+  });
   useEffect(() => {
     if (!wantsStart || !linkedEvent || autoStarted.current) return;
     autoStarted.current = true;
@@ -365,248 +137,15 @@ function FocusViewInner() {
         /* the timer still runs; the block just isn't moved */
       }
       router.replace(`${pathname}?eventId=${encodeURIComponent(id)}`);
-      setPhase("focus");
-      setRunning(true);
+      beginNow.current();
     })();
   }, [wantsStart, linkedEvent, replaceEvent, router, pathname]);
 
-  /** Ends a scheduled session now: log the time spent and check out. */
-  function finishSession() {
-    const elapsed = phase === "focus" ? preset.focus - remaining : 0;
-    if (elapsed >= RESET_LOG_MIN_SECONDS) void logSession("focus", elapsed);
-    setRunning(false);
-    setPhase("idle");
-    setRemaining(preset.focus);
-    setCheckout({ minutes: Math.max(1, Math.round((elapsed || preset.focus) / 60)) });
-  }
-
-  // Counts down against the wall clock rather than by one per tick: once the
-  // timer is popped out the tab sits in the background, where the browser
-  // throttles timers, and a tick-counted clock would fall behind.
-  const remainingRef = useRef(remaining);
-  useEffect(() => {
-    remainingRef.current = remaining;
-  });
-  useEffect(() => {
-    if (!running) return;
-    const endsAt = timerEndsAtRef.current ?? (Date.now() + remainingRef.current * 1000);
-    timerEndsAtRef.current = endsAt;
-    intervalRef.current = window.setInterval(() => {
-      const next = Math.max(0, Math.round((endsAt - Date.now()) / 1000));
-      if (next === 0) setStudyWithMeComplete(true);
-      setRemaining(next);
-    }, 250);
-    return () => {
-      if (intervalRef.current) window.clearInterval(intervalRef.current);
-    };
-    // Restarts when the phase flips, so a break counts from its own length.
-  }, [running, phase]);
-
-  // Persist on session changes and every five seconds while counting down.
-  // The absolute deadline keeps elapsed time accurate while this page is gone.
-  useEffect(() => {
-    if (!timerRestored || (running && remaining % 5 !== 0)) return;
-    writeSavedTimer(timerStorageKey, {
-      eventId: timerSessionEventId.current,
-      phase,
-      running,
-      remaining,
-      endsAt: running ? timerEndsAtRef.current : null,
-      presetLabel: preset.label,
-      subject,
-      goal,
-      distractions,
-      activityId: activityId.current,
-    });
-  }, [timerRestored, timerStorageKey, phase, running, remaining, preset.label, subject, goal, distractions]);
-
-  useEffect(() => {
-    if (remaining !== 0) return;
-    // A scheduled session ends in a check-out rather than a break.
-    if (phase === "focus" && linkedEvent && !linkedEvent.checkout) {
-      void logSession("focus", preset.focus);
-      setRunning(false);
-      setPhase("idle");
-      setRemaining(preset.focus);
-      setCheckout({ minutes: Math.round(preset.focus / 60) });
-      return;
-    }
-    if (phase === "focus") {
-      void logSession("focus", preset.focus, { markEvent: "completed" });
-      setPhase("break");
-      setRemaining(preset.break);
-    } else if (phase === "break") {
-      setPhase("focus");
-      setRemaining(preset.focus);
-      setRunning(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [remaining, phase, preset]);
-
-  // Study rooms: publish what this timer is doing. Sent when it starts, stops
-  // or changes phase, then once a minute while it runs so the server can tell
-  // a live timer from a closed tab. A paused timer reads as idle.
-  const presenceRef = useRef({ phase, remaining, subject, total: preset.focus });
-  // Declared before the effects that read it, so it is current when they run.
-  useEffect(() => {
-    presenceRef.current = {
-      phase,
-      remaining,
-      subject,
-      total: phase === "break" ? preset.break : preset.focus,
-    };
-  });
-  const wasLive = useRef(false);
-
-  const publishPresence = useCallback((live: boolean) => {
-    if (!live) {
-      // Only an actual stop is worth a write; opening the page idle isn't.
-      if (wasLive.current) setPresence({ activity: "idle" });
-      wasLive.current = false;
-      return;
-    }
-    const { phase: current, remaining: left, subject: on, total } = presenceRef.current;
-    if (current === "idle") return;
-    wasLive.current = true;
-    setPresence({
-      activity: current,
-      subject: on,
-      // Back-dated by the time already on the clock, so a resumed timer shows
-      // the right "min in" to friends.
-      startedAt: new Date(Date.now() - (total - left) * 1000).toISOString(),
-      durationSeconds: total,
-    });
-  }, []);
-
-  useEffect(() => {
-    publishPresence(running);
-    if (!running) return;
-    const id = window.setInterval(() => publishPresence(true), PRESENCE_KEEPALIVE_MS);
-    return () => window.clearInterval(id);
-  }, [running, phase, presetIndex, publishPresence]);
-
-  // A subject edit mid-session reaches the room once typing settles.
-  useEffect(() => {
-    if (!wasLive.current) return;
-    const id = window.setTimeout(() => publishPresence(true), 1500);
-    return () => window.clearTimeout(id);
-  }, [subject, publishPresence]);
-
-  // Leaving the focus page stops the timer, so stop showing as studying.
-  useEffect(() => () => publishPresence(false), [publishPresence]);
-
-  async function logSession(
-    type: string,
-    seconds: number,
-    opts: { markEvent?: "completed" | "missed" } = {},
-  ) {
-    if (seconds > 0) {
-      activityId.current ??= crypto.randomUUID();
-      await studySave.save({ activityId: activityId.current, type, seconds, subject, goal: sessionGoal, distractions, endedAt: new Date().toISOString() });
-    }
-
-    if (linkedEvent && opts.markEvent) {
-      const outcome = opts.markEvent;
-      try {
-        await api(`/api/events/${encodeURIComponent(linkedEvent.id)}/outcome`, {
-          method: "POST",
-          body: JSON.stringify({ outcome }),
-        });
-        patch((prev: DashboardResponse) => ({
-          ...prev,
-          events: prev.events.map((existing) =>
-            existing.id === linkedEvent.id
-              ? {
-                  ...existing,
-                  outcome,
-                  status: outcome === "completed" ? "completed" : "missed",
-                }
-              : existing,
-          ),
-        }));
-      } catch {
-        /* ignore */
-      }
-    }
-
-    try {
-      await reload();
-    } catch {
-      /* ignore */
-    }
-
-    // A session that just finished should be at the top of Recents already.
-    void loadRecents();
-  }
-
-  function start() {
-    setStudyWithMeComplete(false);
-    timerEndsAtRef.current = null;
-    if (phase === "idle") {
-      setPhase("focus");
-      setRemaining(preset.focus);
-    }
-    setRunning(true);
-  }
-
-  function pause() {
-    if (running && timerEndsAtRef.current !== null) {
-      setRemaining(Math.max(0, Math.ceil((timerEndsAtRef.current - Date.now()) / 1000)));
-    }
-    timerEndsAtRef.current = null;
-    setRunning(false);
-  }
-
-  function reset() {
-    // If the user pressed reset mid-focus after actually working for a bit,
-    // log the effort so it isn't lost. Shorter pokes stay unlogged so recents
-    // don't fill with misclick noise (see RESET_LOG_MIN_SECONDS).
-    if (phase === "focus") {
-      const elapsed = preset.focus - remaining;
-      if (elapsed >= RESET_LOG_MIN_SECONDS) {
-        void logSession("focus", elapsed);
-      }
-    }
-    setRunning(false);
-    setPhase("idle");
-    setRemaining(preset.focus);
-    setDistractions(0);
-    setStudyWithMeComplete(false);
-  }
-
-  function skip() {
-    if (phase === "focus") {
-      // Skipping out of focus = you didn't finish. If linked, mark the block missed.
-      if (linkedEvent && hasPaidPlan) {
-        void logSession("focus", preset.focus - remaining);
-        setMissReasonEvent(linkedEvent);
-      } else {
-        void logSession("focus", preset.focus - remaining, {
-          markEvent: linkedEvent ? "missed" : undefined,
-        });
-      }
-      setPhase("break");
-      setRemaining(preset.break);
-    } else {
-      setPhase("focus");
-      setRemaining(preset.focus);
-    }
-    setRunning(false);
-    setStudyWithMeComplete(false);
-  }
-
   function detach() {
-    setRunning(false);
-    setPhase("idle");
-    const index = paidPlan ? 0 : CLASSIC_INDEX;
-    setPresetIndex(index);
-    setRemaining(BUILT_IN_PRESETS[index].focus);
+    session.detach();
     router.replace("/app/focus");
   }
 
-  const totalForPhase = phase === "break" ? preset.break : preset.focus;
-  const progress = 1 - remaining / totalForPhase;
-  const phaseColour = phase === "break" ? "var(--app-success)" : colour ?? "var(--app-accent)";
   const todosDone = todos.filter((item) => item.done).length;
 
   // A scheduled session is already set up, so it has no Setup tab.
@@ -683,19 +222,19 @@ function FocusViewInner() {
           {pip.supported ? (
             <button
               type="button"
-              onClick={pip.pipWindow ? pip.close : () => void popOut()}
-              title={pip.pipWindow ? "Put the timer back on this page" : "Float the timer over your other windows"}
+              onClick={pip.open ? pip.close : () => void pip.popOut()}
+              title={pip.open ? "Put the timer back on this page" : "Float the timer over your other windows"}
               className="ui-press absolute right-3 top-3 flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12.5px] font-medium hover:bg-[color-mix(in_oklab,var(--app-text)_6%,transparent)]"
-              style={{ color: pip.pipWindow ? "var(--app-text)" : "var(--app-text-muted)" }}
+              style={{ color: pip.open ? "var(--app-text)" : "var(--app-text-muted)" }}
             >
               <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <rect x="1.75" y="2.75" width="12.5" height="10.5" rx="2" />
-                {pip.pipWindow ? <path d="M10.5 6.5h-3v3M7.5 6.5l3.5 3.5" /> : <rect x="8" y="8" width="4.5" height="3.5" rx="0.75" fill="currentColor" stroke="none" />}
+                {pip.open ? <path d="M10.5 6.5h-3v3M7.5 6.5l3.5 3.5" /> : <rect x="8" y="8" width="4.5" height="3.5" rx="0.75" fill="currentColor" stroke="none" />}
               </svg>
-              {pip.pipWindow ? "Bring back" : "Pop out"}
+              {pip.open ? "Bring back" : "Pop out"}
             </button>
           ) : null}
-          {pipBlocked && !pip.pipWindow ? (
+          {pip.blocked && !pip.open ? (
             <p role="status" className="app-enter absolute right-4 top-12 max-w-[220px] text-right text-[12px]" style={{ color: "var(--app-text-muted)" }}>
               Your browser blocked the pop-out. Allow pop-ups for this site and try again.
             </p>
@@ -736,7 +275,7 @@ function FocusViewInner() {
               <span className="mt-1 max-w-[70%] truncate text-[13px]" style={{ color: "var(--app-text-muted)" }}>
                 {subject}
               </span>
-              {pip.pipWindow ? (
+              {pip.open ? (
                 <span className="app-enter mt-3 rounded-full px-2.5 py-1 text-[11.5px] font-medium" style={{ background: "var(--app-accent-soft)", color: "var(--app-text-soft)" }}>
                   Popped out
                 </span>
@@ -774,7 +313,7 @@ function FocusViewInner() {
           {phase !== "idle" ? (
             <button
               type="button"
-              onClick={() => setDistractions((d) => d + 1)}
+              onClick={session.addDistraction}
               className="ui-press app-enter mt-7 rounded-full px-4 py-1.5 text-[12.5px] font-medium hover:text-[var(--app-text)]"
               style={{ boxShadow: "inset 0 0 0 1px var(--app-border-strong)", color: "var(--app-text-muted)" }}
             >
@@ -869,9 +408,9 @@ function FocusViewInner() {
                 className="mt-3"
                 items={todos}
                 accent={colour ?? "var(--app-accent)"}
-                onToggle={toggleTodo}
-                onAdd={ownTodos.add}
-                onRemove={removeTodo}
+                onToggle={session.toggleTodo}
+                onAdd={session.addTodo}
+                onRemove={session.removeTodo}
               />
               {plan && linkedEvent && !linkedEvent.checkout ? <SyllabusNudge plan={plan} /> : null}
               {linkedEvent ? <SessionSheetLink subject={linkedEvent.subject} topic={plan?.topic ?? linkedEvent.title} /> : null}
@@ -903,10 +442,7 @@ function FocusViewInner() {
                       router.push("/app/pricing");
                       return;
                     }
-                    setPresetIndex(i);
-                    setPhase("idle");
-                    setRemaining(p.focus);
-                    setRunning(false);
+                    session.choosePreset(i);
                   }}
                   className={cn(
                     "ui-press flex items-center justify-between rounded-md px-3 py-2.5 text-[13.5px] font-medium",
@@ -943,9 +479,7 @@ function FocusViewInner() {
                     value={customPreset.focusMin}
                     onChange={(e) => {
                       const next = { ...customPreset, focusMin: clampMinutes(e.target.value, customPreset.focusMin) };
-                      setCustomPreset(next);
-                      writeCustomPreset(next);
-                      if (phase === "idle") setRemaining(next.focusMin * 60);
+                      session.changeCustomPreset(next);
                     }}
                     className="w-full rounded-md px-2 py-1.5 text-[13.5px] outline-none"
                     style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
@@ -962,8 +496,7 @@ function FocusViewInner() {
                     value={customPreset.breakMin}
                     onChange={(e) => {
                       const next = { ...customPreset, breakMin: clampMinutes(e.target.value, customPreset.breakMin) };
-                      setCustomPreset(next);
-                      writeCustomPreset(next);
+                      session.changeCustomPreset(next);
                     }}
                     className="w-full rounded-md px-2 py-1.5 text-[13.5px] outline-none"
                     style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
@@ -980,7 +513,7 @@ function FocusViewInner() {
                 <span className="mb-1 block text-[12px]" style={{ color: "var(--app-text-muted)" }}>Subject</span>
                 <select
                   value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
+                  onChange={(e) => session.setSubject(e.target.value)}
                   className="w-full rounded-md px-3 py-2 text-[14px] outline-none"
                   style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
                 >
@@ -995,7 +528,7 @@ function FocusViewInner() {
                 <input
                   type="text"
                   value={goal}
-                  onChange={(e) => setGoal(e.target.value)}
+                  onChange={(e) => session.setGoal(e.target.value)}
                   placeholder="e.g. Finish complex numbers set"
                   className="w-full rounded-md px-3 py-2 text-[14px] outline-none"
                   style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
@@ -1008,47 +541,6 @@ function FocusViewInner() {
         </aside>
       </div>
 
-      {pip.pipWindow ? (
-        <PipTimer
-          win={pip.pipWindow}
-          phase={phase}
-          clock={formatClock(remaining)}
-          progress={progress}
-          running={running}
-          subject={linkedEvent ? sessionGoal || subject : subject}
-          accent={colour ?? "var(--app-accent)"}
-          expanded={pipExpanded}
-          onExpandedChange={setPipExpanded}
-          onPlay={start}
-          onPause={pause}
-          onSkip={skip}
-          todos={todos}
-          onToggleTodo={toggleTodo}
-          onAddTodo={ownTodos.add}
-          onRemoveTodo={removeTodo}
-        />
-      ) : null}
-
-      {linkedEvent ? (
-        <CheckoutSheet
-          open={checkout !== null}
-          event={linkedEvent}
-          initialDone={doneSteps}
-          minutes={checkout?.minutes ?? linkedMinutes ?? 0}
-          onClose={() => setCheckout(null)}
-          onSaved={async (updated) => {
-            replaceEvent(updated);
-            writeDoneSteps(linkedEvent.id, []);
-            await reload();
-          }}
-        />
-      ) : null}
-      <EventDetailSheet
-        event={missReasonEvent}
-        timezone={timezone}
-        initialMode="miss-reason"
-        onClose={() => setMissReasonEvent(null)}
-      />
       <StudyWithMe
         open={studyWithMeOpen}
         onExit={() => setStudyWithMeOpen(false)}
@@ -1059,7 +551,7 @@ function FocusViewInner() {
         goal={sessionGoal}
         todosDone={todosDone}
         todosTotal={todos.length}
-        complete={studyWithMeComplete}
+        complete={session.complete}
       />
     </>
   );
@@ -1231,10 +723,4 @@ function dayLabel(iso: string, timezone: string): string {
   if (fmt(when) === fmt(today)) return "Today";
   if (fmt(when) === fmt(yesterday)) return "Yesterday";
   return fmt(when);
-}
-
-function formatClock(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }

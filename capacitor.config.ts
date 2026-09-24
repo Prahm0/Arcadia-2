@@ -17,7 +17,7 @@ const config: CapacitorConfig = {
   },
   ios: {
     contentInset: "always",
-    backgroundColor: "#0a0e14",
+    backgroundColor: "#04040e",
     scrollEnabled: true,
     preferredContentMode: "mobile",
   },
@@ -28,12 +28,12 @@ const config: CapacitorConfig = {
     },
     SplashScreen: {
       launchAutoHide: true,
-      backgroundColor: "#0a0e14",
+      backgroundColor: "#04040e",
       showSpinner: false,
     },
     StatusBar: {
       style: "DARK",
-      backgroundColor: "#0a0e14",
+      backgroundColor: "#04040e",
     },
   },
 };

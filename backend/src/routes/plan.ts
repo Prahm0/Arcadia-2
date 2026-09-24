@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { db } from "../db";
 import { getMonthPlan, makeMonthPlan } from "../lib/month-plan";
-import { recoverPlan, type RecoveryInput, type RecoveryReason } from "../lib/recovery";
+import { getRecoveryAvailability, recoverPlan, RecoveryAlreadyUsedError, type RecoveryInput, type RecoveryReason } from "../lib/recovery";
 import { replan } from "../lib/replan";
 import { awardXp } from "../lib/rewards";
 import { XP } from "../../../shared/progress";
@@ -21,6 +21,11 @@ plan.get("/month", async (c) => {
 
 /** A plan this fresh is handed back instead of asking Arcad again (double taps, retries). */
 const FRESH_MS = 30_000;
+
+plan.get("/recover/availability", async (c) => {
+  const { userId } = c.get("session");
+  return c.json(await getRecoveryAvailability(db(c.env.DB), userId));
+});
 
 /** Writes a fresh month plan. Doesn't touch the schedule; POST /schedule does. */
 plan.post("/month", async (c) => {
@@ -66,6 +71,9 @@ plan.post("/recover", async (c) => {
     const rewards = recoveryId ? await awardXp(database, userId, "recovery", recoveryId, XP.recovery) : [];
     return c.json({ ...result, rewards });
   } catch (err) {
+    if (err instanceof RecoveryAlreadyUsedError) {
+      return c.json({ error: err.message, code: "recovery_already_used", reason: err.reason }, 409);
+    }
     console.error("[plan] recover failed", err);
     return c.json({ error: "Couldn't update your plan. Try again in a moment." }, 502);
   }

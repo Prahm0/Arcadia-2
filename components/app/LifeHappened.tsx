@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import { analytics } from "@/lib/analytics/events";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
-import { type RecoveryReason, type RecoveryResult } from "@/lib/app/recovery";
+import { type DailyLimitedRecoveryReason, type RecoveryAvailability, type RecoveryReason, type RecoveryResult } from "@/lib/app/recovery";
 import type { DashboardResponse } from "@/lib/api/types";
 import AppButton from "./AppButton";
 import RecoveryWeekStrip from "./RecoveryWeekStrip";
@@ -57,12 +57,34 @@ export default function LifeHappened({
   const recoveryAttempt = useRef<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<RecoveryResult | null>(null);
+  const [availability, setAvailability] = useState<RecoveryAvailability | null>(null);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
 
   const subjects: string[] = (data.subjects ?? []).map((s) => s.name).filter(Boolean);
 
   // Opened from a proactive nudge: preselect the reason, and run it straight
   // away when it needs no extra input, so the fix is one tap from the card.
   const ranAuto = useRef(false);
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCheckingAvailability(true);
+    api<RecoveryAvailability>("/api/plan/recover/availability")
+      .then((response) => {
+        if (active) setAvailability(response);
+      })
+      .catch(() => {
+        if (active) setAvailability({ less_time: false, tired: false });
+      })
+      .finally(() => {
+        if (active) setCheckingAvailability(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [open]);
+
   useEffect(() => {
     if (!open) {
       ranAuto.current = false;
@@ -92,6 +114,8 @@ export default function LifeHappened({
     setDlSize("medium");
     setError(null);
     setResult(null);
+    setAvailability(null);
+    setCheckingAvailability(false);
     setLoading(false);
   }
 
@@ -122,6 +146,9 @@ export default function LifeHappened({
       void reload();
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : "Couldn't update your plan. Try again.");
+      if (r === "less_time" || r === "tired") {
+        api<RecoveryAvailability>("/api/plan/recover/availability").then(setAvailability).catch(() => undefined);
+      }
     } finally {
       setLoading(false);
     }
@@ -169,29 +196,38 @@ export default function LifeHappened({
             </div>
 
             <div className="mt-5 flex flex-col gap-2">
-              {REASONS.map((r) => (
-                <button
-                  key={r.key}
-                  type="button"
-                  onClick={() => {
-                    setReason(r.key);
-                    setError(null);
-                  }}
-                  disabled={loading}
-                  className="flex flex-col rounded-lg px-4 py-3 text-left transition-colors disabled:opacity-60"
-                  style={{
-                    background: reason === r.key ? "var(--app-arcad-soft)" : "var(--app-surface-soft)",
-                    border: reason === r.key ? "1px solid var(--app-arcad)" : "1px solid transparent",
-                  }}
-                >
-                  <span className="text-[14.5px] font-medium" style={{ color: "var(--app-text)" }}>
-                    {r.label}
-                  </span>
-                  <span className="text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
-                    {r.hint}
-                  </span>
-                </button>
-              ))}
+              {REASONS.map((r) => {
+                const dailyLimited = r.key === "less_time" || r.key === "tired";
+                const alreadyUsed = dailyLimited && Boolean(availability?.[r.key as DailyLimitedRecoveryReason]);
+                const unavailable = dailyLimited && (checkingAvailability || !availability || alreadyUsed);
+                return (
+                  <button
+                    key={r.key}
+                    type="button"
+                    onClick={() => {
+                      setReason(r.key);
+                      setError(null);
+                    }}
+                    disabled={loading || unavailable}
+                    className="flex flex-col rounded-lg px-4 py-3 text-left transition-colors disabled:opacity-50"
+                    style={{
+                      background: reason === r.key ? "var(--app-arcad-soft)" : "var(--app-surface-soft)",
+                      border: reason === r.key ? "1px solid var(--app-arcad)" : "1px solid transparent",
+                    }}
+                  >
+                    <span className="text-[14.5px] font-medium" style={{ color: "var(--app-text)" }}>
+                      {r.label}
+                    </span>
+                    <span className="text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
+                      {alreadyUsed
+                        ? "Already used today"
+                        : dailyLimited && (checkingAvailability || !availability)
+                          ? "Checking today’s limit…"
+                          : r.hint}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
             {selected?.key === "busy" ? (
@@ -278,7 +314,7 @@ export default function LifeHappened({
 
             {selected ? (
               <div className="mt-5">
-                <AppButton variant="primary" onClick={() => reason && run(reason)} loading={loading} disabled={!deadlineReady} className="w-full">
+                <AppButton variant="primary" onClick={() => reason && run(reason)} loading={loading} disabled={!deadlineReady || ((reason === "less_time" || reason === "tired") && Boolean(availability?.[reason]))} className="w-full">
                   Fix my week
                 </AppButton>
               </div>

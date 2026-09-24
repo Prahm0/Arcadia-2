@@ -392,7 +392,7 @@ function progress(definition: ConstellationDefinition, value: number, target: nu
   if (definition.atlas) return `${focusTime(value)} of ${focusTime(target)} focused`;
   if (definition.metric === "minutes") return `${value} / ${target} minutes`;
   if (definition.metric === "days") return `${value} / ${target} study days`;
-  if (definition.metric === "subjects") return `${value} / ${target} subjects with 15 minutes`;
+  if (definition.metric === "subjects") return `${value} / ${target} subjects with 10 minutes`;
   return `${value} / ${target} sessions`;
 }
 

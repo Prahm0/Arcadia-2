@@ -26,6 +26,7 @@ import NewTaskSheet from "./NewTaskSheet";
 import ProactiveArcadCards from "./ProactiveArcadCards";
 import StartNowCard from "./StartNowCard";
 import TodayRail from "./TodayRail";
+import TodayStreakBanner from "./sky/TodayStreakBanner";
 import SundayReviewInline from "./SundayReviewInline";
 import { subjectColour } from "@/lib/app/subjectColour";
 import { SubjectTag } from "./cards/shared";
@@ -186,6 +187,7 @@ export default function TodayView() {
       <div className="mx-auto grid w-full max-w-[1160px] gap-8 px-6 pb-10 pt-6 sm:px-10 lg:grid-cols-[minmax(0,1fr)_320px]">
         <section className="min-w-0">
           <StartNowCard />
+          <TodayStreakBanner />
           <SundayReviewInline />
           <ProactiveArcadCards />
           <DailyCheckInCard />

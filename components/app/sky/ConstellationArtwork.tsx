@@ -1,7 +1,8 @@
 "use client";
-import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useId, useMemo, useState, type CSSProperties } from "react";
 import { milestoneLabel, type ConstellationDefinition, type SkyCard } from "@/shared/constellations";
 import { Dust, Figure, dustField, round, seeded, starSizes } from "./skyArt";
+import { useCardLight } from "./useCardLight";
 import styles from "./sky.module.css";
 
 const W = 500, H = 340;
@@ -30,6 +31,8 @@ function compose(definition: ConstellationDefinition) {
   return {
     band, dust, glints, parallels, meridians, ruler,
     tilt: Math.round(random() * 10 - 5),
+    // A shooting star now and then, crossing the upper sky.
+    meteor: [round(90 + random() * 200), round(40 + random() * 70)] as const,
     points: definition.points.map(([x, y]) => [round(x * 5), round(y * 3.4)] as const),
     sizes: starSizes(definition, .85),
   };
@@ -42,7 +45,8 @@ export default function ConstellationArtwork({ definition, card, preview = false
   /** The ruled atlas frame; off where the art is cropped, like the profile banner. */
   frame?: boolean;
 }) {
-  const root = useRef<HTMLDivElement>(null);
+  // The pointer moves a light across the glass and nudges the nebula (eased per frame).
+  const root = useCardLight<HTMLDivElement>(false, ambient, false);
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     if (!ambient || !root.current) return;
@@ -51,30 +55,28 @@ export default function ConstellationArtwork({ definition, card, preview = false
     const visibility = () => setVisible(document.visibilityState === "visible" && !!root.current && root.current.getBoundingClientRect().bottom > 0 && root.current.getBoundingClientRect().top < innerHeight);
     document.addEventListener("visibilitychange", visibility);
     return () => { observer.disconnect(); document.removeEventListener("visibilitychange", visibility); };
-  }, [ambient]);
+  }, [ambient, root]);
   const plate = useMemo(() => compose(definition), [definition]);
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
   const id = (name: string) => `${name}${uid}`;
   const gold = definition.colour;
   const lit = (index: number) => preview || card?.milestones[index]?.earnedAt != null;
   const label = definition.atlas ? `${definition.atlas.abbr.toUpperCase()} · J2000` : "ARCADIA · ORIGINAL";
-  return <div ref={root} className={styles.stage} style={{ "--sky-colour": gold } as CSSProperties} data-animated={ambient && visible}
-    onPointerMove={(event) => {
-      if (!ambient || event.pointerType !== "mouse") return;
-      const rect = event.currentTarget.getBoundingClientRect();
-      event.currentTarget.style.setProperty("--sky-x", `${((event.clientX - rect.left) / rect.width - .5) * 8}px`);
-      event.currentTarget.style.setProperty("--sky-y", `${((event.clientY - rect.top) / rect.height - .5) * 8}px`);
-    }} onPointerLeave={(event) => { event.currentTarget.style.setProperty("--sky-x", "0px"); event.currentTarget.style.setProperty("--sky-y", "0px"); }}>
+  const [mx, my] = plate.meteor;
+  return <div ref={root} className={styles.stage} style={{ "--sky-colour": gold } as CSSProperties} data-animated={ambient && visible}>
     <div className={styles.nebula} aria-hidden="true" />
     <svg viewBox={`0 0 ${W} ${H}`} fill="none" role={interactive ? undefined : "img"} aria-hidden={interactive || undefined} aria-label={interactive ? undefined : `${definition.name}, ${preview ? "reward preview" : `${card?.milestones.filter((star) => star.earnedAt !== null).length || 0} of ${definition.points.length} stars lit`}`}>
       <defs>
         <radialGradient id={id("band")}><stop offset="0" stopColor="#dfe6f5" stopOpacity=".14" /><stop offset=".5" stopColor="#c9d4ec" stopOpacity=".05" /><stop offset="1" stopColor="#c9d4ec" stopOpacity="0" /></radialGradient>
+        <linearGradient id={id("meteor")} x1="1" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#fff" /><stop offset=".25" stopColor="#fff4dc" stopOpacity=".6" /><stop offset="1" stopColor="#fff4dc" stopOpacity="0" /></linearGradient>
         <radialGradient id={id("vignette")} cx="50%" cy="50%" r="72%"><stop offset=".55" stopColor="#0c1017" stopOpacity="0" /><stop offset="1" stopColor="#0c1017" stopOpacity=".9" /></radialGradient>
       </defs>
       <g aria-hidden="true">
         <g transform={`rotate(${plate.band} ${W / 2} ${H / 2})`}>
-          <ellipse cx={W / 2} cy={H / 2} rx={W * .9} ry={78} fill={`url(#${id("band")})`} />
-          <ellipse cx={W / 2} cy={H / 2 + 8} rx={W * .75} ry={26} fill={`url(#${id("band")})`} />
+          <g className={styles.band}>
+            <ellipse cx={W / 2} cy={H / 2} rx={W * .9} ry={78} fill={`url(#${id("band")})`} />
+            <ellipse cx={W / 2} cy={H / 2 + 8} rx={W * .75} ry={26} fill={`url(#${id("band")})`} />
+          </g>
         </g>
         <g transform={`rotate(${plate.tilt} ${W / 2} ${H / 2})`} stroke="#dce5f4" strokeWidth=".7">
           <path d={plate.parallels} strokeOpacity=".06" />
@@ -82,6 +84,7 @@ export default function ConstellationArtwork({ definition, card, preview = false
         </g>
         <Dust paths={plate.dust} className={styles.dust} />
         {plate.glints.map(([x, y], i) => <path key={i} d={`M${x - 5} ${y}H${x + 5}M${x} ${y - 5}V${y + 5}`} stroke="#fff" strokeOpacity=".4" strokeWidth=".5" />)}
+        <line className={styles.meteor} x1={mx} y1={my} x2={mx - 44} y2={my - 19} stroke={`url(#${id("meteor")})`} strokeWidth="1.2" strokeLinecap="round" />
       </g>
       <Figure definition={definition} points={plate.points} sizes={plate.sizes} lit={lit} />
       <rect width={W} height={H} fill={`url(#${id("vignette")})`} aria-hidden="true" />
@@ -100,6 +103,7 @@ export default function ConstellationArtwork({ definition, card, preview = false
         <text x={W - 34} y={H - 26} textAnchor="end" fill={gold} fillOpacity=".45" fontFamily="var(--font-jetbrains), ui-monospace, monospace" fontSize="7" letterSpacing="1.6">{label}</text>
       </g>}
     </svg>
+    <div className={styles.gloss} aria-hidden="true"><span className={styles.sweep} /></div>
     {interactive && definition.points.map(([x, y], index) => <button key={index} type="button" className={styles.hit} style={{ left: `${x}%`, top: `${y}%` }} aria-label={`${milestoneLabel(definition, index)} — ${lit(index) ? "lit" : "still forming"}`} aria-pressed={selected === index} onClick={() => onSelect?.(index)} onFocus={() => onSelect?.(index)} />)}
   </div>;
 }

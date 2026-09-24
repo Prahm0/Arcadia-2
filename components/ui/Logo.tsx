@@ -8,13 +8,13 @@ interface LogoProps {
 }
 
 /**
- * The official Arcadia mark. It is a supplied raster asset so the landing,
- * dashboard, auth surfaces and installed app all use the exact same logo.
+ * Arcad is Arcadia's constellation companion. This master mark is shared by
+ * the landing, dashboard, auth surfaces and installed app.
  */
 export default function Logo({ size = 20, className }: LogoProps) {
   return (
     <Image
-      src="/brand/arcadia-mark.png"
+      src="/brand/arcad-orb-mark.png"
       alt=""
       width={size}
       height={size}

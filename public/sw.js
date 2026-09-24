@@ -9,8 +9,8 @@ self.addEventListener("push", (event) => {
   const options = {
     body: typeof payload.body === "string" ? payload.body : "Open Arcadia to check in.",
     tag: typeof payload.tag === "string" ? payload.tag : "arcadia-check-in",
-    icon: "/icon.svg",
-    badge: "/icon.svg",
+    icon: "/icon.png",
+    badge: "/icon.png",
     data: { link: typeof payload.link === "string" ? payload.link : "/app" },
   };
   event.waitUntil(self.registration.showNotification(title, options));

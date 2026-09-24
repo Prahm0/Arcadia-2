@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 interface ArcadOrbProps {
   /** idle = gentle breathing; thinking = faster pulse; alert = warm accent ring. */
   state?: "idle" | "thinking" | "alert";
@@ -9,10 +11,9 @@ interface ArcadOrbProps {
 }
 
 /**
- * Arcad's presence glyph. A four-point constellation star nested inside a soft
- * aurora ring, rendered inline (no external asset). It has three states so
- * the same shape can serve as a hero mark, a message-bubble bullet, or a
- * status indicator when Arcad is composing a reply.
+ * Arcad's living presence glyph. It uses the same rich constellation-orb
+ * artwork as the brand mark, so the character students meet in chat is the
+ * same one they recognise on their home screen.
  */
 export default function ArcadOrb({ state = "idle", size = 40, className }: ArcadOrbProps) {
   const pulseClass =
@@ -25,7 +26,7 @@ export default function ArcadOrb({ state = "idle", size = 40, className }: Arcad
       style={{ width: size, height: size }}
       aria-hidden="true"
     >
-      {/* Aurora ring, a soft radial glow that breathes with the pulse class. */}
+      {/* Aurora glow that breathes with the pulse class. */}
       <span
         className={pulseClass}
         style={{
@@ -37,30 +38,16 @@ export default function ArcadOrb({ state = "idle", size = 40, className }: Arcad
           opacity: ringOpacity,
         }}
       />
-      {/* Core disc, subtle but distinct so the star reads on any surface. */}
-      <span
-        style={{
-          position: "absolute",
-          inset: "22%",
-          borderRadius: "50%",
-          background: "color-mix(in oklab, var(--app-arcad) 18%, var(--app-surface))",
-          border: "1px solid color-mix(in oklab, var(--app-arcad) 40%, var(--app-border))",
-        }}
-      />
-      {/* Four-point star matching the landing page's mark. */}
-      <svg
-        viewBox="0 0 24 24"
-        width={size * 0.5}
-        height={size * 0.5}
-        fill="none"
-        style={{ position: "relative", zIndex: 1 }}
+      <Image
+        src="/brand/arcad-orb-mark.png"
+        alt=""
+        width={size}
+        height={size}
+        sizes={`${size}px`}
+        className="relative z-10 rounded-full object-cover"
+        style={{ width: size, height: size }}
         aria-hidden="true"
-      >
-        <path
-          d="M12 2 L13.6 10.4 L22 12 L13.6 13.6 L12 22 L10.4 13.6 L2 12 L10.4 10.4 Z"
-          fill="var(--app-arcad)"
-        />
-      </svg>
+      />
     </span>
   );
 }

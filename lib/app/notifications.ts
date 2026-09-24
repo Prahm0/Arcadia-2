@@ -93,8 +93,8 @@ export function showNotification({ title, body, tag }: SessionNotificationInput)
     new Notification(title, {
       body,
       tag,
-      icon: "/icon.svg",
-      badge: "/icon.svg",
+      icon: "/icon.png",
+      badge: "/icon.png",
     });
   } catch {
     /* Chrome throws on some ephemeral origins; silently ignore. */

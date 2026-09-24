@@ -46,7 +46,7 @@ export function NewSheetPage() {
         subjectId={draft.subjectId}
         banner={
           draft.source === "arcad"
-            ? `Draft by Arcad, from your own material. Check it, fix anything that's off, then save.${draft.note ? ` ${draft.note}` : ""}`
+            ? `Generated draft. Review and edit before saving.${draft.note ? ` ${draft.note}` : ""}`
             : null
         }
         saveLabel="Save sheet"
@@ -280,9 +280,9 @@ function SheetEditor({
                   className="min-w-0 flex-1 bg-transparent text-[13.5px] font-semibold outline-none"
                   style={{ color: "var(--app-text)" }}
                 />
-                <AppButton type="button" size="sm" variant="ghost" disabled={index === 0} onClick={() => move(index, -1)} aria-label="Move section up">↑</AppButton>
-                <AppButton type="button" size="sm" variant="ghost" disabled={index === sections.length - 1} onClick={() => move(index, 1)} aria-label="Move section down">↓</AppButton>
-                <AppButton type="button" size="sm" variant="ghost" onClick={() => setSections((list) => list.filter((_, i) => i !== index))} aria-label="Remove section">✕</AppButton>
+                <AppButton type="button" size="sm" variant="ghost" disabled={index === 0} onClick={() => move(index, -1)} aria-label="Move section up"><Glyph d="M5 12l5-5 5 5" /></AppButton>
+                <AppButton type="button" size="sm" variant="ghost" disabled={index === sections.length - 1} onClick={() => move(index, 1)} aria-label="Move section down"><Glyph d="M5 8l5 5 5-5" /></AppButton>
+                <AppButton type="button" size="sm" variant="ghost" onClick={() => setSections((list) => list.filter((_, i) => i !== index))} aria-label="Remove section"><Glyph d="M6 6l8 8M14 6l-8 8" /></AppButton>
               </div>
               <textarea
                 value={section.body}
@@ -340,6 +340,14 @@ function SheetEditor({
         </AppButton>
       </div>
     </form>
+  );
+}
+
+function Glyph({ d }: { d: string }) {
+  return (
+    <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={d} />
+    </svg>
   );
 }
 

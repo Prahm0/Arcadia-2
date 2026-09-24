@@ -85,7 +85,7 @@ function NewSheetForm({ onClose, initialSubject }: { onClose: () => void; initia
     }
     const pick = source === "topic" ? { topicId } : source === "file" ? { subjectFileId: fileId } : { deckId };
     if (!Object.values(pick)[0]) {
-      setError(source === "topic" ? "Choose a syllabus topic." : source === "file" ? "Choose a file Arcad has read." : "Choose a deck.");
+      setError(source === "topic" ? "Choose a syllabus topic." : source === "file" ? "Choose a file." : "Choose a deck.");
       return;
     }
     setWorking(true);
@@ -94,7 +94,7 @@ function NewSheetForm({ onClose, initialSubject }: { onClose: () => void; initia
       stashDraft({ ...draft, title: title.trim() || draft.title, source: "arcad" });
       router.push("/app/sheets/new");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Arcad couldn't draft the sheet.");
+      setError(err instanceof Error ? err.message : "Couldn't generate the draft.");
       setWorking(false);
     }
   }
@@ -112,7 +112,7 @@ function NewSheetForm({ onClose, initialSubject }: { onClose: () => void; initia
           <TextInput
             value={title}
             onChange={setTitle}
-            placeholder={start === "arcad" ? "Arcad will name it if you leave this blank" : "e.g. Stoichiometry"}
+            placeholder={start === "arcad" ? "Uses the source's title if blank" : "e.g. Stoichiometry"}
             maxLength={80}
             required={start === "blank"}
           />
@@ -137,8 +137,8 @@ function NewSheetForm({ onClose, initialSubject }: { onClose: () => void; initia
         </Label>
 
         <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="How to start">
-          <Option selected={start === "blank"} onSelect={() => setStart("blank")} title="Write it" body="Starts with Key ideas, Formulas and Definitions." />
-          <Option selected={start === "arcad"} onSelect={() => setStart("arcad")} title="Draft with Arcad" body="From your syllabus, notes or a deck." />
+          <Option selected={start === "blank"} onSelect={() => setStart("blank")} title="Blank" body="Key ideas, Formulas, Definitions." />
+          <Option selected={start === "arcad"} onSelect={() => setStart("arcad")} title="Generate draft" body="From a topic, file or deck." />
         </div>
 
         {start === "blank" && topics.length > 0 ? (
@@ -157,12 +157,12 @@ function NewSheetForm({ onClose, initialSubject }: { onClose: () => void; initia
         {start === "arcad" ? (
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Draft from">
-              <Option selected={source === "topic"} onSelect={() => setSource("topic")} title="A topic" body="From your syllabus." />
-              <Option selected={source === "file"} onSelect={() => setSource("file")} title="A file" body="Notes you uploaded." />
-              <Option selected={source === "deck"} onSelect={() => setSource("deck")} title="A deck" body="Condense your cards." />
+              <Option selected={source === "topic"} onSelect={() => setSource("topic")} title="Topic" body="Syllabus" />
+              <Option selected={source === "file"} onSelect={() => setSource("file")} title="File" body="Uploaded notes" />
+              <Option selected={source === "deck"} onSelect={() => setSource("deck")} title="Deck" body="Flashcards" />
             </div>
             {source === "topic" ? (
-              <Label text="Syllabus topic" hint={topics.length ? "Arcad uses the topic's syllabus detail and what your files cover." : "Add a syllabus to this subject to pick a topic."}>
+              <Label text="Syllabus topic" hint={topics.length ? "Uses the topic's syllabus detail and your files for this subject." : "Add a syllabus to this subject to pick a topic."}>
                 <Select value={topicId} onChange={setTopicId}>
                   <option value="">{profileState.status === "loading" ? "Loading topics…" : "Choose a topic"}</option>
                   {topics.map((topic) => (
@@ -173,7 +173,7 @@ function NewSheetForm({ onClose, initialSubject }: { onClose: () => void; initia
                 </Select>
               </Label>
             ) : source === "file" ? (
-              <Label text="Uploaded file" hint="Only files Arcad has read and can still open appear here.">
+              <Label text="Uploaded file" hint="Files that have been read and stored.">
                 <Select value={fileId} onChange={setFileId}>
                   <option value="">{profileState.status === "loading" ? "Loading files…" : "Choose a file"}</option>
                   {files.map((file) => (
@@ -196,7 +196,7 @@ function NewSheetForm({ onClose, initialSubject }: { onClose: () => void; initia
               </Label>
             )}
             <p className="text-[12px] leading-[1.45]" style={{ color: "var(--app-text-faint)" }}>
-              Arcad only uses what&apos;s in your source, and you check the draft before it&apos;s saved. Drafts are on Pro and Max.
+              Only content from the selected source is used. The draft isn&apos;t saved until you save it. Pro and Max.
             </p>
           </div>
         ) : null}
@@ -212,7 +212,7 @@ function NewSheetForm({ onClose, initialSubject }: { onClose: () => void; initia
             Cancel
           </AppButton>
           <AppButton type="submit" variant="primary" loading={working}>
-            {start === "arcad" ? (working ? "Drafting…" : "Draft sheet") : "Start writing"}
+            {start === "arcad" ? (working ? "Generating…" : "Generate draft") : "Create sheet"}
           </AppButton>
         </div>
       </form>

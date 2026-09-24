@@ -24,7 +24,7 @@ export default function SubjectSheets({ subjectId, subjectName }: { subjectId: s
         <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>Loading sheets…</p>
       ) : sheets.length === 0 ? (
         <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-          None yet. Write one, or have Arcad draft it from this subject&apos;s syllabus or files.
+          No sheets for this subject.
         </p>
       ) : (
         <ul className="flex flex-col">

@@ -90,11 +90,9 @@ export default function SheetsView({ startCreating = false }: { startCreating?: 
           <EmptyState
             icon={<SheetIcon size={20} />}
             title={
-              <>
-                Your <span className="accent-serif">first</span> sheet.
-              </>
+              "No sheets yet"
             }
-            body="One page per topic: the key ideas, formulas and definitions you need the night before. Write it yourself, or have Arcad draft it from your syllabus, notes or a deck."
+            body="One page per topic: key ideas, formulas, definitions and common mistakes. Write one, or generate a draft from a syllabus topic, an uploaded file or a deck."
             example={
               <>
                 <ExampleRow title="Stoichiometry" meta="Chemistry · Formulas, Definitions, Common mistakes" />
@@ -103,7 +101,7 @@ export default function SheetsView({ startCreating = false }: { startCreating?: 
               </>
             }
             action={newSheet}
-            hint="Writing sheets is free. Arcad drafts are on Pro and Max."
+            hint="Sheets are free. Generated drafts are on Pro and Max."
           />
         ) : (
           groups.map((group) => (

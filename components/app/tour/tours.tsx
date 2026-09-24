@@ -612,7 +612,7 @@ export const TOURS: Record<TourId, Tour> = {
     steps: [
       {
         title: "One page per topic",
-        body: "A summary sheet holds what you need the night before: key ideas, formulas, definitions and common mistakes. It prints on one A4 page.",
+        body: "Key ideas, formulas, definitions and common mistakes for a topic. Prints on one A4 page.",
         visual: (
           <Window width={280} title="Stoichiometry">
             <Stack gap={6}>
@@ -624,14 +624,14 @@ export const TOURS: Record<TourId, Tour> = {
         ),
       },
       {
-        title: "Arcad drafts, you check",
-        body: "Arcad can draft a sheet from a syllabus topic, a file you uploaded or one of your decks, using only what's in them. You read it and fix it before it's saved.",
+        title: "Generated drafts",
+        body: "Generate a first draft from a syllabus topic, an uploaded file or a deck. Only that source is used, and nothing is saved until you save it.",
         visual: (
           <Window width={270} title="New sheet">
             <Stack gap={6}>
               <MockInput label="Draft from" value="Syllabus topic · 3.2 Limiting reagents" />
               <div className="flex justify-end">
-                <MockButton variant="primary">Draft sheet</MockButton>
+                <MockButton variant="primary">Generate draft</MockButton>
               </div>
             </Stack>
           </Window>

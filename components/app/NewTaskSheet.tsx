@@ -242,14 +242,14 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
             </Field>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
             <Field label="Due">
               <input
                 required
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full rounded-md px-3 py-2.5 text-[15px] outline-none"
+                className="w-full min-w-0 max-w-full rounded-md px-3 py-2.5 text-[15px] outline-none"
                 style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
               />
             </Field>
@@ -258,7 +258,7 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
                 type="time"
                 value={dueTime}
                 onChange={(e) => setDueTime(e.target.value)}
-                className="w-full rounded-md px-3 py-2.5 text-[15px] outline-none"
+                className="w-full min-w-0 max-w-full rounded-md px-3 py-2.5 text-[15px] outline-none"
                 style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
               />
             </Field>

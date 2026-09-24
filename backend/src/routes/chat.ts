@@ -132,16 +132,16 @@ chat.post("/", async (c) => {
       {
         error:
           tier === "free"
-            ? `You've used your ${DAILY_MESSAGE_CAP.free} free messages for today.`
+            ? `You've used your ${DAILY_MESSAGE_CAP.free} free messages for today. Resets at midnight.`
             : tier === "pro"
-              ? `You've used your ${DAILY_MESSAGE_CAP.pro} Pro messages for today. Resets at midnight UTC.`
-            : `You've hit today's cap of ${cap.cap} Arcad messages. Resets at midnight UTC.`,
+              ? `You've used your ${DAILY_MESSAGE_CAP.pro} Pro messages for today. Resets at midnight.`
+            : `You've hit today's cap of ${cap.cap} Arcad messages. Resets at midnight.`,
         code: "message_cap_reached",
         tier,
         upgradeTier: tier === "free" ? "pro" : tier === "pro" ? "max" : null,
         cap: cap.cap,
         used: cap.used,
-        usage: messageUsageSnapshot(tier, cap.used, cap.day),
+        usage: messageUsageSnapshot(tier, cap.used, cap.window),
       },
       429,
     );
@@ -311,7 +311,7 @@ chat.post("/", async (c) => {
             content,
             createdAt: new Date().toISOString(),
           },
-          usage: messageUsageSnapshot(tier, cap.used, cap.day),
+          usage: messageUsageSnapshot(tier, cap.used, cap.window),
           ...(proposalPayload ? { proposal: proposalPayload } : {}),
           ...(remembered.length > 0 ? { remembered } : {}),
         });

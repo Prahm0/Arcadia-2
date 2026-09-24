@@ -485,7 +485,7 @@ export default function SettingsView() {
                 style={{ borderColor: "var(--app-border)" }}
               >
                 <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-                  Invite a friend and you both receive Pro time when they finish setup.
+                  Invite a friend and earn 7 days of Pro when they finish setup.
                 </p>
                 <AppButton variant="secondary" onClick={() => router.push("/app/invite")}>
                   Invite friends

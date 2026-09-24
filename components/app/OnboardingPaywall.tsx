@@ -1,9 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api/client";
 import { analytics } from "@/lib/analytics/events";
 import { useNativeIOS } from "@/lib/capacitor/platform";
+import {
+  getIosPurchaseOptions,
+  iosIntroOfferEligible,
+  purchaseIosOption,
+  type IosPurchaseOption,
+} from "@/lib/capacitor/revenuecat";
+import { useDashboardData } from "@/lib/app/DashboardProvider";
 import AppButton from "./AppButton";
 import IosPricingView from "./IosPricingView";
 import { TIERS } from "./PricingView";
@@ -283,6 +290,57 @@ function WinbackOffer({
 }
 
 function NativeOnboardingPaywall({ onContinueFree }: { onContinueFree: () => void }) {
+  const { data, reload } = useDashboardData();
+  const [offer, setOffer] = useState<IosPurchaseOption | null>(null);
+  const [offerOpen, setOfferOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Apple's introductory price on Pro monthly, if it's set up and this Apple
+  // ID can still use it. Without a real offer, leaving just continues to Free.
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const pro = (await getIosPurchaseOptions(data.user.id)).find(
+          (option) => option.tier === "pro" && option.interval === "month" && option.introPriceString,
+        );
+        if (!pro || !(await iosIntroOfferEligible(data.user.id, pro.productIdentifier))) return;
+        if (active) setOffer(pro);
+      } catch {
+        /* no offer: Free is still one tap away */
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [data.user.id]);
+
+  // First attempt to leave shows the intro offer (when there is one).
+  function leave() {
+    if (offer && !offerOpen) {
+      setOfferOpen(true);
+      return;
+    }
+    onContinueFree();
+  }
+
+  async function claim() {
+    setBusy(true);
+    setError(null);
+    try {
+      analytics.checkoutStarted("pro", "month");
+      await purchaseIosOption(data.user.id, "pro", "month");
+      const res = await api<{ tier: string }>("/api/billing/iap/activate", { method: "POST" });
+      analytics.subscriptionActivated(res.tier);
+      await reload();
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : "";
+      if (!/cancel/i.test(message)) setError(message || "Could not complete that purchase.");
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="relative min-h-svh w-full overflow-y-auto" style={{ background: "var(--app-bg)", color: "var(--app-text)" }}>
       <div className="mx-auto flex w-full max-w-[860px] flex-col px-5 pb-[calc(env(safe-area-inset-bottom,0px)+32px)] pt-[calc(env(safe-area-inset-top,0px)+24px)]">
@@ -299,13 +357,40 @@ function NativeOnboardingPaywall({ onContinueFree }: { onContinueFree: () => voi
         </div>
         <button
           type="button"
-          onClick={onContinueFree}
+          onClick={leave}
           className="mx-auto mt-6 text-[14px] underline underline-offset-4"
           style={{ color: "var(--app-text-muted)" }}
         >
           Continue with Free
         </button>
       </div>
+
+      {offerOpen && offer ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="ios-offer-title">
+          <div className="w-full max-w-[420px] rounded-2xl p-6 text-center" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-3)" }}>
+            <p className="type-eyebrow" style={{ color: "var(--app-arcad-strong)" }}>
+              New subscriber offer
+            </p>
+            <h2 id="ios-offer-title" className="mt-2 text-[24px] font-medium leading-[1.15] tracking-[-0.02em]">
+              Your first month of Pro for {offer.introPriceString}
+            </h2>
+            <p className="mt-3 text-[14px]" style={{ color: "var(--app-text-muted)" }}>
+              Then {offer.priceString} a month. Cancel any time in your iPhone&rsquo;s Settings.
+            </p>
+            {error ? (
+              <p className="mt-3 text-[13px]" style={{ color: "var(--app-danger)" }}>
+                {error}
+              </p>
+            ) : null}
+            <AppButton variant="primary" onClick={() => void claim()} loading={busy} className="mt-5 w-full">
+              Claim offer
+            </AppButton>
+            <button type="button" onClick={onContinueFree} disabled={busy} className="mt-3 text-[13.5px] underline underline-offset-4" style={{ color: "var(--app-text-muted)" }}>
+              No thanks, continue with Free
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

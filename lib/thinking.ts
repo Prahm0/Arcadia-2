@@ -15,17 +15,17 @@ export const stages: Stage[] = [
   {
     index: "02",
     title: "Build the plan",
-    body: "Arcadia turns what you need to do into study blocks you can follow.",
+    body: "Arcad turns your subjects, syllabus and deadlines into study blocks for the next four weeks.",
   },
   {
     index: "03",
     title: "Recover the week",
-    body: "Tell Arcadia what changed and it rebuilds the part of your plan that needs to move.",
+    body: "Tell Arcad what changed and it rebuilds the part of your plan that needs to move.",
   },
   {
     index: "04",
     title: "Start next",
-    body: "Your next study block is clear, so you can stop rearranging and start studying.",
+    body: "Open a block and Arcad says what to cover and why now. Then start the timer.",
   },
 ];
 

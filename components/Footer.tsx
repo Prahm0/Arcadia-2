@@ -4,8 +4,10 @@ import Container from "./ui/Container";
 import Logo from "./ui/Logo";
 
 const links = [
-  { label: "Product", href: "#today" },
   { label: "How it works", href: "#how-it-works" },
+  { label: "Arcad", href: "#arcad" },
+  { label: "Features", href: "#inside" },
+  { label: "Pricing", href: "#pricing" },
   { label: "About", href: "#about" },
   { label: "Privacy", href: "/privacy" },
   { label: "Terms", href: "/terms" },

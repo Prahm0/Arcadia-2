@@ -7,7 +7,7 @@ import { analytics } from "@/lib/analytics/events";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { isGuestEmail } from "@/lib/auth/guest";
 import { useNativeIOS } from "@/lib/capacitor/platform";
-import { PAID_PRICING } from "@/lib/app/pricing";
+import { PAID_PRICING, TIER_COPY } from "@/lib/app/pricing";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import IosPricingView from "./IosPricingView";
@@ -33,53 +33,17 @@ interface Tier {
 }
 
 export const TIERS: Tier[] = [
-  {
-    key: "free",
-    name: "Free",
-    headline: "Get organised, on your own.",
-    pricing: null,
-    features: [
-      "Auto-scheduled daily plan",
-      "Tasks & deadlines",
-      "Focus timer (Classic 25/5)",
-      "Arcad, 2 messages / day",
-      "1 flashcard deck",
-      "Weekly review, text summary",
-      "Study rooms for up to 12, with chat and room colours",
-    ],
-  },
+  { key: "free", name: "Free", headline: TIER_COPY.free.headline, features: [...TIER_COPY.free.features], pricing: null },
   {
     key: "pro",
     name: "Pro",
-    headline: "Planning on autopilot, Arcad in the loop.",
+    headline: TIER_COPY.pro.headline,
+    features: [...TIER_COPY.pro.features],
     pricing: PAID_PRICING.pro,
-    features: [
-      "Everything in Free",
-      "Arcad, 20 messages a day, 10x the free plan",
-      "Google / Apple / Canvas calendar sync",
-      "Upload PDFs & notes, Arcad answers from them",
-      "Study rooms for up to 30, with shared timers",
-      "Room icon and shared 7-day focus goal",
-      "Full analytics, subject breakdown, streaks, trends",
-      "Custom focus presets",
-      "Up to 3 flashcard decks",
-    ],
     highlighted: true,
     badge: "Most popular",
   },
-  {
-    key: "max",
-    name: "Max",
-    headline: "The learning layer. Study, not just plan.",
-    pricing: PAID_PRICING.max,
-    features: [
-      "Everything in Pro",
-      "Arcad, 100 messages a day, 50x the free plan",
-      "Unlimited flashcard decks",
-      "New study tools land here first",
-      "Study rooms for up to 50",
-    ],
-  },
+  { key: "max", name: "Max", headline: TIER_COPY.max.headline, features: [...TIER_COPY.max.features], pricing: PAID_PRICING.max },
 ];
 
 /**

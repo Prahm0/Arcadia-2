@@ -51,7 +51,7 @@ export default function FinalCTA() {
           </FadeIn>
           <FadeIn delay={0.35}>
             <p className="type-mono-label mt-4 text-center text-white/40">
-              Australia first · Pro from $0.95 AUD / week · Cancel any time
+              Free to start · Pro from $0.95 AUD / week · Cancel any time
             </p>
           </FadeIn>
         </div>

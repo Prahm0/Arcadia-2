@@ -17,6 +17,7 @@ export function serialiseTask(task: TaskRow) {
     id: task.id,
     title: task.title,
     subject: task.subject,
+    notes: task.notes,
     taskType: task.taskType,
     priority: task.priority,
     dueAt: iso(task.dueAt),

@@ -232,6 +232,7 @@ export const tasks = sqliteTable(
       .references(() => users.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     subject: text("subject"),
+    notes: text("notes").notNull().default(""),
     taskType: text("task_type").notNull().default("study"),
     priority: integer("priority").notNull().default(2),
     dueAt: integer("due_at").notNull(),

@@ -3,7 +3,7 @@ import type { db as makeDb } from "../db";
 import { schema } from "../db";
 import { newId } from "./ids";
 
-export const REFERRAL_BONUS_DAYS = 14;
+export const REFERRAL_BONUS_DAYS = 7;
 export const MAX_REFERRAL_BONUS_DAYS = 180;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";

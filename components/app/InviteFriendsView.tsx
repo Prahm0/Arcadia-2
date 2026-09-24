@@ -58,7 +58,7 @@ export default function InviteFriendsView() {
 
   async function shareInvite() {
     if (!summary) return;
-    const text = "Arcadia keeps your study plan useful when life changes. Join with my link and we both get 14 days of Pro after you finish setup.";
+    const text = "Arcadia keeps your study plan useful when life changes. Join with my link and we both get 7 days of Pro after you finish setup.";
     if (navigator.share) {
       try {
         await navigator.share({ title: "Plan with Arcadia", text, url: summary.inviteLink });
@@ -106,10 +106,10 @@ export default function InviteFriendsView() {
                   A little more time, together
                 </div>
                 <h2 className="mt-3 text-[27px] font-semibold tracking-[-0.03em] sm:text-[32px]" style={{ color: "var(--app-text)" }}>
-                  Give a friend 14 days of Pro.
+                  Give a friend 7 days of Pro.
                 </h2>
                 <p className="mt-3 text-[14.5px] leading-6" style={{ color: "var(--app-text-soft)" }}>
-                  When they create a new account, verify their email and finish setup, you both receive 14 days of Pro time.
+                  When they create a new account, verify their email and finish setup, you both receive 7 days of Pro time.
                 </p>
               </div>
 

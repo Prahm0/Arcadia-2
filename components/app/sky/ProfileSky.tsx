@@ -5,7 +5,7 @@ import { useStudySky } from "@/lib/app/StudySkyProvider";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { constellationById, type ConstellationId, type SkyPreferences, type SkyCard } from "@/shared/constellations";
 import AppButton, { appButtonClass } from "../AppButton";
-import { Avatar, Section } from "../profile/ui";
+import { Avatar, DeveloperTag, Section } from "../profile/ui";
 import ConstellationArtwork from "./ConstellationArtwork";
 import ConstellationCard from "./ConstellationCard";
 import SkyDialog from "./SkyDialog";
@@ -63,7 +63,7 @@ function AppearanceEditor({ initial, cards, onClose }: { initial: SkyPreferences
   return <SkyDialog title="Customise your streak cards" onClose={onClose}>
     <div className="grid gap-8 md:grid-cols-2">
       <div><p className="mb-3 text-[11px] uppercase tracking-widest" style={{ color: "var(--app-text-muted)" }}>{previewId ? "Reward preview · not equipped" : "Profile preview · only you"}</p>
-        <div className="overflow-hidden rounded-lg border" style={{ borderColor: "var(--app-border)", background: "var(--app-surface)" }}><SkyBanner preferences={previewPreferences} cards={previewCards} /><div className="flex items-center gap-3 p-5"><Avatar name={data.user.name} colour={data.user.avatarColour} size={44} /><div><p className="text-[16px] font-medium">{data.user.name}</p><p className="mt-1 text-[12px]" style={{ color: "var(--app-text-muted)" }}>Your study journey</p></div></div></div>
+        <div className="overflow-hidden rounded-lg border" style={{ borderColor: "var(--app-border)", background: "var(--app-surface)" }}><SkyBanner preferences={previewPreferences} cards={previewCards} /><div className="flex items-center gap-3 p-5"><Avatar name={data.user.name} colour={data.user.avatarColour} size={44} developer={data.user.developerAccess} /><div><div className="flex items-center gap-2"><p className="text-[16px] font-medium">{data.user.name}</p>{data.user.developerAccess ? <DeveloperTag size="sm" /> : null}</div><p className="mt-1 text-[12px]" style={{ color: "var(--app-text-muted)" }}>Your study journey</p></div></div></div>
         {draft.showcase.length > 0 && <div className="mt-4"><p className="mb-2 text-[12px]" style={{ color: "var(--app-text-muted)" }}>Showcase order</p>{draft.showcase.map((id, index) => <div key={id} className="flex items-center justify-between gap-2 border-b py-2 text-[12px]" style={{ borderColor: "var(--app-border)" }}><span>{index + 1}. {constellationById(id)!.name}</span><div className="flex"><AppButton disabled={index === 0} onClick={() => reorder(index, -1)} aria-label={`Move ${constellationById(id)!.name} earlier`}>↑</AppButton><AppButton disabled={index === draft.showcase.length - 1} onClick={() => reorder(index, 1)} aria-label={`Move ${constellationById(id)!.name} later`}>↓</AppButton></div></div>)}</div>}
         <label className="mt-5 block text-[12px]">Preview a reward<select value={previewId || ""} onChange={(event) => setPreviewId(event.target.value as ConstellationId || null)} className="mt-2 w-full rounded-md border p-2" style={{ background: "var(--app-surface)", borderColor: "var(--app-border)" }}><option value="">Show my appearance</option>{cards.map((card) => <option key={card.id} value={card.id}>{constellationById(card.id)!.name}{card.earnedAt ? "" : " · still forming"}</option>)}</select></label>
       </div>

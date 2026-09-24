@@ -625,11 +625,11 @@ export const TOURS: Record<TourId, Tour> = {
       },
       {
         title: "Generated drafts",
-        body: "Generate a first draft from a syllabus topic, an uploaded file or a deck. Only that source is used, and nothing is saved until you save it.",
+        body: "Generate a first draft from an uploaded file or a deck. Only that source is used, and nothing is saved until you save it.",
         visual: (
           <Window width={270} title="New sheet">
             <Stack gap={6}>
-              <MockInput label="Draft from" value="Syllabus topic · 3.2 Limiting reagents" />
+              <MockInput label="Draft from" value="File · Chemistry notes ch3.pdf" />
               <div className="flex justify-end">
                 <MockButton variant="primary">Generate draft</MockButton>
               </div>

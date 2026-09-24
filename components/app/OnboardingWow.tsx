@@ -4,7 +4,9 @@ import { useState } from "react";
 import { api } from "@/lib/api/client";
 import { analytics } from "@/lib/analytics/events";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
+import type { RecoveryReason, RecoveryResult } from "@/lib/app/recovery";
 import AppButton from "./AppButton";
+import RecoveryWeekStrip from "./RecoveryWeekStrip";
 
 /**
  * The first-wow moment. Straight after a new student's plan is built, before
@@ -12,13 +14,7 @@ import AppButton from "./AppButton";
  * different: tell it something changed and watch the week rebuild. Uses the
  * real recovery endpoint (a real, sensible reflow), not a fake animation.
  */
-type Reason = "less_time" | "tired" | "new_deadline";
-
-interface RecoveryResult {
-  lines: string[];
-  moved: number;
-  nextBlock: { subject: string | null; title: string; startAt: string; minutes: number } | null;
-}
+type Reason = Extract<RecoveryReason, "less_time" | "tired" | "new_deadline">;
 
 const EXAMPLES: { key: Reason; label: string }[] = [
   { key: "new_deadline", label: "A test just got announced" },
@@ -87,6 +83,8 @@ export default function OnboardingWow({ onContinue }: { onContinue: () => void }
           <p className="mt-4 text-[15px]" style={{ color: "var(--app-text-muted)" }}>
             You told Arcad what changed and it rebuilt your week in seconds. This is what happens every time life gets in the way.
           </p>
+
+          <RecoveryWeekStrip changes={result.changes ?? []} subjects={data.subjects ?? []} timeZone={tz} className="mt-5" />
 
           <ul className="mt-6 flex flex-col gap-2">
             {result.lines.map((line) => (

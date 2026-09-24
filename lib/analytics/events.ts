@@ -44,4 +44,6 @@ export const analytics = {
    */
   recoveryUsed: (reason: string, moved: number, onboarding = false) =>
     track("recovery_used", { reason, moved, onboarding }),
+  recoveryShared: (reason: string, format: "story" | "square") =>
+    track("recovery_shared", { reason, format }),
 };

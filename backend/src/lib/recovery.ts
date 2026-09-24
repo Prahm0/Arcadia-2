@@ -32,6 +32,13 @@ export interface RecoveryBlock {
   minutes: number;
 }
 
+export interface RecoverySessionChange {
+  subject: string | null;
+  title: string;
+  before: { startAt: string; endAt: string } | null;
+  after: { startAt: string; endAt: string } | null;
+}
+
 export interface RecoveryResult {
   /** What changed, in plain words, most important first. */
   lines: string[];
@@ -39,6 +46,8 @@ export interface RecoveryResult {
   moved: number;
   /** The one thing to do next. */
   nextBlock: RecoveryBlock | null;
+  /** Actual study-session changes in the week the student can see. */
+  changes: RecoverySessionChange[];
 }
 
 const SIZE_MINUTES: Record<NonNullable<RecoveryInput["size"]>, number> = {
@@ -70,11 +79,70 @@ async function upcomingStudy(database: Database, userId: string, from: number): 
       and(
         eq(schema.events.userId, userId),
         eq(schema.events.category, "study"),
+        eq(schema.events.outcome, "planned"),
         gte(schema.events.startAt, from),
         lt(schema.events.startAt, from + 7 * DAY),
       ),
     );
   return rows;
+}
+
+function sessionKey(event: StudyEvent): string {
+  // Replanning can recreate event ids. Tasks survive that process, and the
+  // title plus subject fallback handles untasked study blocks.
+  return event.taskId ? `task:${event.taskId}` : `session:${event.subject ?? ""}|${event.title}`;
+}
+
+function serialiseSession(event: StudyEvent) {
+  return { startAt: new Date(event.startAt).toISOString(), endAt: new Date(event.endAt).toISOString() };
+}
+
+/**
+ * Pair repeated sessions in time order. This makes the visual stable even
+ * when `replan` creates replacement event rows with fresh ids.
+ */
+function recoveryChanges(before: StudyEvent[], after: StudyEvent[]): RecoverySessionChange[] {
+  const groups = new Map<string, { before: StudyEvent[]; after: StudyEvent[] }>();
+  for (const event of before) {
+    const key = sessionKey(event);
+    const group = groups.get(key) ?? { before: [], after: [] };
+    group.before.push(event);
+    groups.set(key, group);
+  }
+  for (const event of after) {
+    const key = sessionKey(event);
+    const group = groups.get(key) ?? { before: [], after: [] };
+    group.after.push(event);
+    groups.set(key, group);
+  }
+
+  const changes: RecoverySessionChange[] = [];
+  for (const group of groups.values()) {
+    group.before.sort((a, b) => a.startAt - b.startAt);
+    group.after.sort((a, b) => a.startAt - b.startAt);
+    const count = Math.max(group.before.length, group.after.length);
+    for (let index = 0; index < count; index += 1) {
+      const beforeEvent = group.before[index] ?? null;
+      const afterEvent = group.after[index] ?? null;
+      if (
+        beforeEvent && afterEvent &&
+        beforeEvent.startAt === afterEvent.startAt && beforeEvent.endAt === afterEvent.endAt
+      ) continue;
+      const event = afterEvent ?? beforeEvent;
+      if (!event) continue;
+      changes.push({
+        subject: event.subject,
+        title: event.title,
+        before: beforeEvent ? serialiseSession(beforeEvent) : null,
+        after: afterEvent ? serialiseSession(afterEvent) : null,
+      });
+    }
+  }
+  return changes.sort((a, b) => {
+    const aAt = Date.parse(a.after?.startAt ?? a.before?.startAt ?? "");
+    const bAt = Date.parse(b.after?.startAt ?? b.before?.startAt ?? "");
+    return aAt - bAt;
+  });
 }
 
 function pad(n: number): string {
@@ -203,12 +271,8 @@ export async function recoverPlan(
 
   // 3. Read the new plan and describe the change.
   const after = await upcomingStudy(database, userId, now);
-
-  const afterSlots = new Set(after.map((e) => `${e.taskId ?? e.subject ?? ""}@${e.startAt}`));
-  const moved = Math.min(
-    before.length,
-    before.filter((e) => !afterSlots.has(`${e.taskId ?? e.subject ?? ""}@${e.startAt}`)).length,
-  );
+  const changes = recoveryChanges(before, after);
+  const moved = changes.filter((change) => change.before && change.after).length;
 
   const lines: string[] = [];
   if (moved > 0) {
@@ -260,7 +324,7 @@ export async function recoverPlan(
       }
     : null;
 
-  return { lines, moved, nextBlock };
+  return { lines, moved, nextBlock, changes };
 }
 
 export { timeLabel };

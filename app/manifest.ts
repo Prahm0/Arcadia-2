@@ -3,8 +3,8 @@ import type { MetadataRoute } from "next";
 /**
  * Web app manifest, makes Arcadia installable. Users who visit on iOS
  * Safari or Android Chrome can add Arcadia to their home screen and open
- * it standalone (no browser chrome). Reuses the existing icon.svg;
- * iOS-specific icons are provided by app/apple-icon.tsx.
+ * it standalone (no browser chrome). The official Arcadia mark is used for
+ * both the standard and iOS home-screen icons.
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -23,14 +23,14 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ["education", "productivity", "utilities"],
     icons: [
       {
-        src: "/icon.svg",
-        sizes: "any",
-        type: "image/svg+xml",
+        src: "/icon.png",
+        sizes: "512x512",
+        type: "image/png",
         purpose: "any",
       },
       {
-        src: "/apple-icon",
-        sizes: "180x180",
+        src: "/apple-icon.png",
+        sizes: "512x512",
         type: "image/png",
         purpose: "any",
       },

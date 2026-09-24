@@ -544,6 +544,7 @@ function FocusViewInner({ session }: { session: FocusSession }) {
       <StudyWithMe
         open={studyWithMeOpen}
         onExit={() => setStudyWithMeOpen(false)}
+        onToggle={running ? pause : start}
         running={running}
         remaining={remaining}
         total={totalForPhase}

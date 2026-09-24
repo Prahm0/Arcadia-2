@@ -18,9 +18,13 @@ if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
     replaysOnErrorSampleRate: 1.0,
     replaysSessionSampleRate: 0,
     integrations: [
+      // Students are minors and the app shows their names, tasks and Arcad
+      // chats. Replays keep layout and clicks for debugging but never text,
+      // form values or images.
       Sentry.replayIntegration({
-        maskAllText: false,
-        blockAllMedia: false,
+        maskAllText: true,
+        maskAllInputs: true,
+        blockAllMedia: true,
       }),
     ],
     enabled: process.env.NODE_ENV === "production",

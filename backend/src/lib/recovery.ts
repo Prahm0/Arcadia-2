@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, lt } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lt } from "drizzle-orm";
 import { schema, type Database } from "../db";
 import { newId } from "./ids";
 import { replan } from "./replan";
@@ -23,6 +23,42 @@ export interface RecoveryInput {
   subject?: string;
   dueOn?: string; // "YYYY-MM-DD"
   size?: "small" | "medium" | "large";
+}
+
+export class RecoveryAlreadyUsedError extends Error {
+  constructor(readonly reason: "less_time" | "tired") {
+    super("You've already used this option today.");
+    this.name = "RecoveryAlreadyUsedError";
+  }
+}
+
+function dailyRecoveryCommitmentId(userId: string, day: string, reason: "less_time" | "tired"): string {
+  return `recovery_${userId}_${day}_${reason}`;
+}
+
+export async function getRecoveryAvailability(database: Database, userId: string) {
+  const [profile] = await database
+    .select({ timezone: schema.profiles.timezone })
+    .from(schema.profiles)
+    .where(eq(schema.profiles.userId, userId))
+    .limit(1);
+  const today = localDateKey(Date.now(), profile?.timezone ?? "Australia/Brisbane");
+  const recoveryCommitments = await database
+    .select({ title: schema.commitments.title })
+    .from(schema.commitments)
+    .where(
+      and(
+        eq(schema.commitments.userId, userId),
+        eq(schema.commitments.category, "rest"),
+        eq(schema.commitments.startDate, today),
+        eq(schema.commitments.notes, "Added from a recovery"),
+        inArray(schema.commitments.title, ["Time off", "Rest"]),
+      ),
+    );
+  return {
+    less_time: recoveryCommitments.some((row) => row.title === "Time off"),
+    tired: recoveryCommitments.some((row) => row.title === "Rest"),
+  };
 }
 
 export interface RecoveryBlock {
@@ -230,17 +266,34 @@ export async function recoverPlan(
     freedToday = before
       .filter((e) => localDateKey(e.startAt, tz) === today)
       .reduce((sum, e) => sum + Math.round((e.endAt - e.startAt) / MINUTE), 0);
-    await database.insert(schema.commitments).values({
-      id: newId("cmt"),
+    const reason = input.reason;
+    const [alreadyUsed] = await database
+      .select({ id: schema.commitments.id })
+      .from(schema.commitments)
+      .where(
+        and(
+          eq(schema.commitments.userId, userId),
+          eq(schema.commitments.category, "rest"),
+          eq(schema.commitments.startDate, today),
+          eq(schema.commitments.title, reason === "tired" ? "Rest" : "Time off"),
+          eq(schema.commitments.notes, "Added from a recovery"),
+        ),
+      )
+      .limit(1);
+    if (alreadyUsed) throw new RecoveryAlreadyUsedError(reason);
+
+    const inserted = await database.insert(schema.commitments).values({
+      id: dailyRecoveryCommitmentId(userId, today, reason),
       userId,
-      title: input.reason === "tired" ? "Rest" : "Time off",
+      title: reason === "tired" ? "Rest" : "Time off",
       category: "rest",
       recurrence: "none",
       startDate: today,
       startTime: clockNow(now, tz),
       endTime: "23:59",
       notes: "Added from a recovery",
-    });
+    }).onConflictDoNothing().returning({ id: schema.commitments.id });
+    if (inserted.length === 0) throw new RecoveryAlreadyUsedError(reason);
   } else if (input.reason === "busy") {
     const startTime = input.busyStart || clockNow(now, tz);
     const endTime = input.busyEnd || "23:59";

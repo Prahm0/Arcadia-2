@@ -96,6 +96,45 @@ export default function FocusView() {
 }
 
 const DONE_KEY = "arcadia:focus:done:";
+const TIMER_KEY = "arcadia:focus:timer:";
+
+interface SavedTimer {
+  eventId: string | null;
+  phase: Phase;
+  running: boolean;
+  remaining: number;
+  endsAt: number | null;
+  presetLabel: string;
+  subject: string;
+  goal: string;
+  distractions: number;
+  activityId: string | null;
+}
+
+function readSavedTimer(key: string): SavedTimer | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const value = JSON.parse(window.localStorage.getItem(key) ?? "null") as Partial<SavedTimer> | null;
+    if (
+      !value ||
+      (value.phase !== "idle" && value.phase !== "focus" && value.phase !== "break") ||
+      typeof value.running !== "boolean" ||
+      typeof value.remaining !== "number" ||
+      !Number.isFinite(value.remaining)
+    ) return null;
+    return value as SavedTimer;
+  } catch {
+    return null;
+  }
+}
+
+function writeSavedTimer(key: string, value: SavedTimer) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* The timer still works for this visit when storage is unavailable. */
+  }
+}
 
 /** Plan steps ticked off in this browser, so a reload mid-session keeps them. */
 function readDoneSteps(eventId: string | null): number[] {
@@ -127,6 +166,8 @@ function FocusViewInner() {
   const timezone = data.profile?.timezone || data.user.timezone || "Australia/Sydney";
 
   const eventId = params.get("eventId");
+  const timerSessionEventId = useRef(eventId);
+  const timerStorageKey = useRef(`${TIMER_KEY}${data.user.id}:${eventId ?? "free"}`).current;
   const linkedEvent = useMemo<PlannerEvent | null>(() => {
     if (!eventId) return null;
     return data.events.find((event) => event.id === eventId) ?? null;
@@ -173,6 +214,8 @@ function FocusViewInner() {
   const [recents, setRecents] = useState<StudySession[] | null>(null);
   const [recentsError, setRecentsError] = useState(false);
   const intervalRef = useRef<number | null>(null);
+  const timerEndsAtRef = useRef<number | null>(null);
+  const [timerRestored, setTimerRestored] = useState(false);
   const preset = PRESETS[presetIndex] ?? PRESETS[0];
 
   // Scheduled sessions: Arcad's plan, the steps ticked off so far (kept per
@@ -276,6 +319,36 @@ function FocusViewInner() {
     setGoal(linkedEvent.plan?.topic ?? linkedEvent.title);
   }, [linkedEvent, linkedMinutes, data.subjects]);
 
+  // The app shell unmounts page content when switching sections. Keep the
+  // active session in this browser so its deadline and setup survive that.
+  const didRestoreTimer = useRef(false);
+  useEffect(() => {
+    if (didRestoreTimer.current) return;
+    didRestoreTimer.current = true;
+    const saved = readSavedTimer(timerStorageKey);
+    if (saved && saved.eventId === timerSessionEventId.current) {
+      const savedPresetIndex = PRESETS.findIndex((item) => item.label === saved.presetLabel);
+      if (savedPresetIndex >= 0) setPresetIndex(savedPresetIndex);
+      setPhase(saved.phase);
+      setSubject(saved.subject || linkedEvent?.subject || data.subjects[0]?.name || "General");
+      setGoal(saved.goal ?? linkedEvent?.title ?? "");
+      setDistractions(Number.isInteger(saved.distractions) ? saved.distractions : 0);
+      activityId.current = saved.activityId ?? null;
+      const left = saved.running && typeof saved.endsAt === "number"
+        ? Math.max(0, Math.ceil((saved.endsAt - Date.now()) / 1000))
+        : Math.max(0, Math.round(saved.remaining));
+      setRemaining(left);
+      setRunning(saved.running);
+      timerEndsAtRef.current = saved.running && typeof saved.endsAt === "number"
+        ? saved.endsAt
+        : null;
+    }
+    setTimerRestored(true);
+  // Restore once for the page/session key. The linked event is used only as a
+  // fallback for old or incomplete saved values.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // "Start now" from Today: the block moves to now, and the timer runs
   // straight away. The flag comes off the URL so a reload doesn't restart it.
   const autoStarted = useRef(false);
@@ -316,7 +389,8 @@ function FocusViewInner() {
   });
   useEffect(() => {
     if (!running) return;
-    const endsAt = Date.now() + remainingRef.current * 1000;
+    const endsAt = timerEndsAtRef.current ?? (Date.now() + remainingRef.current * 1000);
+    timerEndsAtRef.current = endsAt;
     intervalRef.current = window.setInterval(() => {
       const next = Math.max(0, Math.round((endsAt - Date.now()) / 1000));
       if (next === 0) setStudyWithMeComplete(true);
@@ -327,6 +401,24 @@ function FocusViewInner() {
     };
     // Restarts when the phase flips, so a break counts from its own length.
   }, [running, phase]);
+
+  // Persist on session changes and every five seconds while counting down.
+  // The absolute deadline keeps elapsed time accurate while this page is gone.
+  useEffect(() => {
+    if (!timerRestored || (running && remaining % 5 !== 0)) return;
+    writeSavedTimer(timerStorageKey, {
+      eventId: timerSessionEventId.current,
+      phase,
+      running,
+      remaining,
+      endsAt: running ? timerEndsAtRef.current : null,
+      presetLabel: preset.label,
+      subject,
+      goal,
+      distractions,
+      activityId: activityId.current,
+    });
+  }, [timerRestored, timerStorageKey, phase, running, remaining, preset.label, subject, goal, distractions]);
 
   useEffect(() => {
     if (remaining !== 0) return;
@@ -449,6 +541,7 @@ function FocusViewInner() {
 
   function start() {
     setStudyWithMeComplete(false);
+    timerEndsAtRef.current = null;
     if (phase === "idle") {
       setPhase("focus");
       setRemaining(preset.focus);
@@ -457,6 +550,10 @@ function FocusViewInner() {
   }
 
   function pause() {
+    if (running && timerEndsAtRef.current !== null) {
+      setRemaining(Math.max(0, Math.ceil((timerEndsAtRef.current - Date.now()) / 1000)));
+    }
+    timerEndsAtRef.current = null;
     setRunning(false);
   }
 

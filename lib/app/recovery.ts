@@ -1,5 +1,11 @@
 /** Client-safe shape returned by POST /api/plan/recover. */
 export type RecoveryReason = "missed" | "less_time" | "tired" | "busy" | "new_deadline";
+export type DailyLimitedRecoveryReason = "less_time" | "tired";
+
+export interface RecoveryAvailability {
+  less_time: boolean;
+  tired: boolean;
+}
 
 export interface RecoverySessionChange {
   subject: string | null;

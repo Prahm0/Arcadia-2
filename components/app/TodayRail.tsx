@@ -9,11 +9,12 @@ import { START_STREAK_HINT } from "@/lib/app/streaks";
 import { useStreak } from "@/lib/app/useStreak";
 import Companion from "./Companion";
 import CompanionSheet from "./CompanionSheet";
+import RailStreakCard from "./sky/RailStreakCard";
 
 /**
  * The column beside Today: one panel, read top to bottom. Your companion and
- * how close it is to growing, the week's focus by day, the streak, and
- * what's due next. Everything in it is a real number from the dashboard.
+ * how close it is to growing, the week's focus by day, the streak, the next
+ * streak card, and what's due next. Everything in it is a real number from the dashboard.
  */
 export default function TodayRail() {
   const { data } = useDashboardData();
@@ -28,6 +29,7 @@ export default function TodayRail() {
       <CompanionSection />
       <WeekSection days={data.analytics.days ?? []} todayMinutes={Number(data.analytics.todayMinutes ?? 0)} />
       <StreakSection />
+      <RailStreakCard />
       <DeadlinesSection tasks={data.focusTasks} timezone={timezone} />
       <Link
         href="/app/analytics"

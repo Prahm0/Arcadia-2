@@ -34,7 +34,8 @@
     // keys live in the iOS/web build environment, while the secret API key
     // below is set with `wrangler secret put`.
     "REVENUECAT_ENTITLEMENT_PRO": "pro",
-    "REVENUECAT_ENTITLEMENT_MAX": "max"
+    "REVENUECAT_ENTITLEMENT_MAX": "max",
+    "APPLE_BUNDLE_ID": "app.arcadiahq.arcadia"
   },
 
   "d1_databases": [

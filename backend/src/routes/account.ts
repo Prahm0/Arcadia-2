@@ -1,7 +1,9 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../db";
 import { hashPassword, newSalt, passwordProblem, verifyPassword } from "../lib/password";
+import { decryptToken } from "../lib/crypto";
+import { revokeAppleRefreshToken } from "../lib/social-oauth";
 import { destroySession } from "../lib/session";
 import { cancelSubscription, listCustomerSubscriptions } from "../lib/stripe";
 import { iso } from "../lib/time";
@@ -181,6 +183,20 @@ account.delete("/", async (c) => {
     await deleteUserObjects(c.env.UPLOADS, userId);
   } catch (error) {
     console.error("[account] R2 cleanup failed", error);
+  }
+
+  // Apple requires refresh tokens to be revoked when a person deletes their
+  // account. A failed revoke never prevents data deletion.
+  if (c.env.TOKEN_ENCRYPTION_KEY) {
+    const appleAccounts = await database.select().from(schema.oauthAccounts).where(and(eq(schema.oauthAccounts.userId, userId), eq(schema.oauthAccounts.provider, "apple")));
+    for (const account of appleAccounts) {
+      if (!account.refreshTokenEncrypted || !account.clientId) continue;
+      try {
+        await revokeAppleRefreshToken(c.env, await decryptToken(account.refreshTokenEncrypted, c.env.TOKEN_ENCRYPTION_KEY), account.clientId);
+      } catch (error) {
+        console.error("[account] Apple token revocation failed", error instanceof Error ? error.message : error);
+      }
+    }
   }
 
   // A person may have joined the launch waitlist before creating an account.

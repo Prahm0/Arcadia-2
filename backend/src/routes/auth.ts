@@ -4,14 +4,18 @@ import { db, schema } from "../db";
 import { sendEmail, verificationEmail } from "../lib/email";
 import { newId, newToken } from "../lib/ids";
 import { hashPassword, newSalt, passwordProblem, verifyPassword } from "../lib/password";
+import { encryptToken } from "../lib/crypto";
 import { createPendingReferral, createReferralCode, normaliseReferralCode } from "../lib/referrals";
 import { createSession, destroySession } from "../lib/session";
 import {
   appleRedirectUri,
+  exchangeNativeAppleCode,
   exchangeAppleCode,
   exchangeGoogleCode,
   googleRedirectUri,
   safeNext,
+  signNativeAppleNonce,
+  verifyNativeAppleIdentity,
   signOAuthState,
   verifyGoogleIdToken,
   verifyOAuthState,
@@ -61,16 +65,16 @@ async function finishSocialLogin(
     )
     .limit(1);
 
-  let userId = linked?.userId;
+  let userId: string | undefined = linked?.userId;
   if (!userId) {
-    const [existingUser] = await database
-      .select({ id: schema.users.id })
-      .from(schema.users)
-      .where(eq(schema.users.email, identity.email))
-      .limit(1);
+    const existingUser = identity.email
+      ? (await database.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.email, identity.email)).limit(1))[0]
+      : undefined;
 
     userId = existingUser?.id;
     if (!userId) {
+      const email = identity.email;
+      if (!email) throw new Error("Apple did not return an email for a new account.");
       userId = newId("usr");
       const stableReferralCode = await createReferralCode(database);
       const salt = newSalt();
@@ -78,7 +82,7 @@ async function finishSocialLogin(
       await database.batch([
         database.insert(schema.users).values({
           id: userId,
-          email: identity.email,
+          email,
           passwordHash,
           passwordSalt: salt,
           name: identity.name,
@@ -141,7 +145,37 @@ auth.get("/oauth/config", (c) => {
         c.env.APPLE_PRIVATE_KEY &&
         c.env.TOKEN_ENCRYPTION_KEY,
     ),
+    nativeApple: Boolean(c.env.APPLE_TEAM_ID && c.env.APPLE_KEY_ID && c.env.APPLE_PRIVATE_KEY && c.env.APPLE_BUNDLE_ID && c.env.TOKEN_ENCRYPTION_KEY),
   });
+});
+
+auth.get("/oauth/apple/native/nonce", async (c) => {
+  if (!(c.env.APPLE_TEAM_ID && c.env.APPLE_KEY_ID && c.env.APPLE_PRIVATE_KEY && c.env.APPLE_BUNDLE_ID && c.env.TOKEN_ENCRYPTION_KEY)) {
+    return c.json({ error: "Apple sign-in is not configured." }, 503);
+  }
+  const rawNonce = newToken(24);
+  return c.json({ nonceToken: await signNativeAppleNonce(c.env, rawNonce), hashedNonce: await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rawNonce)).then((digest) => [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("")) });
+});
+
+auth.post("/oauth/apple/native", async (c) => {
+  if (!(c.env.APPLE_TEAM_ID && c.env.APPLE_KEY_ID && c.env.APPLE_PRIVATE_KEY && c.env.APPLE_BUNDLE_ID && c.env.TOKEN_ENCRYPTION_KEY)) return c.json({ error: "Apple sign-in is not configured." }, 503);
+  const body = await c.req.json<{ identityToken?: string; authorizationCode?: string; nonceToken?: string; givenName?: string; familyName?: string; referralCode?: string }>().catch(() => null);
+  if (!body?.identityToken || !body.nonceToken || body.identityToken.length > 8192) return c.json({ error: "Invalid Apple sign-in response." }, 400);
+  try {
+    const identity = await verifyNativeAppleIdentity(c.env, body.identityToken, body.nonceToken);
+    identity.name = [body.givenName, body.familyName].filter((value): value is string => typeof value === "string").join(" ").trim().slice(0, 120);
+    const { csrfToken } = await finishSocialLogin(c, identity, normaliseReferralCode(body.referralCode));
+    if (body.authorizationCode) {
+      try {
+        const refreshToken = await exchangeNativeAppleCode(c.env, body.authorizationCode);
+        if (refreshToken) await db(c.env.DB).update(schema.oauthAccounts).set({ refreshTokenEncrypted: await encryptToken(refreshToken, c.env.TOKEN_ENCRYPTION_KEY!), clientId: c.env.APPLE_BUNDLE_ID }).where(and(eq(schema.oauthAccounts.provider, "apple"), eq(schema.oauthAccounts.providerUserId, identity.providerUserId)));
+      } catch (error) { console.error("[oauth] Apple token exchange failed", error instanceof Error ? error.message : error); }
+    }
+    return c.json({ redirect: "/app", csrfToken });
+  } catch (error) {
+    console.error("[oauth] Native Apple sign-in failed", error instanceof Error ? error.message : error);
+    return c.json({ error: "Apple sign-in could not be verified." }, 401);
+  }
 });
 
 auth.post("/oauth/google/native", async (c) => {

@@ -2,13 +2,19 @@
 import type { CSSProperties } from "react";
 import { constellationById, type SkyCard } from "@/shared/constellations";
 import CardSky from "./CardSky";
+import { useCardLight } from "./useCardLight";
 import styles from "./sky.module.css";
 
 export function skyDate(timestamp: number) { return new Date(timestamp).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" }); }
 
 const HEMISPHERE = { Northern: "Northern sky", Southern: "Southern sky", Equator: "On the equator" } as const;
 
-export default function ConstellationCard({ card, preview = false, featured = false, following = false }: { card: SkyCard; preview?: boolean; featured?: boolean; following?: boolean }) {
+export default function ConstellationCard({ card, preview = false, featured = false, following = false, showcase = false }: {
+  card: SkyCard; preview?: boolean; featured?: boolean; following?: boolean;
+  /** Shown on its own, as in the card dialog: the card drifts gently so its gloss keeps moving. */
+  showcase?: boolean;
+}) {
+  const light = useCardLight<HTMLElement>(showcase);
   const definition = constellationById(card.id)!;
   const total = definition.points.length;
   const lit = (index: number) => preview || card.milestones[index]?.earnedAt != null;
@@ -17,22 +23,7 @@ export default function ConstellationCard({ card, preview = false, featured = fa
   const status = featured ? "Featured" : collected && !card.seen ? "New ✦" : following && !card.earnedAt ? "Following" : definition.atlas ? `Nº ${String(definition.atlas.order + 1).padStart(2, "0")}` : "✦";
   const detail = definition.atlas ? `${definition.atlas.brightest} · ${HEMISPHERE[definition.atlas.hemisphere]}` : `${total} stars · Arcadia original`;
   return (
-    <article
-      className={styles.card}
-      data-preview={preview}
-      data-collected={collected}
-      style={{ "--sky-colour": definition.colour } as CSSProperties}
-      // Collected cards catch the light: a slight tilt and a foil sheen that follow the pointer.
-      onPointerMove={(event) => {
-        if (event.pointerType !== "mouse") return;
-        const rect = event.currentTarget.getBoundingClientRect();
-        const x = (event.clientX - rect.left) / rect.width, y = (event.clientY - rect.top) / rect.height;
-        event.currentTarget.style.setProperty("--ry", `${(x - .5) * 7}deg`);
-        event.currentTarget.style.setProperty("--rx", `${(.5 - y) * 7}deg`);
-        event.currentTarget.style.setProperty("--foil", `${x * 100}%`);
-      }}
-      onPointerLeave={(event) => { for (const name of ["--rx", "--ry", "--foil"]) event.currentTarget.style.removeProperty(name); }}
-    >
+    <article ref={light} className={styles.card} data-preview={preview} data-collected={collected} style={{ "--sky-colour": definition.colour } as CSSProperties}>
       <div className={styles.cardBackdrop} aria-hidden="true">
         {(["tl", "tr", "bl", "br"] as const).map((corner) => (
           <svg key={corner} className={styles.corner} data-corner={corner} viewBox="0 0 18 18" fill="none">
@@ -64,6 +55,8 @@ export default function ConstellationCard({ card, preview = false, featured = fa
           </div>
         )}
       </div>
+      {/* Glass over everything: a light that follows the pointer, a laminate sheen, and a sweep of light. */}
+      <div className={styles.gloss} aria-hidden="true"><span className={styles.sweep} /></div>
     </article>
   );
 }

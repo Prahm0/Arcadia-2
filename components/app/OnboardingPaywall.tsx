@@ -61,7 +61,13 @@ const PLANS: {
   },
 ];
 
-export default function OnboardingPaywall({ onContinueFree }: { onContinueFree: () => void }) {
+export default function OnboardingPaywall({
+  onContinueFree,
+  onCheckoutStarted,
+}: {
+  onContinueFree: () => void;
+  onCheckoutStarted?: () => void;
+}) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showWinback, setShowWinback] = useState(false);
@@ -69,7 +75,14 @@ export default function OnboardingPaywall({ onContinueFree }: { onContinueFree: 
   // Purchase (App Store guideline 3.1.1), never Stripe. Same moment, Apple's
   // prices and purchase sheet.
   const nativeIOS = useNativeIOS();
-  if (nativeIOS) return <NativeOnboardingPaywall onContinueFree={onContinueFree} />;
+  if (nativeIOS) {
+    return (
+      <NativeOnboardingPaywall
+        onContinueFree={onContinueFree}
+        onPurchaseCompleted={onCheckoutStarted}
+      />
+    );
+  }
 
   async function checkout(plan: PlanKey, winback = false) {
     setBusy(`${plan}${winback ? "-wb" : ""}`);
@@ -81,6 +94,7 @@ export default function OnboardingPaywall({ onContinueFree }: { onContinueFree: 
       });
       if (res?.url) {
         analytics.checkoutStarted(plan, "month");
+        onCheckoutStarted?.();
         window.location.href = res.url;
         return;
       }
@@ -289,7 +303,13 @@ function WinbackOffer({
   );
 }
 
-function NativeOnboardingPaywall({ onContinueFree }: { onContinueFree: () => void }) {
+function NativeOnboardingPaywall({
+  onContinueFree,
+  onPurchaseCompleted,
+}: {
+  onContinueFree: () => void;
+  onPurchaseCompleted?: () => void;
+}) {
   const { data, reload } = useDashboardData();
   const [offer, setOffer] = useState<IosPurchaseOption | null>(null);
   const [offerOpen, setOfferOpen] = useState(false);
@@ -333,6 +353,7 @@ function NativeOnboardingPaywall({ onContinueFree }: { onContinueFree: () => voi
       await purchaseIosOption(data.user.id, "pro", "month");
       const res = await api<{ tier: string }>("/api/billing/iap/activate", { method: "POST" });
       analytics.subscriptionActivated(res.tier);
+      onPurchaseCompleted?.();
       await reload();
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "";

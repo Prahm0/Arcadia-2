@@ -7,6 +7,8 @@ import Onboarding from "@/components/app/Onboarding";
 import { DashboardDataProvider, useDashboard } from "@/lib/app/DashboardProvider";
 import { useDashboardAutoRefresh } from "@/lib/app/useDashboardAutoRefresh";
 import { StudySkyProvider } from "@/lib/app/StudySkyProvider";
+import { isOnboardingOfferPending, setOnboardingOfferPending } from "@/lib/app/onboarding-offer";
+import OnboardingPaywall from "@/components/app/OnboardingPaywall";
 import { FocusSessionProvider } from "@/components/app/focus/FocusSession";
 
 // ThemeProvider is mounted one level up in app/(app)/layout.tsx so the auth
@@ -18,7 +20,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 function Gate({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { state, reload, patch } = useDashboard();
-  useDashboardAutoRefresh(reload);
+  const isOnboarding = state.status === "ready" && !state.data.user.onboardingComplete;
+  useDashboardAutoRefresh(reload, !isOnboarding);
 
   useEffect(() => {
     if (state.status === "unauthenticated") router.replace("/login");
@@ -65,11 +68,21 @@ function Gate({ children }: { children: ReactNode }) {
   }
 
   const { user, profile } = state.data;
+  const offerPending = user.onboardingComplete && isOnboardingOfferPending(user.id);
+  const finishOnboarding = () => {
+    setOnboardingOfferPending(user.id, false);
+    void reload();
+  };
   const notices = user.onboardingComplete ? (state.data.notices ?? []) : [];
 
   return (
     <DashboardDataProvider data={state.data} reload={reload} patch={patch}>
-      {user.onboardingComplete ? (
+      {offerPending ? (
+        <OnboardingPaywall
+          onContinueFree={finishOnboarding}
+          onCheckoutStarted={() => setOnboardingOfferPending(user.id, false)}
+        />
+      ) : user.onboardingComplete ? (
         <StudySkyProvider key={user.id}>
           {/* Above the pages, so a focus timer and its pop-out survive moving between them. */}
           <FocusSessionProvider>
@@ -82,6 +95,7 @@ function Gate({ children }: { children: ReactNode }) {
         // Until onboarding (and its paywall) finishes, the whole app is the
         // onboarding flow: no sidebar, no nav, no other routes reachable.
         <Onboarding
+          userId={user.id}
           defaultName={user.name}
           defaultTimezone={
             profile?.timezone ||
@@ -89,7 +103,7 @@ function Gate({ children }: { children: ReactNode }) {
               ? Intl.DateTimeFormat().resolvedOptions().timeZone
               : "Australia/Sydney")
           }
-          onComplete={() => reload()}
+          onComplete={finishOnboarding}
         />
       )}
     </DashboardDataProvider>

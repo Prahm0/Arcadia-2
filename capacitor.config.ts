@@ -12,6 +12,8 @@ const config: CapacitorConfig = {
   webDir: "capacitor-shell",
   server: {
     url: "https://arcadiahq.app/app",
+    // Capacitor iOS loads this bundled page if the remote app cannot start.
+    errorPath: "offline.html",
     allowNavigation: ["arcadiahq.app", "*.arcadiahq.app"],
     cleartext: false,
   },

@@ -16,6 +16,7 @@ import { dateKey, formatClock, formatDurationMinutes } from "@/lib/api/time";
 import ArcadFloatingButton from "./ArcadFloatingButton";
 import ContextMenuHost from "./ContextMenu";
 import GuestBanner from "./GuestBanner";
+import OfflineBanner from "./OfflineBanner";
 import MenuBar from "./MenuBar";
 import MobileBottomNav from "./MobileBottomNav";
 import NewTaskSheet from "./NewTaskSheet";
@@ -179,6 +180,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
       className="min-h-svh"
       style={{ background: "var(--app-bg)", color: "var(--app-text)" }}
     >
+      <OfflineBanner />
       <MenuBar
         sidebarOpen={sidebarOpen}
         onToggleSidebar={toggleSidebar}

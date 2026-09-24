@@ -31,10 +31,17 @@ function inDays(n: number): string {
 }
 
 function timeLabel(iso: string, tz: string): string {
-  return new Date(iso)
+  const when = new Date(iso);
+  const time = when
     .toLocaleTimeString("en-AU", { hour: "numeric", minute: "2-digit", timeZone: tz })
     .toLowerCase()
     .replace(/\s/g, "");
+  // Say which day when it isn't today, e.g. after today was cleared.
+  const day = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: tz });
+  const now = new Date();
+  if (day(when) === day(now)) return time;
+  if (day(when) === day(new Date(now.getTime() + 86_400_000))) return `Tomorrow ${time}`;
+  return `${when.toLocaleDateString("en-AU", { weekday: "short", timeZone: tz })} ${time}`;
 }
 
 export default function OnboardingWow({ onContinue }: { onContinue: () => void }) {

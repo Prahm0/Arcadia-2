@@ -53,8 +53,9 @@ export function effectiveTier(
   developerAccess: boolean,
   proBonusUntil?: number | null,
   now = Date.now(),
+  developerTier?: string | null,
 ): Tier {
-  if (developerAccess) return "max";
+  if (developerAccess) return isValidTier(developerTier) ? developerTier : "max";
   const baseTier = isValidTier(tier) ? tier : "free";
   if (baseTier === "free" && (proBonusUntil ?? 0) > now) return "pro";
   return baseTier;
@@ -68,13 +69,14 @@ export async function getUserTier(
     .select({
       tier: schema.users.tier,
       developerAccess: schema.users.developerAccess,
+      developerTier: schema.users.developerTier,
       proBonusUntil: schema.users.proBonusUntil,
     })
     .from(schema.users)
     .where(eq(schema.users.id, userId))
     .limit(1);
 
-  return effectiveTier(user?.tier, user?.developerAccess ?? false, user?.proBonusUntil);
+  return effectiveTier(user?.tier, user?.developerAccess ?? false, user?.proBonusUntil, Date.now(), user?.developerTier);
 }
 
 export function messageUsageSnapshot(tier: Tier, used: number, day = todayUtc()) {

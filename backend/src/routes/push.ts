@@ -29,7 +29,7 @@ async function access(c: AppContext) {
   const { userId } = c.get("session");
   const database = db(c.env.DB);
   const [user] = await database
-    .select({ email: schema.users.email, tier: schema.users.tier, developerAccess: schema.users.developerAccess, proBonusUntil: schema.users.proBonusUntil })
+    .select({ email: schema.users.email, tier: schema.users.tier, developerAccess: schema.users.developerAccess, developerTier: schema.users.developerTier, proBonusUntil: schema.users.proBonusUntil })
     .from(schema.users)
     .where(eq(schema.users.id, userId))
     .limit(1);
@@ -37,7 +37,7 @@ async function access(c: AppContext) {
   if (user.email.endsWith("@arcadia.local")) {
     return { database, userId, response: c.json({ error: "Guest accounts cannot use check-ins.", code: "guest_cannot_use" }, 403) };
   }
-  const tier = effectiveTier(user.tier, user.developerAccess, user.proBonusUntil);
+  const tier = effectiveTier(user.tier, user.developerAccess, user.proBonusUntil, Date.now(), user.developerTier);
   if (!isPaidTier(tier)) {
     return { database, userId, response: c.json({ error: "Check-ins are available on Pro and Max.", code: "upgrade_required" }, 402) };
   }

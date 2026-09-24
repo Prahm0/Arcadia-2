@@ -7,6 +7,7 @@ import Onboarding from "@/components/app/Onboarding";
 import { DashboardDataProvider, useDashboard } from "@/lib/app/DashboardProvider";
 import { useDashboardAutoRefresh } from "@/lib/app/useDashboardAutoRefresh";
 import { StudySkyProvider } from "@/lib/app/StudySkyProvider";
+import { FocusSessionProvider } from "@/components/app/focus/FocusSession";
 
 // ThemeProvider is mounted one level up in app/(app)/layout.tsx so the auth
 // and legal pages share the dashboard's theme.
@@ -70,9 +71,12 @@ function Gate({ children }: { children: ReactNode }) {
     <DashboardDataProvider data={state.data} reload={reload} patch={patch}>
       {user.onboardingComplete ? (
         <StudySkyProvider key={user.id}>
-          <AppShell user={user} notices={notices}>
-            {children}
-          </AppShell>
+          {/* Above the pages, so a focus timer and its pop-out survive moving between them. */}
+          <FocusSessionProvider>
+            <AppShell user={user} notices={notices}>
+              {children}
+            </AppShell>
+          </FocusSessionProvider>
         </StudySkyProvider>
       ) : (
         // Until onboarding (and its paywall) finishes, the whole app is the

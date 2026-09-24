@@ -132,7 +132,7 @@ export function useDocumentPip() {
     setPipWindow(null);
   }, []);
 
-  // Leaving the focus page stops the timer, so the pop-out goes with it.
+  // Leaving the app (signing out) stops the timer, so the pop-out goes with it.
   useEffect(
     () => () => {
       try {

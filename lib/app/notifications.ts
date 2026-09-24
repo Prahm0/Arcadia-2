@@ -3,6 +3,7 @@
 const ENABLED_KEY = "arcadia:notifications:enabled";
 const LEAD_MINUTES_KEY = "arcadia:notifications:leadMinutes";
 const DEFAULT_LEAD_MINUTES = 10;
+export const REMINDER_PREFERENCES_CHANGED = "arcadia:reminder-preferences-changed";
 
 export type NotificationPermissionState = NotificationPermission | "unsupported";
 
@@ -36,6 +37,7 @@ export function setReminderEnabled(value: boolean): void {
   } catch {
     /* ignore */
   }
+  window.dispatchEvent(new Event(REMINDER_PREFERENCES_CHANGED));
 }
 
 export function getLeadMinutes(): number {
@@ -58,6 +60,7 @@ export function setLeadMinutes(value: number): void {
   } catch {
     /* ignore */
   }
+  window.dispatchEvent(new Event(REMINDER_PREFERENCES_CHANGED));
 }
 
 /**

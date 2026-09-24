@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, gte, lte } from "drizzle-orm";
 import * as webPush from "web-push";
 import { db, schema, type Database } from "../db";
 import type { Env } from "../types";
@@ -122,6 +122,33 @@ export async function dispatchPushCheckIns(env: Env, now = Date.now()): Promise<
         body: event.title,
         tag: `arcadia-start-${event.id}`,
         link: `/app?openEvent=${encodeURIComponent(event.id)}`,
+      }),
+    ),
+  );
+
+  // Sleep is a scheduled calendar block too. Use the same five-minute
+  // check-in preference and timing as study, without a session follow-up.
+  const sleepEvents = await database
+    .select()
+    .from(schema.events)
+    .where(and(
+      eq(schema.events.category, "sleep"),
+      eq(schema.events.outcome, "planned"),
+      gte(schema.events.startAt, windowStart(5 * minute)),
+      lte(schema.events.startAt, windowEnd(5 * minute)),
+    ));
+  const nextSleepByUser = new Map<string, typeof sleepEvents[number]>();
+  for (const event of sleepEvents) {
+    const current = nextSleepByUser.get(event.userId);
+    if (!current || event.startAt < current.startAt) nextSleepByUser.set(event.userId, event);
+  }
+  await Promise.all(
+    [...nextSleepByUser.values()].map((event) =>
+      sendPushToUser(database, env, event.userId, "session_start", {
+        title: "Sleep starts in 5 minutes",
+        body: "Time to wind down. Rest helps you recharge for tomorrow.",
+        tag: `arcadia-sleep-${event.id}`,
+        link: "/app/schedule",
       }),
     ),
   );

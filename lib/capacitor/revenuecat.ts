@@ -29,11 +29,17 @@ const PRODUCT_IDS: Record<RevenueCatTier, Record<RevenueCatInterval, string>> = 
 
 let configuredUserId: string | null = null;
 
+/**
+ * Resolves to the configured RevenueCat plugin, wrapped in an object. Never
+ * return a Capacitor plugin directly from an async function: awaiting it makes
+ * JS call `.then()` on the native proxy, which throws
+ * '"Purchases.then()" is not implemented on ios' and breaks every purchase call.
+ */
 async function purchasesFor(userId: string) {
   if (!isNativeIOS() || !IOS_API_KEY) return null;
 
   const { Purchases } = await import("@revenuecat/purchases-capacitor");
-  if (configuredUserId === userId) return Purchases;
+  if (configuredUserId === userId) return { purchases: Purchases };
 
   const configured = await Purchases.isConfigured();
   if (!configured.isConfigured) {
@@ -43,7 +49,7 @@ async function purchasesFor(userId: string) {
     if (current.appUserID !== userId) await Purchases.logIn({ appUserID: userId });
   }
   configuredUserId = userId;
-  return Purchases;
+  return { purchases: Purchases };
 }
 
 /**
@@ -80,7 +86,7 @@ function targetForProduct(productIdentifier: string): Pick<IosPurchaseOption, "t
 }
 
 async function offeringPackages(userId: string): Promise<PurchasesPackage[]> {
-  const purchases = await purchasesFor(userId);
+  const purchases = (await purchasesFor(userId))?.purchases;
   if (!purchases) return [];
   const offerings = await purchases.getOfferings();
   return offerings.current?.availablePackages ?? [];
@@ -105,7 +111,7 @@ export async function purchaseIosOption(
   const targetProductId = PRODUCT_IDS[tier][interval];
   if (!targetProductId) throw new Error("This App Store plan has not been configured yet.");
 
-  const purchases = await purchasesFor(userId);
+  const purchases = (await purchasesFor(userId))?.purchases;
   if (!purchases) throw new Error("In-app purchases are not available in this build yet.");
   const aPackage = (await offeringPackages(userId)).find(
     (candidate) => candidate.product.identifier === targetProductId,
@@ -115,14 +121,14 @@ export async function purchaseIosOption(
 }
 
 export async function restoreIosPurchases(userId: string): Promise<void> {
-  const purchases = await purchasesFor(userId);
+  const purchases = (await purchasesFor(userId))?.purchases;
   if (!purchases) throw new Error("In-app purchases are not available in this build yet.");
   await purchases.restorePurchases();
 }
 
 /** Returns Apple's subscription-management URL when RevenueCat has one. */
 export async function getIosSubscriptionManagementUrl(userId: string): Promise<string | null> {
-  const purchases = await purchasesFor(userId);
+  const purchases = (await purchasesFor(userId))?.purchases;
   if (!purchases) return null;
   const { customerInfo } = await purchases.getCustomerInfo();
   return customerInfo.managementURL;

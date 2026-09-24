@@ -32,7 +32,7 @@ interface Tier {
   badge?: string;
 }
 
-const TIERS: Tier[] = [
+export const TIERS: Tier[] = [
   {
     key: "free",
     name: "Free",

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, Inter, Instrument_Serif, JetBrains_Mono } from "next/font/google";
+import NativeShell from "@/components/NativeShell";
 import PwaInstallPrompt from "@/components/PwaInstallPrompt";
 import { PostHogProvider } from "@/lib/analytics/posthog";
 import "./globals.css";
@@ -115,6 +116,7 @@ export default function RootLayout({
         <PostHogProvider>
           {children}
           <PwaInstallPrompt />
+          <NativeShell />
         </PostHogProvider>
       </body>
     </html>

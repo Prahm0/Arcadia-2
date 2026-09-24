@@ -995,8 +995,15 @@ html[data-app-theme] .type-mono-label {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    border: 0;
     cursor: pointer;
+  }
+
+  /* Clears the base-select default border in the base layer, so a
+     component's own border utility (.border + borderColor) still wins. */
+  @layer base {
+    [data-app-theme] select {
+      border: 0;
+    }
   }
 
   /* A thin chevron, like the app's other icons, instead of a solid triangle. */

@@ -25,6 +25,14 @@ export function formatDurationMinutes(minutes: number): string {
   return `${hours} hr ${mins} min`;
 }
 
+/** The compact form for stats and charts: "45 min", "2 hr", "1h 30m". */
+export function formatMinutes(m: number): string {
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  return r === 0 ? `${h} hr` : `${h}h ${r}m`;
+}
+
 export function isToday(iso: string, timezone: string): boolean {
   const target = dateKey(iso, timezone);
   const today = dateKey(new Date().toISOString(), timezone);

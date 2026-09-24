@@ -19,7 +19,6 @@ function icon(path: ReactNode) {
 }
 
 const ITEMS: MoreItem[] = [
-  { label: "Study Sky", href: "/app/sky", icon: icon(<><path d="M4 14L9 5l7 6-8 5" /><circle cx="9" cy="5" r="1" /></>) },
   { label: "Profile",     href: "/app/profile",     icon: icon(<><circle cx="10" cy="8" r="3" /><path d="M4.5 16.5c1-2.6 3.1-4 5.5-4s4.5 1.4 5.5 4" /></>) },
   { label: "Deadlines",   href: "/app/deadlines",   icon: icon(<><circle cx="10" cy="10" r="7" /><path d="M10 6v4l3 2" /></>) },
   { label: "Focus",       href: "/app/focus",       icon: icon(<><circle cx="10" cy="10" r="7" /><circle cx="10" cy="10" r="3" /></>) },

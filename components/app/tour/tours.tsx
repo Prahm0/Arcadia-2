@@ -714,20 +714,6 @@ export const TOURS: Record<TourId, Tour> = {
     title: "Streaks",
     steps: [
       {
-        title: "Your study sky",
-        body: "Every focus session lights one star. Hover or tap a star to see which session lit it, or how many sessions away it is.",
-        visual: (
-          <Window width={260}>
-            <div className="flex items-center justify-between px-1 py-2">
-              {[1, 1, 1, 1, 0, 0, 0].map((lit, index) => (
-                <span key={index} className="text-[14px]" style={{ color: "var(--app-arcad)", opacity: lit ? 1 : 0.35 }}>✦</span>
-              ))}
-            </div>
-            <p className="text-[9.5px]" style={{ color: "var(--app-text-muted)" }}>4/16 stars lit · next session lights star 5</p>
-          </Window>
-        ),
-      },
-      {
         title: "How streaks count",
         body: "A day counts toward your streak when you complete at least 70% of the study minutes you planned for it.",
         visual: (
@@ -737,6 +723,35 @@ export const TOURS: Record<TourId, Tour> = {
               <span className="text-[10px]" style={{ color: "var(--app-text-muted)" }}>70% locks the day in</span>
               <Chip tone="success">Counts ✓</Chip>
             </div>
+          </Window>
+        ),
+      },
+      {
+        title: "A chain of days",
+        body: "Each day that counts lights a star and joins the chain. A day under 70% breaks it. Days with nothing planned don't count either way. Tap a day to see how it went.",
+        visual: (
+          <Window width={260}>
+            <div className="flex items-center justify-between px-1 py-2">
+              {[1, 1, 0.5, 1, 1, 1, 0].map((lit, index) => (
+                <span key={index} className="text-[14px]" style={{ color: "var(--app-text)", opacity: lit === 1 ? 1 : lit ? 0.3 : 0.15 }}>
+                  {lit === 0.5 ? "·" : "✦"}
+                </span>
+              ))}
+            </div>
+            <p className="text-[9.5px]" style={{ color: "var(--app-text-muted)" }}>5-day streak · a rest day on Wednesday · today still open</p>
+          </Window>
+        ),
+      },
+      {
+        title: "Streak cards keep the rest",
+        body: "Every minute of focus lights stars on your streak cards. A finished one that's yours for good. A streak can break; stars stay lit.",
+        visual: (
+          <Window width={260}>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-medium" style={{ color: "var(--app-text)" }}>The Sentinel</span>
+              <span className="text-[9.5px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>5 of 7 stars lit</span>
+            </div>
+            <Meter label="Next: 6 study days" value="5 / 6" fraction={5 / 7} />
           </Window>
         ),
       },

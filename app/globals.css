@@ -408,44 +408,14 @@ html[data-app-theme] {
   100% { transform: scale(1); }
 }
 
-/* The study sky on Analytics: background stars that breathe, the star your
-   next session lights, and stars catching light as the sky loads. */
-@keyframes sky-twinkle {
-  0%, 100% { opacity: var(--o, 0.6); }
-  50% { opacity: calc(var(--o, 0.6) * 0.2); }
-}
-
+/* The streak chain: today's open star, still waiting to be locked in. */
 @keyframes sky-pulse {
   0% { transform: scale(0.7); opacity: 0.9; }
   100% { transform: scale(1.9); opacity: 0; }
 }
 
-@keyframes sky-ignite {
-  0% { transform: scale(0.2); opacity: 0; }
-  60% { transform: scale(1.2); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-@utility sky-twinkle {
-  animation: sky-twinkle var(--t, 4s) ease-in-out infinite;
-  animation-delay: var(--d, 0ms);
-
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
-  }
-}
-
 @utility sky-pulse {
   animation: sky-pulse 2.4s var(--ease-out-expo) infinite;
-
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
-  }
-}
-
-@utility sky-ignite {
-  animation: sky-ignite 700ms var(--ease-out-expo) both;
-  animation-delay: var(--d, 0ms);
 
   @media (prefers-reduced-motion: reduce) {
     animation: none;

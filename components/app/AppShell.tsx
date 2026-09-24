@@ -103,7 +103,6 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Progress",
     icon: icon(<><path d="M4 15v-4M9 15V7M14 15v-6" /><path d="M2 17h16" /></>),
     items: [
-      { label: "Study Sky", href: "/app/sky", icon: icon(<><path d="M4 14L9 5l7 6-8 5" /><circle cx="4" cy="14" r="1" /><circle cx="9" cy="5" r="1" /><circle cx="16" cy="11" r="1" /></>) },
       { label: "Analytics", href: "/app/analytics", icon: icon(<><path d="M4 15v-4M9 15V7M14 15v-6" /><path d="M2 17h16" /></>) },
       { label: "Streaks", href: "/app/streaks", icon: icon(<path d="M10 17c3 0 5-2 5-5 0-3.2-2.6-5-3.7-8.5C9.3 5 8.6 7 8.8 9 7.6 8.5 7 7.4 6.9 6.5 5.6 7.8 5 9.6 5 12c0 3 2 5 5 5z" />) },
       { label: "Weekly review", href: "/app/review", icon: icon(<><path d="M4 5h12M4 10h8M4 15h12" /><circle cx="15" cy="10" r="1" fill="currentColor" /></>) },

@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
+import { dateKey } from "@/lib/api/time";
 import type { DashboardResponse, PlannerTask } from "@/lib/api/types";
+import { startOfDayMs } from "./schedule/calendar";
 import AppButton from "./AppButton";
 import SubjectPicker from "./SubjectPicker";
 
@@ -31,6 +33,7 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
   const [subject, setSubject] = useState<string | null>(null);
   const [taskType, setTaskType] = useState("homework");
   const [dueDate, setDueDate] = useState(() => defaultDueDate());
+  const [dueTime, setDueTime] = useState("");
   const [minutes, setMinutes] = useState(60);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -45,18 +48,23 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
         setTitle(editing.title);
         setSubject(editing.subject || null);
         setTaskType(editing.taskType || "homework");
-        setDueDate(editing.dueAt.slice(0, 10));
+        setDueDate(dateKey(editing.dueAt, data.user?.timezone ?? "Australia/Brisbane"));
+        const existingTime = clockKey(editing.dueAt, data.user?.timezone ?? "Australia/Brisbane");
+        // Existing date-only deadlines used 11:59 pm. Keep that field empty
+        // rather than making an old task look like it had an explicit time.
+        setDueTime(existingTime === "23:59" ? "" : existingTime);
         setMinutes(editing.remainingMinutes || 60);
       } else {
         setTitle("");
         setSubject(initialSubject ?? null);
         setTaskType("homework");
         setDueDate(initialDue || defaultDueDate());
+        setDueTime("");
         setMinutes(60);
       }
       setTimeout(() => titleRef.current?.focus(), 40);
     }
-  }, [open, editing, data.subjects, initialDue, initialSubject]);
+  }, [open, editing, data.user?.timezone, initialDue, initialSubject]);
 
   useEffect(() => {
     if (!open) return;
@@ -75,7 +83,9 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
       title,
       subject,
       taskType,
-      dueAt: new Date(`${dueDate}T23:59:00`).toISOString(),
+      dueAt: new Date(
+        startOfDayMs(dueDate, data.user?.timezone ?? "Australia/Brisbane") + dueMinutes(dueTime) * 60_000,
+      ).toISOString(),
       estimatedMinutes: minutes,
       priority: 2,
     };
@@ -243,6 +253,17 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
                 style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
               />
             </Field>
+            <Field label="Time (optional)">
+              <input
+                type="time"
+                value={dueTime}
+                onChange={(e) => setDueTime(e.target.value)}
+                className="w-full rounded-md px-3 py-2.5 text-[15px] outline-none"
+                style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
+              />
+            </Field>
+          </div>
+          <div>
             <Field label={`Estimated time · ${formatMinutes(minutes)}`}>
               <input
                 type="range"
@@ -303,4 +324,22 @@ function formatMinutes(m: number): string {
   if (h === 0) return `${r} min`;
   if (r === 0) return `${h} hr`;
   return `${h} hr ${r} min`;
+}
+
+/** No entered time retains the current end-of-day deadline behaviour. */
+function dueMinutes(time: string): number {
+  if (!/^\d{2}:\d{2}$/.test(time)) return 23 * 60 + 59;
+  const [hours, minutes] = time.split(":").map(Number);
+  return Math.min(23 * 60 + 59, Math.max(0, hours * 60 + minutes));
+}
+
+function clockKey(iso: string, timezone: string): string {
+  const parts = new Intl.DateTimeFormat("en-AU", {
+    timeZone: timezone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(iso));
+  const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "00";
+  return `${value("hour")}:${value("minute")}`;
 }

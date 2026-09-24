@@ -123,7 +123,7 @@ export default function YourSky({
           </div>
         ) : (
           <div className="overflow-hidden rounded-xl" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)", color: "var(--app-text)" }}>
-            <div className="grid lg:grid-cols-[minmax(0,1.5fr)_minmax(300px,1fr)]">
+            <div className="grid @3xl/main:grid-cols-[minmax(0,1.5fr)_minmax(300px,1fr)]">
               <div className="relative bg-[#0c1017]">
                 <div className="flex justify-between gap-3 px-6 pt-6 text-[10px] uppercase tracking-[.16em] text-[#a8b4c4]">
                   <span>{definition.family}</span>
@@ -257,7 +257,7 @@ export default function YourSky({
             }
           />
           {listed.length ? (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 @3xl/main:grid-cols-4">
               {listed.map((card) => (
                 <button
                   key={card.id}

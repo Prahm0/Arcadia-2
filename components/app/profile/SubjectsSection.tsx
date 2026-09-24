@@ -36,7 +36,7 @@ export default function SubjectsSection({ data, replanned }: SectionProps) {
           Add the subjects you take and Arcad will plan time for each one every week.
         </p>
       ) : (
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 @3xl/main:grid-cols-3">
           {data.subjects.map((subject, index) => (
             <li key={subject.id}>
               <SubjectCard subject={subject} fallback={SUBJECT_COLORS[index % SUBJECT_COLORS.length]} />

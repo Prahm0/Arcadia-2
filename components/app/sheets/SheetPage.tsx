@@ -266,7 +266,7 @@ function SheetEditor({
         <SubjectTag subject={find(subjectId)} size="sm" />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 @3xl/main:grid-cols-2">
         <div className="flex flex-col gap-3">
           {sections.map((section, index) => (
             <div key={index} className="rounded-lg p-3" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>

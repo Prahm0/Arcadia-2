@@ -572,15 +572,15 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
         )}
 
         <main
-          className="flex-1 min-w-0 pb-[calc(env(safe-area-inset-bottom,0)+72px)] lg:pb-0"
+          className="@container/main flex-1 min-w-0 pb-[calc(env(safe-area-inset-bottom,0)+72px)] lg:pb-0"
         >
           {isGuestEmail(user?.email) ? (
             <GuestBanner />
           ) : null}
           <PageMount>{children}</PageMount>
         </main>
+        <ArcadFloatingButton />
       </div>
-      <ArcadFloatingButton />
       <MobileBottomNav />
       <NewTaskSheet open={newTaskOpen} onClose={() => setNewTaskOpen(false)} />
       <ShortcutsDialog open={shortcutsOpen} onClose={closeShortcuts} />

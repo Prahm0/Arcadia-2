@@ -10,6 +10,7 @@ const links = [
   { label: "Privacy", href: "/privacy" },
   { label: "Terms", href: "/terms" },
   { label: "Refunds", href: "/refunds" },
+  { label: "Support", href: "/support" },
   { label: "Contact", href: "mailto:teamarcadiahq@gmail.com" },
 ];
 

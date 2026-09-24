@@ -296,8 +296,8 @@ export default function YourSky({
           onClose={() => { setDetailId(null); setActionError(null); }}
         >
           <div className="grid items-center gap-8 sm:grid-cols-[minmax(0,280px)_1fr]">
-            <div key={`${detail.id}-${replay}`} className={replay && sky.preferences.ambientMotion ? styles.reveal : ""}>
-              <ConstellationCard card={detail} preview={!detail.earnedAt} />
+            <div key={`${detail.id}-${replay}`} className={replay && sky.preferences.ambientMotion ? styles.reveal : styles.enter}>
+              <ConstellationCard card={detail} preview={!detail.earnedAt} showcase={sky.preferences.ambientMotion} />
             </div>
             <div>
               <p className="text-[11px] uppercase tracking-widest" style={{ color: "var(--app-text-muted)" }}>

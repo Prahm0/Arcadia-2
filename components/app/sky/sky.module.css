@@ -10,12 +10,11 @@
 .stage .star { transition: opacity 500ms ease, r 500ms ease; }
 /* Streak card: a layered collectible. Backdrop (night gradient, dust, double
    frame, corner brackets) → sky disc → title block → foil sheen on top. */
-.card { --gold: var(--sky-colour); position: relative; isolation: isolate; display: flex; flex-direction: column; width: 100%; aspect-ratio: 2 / 3; overflow: hidden; border: 1px solid #ffffff1c; border-radius: 12px; color: #f1f3f6; text-align: center; transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(var(--lift, 0px)); transition: transform 450ms cubic-bezier(.2,.8,.2,1), border-color 200ms, box-shadow 300ms; }
-.card[data-collected="true"] { border-color: color-mix(in srgb, var(--gold) 34%, transparent); box-shadow: 0 26px 44px -30px color-mix(in srgb, var(--gold) 55%, transparent); }
+.card { --gold: var(--sky-colour); position: relative; isolation: isolate; display: flex; flex-direction: column; width: 100%; aspect-ratio: 2 / 3; overflow: hidden; border: 1px solid #ffffff1c; border-radius: 12px; color: #f1f3f6; text-align: center; box-shadow: 0 20px 40px -26px #000000d9; transform: perspective(1000px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); translate: 0 var(--lift, 0px); transition: translate 420ms cubic-bezier(.16,1,.3,1), border-color 300ms, box-shadow 400ms; will-change: transform; }
+.card[data-collected="true"] { border-color: color-mix(in srgb, var(--gold) 34%, transparent); box-shadow: 0 20px 40px -26px #000000d9, 0 26px 44px -30px color-mix(in srgb, var(--gold) 55%, transparent); }
 .card[data-preview="true"] { border-style: dashed; }
-.card::after { content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none; border-radius: inherit; opacity: 0; mix-blend-mode: screen; transition: opacity 300ms; background: linear-gradient(115deg, transparent calc(var(--foil, 50%) - 40%), #ffe4ae26 calc(var(--foil, 50%) - 15%), #b8ccff21 var(--foil, 50%), #ffd4ea1a calc(var(--foil, 50%) + 12%), transparent calc(var(--foil, 50%) + 38%)); }
-.card[data-collected="true"]::after { opacity: .55; }
-.card[data-collected="true"]:hover::after { opacity: 1; }
+.card::after { content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none; border-radius: inherit; opacity: 0; mix-blend-mode: color-dodge; background: linear-gradient(115deg, transparent calc(var(--mx, 50%) - 46%), #ffd98a26 calc(var(--mx, 50%) - 20%), #ff9ad514 calc(var(--mx, 50%) - 7%), #8fd8ff21 calc(var(--mx, 50%) + 6%), #c7a8ff17 calc(var(--mx, 50%) + 18%), transparent calc(var(--mx, 50%) + 44%)); }
+.card[data-collected="true"]::after { opacity: calc(.3 + var(--glare, 0) * .5); }
 .cardBackdrop { position: absolute; inset: 0; z-index: -1; pointer-events: none; color: color-mix(in srgb, var(--gold) 55%, transparent); background:
   radial-gradient(85% 52% at 50% 37%, color-mix(in srgb, var(--gold) 11%, transparent), transparent 70%),
   radial-gradient(1px 1px at 13% 21%, #ffffffa6, transparent 70%), radial-gradient(1px 1px at 84% 12%, #ffffff8c, transparent 70%),
@@ -50,24 +49,42 @@
 .segments { flex: 1; display: flex; gap: 2px; }
 .segments i { flex: 1; height: 2px; background: #ffffff1c; }
 .segments i[data-on="true"] { background: var(--gold); box-shadow: 0 0 4px color-mix(in srgb, var(--gold) 60%, transparent); }
+/* Gloss: a varnished, reflective surface over the whole card. A light that
+   follows the pointer, a crisp laminate reflection that slides against the
+   tilt, bevelled edges, and a sweep of light on hover and when shown. */
+.gloss { position: absolute; inset: 0; z-index: 4; overflow: hidden; pointer-events: none; border-radius: inherit; box-shadow: inset 0 1px 0 #ffffff33, inset 0 0 0 1px #ffffff0d, inset 0 -1px 0 #0000008c; }
+.gloss::before { content: ''; position: absolute; inset: 0; mix-blend-mode: screen; opacity: calc(.3 + var(--glare, 0) * .7); background: radial-gradient(110% 80% at var(--mx, 50%) calc(var(--my, 50%) - 38%), #ffffff2e 0%, #ffffff0f 24%, transparent 55%); }
+.gloss::after { content: ''; position: absolute; inset: -12px; translate: calc(var(--gx, 0) * -7px) calc(var(--gy, 0) * -7px); background: linear-gradient(158deg, #ffffff1f 0%, #ffffff0a 25%, transparent 25.4%), linear-gradient(338deg, #ffffff0a 0%, transparent 16%); }
+.sweep { position: absolute; inset: 0 -100%; opacity: 0; translate: -45% 0; background: linear-gradient(105deg, transparent 44%, #ffffff00 45%, #ffffff33 50%, #ffffff00 55%, transparent 56%); }
+.cardButton:hover .sweep { animation: sweep 1100ms cubic-bezier(.3,.6,.2,1) both; }
+.dome { translate: calc(var(--gx, 0) * -12px) calc(var(--gy, 0) * -9px); opacity: calc(.7 + var(--glare, 0) * .3); }
+.domeLow { translate: calc(var(--gx, 0) * 6px) calc(var(--gy, 0) * 4px); }
 /* 93 cards in the grid: skip painting the ones off screen. */
 .cardButton { width: 100%; text-align: left; border-radius: 12px; cursor: pointer; content-visibility: auto; contain-intrinsic-block-size: auto 420px; }
-.cardButton:hover .card { --lift: -3px; border-color: #ffffff5c; }
-.cardButton:hover .card[data-collected="true"] { border-color: color-mix(in srgb, var(--gold) 60%, transparent); }
+.cardButton:hover .card { --lift: -4px; border-color: #ffffff5c; box-shadow: 0 30px 50px -28px #000000f2; }
+.cardButton:hover .card[data-collected="true"] { border-color: color-mix(in srgb, var(--gold) 60%, transparent); box-shadow: 0 30px 50px -28px #000000f2, 0 30px 50px -30px color-mix(in srgb, var(--gold) 70%, transparent); }
 .cardButton:focus-visible { outline: 2px solid var(--app-accent); outline-offset: 4px; }
-.reveal .card { animation: form-frame 1800ms cubic-bezier(.22,1,.36,1) both; }
-.reveal .cardBackdrop { animation: form-backdrop 1800ms ease both; }
-.reveal .cardArtwork { animation: form-stars 1800ms cubic-bezier(.22,1,.36,1) both; }
-.reveal .cardTop, .reveal .cardBottom { animation: form-label 1800ms ease both; }
-@keyframes form-frame { 0%, 35% { border-color: transparent; box-shadow: none; } }
-@keyframes form-backdrop { 0%, 30% { opacity: 0; } 100% { opacity: 1; } }
 @media (max-width: 480px) { .cardTop { padding: 15px 15px 0; font-size: 7.5px; letter-spacing: .14em; } .cardArtwork svg { top: 4px; left: 8px; width: calc(100% - 16px); height: calc(100% - 6px); } .cardBottom { padding: 0 14px 15px; } .cardName { font-size: 19px; } .cardStory { font-size: 10.5px; -webkit-line-clamp: 1; line-clamp: 1; } .cardDetail { display: none; } .rule { margin-bottom: 6px; } .cardDate, .progress { margin-top: 8px; font-size: 8px; } .corner { width: 12px; height: 12px; } .dialog { max-height: 94svh; width: calc(100vw - 16px); } }
+.enter .card { animation: card-in 900ms cubic-bezier(.16,1,.3,1) both; }
+.enter .cardArtwork { animation: disc-in 1100ms 100ms cubic-bezier(.16,1,.3,1) both; }
+.enter .sweep, .reveal .sweep { animation: sweep 1400ms 450ms cubic-bezier(.3,.6,.2,1) both; }
+.reveal .card { animation: card-in 1000ms cubic-bezier(.16,1,.3,1) both; }
+.reveal .cardBackdrop { animation: fade-in 1100ms 120ms ease both; }
+.reveal .cardArtwork { animation: form-stars 1700ms 80ms cubic-bezier(.16,1,.3,1) both; }
+.reveal .cardTop, .reveal .cardBottom { animation: form-label 900ms 650ms cubic-bezier(.16,1,.3,1) both; }
+@keyframes card-in { from { opacity: 0; translate: 0 18px; scale: .94; } }
+@keyframes disc-in { from { opacity: 0; scale: .9; } }
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes form-stars { from { opacity: 0; scale: 1.2; } 45% { opacity: 1; } }
+@keyframes form-label { from { opacity: 0; translate: 0 8px; } }
+@keyframes sweep { 0% { translate: -45% 0; opacity: 0; } 15%, 80% { opacity: 1; } 100% { translate: 45% 0; opacity: 0; } }
 .dialog { position: fixed; inset: 0; margin: auto; max-height: 90svh; width: min(900px, calc(100vw - 32px)); overflow-y: auto; border: 1px solid var(--app-border); border-radius: 12px; padding: 0; background: var(--app-elev); color: var(--app-text); box-shadow: var(--elev-3); }
 .dialog::backdrop { background: #000a; backdrop-filter: blur(5px); }
+.dialog[open] { animation: dialog-in 420ms cubic-bezier(.16,1,.3,1); }
+.dialog[open]::backdrop { animation: fade-in 300ms ease; }
+@keyframes dialog-in { from { opacity: 0; translate: 0 12px; scale: .98; } }
 .banner { position: relative; height: 150px; overflow: hidden; background: #0c1017; color: #f1f3f6; border-radius: 8px 8px 0 0; }
 .bannerArt { position: absolute; width: 340px; right: 0; top: -43px; pointer-events: none; mask-image: linear-gradient(to right, transparent, black 40%); }
 .bannerText { position: relative; z-index: 1; padding: 28px 24px; width: 65%; }
 @keyframes breathe { from { opacity: .5; } to { opacity: .9; } }
-@keyframes form-stars { 0%, 25% { transform: scale(1.35); filter: brightness(1.3); } 100% { transform: scale(1); filter: brightness(1); } }
-@keyframes form-label { 0%, 55% { opacity: 0; transform: translateY(5px); } 100% { opacity: 1; transform: translateY(0); } }
-@media (prefers-reduced-motion: reduce) { .stage *, .reveal *, .card { animation: none !important; transition: none !important; transform: none !important; } }
+@media (prefers-reduced-motion: reduce) { .stage *, .reveal *, .enter *, .dialog, .dialog::backdrop, .sweep { animation: none !important; transition: none !important; } .nebula, .card { transform: none !important; translate: none !important; } }

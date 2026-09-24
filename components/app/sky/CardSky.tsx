@@ -2,6 +2,7 @@
 import { useId, useMemo } from "react";
 import type { ConstellationDefinition } from "@/shared/constellations";
 import { Dust, Figure, dustField, round, seeded, starSizes } from "./skyArt";
+import styles from "./sky.module.css";
 
 // The sky disc on a streak card: a small star chart, built in layers from the
 // back — sky, Milky Way, nebulae, globe grid, background stars, the figure, a
@@ -45,6 +46,7 @@ export default function CardSky({ definition, lit, collected }: { definition: Co
   const gold = definition.colour;
   const rim = collected ? 1 : .55;
   const [lx1, ly1] = polar(R - 5, 232), [lx2, ly2] = polar(R - 5, 318);
+  const [bx1, by1] = polar(R - 6, 140), [bx2, by2] = polar(R - 6, 220);
   return (
     <svg viewBox="0 0 400 400" fill="none" aria-hidden="true">
       <defs>
@@ -59,6 +61,7 @@ export default function CardSky({ definition, lit, collected }: { definition: Co
         <linearGradient id={id("rim")} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor={gold} stopOpacity={.85 * rim} /><stop offset=".45" stopColor={gold} stopOpacity={.2 * rim} /><stop offset=".7" stopColor="#fff3dc" stopOpacity={.7 * rim} /><stop offset="1" stopColor={gold} stopOpacity={.3 * rim} />
         </linearGradient>
+        <linearGradient id={id("dome")} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fff" stopOpacity=".2" /><stop offset=".6" stopColor="#fff" stopOpacity=".04" /><stop offset="1" stopColor="#fff" stopOpacity="0" /></linearGradient>
         <linearGradient id={id("glint")} x1="0" y1="1" x2="1" y2="0"><stop offset="0" stopColor="#fff" stopOpacity="0" /><stop offset=".5" stopColor="#fff" stopOpacity=".22" /><stop offset="1" stopColor="#fff" stopOpacity="0" /></linearGradient>
       </defs>
 
@@ -79,6 +82,9 @@ export default function CardSky({ definition, lit, collected }: { definition: Co
         <Figure definition={definition} points={sky.points} sizes={sky.sizes} lit={lit} />
         <circle cx={C} cy={C} r={R} fill={`url(#${id("vignette")})`} />
         <path d={`M${lx1} ${ly1}A${R - 5} ${R - 5} 0 0 1 ${lx2} ${ly2}`} stroke={`url(#${id("glint")})`} strokeWidth="2" strokeLinecap="round" />
+        {/* The glass dome: a soft highlight up top and a thin rim light below, sliding against the tilt. */}
+        <ellipse className={styles.dome} cx={C} cy={C - 78} rx={R * .74} ry={R * .42} fill={`url(#${id("dome")})`} />
+        <path className={styles.domeLow} d={`M${bx1} ${by1}A${R - 6} ${R - 6} 0 0 1 ${bx2} ${by2}`} stroke="#fff4dc" strokeOpacity=".16" strokeWidth="1.4" strokeLinecap="round" />
       </g>
 
       <circle cx={C} cy={C} r={R + 1.5} stroke={`url(#${id("rim")})`} strokeWidth="1.6" />

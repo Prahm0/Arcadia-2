@@ -66,7 +66,7 @@ export default function TaskDetailSheet({ task, timezone, onClose, onEdit }: Tas
   const progress = estimated > 0 ? Math.min(1, scheduled / estimated) : 0;
   const isComplete = task.status === "complete";
 
-  async function patchTask(body: Record<string, unknown>, kind: NonNullable<typeof busy>) {
+  async function patchTask(body: Record<string, unknown>, kind: NonNullable<typeof busy>): Promise<boolean> {
     setBusy(kind);
     setError(null);
     try {
@@ -75,17 +75,20 @@ export default function TaskDetailSheet({ task, timezone, onClose, onEdit }: Tas
         body: JSON.stringify(body),
       });
       await reload();
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't save changes.");
+      return false;
     } finally {
       setBusy(null);
     }
   }
 
   async function saveNotes() {
-    await patchTask({ notes }, "notes");
-    // reload above refreshes the task; keep the sheet open and clear dirty flag
-    setDirtyNotes(false);
+    if (await patchTask({ notes }, "notes")) {
+      // Keep unsaved notes marked dirty so a failed save can be retried.
+      setDirtyNotes(false);
+    }
   }
 
   async function addMinutes(delta: number) {
@@ -310,6 +313,7 @@ export default function TaskDetailSheet({ task, timezone, onClose, onEdit }: Tas
           <textarea
             ref={notesRef}
             value={notes}
+            maxLength={2000}
             onChange={(e) => {
               setNotes(e.target.value);
               setDirtyNotes(true);

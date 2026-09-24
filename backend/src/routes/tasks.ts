@@ -7,10 +7,12 @@ import { serialiseTask } from "../lib/serialise";
 import type { Env, Variables } from "../types";
 
 const tasks = new Hono<{ Bindings: Env; Variables: Variables }>();
+const TASK_NOTES_LIMIT = 2000;
 
 interface TaskBody {
   title?: string;
   subject?: string | null;
+  notes?: string;
   taskType?: string;
   dueAt?: string;
   estimatedMinutes?: number;
@@ -75,6 +77,7 @@ tasks.patch("/:id", async (c) => {
     patch.title = body.title.trim().slice(0, 200);
   }
   if ("subject" in body) patch.subject = await resolveSubject(database, userId, body.subject);
+  if (typeof body.notes === "string") patch.notes = body.notes.slice(0, TASK_NOTES_LIMIT);
   if (typeof body.taskType === "string") patch.taskType = body.taskType;
   if (typeof body.dueAt === "string") {
     const dueAt = Date.parse(body.dueAt);
@@ -95,7 +98,9 @@ tasks.patch("/:id", async (c) => {
     await database.update(schema.tasks).set(patch).where(eq(schema.tasks.id, id));
   }
 
-  await replan(db(c.env.DB), userId);
+  if (Object.keys(patch).some((key) => key !== "notes")) {
+    await replan(database, userId);
+  }
   return c.json({ ok: true });
 });
 

@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { useStreak } from "@/lib/app/useStreak";
 import { buildProactiveCards, type ProactiveCard, type ProactiveTone } from "@/lib/app/proactiveCards";
-import ArcadOrb from "./ArcadOrb";
 
 const STORAGE_PREFIX = "arcadia:proactive:dismissed:";
 
@@ -83,7 +82,7 @@ export default function ProactiveArcadCards({ limit = 2, compact = false }: Proa
         >
           <div className="flex items-start gap-3">
             <span className={compact ? "mt-0" : "mt-0.5"}>
-              <ArcadOrb size={compact ? 24 : 30} state={card.tone === "warn" ? "alert" : "idle"} />
+              <ArcadNoticeMark size={compact ? 24 : 30} tone={card.tone} />
             </span>
             <div className="min-w-0 flex-1">
               <p className="type-eyebrow" style={{ color: eyebrowColor(card.tone) }}>
@@ -141,6 +140,22 @@ export default function ProactiveArcadCards({ limit = 2, compact = false }: Proa
         </div>
       ))}
     </div>
+  );
+}
+
+/** Product notices use a quiet spark. Arcad's expressive companion belongs in chat. */
+function ArcadNoticeMark({ size, tone }: { size: number; tone: ProactiveTone }) {
+  const colour = tone === "warn" ? "var(--app-warning)" : tone === "celebrate" ? "var(--app-success)" : "var(--app-arcad)";
+  return (
+    <span
+      aria-hidden="true"
+      className="grid place-items-center rounded-full"
+      style={{ width: size, height: size, background: `color-mix(in oklab, ${colour} 12%, var(--app-surface))` }}
+    >
+      <svg viewBox="0 0 20 20" width={size * 0.52} height={size * 0.52} fill="none">
+        <path d="M10 2.5l1.15 4.15L15.5 8l-4.35 1.35L10 13.5 8.85 9.35 4.5 8l4.35-1.35L10 2.5z" fill={colour} />
+      </svg>
+    </span>
   );
 }
 

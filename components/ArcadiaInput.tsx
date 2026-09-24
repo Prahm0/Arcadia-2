@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, LayoutGroup, motion, useInView } from "framer-motion";
+import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { EASE_OUT } from "@/lib/animation";
 import { tellAfter, tellArcadia, tellBefore, tellDays } from "@/lib/demo-data";
@@ -127,10 +128,21 @@ export default function ArcadiaInput() {
           </div>
           <div className="col-span-12 lg:col-span-4 lg:col-start-9 lg:self-end">
             <FadeIn delay={0.25}>
-              <p className="type-body-lg max-w-[420px] text-day-text/60">
-                Say it plainly. Arcadia finds the affected blocks, rebuilds the plan and shows
-                you what comes next.
-              </p>
+              <div className="flex items-end gap-4">
+                <p className="type-body-lg max-w-[340px] text-day-text/60">
+                  Say it plainly. Arcadia finds the affected blocks, rebuilds the plan and shows
+                  you what comes next.
+                </p>
+                <Image
+                  src="/brand/arcad-orb-mark.png"
+                  alt=""
+                  aria-hidden="true"
+                  width={76}
+                  height={76}
+                  sizes="76px"
+                  className="mb-0.5 shrink-0 rounded-full object-cover shadow-[0_12px_26px_-16px_rgba(86,57,220,0.55)]"
+                />
+              </div>
             </FadeIn>
           </div>
         </div>

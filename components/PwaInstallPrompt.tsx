@@ -145,7 +145,7 @@ export default function PwaInstallPrompt() {
           className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl"
           style={{ background: "#090812" }}
         >
-          <Image src="/brand/arcad-orb-mark.png" alt="" aria-hidden="true" width={28} height={28} className="rounded-[18%]" />
+          <Image src="/brand/arcadia-mark.png" alt="" aria-hidden="true" width={28} height={28} className="rounded-[18%]" />
         </div>
         <div className="flex-1">
           <p className="text-[14.5px] font-semibold">Add Arcadia to your Home Screen</p>

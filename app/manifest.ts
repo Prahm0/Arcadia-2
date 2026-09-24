@@ -3,7 +3,7 @@ import type { MetadataRoute } from "next";
 /**
  * Web app manifest, makes Arcadia installable. Users who visit on iOS
  * Safari or Android Chrome can add Arcadia to their home screen and open
- * it standalone (no browser chrome). Arcad's constellation-orb mark is used for
+ * it standalone (no browser chrome). The official Arcadia mark is used for
  * both the standard and iOS home-screen icons.
  */
 export default function manifest(): MetadataRoute.Manifest {

@@ -22,18 +22,26 @@ export default function RefundsPage() {
         data stays with you either way.
       </p>
       <p>
+        If you subscribed in the iOS app, cancel in your iPhone&rsquo;s Settings
+        under your Apple ID at least 24 hours before your renewal date. Refunds
+        for iOS purchases are handled by Apple through
+        reportaproblem.apple.com, under Apple&rsquo;s policies.
+      </p>
+      <p>
         Deleting your Arcadia account is different: it permanently removes your
-        app data and cancels any active subscription immediately. Unused paid
-        time is not refunded.
+        app data and cancels any active web subscription immediately (iOS
+        subscriptions must be cancelled in your Apple ID settings). Except where
+        the Australian Consumer Law requires otherwise, unused paid time is not
+        refunded.
       </p>
 
       <h2>Refunds</h2>
       <p>
-        We don&rsquo;t offer refunds for partial billing periods, unused time, or
-        for the current month/year if you cancel mid-period. This is standard
-        practice for subscription software (Notion, Linear, ChatGPT and others do
-        the same). Because cancellation is one click and takes effect at the next
-        renewal, you&rsquo;re always in control of what you pay for next.
+        Except where the Australian Consumer Law requires otherwise or an
+        exception below applies, we don&rsquo;t refund partial billing periods or
+        unused time if you cancel mid-period. Because cancellation is one click
+        and takes effect at the next renewal, you&rsquo;re always in control of
+        what you pay for next.
       </p>
 
       <h2>Exceptions</h2>

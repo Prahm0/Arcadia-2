@@ -136,7 +136,7 @@ interface RequestOptions {
 }
 
 /** Reasoning models take no temperature and count tokens differently. */
-function isReasoningModel(model: string): boolean {
+export function isReasoningModel(model: string): boolean {
   return /^(o\d|gpt-5)/.test(model) && !model.includes("chat");
 }
 

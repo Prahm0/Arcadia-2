@@ -341,6 +341,8 @@ export interface DayLayout {
   gaps?: number;
   model: string;
   createdAt: string;
+  /** Layouts made on the paid tier's stronger model on `day`, the student's local date. */
+  premium?: { day: string; count: number };
 }
 
 export function readLayout(raw: string | null | undefined): DayLayout | null {

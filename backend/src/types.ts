@@ -10,6 +10,9 @@ export interface Env {
   OPENAI_MODEL: string;
   // The model Arcad lays out the week's study blocks with. Falls back to OPENAI_MODEL.
   OPENAI_PLAN_MODEL?: string;
+  // What Pro and Max students plan with (see lib/plan-tier.ts). Max falls back to Pro's.
+  OPENAI_PLAN_MODEL_PRO?: string;
+  OPENAI_PLAN_MODEL_MAX?: string;
   // Local dev only: point Arcad at a stand-in server instead of OpenAI.
   OPENAI_BASE_URL?: string;
   STRIPE_PRICE_PRO_WEEKLY: string;

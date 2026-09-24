@@ -1,8 +1,43 @@
-import { and, asc, eq, gte } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, lt } from "drizzle-orm";
 import { schema, type Database } from "../db";
 import { subjectKey } from "./scheduler";
+import { summariseHabits, type Habits } from "./study-habits";
 import { currentTopic } from "./syllabus";
-import { localDateKey } from "./time";
+import { DAY, MINUTE, localDateKey, localHour, localWeekday } from "./time";
+
+/** How far back the planner looks for study habits. */
+const HABIT_DAYS = 28;
+
+/** How the last four weeks of marked study went, for planning around. */
+export async function studyHabits(database: Database, userId: string, timeZone: string): Promise<Habits> {
+  const now = Date.now();
+  const rows = await database
+    .select({
+      subject: schema.events.subject,
+      outcome: schema.events.outcome,
+      startAt: schema.events.startAt,
+      endAt: schema.events.endAt,
+    })
+    .from(schema.events)
+    .where(
+      and(
+        eq(schema.events.userId, userId),
+        eq(schema.events.category, "study"),
+        inArray(schema.events.outcome, ["completed", "missed"]),
+        gte(schema.events.startAt, now - HABIT_DAYS * DAY),
+        lt(schema.events.startAt, now),
+      ),
+    );
+  return summariseHabits(
+    rows.map((row) => ({
+      subject: row.subject,
+      kept: row.outcome === "completed",
+      hour: localHour(row.startAt, timeZone),
+      weekday: localWeekday(row.startAt, timeZone),
+      minutes: Math.max(0, Math.round((row.endAt - row.startAt) / MINUTE)),
+    })),
+  );
+}
 
 type Topic = typeof schema.subjectTopics.$inferSelect;
 type Assessment = typeof schema.subjectAssessments.$inferSelect;

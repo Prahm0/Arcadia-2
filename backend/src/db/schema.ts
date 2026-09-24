@@ -23,6 +23,9 @@ export const users = sqliteTable(
     tier: text("tier").notNull().default("free"),
     // Privileged test access is independent of Stripe's subscription tier.
     developerAccess: integer("developer_access", { mode: "boolean" }).notNull().default(false),
+    // Developer accounts can select any feature tier without changing billing.
+    // Null preserves the original default: developer access grants Max.
+    developerTier: text("developer_tier", { enum: ["free", "pro", "max"] }),
     stripeCustomerId: text("stripe_customer_id"),
     stripeSubscriptionId: text("stripe_subscription_id"),
     subscriptionStatus: text("subscription_status"),

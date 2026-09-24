@@ -126,7 +126,7 @@ export function serialiseUser(user: UserRow, profile: ProfileRow | null) {
     avatarColour: profile?.avatarColour ?? null,
     timezone: profile?.timezone ?? "Australia/Brisbane",
     onboardingComplete: profile?.onboardingComplete ?? false,
-    tier: effectiveTier(user.tier, user.developerAccess, user.proBonusUntil),
+    tier: effectiveTier(user.tier, user.developerAccess, user.proBonusUntil, Date.now(), user.developerTier),
     developerAccess: user.developerAccess,
     hasSubscription:
       Boolean(user.stripeCustomerId) ||

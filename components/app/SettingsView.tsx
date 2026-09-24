@@ -117,9 +117,30 @@ export default function SettingsView() {
   const [pushBusy, setPushBusy] = useState(false);
   const [pushNotice, setPushNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
   const [billingBusy, setBillingBusy] = useState(false);
+  const [developerTierBusy, setDeveloperTierBusy] = useState(false);
   const [billingNotice, setBillingNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const subscriptionTracked = useRef(false);
+
+  async function changeDeveloperTier(next: "free" | "pro" | "max") {
+    setDeveloperTierBusy(true);
+    setBillingNotice(null);
+    try {
+      const response = await api<{ tier: "free" | "pro" | "max" }>("/api/billing/developer-tier", {
+        method: "POST",
+        body: JSON.stringify({ tier: next }),
+      });
+      patch((previous) => ({ ...previous, user: { ...previous.user, tier: response.tier } }));
+      setBillingNotice({ tone: "info", text: `Developer plan switched to ${next[0].toUpperCase()}${next.slice(1)}.` });
+    } catch (err) {
+      setBillingNotice({
+        tone: "error",
+        text: err instanceof Error && err.message ? err.message : "Couldn't change the developer plan.",
+      });
+    } finally {
+      setDeveloperTierBusy(false);
+    }
+  }
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -891,11 +912,11 @@ export default function SettingsView() {
               <div className="flex items-baseline justify-between">
                 <div>
                   <p className="text-[14px] font-semibold" style={{ color: "var(--app-text)" }}>
-                    Arcadia {data.user.developerAccess ? "Developer" : tier === "free" ? "Free" : tier === "pro" ? "Pro" : "Max"}
+                    Arcadia {data.user.developerAccess ? `Developer · ${tier === "free" ? "Free" : tier === "pro" ? "Pro" : "Max"}` : tier === "free" ? "Free" : tier === "pro" ? "Pro" : "Max"}
                   </p>
                   <p className="mt-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
                     {data.user.developerAccess
-                      ? "Max feature access for testing. Billing stays separate."
+                      ? "Developer access lets you switch feature tiers for free. Any existing subscription is billed separately."
                       : tier === "free"
                       ? "2 Arcad messages per day. Upgrade any time."
                       : tier === "pro"
@@ -904,10 +925,26 @@ export default function SettingsView() {
                   </p>
                 </div>
               </div>
+              {data.user.developerAccess ? (
+                <label className="flex flex-col gap-1.5 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
+                  Developer test plan
+                  <select
+                    value={tier}
+                    disabled={developerTierBusy}
+                    onChange={(event) => void changeDeveloperTier(event.target.value as "free" | "pro" | "max")}
+                    className="w-full max-w-xs rounded-md px-3 py-2 text-[13.5px] outline-none disabled:opacity-60"
+                    style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
+                  >
+                    <option value="free">Free</option>
+                    <option value="pro">Pro</option>
+                    <option value="max">Max</option>
+                  </select>
+                </label>
+              ) : null}
               <div className="flex items-center justify-between pt-2">
                 <Notice notice={billingNotice} />
                 <div className="flex gap-2">
-                  {tier === "free" ? (
+                  {tier === "free" && !data.user.developerAccess ? (
                     <AppButton
                       variant="primary"
                       onClick={() => router.push("/app/pricing")}

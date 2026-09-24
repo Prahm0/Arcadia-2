@@ -3,6 +3,8 @@ import { db } from "../db";
 import { getMonthPlan, makeMonthPlan } from "../lib/month-plan";
 import { recoverPlan, type RecoveryInput, type RecoveryReason } from "../lib/recovery";
 import { replan } from "../lib/replan";
+import { awardXp } from "../lib/rewards";
+import { XP } from "../../../shared/progress";
 import type { Env, Variables } from "../types";
 
 /**
@@ -53,14 +55,16 @@ const RECOVERY_REASONS: RecoveryReason[] = ["missed", "less_time", "tired", "bus
 
 plan.post("/recover", async (c) => {
   const { userId } = c.get("session");
-  const body = await c.req.json<Partial<RecoveryInput>>().catch(() => ({}) as Partial<RecoveryInput>);
+  const body = await c.req.json<Partial<RecoveryInput> & { recoveryId?: unknown }>().catch(() => ({}) as Partial<RecoveryInput> & { recoveryId?: unknown });
   if (!body.reason || !RECOVERY_REASONS.includes(body.reason)) {
     return c.json({ error: "Tell Arcad what changed." }, 400);
   }
   const database = db(c.env.DB);
   try {
     const result = await recoverPlan(database, userId, body as RecoveryInput);
-    return c.json(result);
+    const recoveryId = typeof body.recoveryId === "string" && /^[a-zA-Z0-9_-]{8,100}$/.test(body.recoveryId) ? body.recoveryId : null;
+    const rewards = recoveryId ? await awardXp(database, userId, "recovery", recoveryId, XP.recovery) : [];
+    return c.json({ ...result, rewards });
   } catch (err) {
     console.error("[plan] recover failed", err);
     return c.json({ error: "Couldn't update your plan. Try again in a moment." }, 502);

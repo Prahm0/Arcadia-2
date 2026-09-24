@@ -1164,3 +1164,34 @@ html[data-app-theme] .type-mono-label {
     cursor: default;
   }
 }
+
+/* Rooms: a light passing along the shared goal's bar once the room reaches
+   it. Plays a few times and rests, so it reads as a moment, not a loop. */
+@keyframes room-goal-sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+@utility room-goal-sweep {
+  animation: room-goal-sweep 2.4s var(--ease-in-out-quart) 3 both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* Rooms: a cheer arriving. Drops in, holds, and the list takes it away. */
+@keyframes room-cheer-in {
+  0% { opacity: 0; transform: translateY(-10px) scale(0.96); }
+  60% { opacity: 1; transform: translateY(2px) scale(1.01); }
+  100% { opacity: 1; transform: none; }
+}
+
+@utility room-cheer-in {
+  animation: room-cheer-in 420ms var(--ease-out-expo) both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: hero-fade 200ms ease-out both;
+  }
+}

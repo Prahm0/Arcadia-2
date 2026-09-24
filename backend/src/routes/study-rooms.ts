@@ -5,9 +5,17 @@ import { roomReportEmail, sendEmail } from "../lib/email";
 import { newId } from "../lib/ids";
 import { containsRoomContactInfo, isObjectionableRoomMessage } from "../lib/moderation";
 import { livePresence } from "../lib/presence";
+import { currentTerm } from "../lib/terms";
 import { effectiveTier, getUserTier, type Tier } from "../lib/tiers";
-import { DAY, iso, startOfLocalDay } from "../lib/time";
+import { DAY, iso, localDateKey, startOfLocalDay } from "../lib/time";
 import type { Env, Variables } from "../types";
+import {
+  CHEER_COOLDOWN_MS,
+  CHEERS_PER_HOUR,
+  buildRoomFeed,
+  cheersDuring,
+  isCheerKind,
+} from "../../../shared/roomFeed";
 
 /** Room size follows the owner's subscription. Guests can join any room. */
 const ROOM_CAPACITY: Record<Tier, number> = { free: 12, pro: 30, max: 50 };
@@ -24,6 +32,8 @@ const MAX_REPORTS_PER_DAY = 10;
 const MAX_MESSAGES_PER_MINUTE = 20;
 const REPORT_REASONS = ["bullying_harassment", "hateful_sexual", "spam", "other"] as const;
 type ReportReason = (typeof REPORT_REASONS)[number];
+/** How long a cheer stays "new" for the person it was sent to. */
+const CHEER_TOAST_MS = 10 * 60_000;
 
 type Room = typeof schema.studyRooms.$inferSelect;
 
@@ -80,6 +90,7 @@ function serialiseRoom(room: Room, extra: Record<string, unknown> = {}) {
     colour: room.colour,
     icon: room.icon,
     weeklyGoalMinutes: room.weeklyGoalMinutes,
+    dailyGoalMinutes: room.dailyGoalMinutes,
     ownerUserId: room.ownerUserId,
     createdAt: iso(room.createdAt),
     ...extra,
@@ -87,50 +98,83 @@ function serialiseRoom(room: Room, extra: Record<string, unknown> = {}) {
 }
 
 /**
- * Everything the room dashboard shows: each member's live presence and their
- * focus total for their own local "today". Two reads, no writes.
+ * Everything the room dashboard shows about its people: live presence, focus
+ * totals for their own local "today", the past 7 days, the term and all time
+ * (only time since they joined counts), and the streak card they show off.
  */
-async function roomMembers(database: Database, roomId: string, now: number) {
+async function roomMembers(database: Database, roomId: string, now: number, termStart: number) {
   const rows = await database
     .select({
       userId: schema.studyRoomMembers.userId,
       displayName: schema.studyRoomMembers.displayName,
       joinedAt: schema.studyRoomMembers.joinedAt,
       timezone: schema.profiles.timezone,
+      avatarColour: schema.profiles.avatarColour,
+      developerAccess: schema.users.developerAccess,
+      featured: schema.constellationPreferences.featured,
       activity: schema.userPresence.activity,
       subject: schema.userPresence.subject,
       startedAt: schema.userPresence.startedAt,
       durationSeconds: schema.userPresence.durationSeconds,
+      groupHostId: schema.userPresence.groupHostId,
       updatedAt: schema.userPresence.updatedAt,
     })
     .from(schema.studyRoomMembers)
     .leftJoin(schema.profiles, eq(schema.profiles.userId, schema.studyRoomMembers.userId))
+    .leftJoin(schema.users, eq(schema.users.id, schema.studyRoomMembers.userId))
+    .leftJoin(schema.constellationPreferences, eq(schema.constellationPreferences.userId, schema.studyRoomMembers.userId))
     .leftJoin(schema.userPresence, eq(schema.userPresence.userId, schema.studyRoomMembers.userId))
     .where(eq(schema.studyRoomMembers.roomId, roomId))
     .orderBy(asc(schema.studyRoomMembers.joinedAt));
 
   if (rows.length === 0) return { members: [], sessions: [] };
+  const userIds = rows.map((row) => row.userId);
 
-  // Eight days covers local today and the rolling seven-day activity view.
-  const sessions = await database
-    .select({
-      userId: schema.studySessions.userId,
-      seconds: schema.studySessions.seconds,
-      endedAt: schema.studySessions.endedAt,
-    })
-    .from(schema.studySessions)
-    .where(
-      and(
-        inArray(
-          schema.studySessions.userId,
-          rows.map((row) => row.userId),
+  const [sessions, totals, cards] = await Promise.all([
+    // Eight days covers local today and the rolling seven-day views.
+    database
+      .select({
+        userId: schema.studySessions.userId,
+        seconds: schema.studySessions.seconds,
+        endedAt: schema.studySessions.endedAt,
+      })
+      .from(schema.studySessions)
+      .where(
+        and(
+          inArray(schema.studySessions.userId, userIds),
+          eq(schema.studySessions.type, "focus"),
+          gte(schema.studySessions.endedAt, now - 8 * DAY),
         ),
-        eq(schema.studySessions.type, "focus"),
-        gte(schema.studySessions.endedAt, now - 8 * DAY),
       ),
-    );
+    database
+      .select({
+        userId: schema.studySessions.userId,
+        totalSeconds: sql<number>`coalesce(sum(${schema.studySessions.seconds}), 0)`,
+        termSeconds: sql<number>`coalesce(sum(case when ${schema.studySessions.endedAt} >= ${termStart} then ${schema.studySessions.seconds} else 0 end), 0)`,
+      })
+      .from(schema.studySessions)
+      .innerJoin(
+        schema.studyRoomMembers,
+        and(eq(schema.studyRoomMembers.userId, schema.studySessions.userId), eq(schema.studyRoomMembers.roomId, roomId)),
+      )
+      .where(and(eq(schema.studySessions.type, "focus"), gte(schema.studySessions.endedAt, schema.studyRoomMembers.joinedAt)))
+      .groupBy(schema.studySessions.userId),
+    // SQLite returns the bare column from the row max() picked: the newest card.
+    database
+      .select({
+        userId: schema.constellationCards.userId,
+        latest: schema.constellationCards.constellationId,
+        latestAt: sql<number>`max(${schema.constellationCards.earnedAt})`,
+        count: count(),
+      })
+      .from(schema.constellationCards)
+      .where(inArray(schema.constellationCards.userId, userIds))
+      .groupBy(schema.constellationCards.userId),
+  ]);
   const joinedAtByUser = new Map(rows.map((row) => [row.userId, row.joinedAt]));
   const roomSessions = sessions.filter((session) => session.endedAt >= (joinedAtByUser.get(session.userId) ?? now));
+  const totalsByUser = new Map(totals.map((row) => [row.userId, row]));
+  const cardsByUser = new Map(cards.map((row) => [row.userId, row]));
 
   const members = rows.map((row) => {
     const dayStart = startOfLocalDay(now, row.timezone ?? "Australia/Brisbane");
@@ -148,21 +192,31 @@ async function roomMembers(database: Database, roomId: string, now: number) {
             subject: row.subject,
             startedAt: row.startedAt,
             durationSeconds: row.durationSeconds,
+            groupHostId: row.groupHostId,
             updatedAt: row.updatedAt,
           },
       now,
     );
+    const total = totalsByUser.get(row.userId);
+    const card = cardsByUser.get(row.userId);
     return {
       userId: row.userId,
       displayName: row.displayName,
-      joinedAt: iso(row.joinedAt),
+      joinedAt: row.joinedAt,
+      avatarColour: row.avatarColour ?? null,
+      developerAccess: row.developerAccess ?? false,
+      // The card they chose to feature, else the newest one they collected.
+      constellation: card ? { id: row.featured ?? card.latest, cards: Number(card.count) } : null,
       activity: presence.activity,
       subject: presence.activity === "idle" ? null : presence.subject,
-      startedAt: presence.startedAt === null ? null : iso(presence.startedAt),
+      startedAt: presence.startedAt,
       durationSeconds: presence.durationSeconds,
-      updatedAt: presence.updatedAt === null ? null : iso(presence.updatedAt),
+      groupHostId: presence.groupHostId,
+      updatedAt: presence.updatedAt,
       todaySeconds,
       weekSeconds,
+      termSeconds: Number(total?.termSeconds ?? 0),
+      totalSeconds: Number(total?.totalSeconds ?? 0),
     };
   });
   return { members, sessions: roomSessions };
@@ -170,7 +224,17 @@ async function roomMembers(database: Database, roomId: string, now: number) {
 
 async function dashboard(database: Database, room: Room, userId: string) {
   const now = Date.now();
-  const { members, sessions } = await roomMembers(database, room.id, now);
+  const [viewer] = await database
+    .select({ timezone: schema.profiles.timezone, state: schema.profiles.state })
+    .from(schema.profiles)
+    .where(eq(schema.profiles.userId, userId))
+    .limit(1);
+  const timezone = viewer?.timezone ?? "Australia/Brisbane";
+  // "Term" is the viewer's school term; without a known calendar, 30 days.
+  const term = currentTerm(viewer?.state, localDateKey(now, timezone));
+  const termStart = term ? startOfLocalDay(Date.parse(`${term.start}T12:00:00Z`), timezone) : now - 30 * DAY;
+
+  const { members, sessions } = await roomMembers(database, room.id, now, termStart);
   const ownerTier = await getUserTier(database, room.ownerUserId);
   const capacity = ROOM_CAPACITY[ownerTier];
   const me = members.find((member) => member.userId === userId);
@@ -178,29 +242,67 @@ async function dashboard(database: Database, room: Room, userId: string) {
     // Enough for an invite link to say "Join <name>?" — nothing about who.
     return {
       isMember: false,
-      room: { code: room.code, name: room.name, description: room.description, colour: room.colour, icon: room.icon, weeklyGoalMinutes: room.weeklyGoalMinutes, memberCount: members.length, capacity },
+      room: { code: room.code, name: room.name, description: room.description, colour: room.colour, icon: room.icon, weeklyGoalMinutes: room.weeklyGoalMinutes, dailyGoalMinutes: room.dailyGoalMinutes, memberCount: members.length, capacity },
       members: [],
     };
   }
-  const removedMembers = room.ownerUserId === userId
-    ? await database
+  const [removedMembers, cheerRows, blocks] = await Promise.all([
+    room.ownerUserId === userId
+      ? database
+        .select({
+          userId: schema.studyRoomRemovedMembers.userId,
+          profileName: schema.profiles.displayName,
+          accountName: schema.users.name,
+          removedAt: schema.studyRoomRemovedMembers.removedAt,
+        })
+        .from(schema.studyRoomRemovedMembers)
+        .leftJoin(schema.profiles, eq(schema.profiles.userId, schema.studyRoomRemovedMembers.userId))
+        .leftJoin(schema.users, eq(schema.users.id, schema.studyRoomRemovedMembers.userId))
+        .where(eq(schema.studyRoomRemovedMembers.roomId, room.id))
+        .orderBy(desc(schema.studyRoomRemovedMembers.removedAt))
+      : Promise.resolve([]),
+    database
       .select({
-        userId: schema.studyRoomRemovedMembers.userId,
-        profileName: schema.profiles.displayName,
-        accountName: schema.users.name,
-        removedAt: schema.studyRoomRemovedMembers.removedAt,
+        id: schema.studyRoomCheers.id,
+        fromUserId: schema.studyRoomCheers.fromUserId,
+        toUserId: schema.studyRoomCheers.toUserId,
+        kind: schema.studyRoomCheers.kind,
+        createdAt: schema.studyRoomCheers.createdAt,
       })
-      .from(schema.studyRoomRemovedMembers)
-      .leftJoin(schema.profiles, eq(schema.profiles.userId, schema.studyRoomRemovedMembers.userId))
-      .leftJoin(schema.users, eq(schema.users.id, schema.studyRoomRemovedMembers.userId))
-      .where(eq(schema.studyRoomRemovedMembers.roomId, room.id))
-      .orderBy(desc(schema.studyRoomRemovedMembers.removedAt))
-    : [];
+      .from(schema.studyRoomCheers)
+      .where(and(eq(schema.studyRoomCheers.roomId, room.id), gte(schema.studyRoomCheers.createdAt, now - 2 * DAY)))
+      .orderBy(desc(schema.studyRoomCheers.createdAt))
+      .limit(300),
+    database
+      .select({ blockedUserId: schema.userBlocks.blockedUserId })
+      .from(schema.userBlocks)
+      .where(eq(schema.userBlocks.blockerUserId, userId)),
+  ]);
+  // Someone you blocked can't cheer you, or show up cheering in your feed.
+  const blocked = new Set(blocks.map((block) => block.blockedUserId));
+  const cheers = cheerRows.filter((cheer) => !blocked.has(cheer.fromUserId));
+  const dayStart = startOfLocalDay(now, timezone);
+
+  const feed = buildRoomFeed({
+    members: members.map((member) => ({
+      userId: member.userId,
+      joinedAt: member.joinedAt,
+      activity: member.activity,
+      subject: member.subject,
+      startedAt: member.startedAt,
+      groupHostId: member.groupHostId,
+    })),
+    sessions,
+    cheers,
+    now,
+    dayStart,
+    dailyGoalSeconds: room.dailyGoalMinutes ? room.dailyGoalMinutes * 60 : null,
+  });
 
   return {
     isMember: true,
     room: serialiseRoom(room, {
-      joinedAt: me.joinedAt,
+      joinedAt: iso(me.joinedAt),
       memberCount: members.length,
       capacity,
       studyingCount: members.filter((member) => member.activity === "focus").length,
@@ -211,8 +313,31 @@ async function dashboard(database: Database, room: Room, userId: string) {
         const matching = sessions.filter((session) => new Date(session.endedAt).toISOString().slice(0, 10) === day);
         return { day, seconds: matching.reduce((sum, session) => sum + session.seconds, 0), sessions: matching.length };
       }),
+      term: { label: term ? `Term ${term.term}` : "30 days", since: iso(termStart) },
     }),
-    members,
+    members: members.map((member) => ({
+      ...member,
+      joinedAt: iso(member.joinedAt),
+      startedAt: member.startedAt === null ? null : iso(member.startedAt),
+      updatedAt: member.updatedAt === null ? null : iso(member.updatedAt),
+      sessionCheers: member.activity === "focus" && member.startedAt !== null
+        ? cheersDuring(cheers, member.userId, member.startedAt, now)
+        : 0,
+    })),
+    feed: feed.map((event) => ({ ...event, at: iso(event.at) })),
+    cheers: {
+      received: cheers
+        .filter((cheer) => cheer.toUserId === userId && cheer.createdAt >= now - CHEER_TOAST_MS)
+        .map((cheer) => ({ id: cheer.id, fromUserId: cheer.fromUserId, kind: cheer.kind, createdAt: iso(cheer.createdAt) })),
+      // When each person can next be cheered by you. Oldest first, so the
+      // newest cheer to each person is the one that sticks.
+      cooldowns: Object.fromEntries(
+        [...cheers]
+          .reverse()
+          .filter((cheer) => cheer.fromUserId === userId && cheer.createdAt > now - CHEER_COOLDOWN_MS)
+          .map((cheer) => [cheer.toUserId, iso(cheer.createdAt + CHEER_COOLDOWN_MS)]),
+      ),
+    },
     removedMembers: removedMembers.map((member) => ({
       userId: member.userId,
       displayName: cleanName(member.profileName, 40) || cleanName(member.accountName, 40) || "Student",
@@ -220,6 +345,7 @@ async function dashboard(database: Database, room: Room, userId: string) {
     })),
   };
 }
+
 
 const studyRooms = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -357,6 +483,7 @@ studyRooms.post("/", async (c) => {
       colour,
       icon: "",
       weeklyGoalMinutes: null,
+      dailyGoalMinutes: null,
       ownerUserId: userId,
       createdAt: Date.now(),
     };
@@ -393,7 +520,7 @@ studyRooms.patch("/:code", async (c) => {
   const room = await findRoom(database, c.req.param("code"));
   if (!room) return c.json({ error: "No room with that code." }, 404);
   if (room.ownerUserId !== userId) return c.json({ error: "Only the room owner can edit it." }, 403);
-  const body = await c.req.json<{ name?: unknown; description?: unknown; colour?: unknown; icon?: unknown; weeklyGoalMinutes?: unknown }>().catch(() => null);
+  const body = await c.req.json<{ name?: unknown; description?: unknown; colour?: unknown; icon?: unknown; weeklyGoalMinutes?: unknown; dailyGoalMinutes?: unknown }>().catch(() => null);
   if (!body || typeof body !== "object") return c.json({ error: "Invalid request." }, 400);
   const patch: Partial<Room> = {};
   if (body.name !== undefined) {
@@ -405,9 +532,9 @@ studyRooms.patch("/:code", async (c) => {
     if (!ROOM_COLOURS.some((value) => value === body.colour)) return c.json({ error: "Choose a listed room colour." }, 422);
     patch.colour = body.colour as string;
   }
-  if (body.icon !== undefined || body.weeklyGoalMinutes !== undefined) {
+  if (body.icon !== undefined || body.weeklyGoalMinutes !== undefined || body.dailyGoalMinutes !== undefined) {
     const tier = await getUserTier(database, userId);
-    if (tier === "free") return c.json({ error: "Room icon and shared weekly goal require Pro or Max." }, 403);
+    if (tier === "free") return c.json({ error: "Room icon and shared goals require Pro or Max." }, 403);
     if (body.icon !== undefined) {
       if (!ROOM_ICONS.some((value) => value === body.icon)) return c.json({ error: "Choose a listed room icon." }, 422);
       patch.icon = body.icon as string;
@@ -416,10 +543,67 @@ studyRooms.patch("/:code", async (c) => {
       if (body.weeklyGoalMinutes !== null && (!Number.isInteger(body.weeklyGoalMinutes) || Number(body.weeklyGoalMinutes) < 60 || Number(body.weeklyGoalMinutes) > 60000)) return c.json({ error: "Set a shared goal between 1 and 1,000 hours per week." }, 422);
       patch.weeklyGoalMinutes = body.weeklyGoalMinutes as number | null;
     }
+    if (body.dailyGoalMinutes !== undefined) {
+      if (body.dailyGoalMinutes !== null && (!Number.isInteger(body.dailyGoalMinutes) || Number(body.dailyGoalMinutes) < 30 || Number(body.dailyGoalMinutes) > 18000)) return c.json({ error: "Set a daily goal between 30 minutes and 300 hours." }, 422);
+      patch.dailyGoalMinutes = body.dailyGoalMinutes as number | null;
+    }
   }
   if (Object.keys(patch).length === 0) return c.json({ error: "Nothing to update." }, 422);
   await database.update(schema.studyRooms).set(patch).where(eq(schema.studyRooms.id, room.id));
   return c.json(await dashboard(database, { ...room, ...patch }, userId));
+});
+
+studyRooms.post("/:code/cheers", async (c) => {
+  const { userId } = c.get("session");
+  const body = await c.req.json<{ toUserId?: unknown; kind?: unknown }>().catch(() => null);
+  const toUserId = typeof body?.toUserId === "string" ? body.toUserId : "";
+  if (!toUserId || !isCheerKind(body?.kind)) return c.json({ error: "Pick a cheer to send." }, 422);
+  if (toUserId === userId) return c.json({ error: "You can't cheer yourself on." }, 422);
+  const database = db(c.env.DB);
+  const room = await findRoom(database, c.req.param("code"));
+  if (!room) return c.json({ error: "No room with that code." }, 404);
+  const now = Date.now();
+  const [[sender], [target], [recentPair], [recentAll], [blockedBy]] = await Promise.all([
+    database.select({ userId: schema.studyRoomMembers.userId }).from(schema.studyRoomMembers)
+      .where(and(eq(schema.studyRoomMembers.roomId, room.id), eq(schema.studyRoomMembers.userId, userId))).limit(1),
+    database
+      .select({
+        activity: schema.userPresence.activity,
+        subject: schema.userPresence.subject,
+        startedAt: schema.userPresence.startedAt,
+        durationSeconds: schema.userPresence.durationSeconds,
+        updatedAt: schema.userPresence.updatedAt,
+      })
+      .from(schema.studyRoomMembers)
+      .leftJoin(schema.userPresence, eq(schema.userPresence.userId, schema.studyRoomMembers.userId))
+      .where(and(eq(schema.studyRoomMembers.roomId, room.id), eq(schema.studyRoomMembers.userId, toUserId)))
+      .limit(1),
+    database.select({ createdAt: schema.studyRoomCheers.createdAt }).from(schema.studyRoomCheers)
+      .where(and(eq(schema.studyRoomCheers.fromUserId, userId), eq(schema.studyRoomCheers.toUserId, toUserId), gte(schema.studyRoomCheers.createdAt, now - CHEER_COOLDOWN_MS)))
+      .orderBy(desc(schema.studyRoomCheers.createdAt)).limit(1),
+    database.select({ n: count() }).from(schema.studyRoomCheers)
+      .where(and(eq(schema.studyRoomCheers.roomId, room.id), eq(schema.studyRoomCheers.fromUserId, userId), gte(schema.studyRoomCheers.createdAt, now - 3_600_000))),
+    database.select({ blockerUserId: schema.userBlocks.blockerUserId }).from(schema.userBlocks)
+      .where(and(eq(schema.userBlocks.blockerUserId, toUserId), eq(schema.userBlocks.blockedUserId, userId))).limit(1),
+  ]);
+  if (!sender) return c.json({ error: "Join the room to cheer people on." }, 403);
+  if (!target) return c.json({ error: "They're not in this room any more." }, 404);
+  const presence = livePresence(
+    target.activity === null || target.updatedAt === null
+      ? null
+      : { activity: target.activity, subject: target.subject, startedAt: target.startedAt, durationSeconds: target.durationSeconds, updatedAt: target.updatedAt },
+    now,
+  );
+  if (presence.activity === "idle") return c.json({ error: "They've just stopped. Catch them next session." }, 409);
+  if (recentPair) {
+    return c.json({ error: "You just cheered them. Give it a few minutes.", retryAt: iso(recentPair.createdAt + CHEER_COOLDOWN_MS) }, 429);
+  }
+  if ((recentAll?.n ?? 0) >= CHEERS_PER_HOUR) return c.json({ error: "That's a lot of cheering. Try again in a bit." }, 429);
+
+  const cheer = { id: newId("cheer"), roomId: room.id, fromUserId: userId, toUserId, kind: body.kind, createdAt: now };
+  // Someone who blocked you never sees your cheer, and you aren't told.
+  if (!blockedBy) await database.insert(schema.studyRoomCheers).values(cheer);
+  return c.json({ ok: true, retryAt: iso(now + CHEER_COOLDOWN_MS) }, 201);
 });
 
 studyRooms.get("/:code/messages", async (c) => {

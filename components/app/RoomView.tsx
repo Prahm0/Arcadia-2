@@ -2,55 +2,73 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ApiError } from "@/lib/api/client";
+import { useCallback, useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { api, ApiError } from "@/lib/api/client";
+import type { PlannerEvent } from "@/lib/api/types";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
+import { useReplaceEvent } from "@/lib/app/useSessionPlan";
+import { subjectColour } from "@/lib/app/subjectColour";
 import {
+  allowRoomMember,
   getRoom,
   joinRoom,
-  allowRoomMember,
   leaveRoom,
   removeRoomMember,
+  sendCheer,
   type RoomDashboard,
   type StudyRoomMember,
 } from "@/lib/api/rooms";
-import { roomColour } from "@/lib/app/roomColours";
-import PageHeader from "./PageHeader";
+import type { CheerKind } from "@/shared/roomFeed";
 import AppButton from "./AppButton";
-import { RoomChat, RoomMemberProfilePanel, RoomSettings } from "./RoomSocial";
+import CheckoutSheet from "./CheckoutSheet";
+import { showContextMenu } from "./ContextMenu";
+import PageHeader from "./PageHeader";
+import { RoomMemberProfileSheet, RoomSettingsSheet } from "./RoomSocial";
+import { pickSession } from "./StartNowCard";
+import ActiveFocusCard, { ElsewhereFocusCard } from "./rooms/ActiveFocusCard";
+import CheerToasts from "./rooms/CheerToasts";
+import LiveMembers from "./rooms/LiveMembers";
+import RoomActivity from "./rooms/RoomActivity";
+import RoomChat from "./rooms/RoomChat";
+import RoomGoal from "./rooms/RoomGoal";
+import RoomHeader from "./rooms/RoomHeader";
+import RoomLeaderboard from "./rooms/RoomLeaderboard";
+import StartFocusCard from "./rooms/StartFocusCard";
+import { elapsedSeconds, formatDuration } from "./rooms/format";
+import { useRoomFocus, type FinishedFocus } from "./rooms/useRoomFocus";
 
 /**
- * How often the dashboard re-reads the room. Friends' timers tick locally
- * between polls, so this only bounds how quickly a start/stop shows up.
+ * How often the room re-reads itself. Timers tick locally in between, and your
+ * own changes show at once, so this only bounds how fast other people's do.
  */
-const POLL_MS = 20_000;
+const POLL_MS = 15_000;
+const WIDTH = 1120;
 
-const ACTIVITY_ORDER = { focus: 0, break: 1, idle: 2 } as const;
-
-interface RoomViewProps {
-  code: string;
-}
+type MemberDashboard = Extract<RoomDashboard, { isMember: true }>;
 
 /**
- * A study room's live dashboard: who's studying, on what, for how long, and
- * how much they've done today. Status comes from each member's focus timer ,
- * nothing to set here. Read-only polling; viewing a room never writes.
+ * A study room as a live space: who's studying and on what, a way to start
+ * (or join someone) right here, the room's standings and goal, what's been
+ * happening, and the chat. Viewing never writes; starting a session does.
  */
-export default function RoomView({ code }: RoomViewProps) {
+export default function RoomView({ code }: { code: string }) {
   const router = useRouter();
-  const { data } = useDashboardData();
+  const { data, reload } = useDashboardData();
+  const replaceEvent = useReplaceEvent();
+  const userId = data.user.id;
   const [dash, setDash] = useState<RoomDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   // A failed poll keeps the last good data on screen and just says so.
   const [reconnecting, setReconnecting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [copied, setCopied] = useState<"code" | "link" | null>(null);
-  const [leaving, setLeaving] = useState(false);
   const [joining, setJoining] = useState(false);
   const [joinName, setJoinName] = useState("");
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
-  const now = useNow(dash?.members.some((member) => member.activity !== "idle") ?? false);
+  const [profileId, setProfileId] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [cooldowns, setCooldowns] = useState<Record<string, string>>({});
+  const [finished, setFinished] = useState<(FinishedFocus & { at: number }) | null>(null);
+  const [checkout, setCheckout] = useState<{ event: PlannerEvent; minutes: number } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -65,10 +83,21 @@ export default function RoomView({ code }: RoomViewProps) {
     }
   }, [code]);
 
+  const focus = useRoomFocus(userId, (done) => {
+    setFinished({ ...done, at: Date.now() });
+    const event = done.eventId ? data.events.find((item) => item.id === done.eventId) : null;
+    if (event && !event.checkout) setCheckout({ event, minutes: Math.max(1, Math.round(done.seconds / 60)) });
+    // The session saves in the background; read the room once it has landed.
+    window.setTimeout(() => {
+      void load();
+      void reload().catch(() => {});
+    }, 1500);
+  });
+
   // Poll while the tab is visible; a hidden tab costs nothing and catches up
   // the moment it's looked at again.
   useEffect(() => {
-    void load();
+    const first = window.setTimeout(() => void load(), 0);
     let id: number | null = null;
     const startPolling = () => {
       if (id === null) id = window.setInterval(() => void load(), POLL_MS);
@@ -88,10 +117,47 @@ export default function RoomView({ code }: RoomViewProps) {
     if (!document.hidden) startPolling();
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
+      window.clearTimeout(first);
       stopPolling();
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [load]);
+
+  const member = dash?.isMember ? (dash as MemberDashboard) : null;
+
+  // Your own session shows the moment you start it, not on the next poll.
+  const members = useMemo<StudyRoomMember[]>(() => {
+    if (!member) return [];
+    const session = focus.session;
+    return member.members.map((item) => {
+      if (item.userId !== userId) return item;
+      if (session) {
+        return {
+          ...item,
+          activity: "focus",
+          subject: session.subject,
+          startedAt: new Date(session.startedAt).toISOString(),
+          durationSeconds: Math.round((session.endsAt - session.startedAt) / 1000),
+          groupHostId: session.groupHostId,
+        };
+      }
+      // Until the room hears you stopped, don't show the session you just ended.
+      const stale = finished && item.activity === "focus" && (!item.updatedAt || Date.parse(item.updatedAt) <= finished.at);
+      return stale ? { ...item, activity: "idle", startedAt: null, durationSeconds: null, groupHostId: null } : item;
+    });
+  }, [member, focus.session, finished, userId]);
+
+  const anyoneLive = members.some((item) => item.activity !== "idle");
+  const now = useNow(anyoneLive);
+  const me = members.find((item) => item.userId === userId) ?? null;
+  const others = members.filter((item) => item.userId !== userId && item.activity === "focus");
+  const allCooldowns = { ...(member?.cheers?.cooldowns ?? {}), ...cooldowns };
+  const timezone = data.profile?.timezone || data.user.timezone || "Australia/Brisbane";
+  const nextTask = useMemo(() => pickSession(data.events, now, timezone).target, [data.events, now, timezone]);
+  const defaultSubject = data.subjects[0]?.name ?? "General";
+  const colourOf = useCallback((subject: string | null) => subjectColour(data.subjects, subject), [data.subjects]);
+  const isOwner = member?.room.ownerUserId === userId;
+  const paidPlan = data.user.tier === "pro" || data.user.tier === "max";
 
   async function join(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -108,23 +174,21 @@ export default function RoomView({ code }: RoomViewProps) {
 
   async function leave() {
     if (!confirm("Leave the room? You can rejoin with the code.")) return;
-    setLeaving(true);
     setActionError(null);
     try {
       await leaveRoom(code);
       router.push("/app/rooms");
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Couldn't leave the room.");
-      setLeaving(false);
     }
   }
 
-  async function removeMember(member: StudyRoomMember) {
-    if (!confirm(`Remove ${member.displayName} from this room? They won't be able to rejoin until you allow them back.`)) return;
+  async function removeMember(target: StudyRoomMember) {
+    if (!confirm(`Remove ${target.displayName} from this room? They won't be able to rejoin until you allow them back.`)) return;
     setActionError(null);
     try {
-      await removeRoomMember(code, member.userId);
-      setSelectedMemberId(null);
+      await removeRoomMember(code, target.userId);
+      setProfileId(null);
       await load();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Couldn't remove that member.");
@@ -141,32 +205,48 @@ export default function RoomView({ code }: RoomViewProps) {
     }
   }
 
-  async function copy(kind: "code" | "link") {
-    if (!dash) return;
-    const text =
-      kind === "code" ? dash.room.code : `${window.location.origin}/app/rooms/${dash.room.code}`;
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(kind);
-      window.setTimeout(() => setCopied(null), 1600);
-    } catch {
-      /* ignore */
+  function startSession(options: { minutes: number; subject: string; topic?: string | null; eventId?: string | null }) {
+    setFinished(null);
+    setActionError(null);
+    focus.start(options);
+    // A planned block moves to now, as "Start now" on Today does.
+    if (options.eventId) {
+      const id = options.eventId;
+      void api<{ event: PlannerEvent }>(`/api/events/${encodeURIComponent(id)}/start`, { method: "POST" })
+        .then((response) => replaceEvent(response.event))
+        .catch(() => {
+          /* the session still runs; the block just isn't moved */
+        });
     }
+    window.setTimeout(() => void load(), 1500);
   }
 
-  const members = useMemo(() => {
-    if (!dash?.isMember) return [];
-    return [...dash.members].sort(
-      (a, b) =>
-        ACTIVITY_ORDER[a.activity] - ACTIVITY_ORDER[b.activity] ||
-        liveTodaySeconds(b, now) - liveTodaySeconds(a, now),
-    );
-  }, [dash, now]);
+  function joinSession(host: StudyRoomMember) {
+    if (!host.startedAt || !host.durationSeconds) return;
+    const startedAt = Date.parse(host.startedAt);
+    const endsAt = startedAt + host.durationSeconds * 1000;
+    // Your session goes on your subject: theirs if you study it too.
+    const subject = data.subjects.find((item) => item.name === host.subject)?.name ?? defaultSubject;
+    setFinished(null);
+    focus.start({ minutes: Math.round((endsAt - Date.now()) / 60000), subject, join: { hostId: host.userId, startedAt, endsAt } });
+    window.setTimeout(() => void load(), 1500);
+  }
 
-  const studyingNow = members.filter((member) => member.activity === "focus").length;
-  const roomToday = members.reduce((sum, member) => sum + liveTodaySeconds(member, now), 0);
-  const roomWeek = members.reduce((sum, member) => sum + member.weekSeconds, 0);
-  const me = members.find((member) => member.userId === data.user.id);
+  async function cheer(target: StudyRoomMember, kind: CheerKind) {
+    const { retryAt } = await sendCheer(code, target.userId, kind);
+    setCooldowns((current) => ({ ...current, [target.userId]: retryAt }));
+  }
+
+  function memberMenu(event: ReactMouseEvent, target: StudyRoomMember) {
+    showContextMenu(event, [
+      { kind: "item", label: target.userId === userId ? "View your room card" : `View ${target.displayName}`, onSelect: () => setProfileId(target.userId) },
+      target.userId !== userId && target.activity === "focus" && !focus.session && target.durationSeconds
+        ? { kind: "item", label: "Join their session", onSelect: () => joinSession(target) }
+        : null,
+      isOwner && target.userId !== userId ? { kind: "separator" } : null,
+      isOwner && target.userId !== userId ? { kind: "item", label: "Remove from room", danger: true, onSelect: () => void removeMember(target) } : null,
+    ], target.displayName);
+  }
 
   if (notFound) {
     return (
@@ -184,270 +264,236 @@ export default function RoomView({ code }: RoomViewProps) {
     );
   }
 
+  if (!member) {
+    return (
+      <>
+        <PageHeader width={860} eyebrow="Rooms" title={dash ? `${dash.room.icon ? `${dash.room.icon} ` : ""}${dash.room.name}` : "Loading…"} />
+        <div className="mx-auto flex w-full max-w-[860px] flex-col gap-6 px-6 py-8 sm:px-10">
+          {actionError ? <ErrorNote text={actionError} /> : null}
+          {loading && !dash ? (
+            <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>Loading…</p>
+          ) : !dash && reconnecting ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-[13.5px]" style={{ color: "var(--app-danger)" }}>Couldn&apos;t load the room.</p>
+              <AppButton variant="secondary" onClick={() => void load()}>Try again</AppButton>
+            </div>
+          ) : dash ? (
+            <form onSubmit={join} className="rounded-lg p-6" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
+              <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>You&apos;re invited</p>
+              <p className="mt-2 text-[20px] tracking-[-0.01em]" style={{ color: "var(--app-text)" }}>
+                Join <span className="accent-serif">{dash.room.name}</span>
+              </p>
+              <p className="mt-1 type-mono-label" style={{ color: "var(--app-text-muted)" }}>
+                {dash.room.memberCount} {dash.room.memberCount === 1 ? "member" : "members"} · code {dash.room.code}
+              </p>
+              <label className="mt-5 block max-w-[320px]">
+                <span className="mb-2 block text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>
+                  Show me as <span style={{ color: "var(--app-text-faint)" }}>(optional)</span>
+                </span>
+                <input
+                  type="text"
+                  maxLength={40}
+                  value={joinName}
+                  onChange={(e) => setJoinName(e.target.value)}
+                  placeholder={data.profile?.displayName || data.user.name || "Your name"}
+                  className="w-full rounded-md px-3 py-2.5 text-[14.5px] outline-none"
+                  style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
+                />
+              </label>
+              <div className="mt-4">
+                <AppButton type="submit" variant="primary" loading={joining}>Join room</AppButton>
+              </div>
+            </form>
+          ) : null}
+          <Link href="/app/rooms" className="text-[12.5px] font-medium underline underline-offset-4" style={{ color: "var(--app-text-muted)" }}>
+            ← All rooms
+          </Link>
+        </div>
+      </>
+    );
+  }
+
+  const session = focus.session;
+  const host = session?.groupHostId ? members.find((item) => item.userId === session.groupHostId) ?? null : null;
+  const profileMember = profileId ? members.find((item) => item.userId === profileId) ?? null : null;
+
   return (
     <>
-      <PageHeader width={860}
-        eyebrow="Rooms"
-        title={dash ? `${dash.room.icon ? `${dash.room.icon} ` : ""}${dash.room.name}` : "Loading…"}
-        tour="rooms"
-        meta={
-          dash?.isMember
-            ? `${studyingNow} studying now · ${formatDuration(roomToday)} together today · code ${dash.room.code}`
-            : undefined
-        }
-        action={
-          dash?.isMember ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <AppButton variant="ghost" onClick={() => void copy("code")}>
-                {copied === "code" ? "Copied" : "Copy code"}
-              </AppButton>
-              <AppButton variant="ghost" onClick={() => void copy("link")}>
-                {copied === "link" ? "Copied" : "Copy link"}
-              </AppButton>
-              <AppButton variant="ghost" onClick={leave} loading={leaving}>
-                Leave
-              </AppButton>
-            </div>
-          ) : null
-        }
+      <RoomHeader
+        room={member.room}
+        members={members}
+        now={now}
+        isOwner={isOwner}
+        width={WIDTH}
+        onSettings={() => setSettingsOpen(true)}
+        onLeave={() => void leave()}
       />
 
-      <div className="mx-auto flex w-full max-w-[860px] flex-col gap-6 px-6 py-8 sm:px-10">
-        {dash ? <div className="rounded-md px-4 py-3 text-[13px]" style={{ background: "var(--app-surface-soft)", color: "var(--app-text-soft)", borderLeft: `4px solid ${roomColour(dash.room.colour)}` }}>
-          {dash.room.description || "A place to study together."} <span className="ml-2 whitespace-nowrap" style={{ color: "var(--app-text-muted)" }}>{dash.room.memberCount}/{dash.room.capacity} members</span>
-        </div> : null}
-        {actionError ? (
-          <div
-            className="rounded-md p-4 text-[13px]"
-            style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-danger)" }}
-          >
-            {actionError}
-          </div>
-        ) : null}
+      <div className="mx-auto flex w-full flex-col gap-6 px-6 pb-12 pt-5 sm:px-10" style={{ maxWidth: WIDTH }}>
+        {actionError ? <ErrorNote text={actionError} /> : null}
 
-        {loading && !dash ? (
-          <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>Loading…</p>
-        ) : !dash && reconnecting ? (
-          <div className="flex flex-wrap items-center gap-3">
-            <p className="text-[13.5px]" style={{ color: "var(--app-danger)" }}>Couldn&apos;t load the room.</p>
-            <AppButton variant="secondary" onClick={() => void load()}>Try again</AppButton>
-          </div>
-        ) : dash && !dash.isMember ? (
-          <form
-            onSubmit={join}
-            className="rounded-lg p-6"
-            style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
-          >
-            <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>You&apos;re invited</p>
-            <p className="mt-2 text-[20px] tracking-[-0.01em]" style={{ color: "var(--app-text)" }}>
-              Join <span className="accent-serif">{dash.room.name}</span>
-            </p>
-            <p className="mt-1 type-mono-label" style={{ color: "var(--app-text-muted)" }}>
-              {dash.room.memberCount} {dash.room.memberCount === 1 ? "member" : "members"} · code {dash.room.code}
-            </p>
-            <label className="mt-5 block max-w-[320px]">
-              <span className="mb-2 block text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>
-                Show me as <span style={{ color: "var(--app-text-faint)" }}>(optional)</span>
-              </span>
-              <input
-                type="text"
-                maxLength={40}
-                value={joinName}
-                onChange={(e) => setJoinName(e.target.value)}
-                placeholder={data.profile?.displayName || data.user.name || "Your name"}
-                className="w-full rounded-md px-3 py-2.5 text-[14.5px] outline-none"
-                style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
-              />
-            </label>
-            <div className="mt-4">
-              <AppButton type="submit" variant="primary" loading={joining}>
-                Join room
-              </AppButton>
-            </div>
-          </form>
-        ) : dash?.isMember ? (
-          <>
-            {dash.room.ownerUserId === data.user.id ? <RoomSettings key={dash.room.id} code={code} room={dash.room} isPaid={data.user.tier === "pro" || data.user.tier === "max"} onSaved={setDash} /> : null}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <RoomMetric label="Studying now" value={String(studyingNow)} />
-              <RoomMetric label="Focus today" value={formatDuration(roomToday)} />
-              <RoomMetric label="Past 7 days" value={formatDuration(roomWeek)} />
-              <RoomMetric label="Members" value={`${dash.room.memberCount}/${dash.room.capacity}`} />
-            </div>
-            {dash.room.weeklyGoalMinutes ? <div className="rounded-md p-4" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}><div className="flex justify-between gap-2 text-[13px]" style={{ color: "var(--app-text-soft)" }}><span>Shared 7-day goal</span><span>{formatDuration(roomWeek)} / {formatDuration(dash.room.weeklyGoalMinutes * 60)}</span></div><div className="mt-2 h-2 overflow-hidden rounded-full" style={{ background: "var(--app-surface-soft)" }}><div className="h-full rounded-full" style={{ width: `${Math.min(100, (roomWeek / (dash.room.weeklyGoalMinutes * 60)) * 100)}%`, background: roomColour(dash.room.colour) }} /></div></div> : null}
-            <RoomActivityChart days={dash.room.weekActivity ?? []} colour={dash.room.colour} />
-            {me && me.activity === "idle" ? (
-              <div
-                className="flex flex-wrap items-center justify-between gap-3 rounded-md px-4 py-3"
-                style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)" }}
-              >
-                <span className="text-[13px]" style={{ color: "var(--app-text-soft)" }}>
-                  Start a focus timer and the room sees you studying.
-                </span>
-                <Link
-                  href="/app/focus"
-                  className="text-[12.5px] font-medium underline underline-offset-4"
-                  style={{ color: "var(--app-text)" }}
-                >
-                  Start focusing →
-                </Link>
-              </div>
+        <div className="grid items-start gap-6 @5xl/main:grid-cols-[minmax(0,1fr)_320px]">
+          <LiveMembers
+            members={members}
+            now={now}
+            userId={userId}
+            youAreFocusing={Boolean(session) || me?.activity === "focus"}
+            cooldowns={allCooldowns}
+            subjectColour={colourOf}
+            onJoin={joinSession}
+            onCheer={cheer}
+            onProfile={(target) => setProfileId(target.userId)}
+            onMemberMenu={memberMenu}
+          />
+
+          <aside className="flex flex-col gap-4" aria-label="Your session and the leaderboard">
+            {finished && !session ? (
+              <FinishedNote finished={finished} status={focus.save.status} receipt={focus.save.receipt} onDismiss={() => setFinished(null)} />
             ) : null}
+            {session ? (
+              <ActiveFocusCard
+                remaining={focus.remaining}
+                total={focus.total}
+                subject={session.subject}
+                subjectColour={colourOf(session.subject)}
+                topic={session.topic}
+                hostName={host?.displayName ?? null}
+                others={others}
+                cheers={me?.sessionCheers ?? 0}
+                onFinish={() => void focus.finish()}
+              />
+            ) : me && me.activity === "focus" ? (
+              <ElsewhereFocusCard member={me} elapsed={elapsedSeconds(me, now)} />
+            ) : (
+              <StartFocusCard
+                subjects={data.subjects}
+                defaultSubject={defaultSubject}
+                paidPlan={paidPlan}
+                nextTask={nextTask}
+                others={others}
+                now={now}
+                onStart={startSession}
+                onJoin={joinSession}
+              />
+            )}
+            <RoomLeaderboard
+              members={members}
+              now={now}
+              userId={userId}
+              termLabel={member.room.term?.label ?? "30 days"}
+              onProfile={(target) => setProfileId(target.userId)}
+            />
+          </aside>
+        </div>
 
-            <ul className="grid gap-3 sm:grid-cols-2">
-              {members.map((member) => (
-                <MemberCard
-                  key={member.userId}
-                  member={member}
-                  now={now}
-                  isYou={member.userId === data.user.id}
-                  isOwner={member.userId === dash.room.ownerUserId}
-                  canRemove={dash.room.ownerUserId === data.user.id && member.userId !== data.user.id}
-                  onProfile={() => setSelectedMemberId(member.userId)}
-                  onRemove={() => void removeMember(member)}
-                />
-              ))}
-            </ul>
+        <div className="grid items-start gap-4 @3xl/main:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">
+          <RoomGoal room={member.room} members={members} now={now} isOwner={isOwner} onEdit={() => setSettingsOpen(true)} />
+          <RoomActivity room={member.room} feed={member.feed ?? []} members={members} userId={userId} now={now} />
+        </div>
 
-            {dash.room.ownerUserId === data.user.id && dash.removedMembers.length > 0 ? <section className="rounded-lg p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}><h2 className="text-[16px] font-semibold" style={{ color: "var(--app-text)" }}>Removed members</h2><p className="mt-1 text-[12px]" style={{ color: "var(--app-text-muted)" }}>Allow someone back in if you want them to use the room code again.</p><ul className="mt-3 flex flex-col gap-2">{dash.removedMembers.map((member) => <li key={member.userId} className="flex items-center justify-between gap-3 rounded-md px-3 py-2" style={{ background: "var(--app-surface-soft)" }}><span className="text-[13px]" style={{ color: "var(--app-text)" }}>{member.displayName}</span><AppButton variant="ghost" onClick={() => void allowMember(member.userId)}>Allow back</AppButton></li>)}</ul></section> : null}
+        <RoomChat
+          code={code}
+          userId={userId}
+          ownerUserId={member.room.ownerUserId}
+          members={members}
+          feed={member.feed ?? []}
+          onMemberClick={setProfileId}
+        />
 
-            {selectedMemberId && members.some((member) => member.userId === selectedMemberId) ? <RoomMemberProfilePanel key={selectedMemberId} code={code} member={members.find((member) => member.userId === selectedMemberId)!} onClose={() => setSelectedMemberId(null)} /> : null}
-
-            <RoomChat code={code} userId={data.user.id} ownerUserId={dash.room.ownerUserId} memberIds={members.map((member) => member.userId)} onMemberClick={setSelectedMemberId} />
-
-            <p className="text-[12px]" style={{ color: reconnecting ? "var(--app-danger)" : "var(--app-text-faint)" }}>
-              {reconnecting
-                ? "Reconnecting… showing the last update."
-                : "Updates about every 20 seconds. Timers tick live in between."}
-            </p>
-          </>
-        ) : null}
-
-        <Link href="/app/rooms" className="text-[12.5px] font-medium underline underline-offset-4" style={{ color: "var(--app-text-muted)" }}>
-          ← All rooms
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-3 text-[12px]">
+          <Link href="/app/rooms" className="font-medium underline underline-offset-4" style={{ color: "var(--app-text-muted)" }}>
+            ← All rooms
+          </Link>
+          <p style={{ color: reconnecting ? "var(--app-danger)" : "var(--app-text-faint)" }}>
+            {reconnecting ? "Reconnecting… showing the last update." : "Live. Timers tick as you watch; the room refreshes every few seconds."}
+          </p>
+        </div>
       </div>
+
+      <CheerToasts code={code} cheers={member.cheers?.received ?? []} members={members} />
+
+      <RoomMemberProfileSheet
+        code={code}
+        member={profileMember}
+        isYou={profileMember?.userId === userId}
+        canRemove={isOwner && Boolean(profileMember) && profileMember?.userId !== userId}
+        onRemove={(target) => void removeMember(target)}
+        onClose={() => setProfileId(null)}
+      />
+
+      {isOwner ? (
+        <RoomSettingsSheet
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          code={code}
+          room={member.room}
+          removedMembers={member.removedMembers}
+          isPaid={paidPlan}
+          onSaved={setDash}
+          onAllow={(id) => void allowMember(id)}
+        />
+      ) : null}
+
+      {checkout ? (
+        <CheckoutSheet
+          open
+          event={checkout.event}
+          initialDone={[]}
+          minutes={checkout.minutes}
+          onClose={() => setCheckout(null)}
+          onSaved={async (updated) => {
+            replaceEvent(updated);
+            await reload();
+          }}
+        />
+      ) : null}
     </>
   );
 }
 
-function MemberCard({
-  member,
-  now,
-  isYou,
-  isOwner,
-  canRemove,
-  onProfile,
-  onRemove,
-}: {
-  member: StudyRoomMember;
-  now: number;
-  isYou: boolean;
-  isOwner: boolean;
-  canRemove: boolean;
-  onProfile: () => void;
-  onRemove: () => void;
-}) {
-  const elapsed = elapsedSeconds(member, now);
-  const studying = member.activity === "focus";
-  const chip =
-    member.activity === "focus"
-      ? { label: "Studying", bg: "color-mix(in oklab, var(--app-accent) 15%, transparent)", fg: "var(--app-accent-strong)" }
-      : member.activity === "break"
-        ? { label: "Break", bg: "color-mix(in oklab, var(--app-success) 15%, transparent)", fg: "var(--app-success)" }
-        : { label: "Idle", bg: "var(--app-surface-soft)", fg: "var(--app-text-muted)" };
-
-  let detail: string;
-  if (member.activity === "focus") {
-    detail = member.subject || "Focusing";
-  } else if (member.activity === "break" && member.durationSeconds) {
-    const left = Math.max(0, member.durationSeconds - elapsed);
-    detail = `${Math.ceil(left / 60)} min left`;
-  } else if (member.activity === "break") {
-    detail = "On a break";
-  } else {
-    detail = member.todaySeconds > 0 ? "Done for now" : "Not started today";
-  }
-
+function ErrorNote({ text }: { text: string }) {
   return (
-    <li
-      className="flex flex-col gap-4 rounded-lg p-5"
-      style={{
-        background: "var(--app-surface)",
-        boxShadow: "var(--elev-1)",
-        opacity: member.activity === "idle" ? 0.78 : 1,
-      }}
-    >
-      <div className="flex items-center gap-3">
-        <div className="flex shrink-0 items-center gap-2">
-        {canRemove ? <button type="button" onClick={onRemove} className="text-[11px] underline underline-offset-2" style={{ color: "var(--app-danger)" }}>Remove</button> : null}
-        <span
-          aria-hidden
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[14px] font-semibold"
-          style={{
-            background: studying ? "var(--app-accent)" : "var(--app-surface-soft)",
-            color: studying ? "var(--app-accent-on)" : "var(--app-text-soft)",
-            boxShadow: studying ? undefined : "var(--elev-inset)",
-          }}
-        >
-          {initial(member.displayName)}
-        </span>
-        <div className="min-w-0 flex-1">
-          <button type="button" onClick={onProfile} className="truncate text-left text-[14.5px] font-medium underline-offset-2 hover:underline" style={{ color: "var(--app-text)" }}>
-            {member.displayName}
-            {isYou ? <span className="ml-1.5 text-[11px]" style={{ color: "var(--app-text-muted)" }}>you</span> : null}
-            {isOwner ? <span className="ml-1.5 text-[11px]" style={{ color: "var(--app-text-faint)" }}>owner</span> : null}
-          </button>
-          <p className="truncate type-mono-label" style={{ color: "var(--app-text-muted)" }}>{detail}</p>
-        </div>
-        <span
-          className="shrink-0 rounded-md px-2.5 py-0.5 text-[11.5px] font-medium"
-          style={{ background: chip.bg, color: chip.fg }}
-        >
-          {chip.label}
-        </span>
-        </div>
-      </div>
-
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <p className="type-eyebrow" style={{ color: "var(--app-text-faint)" }}>
-            {studying ? "This session" : member.activity === "break" ? "Break" : "Session"}
-          </p>
-          <p
-            className="tabular-nums text-[22px]  tracking-[-0.01em]"
-            style={{ color: member.activity === "idle" ? "var(--app-text-faint)" : "var(--app-text)" }}
-          >
-            {member.activity === "idle" ? "," : formatClock(elapsed)}
-          </p>
-        </div>
-        <div className="text-right">
-          <p className="type-eyebrow" style={{ color: "var(--app-text-faint)" }}>Today</p>
-          <p className="tabular-nums text-[22px]  tracking-[-0.01em]" style={{ color: "var(--app-text)" }}>
-            {formatDuration(liveTodaySeconds(member, now))}
-          </p>
-        </div>
-      </div>
-      <p className="text-[11px]" style={{ color: "var(--app-text-faint)" }}>Past 7 days: {formatDuration(member.weekSeconds)}</p>
-    </li>
+    <div role="alert" className="rounded-md p-4 text-[13px]" style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-danger)" }}>
+      {text}
+    </div>
   );
 }
 
-function RoomMetric({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-md p-3" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}><p className="type-eyebrow" style={{ color: "var(--app-text-faint)" }}>{label}</p><p className="mt-1 text-[18px] font-semibold" style={{ color: "var(--app-text)" }}>{value}</p></div>;
-}
-
-function RoomActivityChart({ days, colour }: { days: Array<{ day: string; seconds: number; sessions: number }>; colour: string }) {
-  const max = Math.max(1, ...days.map((day) => day.seconds));
-  return <section className="rounded-lg p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }} aria-label="Room activity in the past seven days">
-    <h2 className="text-[16px] font-semibold" style={{ color: "var(--app-text)" }}>Room activity · past 7 days</h2>
-    <div className="mt-4 grid grid-cols-7 gap-2">{days.map((day) => <div key={day.day} className="flex flex-col items-center justify-end gap-2" title={`${day.day}: ${formatDuration(day.seconds)} across ${day.sessions} focus sessions`}>
-      <span className="text-[10px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>{formatDuration(day.seconds)}</span>
-      <div className="flex h-20 w-full items-end rounded-sm" style={{ background: "var(--app-surface-soft)" }}><div className="w-full rounded-sm" style={{ height: `${Math.max(day.seconds ? 8 : 0, (day.seconds / max) * 100)}%`, background: roomColour(colour) }} /></div>
-      <span className="text-[11px]" style={{ color: "var(--app-text-faint)" }}>{new Date(`${day.day}T12:00:00Z`).toLocaleDateString("en-AU", { weekday: "short" })}</span>
-    </div>)}</div>
-    <p className="mt-3 text-[11px]" style={{ color: "var(--app-text-faint)" }}>Completed focus sessions, grouped by UTC day.</p>
-  </section>;
+/** The moment after a session: how long it was, and what it earned. */
+function FinishedNote({ finished, status, receipt, onDismiss }: {
+  finished: FinishedFocus;
+  status: "idle" | "saving" | "pending" | "saved";
+  receipt: { stars: number; cards: string[]; xp: number };
+  onDismiss: () => void;
+}) {
+  const logged = finished.seconds >= 30;
+  const reward = receipt.cards.length
+    ? `New streak card${receipt.cards.length === 1 ? "" : "s"} collected`
+    : receipt.stars
+      ? `${receipt.stars} new ${receipt.stars === 1 ? "star" : "stars"} on your streak cards`
+      : receipt.xp
+        ? `+${receipt.xp} XP`
+        : null;
+  return (
+    <div role="status" className="app-enter flex items-start justify-between gap-3 rounded-lg px-4 py-3" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
+      <div className="min-w-0 text-[13px]">
+        <p className="font-medium" style={{ color: "var(--app-text)" }}>
+          {logged ? `${finished.complete ? "Session done" : "Stopped"} · ${finished.seconds < 60 ? `${finished.seconds}s` : formatDuration(finished.seconds)} logged` : "Too short to log"}
+        </p>
+        {logged ? (
+          <p className="mt-0.5" style={{ color: "var(--app-text-muted)" }}>
+            {status === "saving" ? "Saving…" : status === "pending" ? "Waiting to sync, it'll retry." : reward ? <><span style={{ color: "var(--app-gold)" }}>✦</span> {reward}</> : "Saved to your streaks."}
+            {status === "saved" && (receipt.cards.length || receipt.stars) ? (
+              <Link href="/app/streaks" className="ml-1.5 underline underline-offset-2">View</Link>
+            ) : null}
+          </p>
+        ) : null}
+      </div>
+      <button type="button" onClick={onDismiss} aria-label="Dismiss" className="grid h-6 w-6 shrink-0 place-items-center rounded ui-hover" style={{ color: "var(--app-text-faint)" }}>
+        <svg viewBox="0 0 20 20" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M5 5l10 10M15 5L5 15" strokeLinecap="round" /></svg>
+      </button>
+    </div>
+  );
 }
 
 /** A 1s clock, only while someone's timer is actually running. */
@@ -459,35 +505,4 @@ function useNow(ticking: boolean): number {
     return () => window.clearInterval(id);
   }, [ticking]);
   return now;
-}
-
-function elapsedSeconds(member: StudyRoomMember, now: number): number {
-  if (member.activity === "idle" || !member.startedAt) return 0;
-  return Math.max(0, Math.floor((now - Date.parse(member.startedAt)) / 1000));
-}
-
-/** Logged time today plus the focus session still on the clock. */
-function liveTodaySeconds(member: StudyRoomMember, now: number): number {
-  return member.todaySeconds + (member.activity === "focus" ? elapsedSeconds(member, now) : 0);
-}
-
-function formatClock(totalSeconds: number): string {
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = totalSeconds % 60;
-  const mm = String(m).padStart(h > 0 ? 2 : 1, "0");
-  const ss = String(s).padStart(2, "0");
-  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
-}
-
-function formatDuration(totalSeconds: number): string {
-  const totalMin = Math.floor(totalSeconds / 60);
-  const h = Math.floor(totalMin / 60);
-  const m = totalMin % 60;
-  if (h === 0) return `${m}m`;
-  return m === 0 ? `${h}h` : `${h}h ${m}m`;
-}
-
-function initial(name: string): string {
-  return (name.trim()[0] ?? "?").toUpperCase();
 }

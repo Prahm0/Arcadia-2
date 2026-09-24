@@ -125,3 +125,20 @@ export function inTerm(state: string | null | undefined, date: string): boolean 
   if (!terms) return null;
   return terms.some(([start, end]) => date >= start && date <= end);
 }
+
+/**
+ * The term `date` falls in, or the one that last ended (so the holidays still
+ * count toward it). Null when the state's calendar isn't known.
+ */
+export function currentTerm(
+  state: string | null | undefined,
+  date: string,
+): { term: number; start: string } | null {
+  const byYear = state ? TERM_DATES[state] : undefined;
+  if (!byYear) return null;
+  const year = Number(date.slice(0, 4));
+  const started = [year - 1, year]
+    .flatMap((y) => (byYear[y] ?? []).map(([start], index) => ({ term: index + 1, start })))
+    .filter((term) => term.start <= date);
+  return started.at(-1) ?? null;
+}

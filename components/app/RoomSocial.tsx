@@ -1,37 +1,68 @@
 "use client";
 
-import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  blockRoomMember,
-  deleteRoomMessage,
   getRoomMemberProfile,
-  listRoomMessages,
-  reportRoomMessage,
-  sendRoomMessage,
   updateRoom,
   type RoomDashboard,
   type RoomMemberProfile,
-  type RoomMessage,
-  type RoomReportReason,
   type StudyRoomMember,
 } from "@/lib/api/rooms";
-import { ROOM_COLOURS, roomColour } from "@/lib/app/roomColours";
+import { ROOM_COLOURS } from "@/lib/app/roomColours";
 import AppButton from "./AppButton";
-import { showContextMenu } from "./ContextMenu";
-import { Avatar, DeveloperTag } from "./profile/ui";
+import { Avatar, DeveloperTag, Sheet } from "./profile/ui";
+import { ConstellationMark } from "./rooms/MemberAvatar";
+import { StatusWord } from "./rooms/MemberFocusCard";
+import { formatDuration } from "./rooms/format";
 
-export function RoomSettings({ code, room, isPaid, onSaved }: {
+type MemberRoom = Extract<RoomDashboard, { isMember: true }>;
+
+const FIELD = { background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" } as const;
+
+/** Owner-only: name, look, shared goals and who's been removed. */
+export function RoomSettingsSheet({ open, onClose, code, room, removedMembers, isPaid, onSaved, onAllow }: {
+  open: boolean;
+  onClose: () => void;
   code: string;
-  room: Extract<RoomDashboard, { isMember: true }>["room"];
+  room: MemberRoom["room"];
+  removedMembers: MemberRoom["removedMembers"];
+  isPaid: boolean;
+  onSaved: (dashboard: RoomDashboard) => void;
+  onAllow: (userId: string) => void;
+}) {
+  return (
+    <Sheet open={open} eyebrow="Room settings" title={room.name} onClose={onClose}>
+      {/* Mounted only while open, so each visit starts from the saved room. */}
+      <RoomSettingsForm code={code} room={room} isPaid={isPaid} onSaved={(dashboard) => { onSaved(dashboard); onClose(); }} />
+      {removedMembers.length > 0 ? (
+        <div className="mt-6 border-t pt-5" style={{ borderColor: "var(--app-border)" }}>
+          <p className="text-[13.5px] font-medium" style={{ color: "var(--app-text)" }}>Removed members</p>
+          <p className="mt-1 text-[12px]" style={{ color: "var(--app-text-muted)" }}>Allow someone back in if you want them to use the room code again.</p>
+          <ul className="mt-3 flex flex-col gap-2">
+            {removedMembers.map((member) => (
+              <li key={member.userId} className="flex items-center justify-between gap-3 rounded-md px-3 py-2" style={{ background: "var(--app-surface-soft)" }}>
+                <span className="text-[13px]" style={{ color: "var(--app-text)" }}>{member.displayName}</span>
+                <AppButton variant="ghost" onClick={() => onAllow(member.userId)}>Allow back</AppButton>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </Sheet>
+  );
+}
+
+function RoomSettingsForm({ code, room, isPaid, onSaved }: {
+  code: string;
+  room: MemberRoom["room"];
   isPaid: boolean;
   onSaved: (dashboard: RoomDashboard) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const [name, setName] = useState(room.name);
   const [description, setDescription] = useState(room.description);
   const [colour, setColour] = useState(room.colour);
   const [icon, setIcon] = useState(room.icon);
+  const [dailyHours, setDailyHours] = useState(room.dailyGoalMinutes ? String(room.dailyGoalMinutes / 60) : "");
   const [goalHours, setGoalHours] = useState(room.weeklyGoalMinutes ? String(room.weeklyGoalMinutes / 60) : "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,9 +74,14 @@ export function RoomSettings({ code, room, isPaid, onSaved }: {
     try {
       onSaved(await updateRoom(code, {
         name, description, colour,
-        ...(isPaid ? { icon, weeklyGoalMinutes: goalHours ? Math.round(Number(goalHours) * 60) : null } : {}),
+        ...(isPaid
+          ? {
+              icon,
+              weeklyGoalMinutes: goalHours ? Math.round(Number(goalHours) * 60) : null,
+              dailyGoalMinutes: dailyHours ? Math.round(Number(dailyHours) * 60) : null,
+            }
+          : {}),
       }));
-      setOpen(false);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Couldn't save room settings.");
     } finally {
@@ -53,186 +89,123 @@ export function RoomSettings({ code, room, isPaid, onSaved }: {
     }
   }
 
-  return <>
-    <AppButton variant="ghost" onClick={() => setOpen((value) => !value)}>{open ? "Close settings" : "Room settings"}</AppButton>
-    {open ? <form onSubmit={save} className="w-full rounded-lg p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
-      <p className="type-eyebrow mb-4" style={{ color: "var(--app-text-muted)" }}>Room settings · free on every plan</p>
-      <label className="block text-[13px]" style={{ color: "var(--app-text-muted)" }}>Name
-        <input value={name} onChange={(event) => setName(event.target.value)} required maxLength={60} className="mt-1 block w-full rounded-md p-2.5" style={{ background: "var(--app-surface-soft)", color: "var(--app-text)" }} />
+  return (
+    <form onSubmit={save}>
+      <label className="block text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>Name
+        <input value={name} onChange={(event) => setName(event.target.value)} required maxLength={60} className="mt-1.5 block w-full rounded-md px-3 py-2.5 text-[14px] outline-none" style={FIELD} />
       </label>
-      <label className="mt-4 block text-[13px]" style={{ color: "var(--app-text-muted)" }}>Description
-        <textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={300} rows={2} className="mt-1 block w-full rounded-md p-2.5" style={{ background: "var(--app-surface-soft)", color: "var(--app-text)" }} />
+      <label className="mt-4 block text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>Description
+        <textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={300} rows={2} placeholder="A place to study together" className="mt-1.5 block w-full rounded-md px-3 py-2.5 text-[14px] outline-none" style={FIELD} />
       </label>
-      <fieldset className="mt-4"><legend className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>Colour</legend>
-        <div className="mt-2 flex flex-wrap gap-2">{Object.entries(ROOM_COLOURS).map(([key, hex]) => <label key={key} className="cursor-pointer rounded-md px-3 py-2 text-[12px]" style={{ border: colour === key ? `2px solid ${hex}` : "2px solid transparent", background: "var(--app-surface-soft)", color: "var(--app-text)" }}><input type="radio" name="room-colour" value={key} checked={colour === key} onChange={() => setColour(key)} className="sr-only" /><span className="mr-2 inline-block h-3 w-3 rounded-full align-middle" style={{ background: hex }} />{key}</label>)}</div>
-      </fieldset>
-      {isPaid ? <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <label className="block text-[13px]" style={{ color: "var(--app-text-muted)" }}>Room icon
-          <select value={icon} onChange={(event) => setIcon(event.target.value)} className="mt-1 block w-full rounded-md p-2.5" style={{ background: "var(--app-surface-soft)", color: "var(--app-text)" }}>{["", "📚", "🎯", "🧪", "✏️", "🌙", "⚡"].map((value) => <option key={value} value={value}>{value || "None"}</option>)}</select>
-        </label>
-        <label className="block text-[13px]" style={{ color: "var(--app-text-muted)" }}>Shared 7-day focus goal · hours
-          <input type="number" min={1} max={1000} step={1} value={goalHours} onChange={(event) => setGoalHours(event.target.value)} placeholder="No goal" className="mt-1 block w-full rounded-md p-2.5" style={{ background: "var(--app-surface-soft)", color: "var(--app-text)" }} />
-        </label>
-      </div> : <p className="mt-4 text-[12px]" style={{ color: "var(--app-text-muted)" }}>Pro adds a room icon and shared 7-day focus goal.</p>}
-      {error ? <p className="mt-3 text-[12px]" style={{ color: "var(--app-danger)" }}>{error}</p> : null}
-      <div className="mt-4"><AppButton type="submit" variant="primary" loading={saving}>Save room</AppButton></div>
-    </form> : null}
-  </>;
-}
-
-const REPORT_OPTIONS: Array<{ value: RoomReportReason; label: string }> = [
-  { value: "bullying_harassment", label: "Bullying or harassment" },
-  { value: "hateful_sexual", label: "Hateful or sexual content" },
-  { value: "spam", label: "Spam" },
-  { value: "other", label: "Something else" },
-];
-
-export function RoomChat({ code, userId, ownerUserId, memberIds, onMemberClick }: {
-  code: string;
-  userId: string;
-  ownerUserId: string;
-  memberIds: string[];
-  onMemberClick: (userId: string) => void;
-}) {
-  const [messages, setMessages] = useState<RoomMessage[]>([]);
-  const [body, setBody] = useState("");
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [reporting, setReporting] = useState<RoomMessage | null>(null);
-  const [reportReason, setReportReason] = useState<RoomReportReason>("bullying_harassment");
-  const [reportNote, setReportNote] = useState("");
-  const [reportingBusy, setReportingBusy] = useState(false);
-  const load = useCallback(async () => {
-    try {
-      setMessages(await listRoomMessages(code));
-      setError(null);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Couldn't load chat.");
-    }
-  }, [code]);
-
-  useEffect(() => {
-    const initialLoad = window.setTimeout(() => void load(), 0);
-    const interval = window.setInterval(() => { if (!document.hidden) void load(); }, 10_000);
-    return () => {
-      window.clearTimeout(initialLoad);
-      window.clearInterval(interval);
-    };
-  }, [load]);
-
-  async function send(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!body.trim()) return;
-    setSending(true);
-    setError(null);
-    try {
-      const message = await sendRoomMessage(code, body.trim());
-      setMessages((current) => [...current.filter((item) => item.id !== message.id), message].slice(-50));
-      setBody("");
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Couldn't send message.");
-    } finally {
-      setSending(false);
-    }
-  }
-
-  async function remove(messageId: string) {
-    try {
-      await deleteRoomMessage(code, messageId);
-      setMessages((current) => current.filter((message) => message.id !== messageId));
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Couldn't remove message.");
-    }
-  }
-
-  async function submitReport(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!reporting) return;
-    setReportingBusy(true);
-    try {
-      const response = await reportRoomMessage(code, reporting.id, reportReason, reportNote.trim());
-      setMessages((current) => current.filter((message) => message.id !== reporting.id));
-      setReporting(null);
-      setNotice(response.message);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Couldn't send that report.");
-    } finally {
-      setReportingBusy(false);
-    }
-  }
-
-  async function block(message: RoomMessage) {
-    if (!confirm(`Block ${message.displayName}? Their messages will be hidden in every room.`)) return;
-    try {
-      await blockRoomMember(code, message.userId);
-      setMessages((current) => current.filter((item) => item.userId !== message.userId));
-      setNotice(`${message.displayName} is blocked. You can unblock them in Settings.`);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Couldn't block that person.");
-    }
-  }
-
-  function actionsFor(message: RoomMessage) {
-    if (message.userId === userId) return [{ kind: "item" as const, label: "Delete message", onSelect: () => void remove(message.id) }];
-    return [
-      { kind: "item" as const, label: "Report message", onSelect: () => { setReporting(message); setReportReason("bullying_harassment"); setReportNote(""); } },
-      { kind: "item" as const, label: "Block person", onSelect: () => void block(message) },
-      ownerUserId === userId ? { kind: "separator" as const } : null,
-      ownerUserId === userId ? { kind: "item" as const, label: "Delete message", onSelect: () => void remove(message.id) } : null,
-    ];
-  }
-
-  return <section className="rounded-lg p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }} aria-label="Room chat">
-    <div className="flex items-center justify-between gap-3"><h2 className="text-[17px] font-semibold" style={{ color: "var(--app-text)" }}>Room chat</h2><span className="text-[11px]" style={{ color: "var(--app-text-faint)" }}>Members only</span></div>
-    <p className="mt-2 text-[12px]" style={{ color: "var(--app-text-muted)" }}>Be kind. <Link href="/support" className="underline underline-offset-2">Report anything that isn&apos;t okay.</Link></p>
-    <div className="mt-4 flex max-h-[360px] min-h-[120px] flex-col gap-3 overflow-y-auto" aria-live="polite">
-      {messages.length === 0 ? <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>No messages yet. Say hello to your room.</p> : messages.map((message) => <div key={message.id} onContextMenu={(event) => showContextMenu(event, actionsFor(message), `${message.displayName}'s message`)} className="rounded-md px-3 py-2" style={{ background: "var(--app-surface-soft)" }}>
-        <div className="flex items-center gap-2 text-[11px]">
-          {memberIds.includes(message.userId) ? <button type="button" onClick={() => onMemberClick(message.userId)} className="font-semibold underline underline-offset-2" style={{ color: "var(--app-text)" }}>{message.displayName}</button> : <span className="font-semibold" style={{ color: "var(--app-text)" }}>{message.displayName}</span>}
-          <time style={{ color: "var(--app-text-faint)" }} dateTime={message.createdAt}>{new Date(message.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</time>
-          <button type="button" onClick={(event) => showContextMenu(event, actionsFor(message), `${message.displayName}'s message`)} className="ml-auto rounded px-1.5 py-0.5 text-[13px]" style={{ color: "var(--app-text-muted)" }} aria-label={`Actions for ${message.displayName}'s message`}>•••</button>
+      <fieldset className="mt-4">
+        <legend className="text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>Colour</legend>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {Object.entries(ROOM_COLOURS).map(([key, hex]) => (
+            <label
+              key={key}
+              className="cursor-pointer rounded-md px-3 py-1.5 text-[12.5px] capitalize"
+              style={{
+                color: colour === key ? `color-mix(in oklab, ${hex} 70%, var(--app-text))` : "var(--app-text-soft)",
+                background: colour === key ? `color-mix(in oklab, ${hex} 13%, transparent)` : "var(--app-surface-soft)",
+                boxShadow: colour === key ? `inset 0 0 0 1px ${hex}` : "var(--elev-inset)",
+              }}
+            >
+              <input type="radio" name="room-colour" value={key} checked={colour === key} onChange={() => setColour(key)} className="sr-only" />
+              {key}
+            </label>
+          ))}
         </div>
-        <p className="mt-1 whitespace-pre-wrap break-words text-[13px]" style={{ color: "var(--app-text-soft)" }}>{message.body}</p>
-      </div>)}
-    </div>
-    {reporting ? <ReportForm reason={reportReason} note={reportNote} busy={reportingBusy} onReason={setReportReason} onNote={setReportNote} onCancel={() => setReporting(null)} onSubmit={submitReport} /> : null}
-    <form onSubmit={send} className="mt-4 flex gap-2"><input value={body} onChange={(event) => setBody(event.target.value)} maxLength={500} placeholder="Message the room" aria-label="Message the room" className="min-w-0 flex-1 rounded-md px-3 py-2 text-[13px]" style={{ background: "var(--app-surface-soft)", color: "var(--app-text)" }} /><AppButton type="submit" variant="primary" loading={sending} disabled={!body.trim()}>Send</AppButton></form>
-    {notice ? <p className="mt-2 text-[12px]" style={{ color: "var(--app-success)" }}>{notice}</p> : null}
-    {error ? <p className="mt-2 text-[12px]" style={{ color: "var(--app-danger)" }}>{error}</p> : null}
-  </section>;
+      </fieldset>
+      {isPaid ? (
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          <label className="block text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>Icon
+            <select value={icon} onChange={(event) => setIcon(event.target.value)} className="mt-1.5 block w-full rounded-md px-3 py-2.5 text-[14px] outline-none" style={FIELD}>
+              {["", "📚", "🎯", "🧪", "✏️", "🌙", "⚡"].map((value) => <option key={value} value={value}>{value || "None"}</option>)}
+            </select>
+          </label>
+          <label className="block text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>Daily goal · hours
+            <input type="number" min={0.5} max={300} step={0.5} value={dailyHours} onChange={(event) => setDailyHours(event.target.value)} placeholder="None" className="mt-1.5 block w-full rounded-md px-3 py-2.5 text-[14px] outline-none" style={FIELD} />
+          </label>
+          <label className="block text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>7-day goal · hours
+            <input type="number" min={1} max={1000} step={1} value={goalHours} onChange={(event) => setGoalHours(event.target.value)} placeholder="None" className="mt-1.5 block w-full rounded-md px-3 py-2.5 text-[14px] outline-none" style={FIELD} />
+          </label>
+        </div>
+      ) : (
+        <p className="mt-4 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>Pro adds a room icon and shared daily and 7-day goals.</p>
+      )}
+      {error ? <p className="mt-3 text-[12.5px]" style={{ color: "var(--app-danger)" }}>{error}</p> : null}
+      <div className="mt-5"><AppButton type="submit" variant="primary" loading={saving}>Save room</AppButton></div>
+    </form>
+  );
 }
 
-function ReportForm({ reason, note, busy, onReason, onNote, onCancel, onSubmit }: {
-  reason: RoomReportReason;
-  note: string;
-  busy: boolean;
-  onReason: (value: RoomReportReason) => void;
-  onNote: (value: string) => void;
-  onCancel: () => void;
-  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+/** A room member's card: how they're doing and what they've collected. */
+export function RoomMemberProfileSheet({ code, member, isYou, canRemove, onRemove, onClose }: {
+  code: string;
+  member: StudyRoomMember | null;
+  isYou: boolean;
+  canRemove: boolean;
+  onRemove: (member: StudyRoomMember) => void;
+  onClose: () => void;
 }) {
-  return <form onSubmit={onSubmit} className="mt-4 rounded-md p-4" style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)" }}>
-    <div className="flex items-start justify-between gap-3"><div><p className="text-[13px] font-medium" style={{ color: "var(--app-text)" }}>Report message</p><p className="mt-1 text-[12px]" style={{ color: "var(--app-text-muted)" }}>This message will be hidden for you. We review reports within 24 hours.</p></div><button type="button" onClick={onCancel} className="text-[12px] underline underline-offset-2" style={{ color: "var(--app-text-muted)" }}>Cancel</button></div>
-    <div className="mt-3 grid gap-2 sm:grid-cols-2">{REPORT_OPTIONS.map((option) => <label key={option.value} className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-[12px]" style={{ background: reason === option.value ? "var(--app-accent-soft)" : "var(--app-surface)", color: "var(--app-text-soft)" }}><input type="radio" name="report-reason" value={option.value} checked={reason === option.value} onChange={() => onReason(option.value)} />{option.label}</label>)}</div>
-    <textarea value={note} onChange={(event) => onNote(event.target.value)} maxLength={300} rows={2} placeholder="Add a note (optional)" className="mt-3 w-full rounded-md px-3 py-2 text-[13px] outline-none" style={{ background: "var(--app-surface)", color: "var(--app-text)" }} />
-    <div className="mt-3"><AppButton type="submit" variant="primary" loading={busy}>Send report</AppButton></div>
-  </form>;
+  return (
+    <Sheet open={member !== null} eyebrow={isYou ? "You, in this room" : "Room member"} title={member?.displayName ?? ""} onClose={onClose}>
+      {member ? <MemberProfile key={member.userId} code={code} member={member} canRemove={canRemove} onRemove={onRemove} /> : null}
+    </Sheet>
+  );
 }
 
-export function RoomMemberProfilePanel({ code, member, onClose }: { code: string; member: StudyRoomMember; onClose: () => void }) {
+function MemberProfile({ code, member, canRemove, onRemove }: { code: string; member: StudyRoomMember; canRemove: boolean; onRemove: (member: StudyRoomMember) => void }) {
   const [profile, setProfile] = useState<RoomMemberProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
-    void getRoomMemberProfile(code, member.userId).then((value) => { if (active) setProfile(value); }).catch((caught) => { if (active) setError(caught instanceof Error ? caught.message : "Couldn't load profile."); });
+    void getRoomMemberProfile(code, member.userId)
+      .then((value) => { if (active) setProfile(value); })
+      .catch((caught) => { if (active) setError(caught instanceof Error ? caught.message : "Couldn't load profile."); });
     return () => { active = false; };
   }, [code, member.userId]);
-  return <section className="rounded-lg p-5" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)", borderLeft: `4px solid ${roomColour("blue")}` }} aria-label={`${member.displayName}'s room profile`}>
-    <div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-center gap-3">{profile ? <Avatar name={member.displayName} colour={profile.avatarColour} size={44} developer={profile.developerAccess} /> : null}<div className="min-w-0"><p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Room member</p><div className="mt-1 flex min-w-0 items-center gap-2"><h2 className="truncate text-[20px] font-semibold" style={{ color: "var(--app-text)" }}>{member.displayName}</h2>{profile?.developerAccess ? <DeveloperTag size="sm" /> : null}</div></div></div><AppButton variant="ghost" onClick={onClose}>Close</AppButton></div>
-    {error ? <p className="mt-3 text-[13px]" style={{ color: "var(--app-danger)" }}>{error}</p> : !profile ? <p className="mt-3 text-[13px]" style={{ color: "var(--app-text-muted)" }}>Loading profile…</p> : <div className="mt-4 grid grid-cols-2 gap-4 text-[13px] sm:grid-cols-4"><Stat label="Today" value={duration(member.todaySeconds)} /><Stat label="Past 7 days" value={duration(profile.weekSeconds)} /><Stat label="All-time focus" value={duration(profile.totalSeconds)} /><Stat label="Sessions" value={String(profile.sessions)} /></div>}
-  </section>;
+
+  return (
+    <div>
+      <div className="flex items-center gap-4">
+        <Avatar name={member.displayName} colour={profile?.avatarColour ?? member.avatarColour} size={52} developer={profile?.developerAccess ?? member.developerAccess} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <StatusWord activity={member.activity} />
+            {profile?.developerAccess ? <DeveloperTag size="sm" /> : null}
+          </div>
+          <p className="mt-1 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
+            {member.activity === "focus" && member.subject ? `On ${member.subject} · ` : ""}
+            Joined {new Date(member.joinedAt).toLocaleDateString([], { day: "numeric", month: "short" })}
+          </p>
+        </div>
+        {member.constellation ? <ConstellationMark id={member.constellation.id} cards={member.constellation.cards} size={52} live={member.activity === "focus"} /> : null}
+      </div>
+      {error ? (
+        <p className="mt-4 text-[13px]" style={{ color: "var(--app-danger)" }}>{error}</p>
+      ) : (
+        <dl className="mt-5 grid grid-cols-2 gap-4 text-[12.5px] sm:grid-cols-4">
+          <Stat label="Today" value={formatDuration(member.todaySeconds)} />
+          <Stat label="Past 7 days" value={profile ? formatDuration(profile.weekSeconds) : "…"} />
+          <Stat label="All-time focus" value={profile ? formatDuration(profile.totalSeconds) : "…"} />
+          <Stat label="Streak cards" value={member.constellation ? String(member.constellation.cards) : "0"} />
+        </dl>
+      )}
+      {canRemove ? (
+        <div className="mt-6 border-t pt-4" style={{ borderColor: "var(--app-border)" }}>
+          <AppButton variant="danger" onClick={() => onRemove(member)}>Remove from room</AppButton>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
-function Stat({ label, value }: { label: string; value: string }) { return <div><p className="type-eyebrow" style={{ color: "var(--app-text-faint)" }}>{label}</p><p className="mt-1 text-[18px] font-semibold" style={{ color: "var(--app-text)" }}>{value}</p></div>; }
-function duration(seconds: number) { const minutes = Math.floor(seconds / 60); return minutes >= 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${minutes}m`; }
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt style={{ color: "var(--app-text-faint)" }}>{label}</dt>
+      <dd className="mt-1 font-mono text-[17px] tabular-nums" style={{ color: "var(--app-text)" }}>{value}</dd>
+    </div>
+  );
+}

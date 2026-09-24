@@ -546,7 +546,7 @@ export const TOURS: Record<TourId, Tour> = {
       },
       {
         title: "See who's studying",
-        body: "Everyone's status comes from their focus timer: studying, on a break or idle, with a live timer and their subject.",
+        body: "Everyone's card shows whether they're focusing, what on and for how long. Whoever's studying comes first.",
         visual: (
           <div className="grid w-[310px] grid-cols-2 gap-2">
             <Window width={152}>
@@ -556,7 +556,7 @@ export const TOURS: Record<TourId, Tour> = {
                   <p className="text-[10.5px] font-semibold" style={{ color: "var(--app-text)" }}>Josh</p>
                   <p className="text-[9px]" style={{ color: "var(--app-text-muted)" }}>Chemistry</p>
                 </div>
-                <Chip tone="accent">Studying</Chip>
+                <Chip tone="success">Focusing</Chip>
               </div>
               <p className="mt-2 tabular-nums text-[15px]" style={{ color: "var(--app-text)" }}>24:08</p>
             </Window>
@@ -565,43 +565,39 @@ export const TOURS: Record<TourId, Tour> = {
                 <Avatar name="Priya" />
                 <div className="min-w-0 flex-1">
                   <p className="text-[10.5px] font-semibold" style={{ color: "var(--app-text)" }}>Priya</p>
-                  <p className="text-[9px]" style={{ color: "var(--app-text-muted)" }}>4 min left</p>
+                  <p className="text-[9px]" style={{ color: "var(--app-text-muted)" }}>Idle</p>
                 </div>
-                <Chip tone="success">Break</Chip>
               </div>
-              <p className="mt-2 tabular-nums text-[15px]" style={{ color: "var(--app-text)" }}>06:12</p>
+              <p className="mt-2 text-[10px]" style={{ color: "var(--app-text-muted)" }}>Studied 52m today</p>
             </Window>
           </div>
         ),
       },
       {
-        title: "Compare today's totals",
-        body: "Each card shows how long that person has studied today. Whoever's studying is listed first.",
-        visual: (
-          <Window width={270} title="Year 12 grind · 2 studying now">
-            <Row title="Josh" meta="Studying · Chemistry" right={<span className="tabular-nums text-[11px]" style={{ color: "var(--app-text)" }}>2h 10m</span>} />
-            <Row title="You" meta="Studying · Physics" right={<span className="tabular-nums text-[11px]" style={{ color: "var(--app-text)" }}>1h 25m</span>} />
-            <Row title="Priya" meta="Idle" right={<span className="tabular-nums text-[11px]" style={{ color: "var(--app-text)" }}>1h 45m</span>} />
-          </Window>
-        ),
-      },
-      {
-        title: "Nothing to set up",
-        body: "Start a focus session anywhere in Arcadia and every room you're in sees it. No chat, no notifications.",
+        title: "Start here, or join in",
+        body: "Start a session from the room, or join someone's and finish together. A timer on the Focus page shows here too.",
         visual: (
           <div className="flex items-center gap-3">
-            <TimerRing time="12:30" label="Focus" progress={0.25} size={96} />
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--app-text-faint)" strokeWidth="1.8" strokeLinecap="round">
-              <path d="M5 12h14M13 6l6 6-6 6" />
-            </svg>
-            <Window width={150}>
-              <div className="flex items-center gap-2">
-                <Avatar name="You" active />
-                <Chip tone="accent">Studying</Chip>
+            <TimerRing time="32:14" label="Focus" progress={0.3} size={96} />
+            <Window width={170}>
+              <p className="text-[10px]" style={{ color: "var(--app-text-muted)" }}>Josh is 13 min in</p>
+              <div className="mt-2 flex gap-1.5">
+                <MockButton size="sm">Join</MockButton>
+                <MockButton size="sm">👏 Cheer</MockButton>
               </div>
-              <p className="mt-1.5 text-[9.5px]" style={{ color: "var(--app-text-muted)" }}>Physics · 12:30</p>
             </Window>
           </div>
+        ),
+      },
+      {
+        title: "Cheer, climb, reach the goal",
+        body: "Cheer people on mid-session. The leaderboard ranks the room by day, week, term and all time, and a shared goal fills as everyone studies.",
+        visual: (
+          <Window width={270} title="Leaderboard · past 7 days">
+            <Row title="1  Josh" right={<span className="tabular-nums text-[11px]" style={{ color: "var(--app-text)" }}>6h 42m</span>} />
+            <Row title="2  You" right={<span className="tabular-nums text-[11px]" style={{ color: "var(--app-text)" }}>5h 18m</span>} />
+            <Row title="3  Priya" right={<span className="tabular-nums text-[11px]" style={{ color: "var(--app-text)" }}>4h 51m</span>} />
+          </Window>
         ),
       },
     ],

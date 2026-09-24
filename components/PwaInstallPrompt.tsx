@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 /**
  * Small bottom-sheet "Add to Home Screen" prompt for mobile web visitors.
  * Two branches:
@@ -142,13 +143,9 @@ export default function PwaInstallPrompt() {
       <div className="flex items-start gap-3">
         <div
           className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl"
-          style={{ background: "rgba(124,92,255,0.14)" }}
+          style={{ background: "#090812" }}
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a58bff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 3v12" />
-            <path d="m7 8 5-5 5 5" />
-            <path d="M5 21h14" />
-          </svg>
+          <Image src="/brand/arcadia-mark.png" alt="" aria-hidden="true" width={28} height={28} className="rounded-[18%]" />
         </div>
         <div className="flex-1">
           <p className="text-[14.5px] font-semibold">Add Arcadia to your Home Screen</p>

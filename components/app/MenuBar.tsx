@@ -227,20 +227,13 @@ export default function MenuBar({
       className="sticky top-0 z-40 hidden h-10 items-center gap-1 border-b pl-3 pr-14 lg:flex"
       style={{ background: "var(--app-surface)", borderColor: "var(--app-border)" }}
     >
-      {/* Logo only, the placeholder until the final mark lands. */}
       <Link
         href="/app"
         aria-label="Arcadia, go to Today"
         title="Arcadia"
         className="mr-1.5 grid h-7 w-7 place-items-center rounded-md ui-hover"
       >
-        <span
-          aria-hidden="true"
-          className="grid h-5 w-5 place-items-center rounded-[5px]"
-          style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}
-        >
-          <Logo size={11} />
-        </span>
+        <Logo size={22} />
       </Link>
 
       <div role="menubar" aria-label="Application" className="flex items-center gap-0.5">

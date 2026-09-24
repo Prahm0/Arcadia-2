@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { cn } from "@/lib/cn";
 
 interface LogoProps {
@@ -7,27 +8,18 @@ interface LogoProps {
 }
 
 /**
- * The Arcadia mark: a bold triangular "A" silhouette with an inset counter
- * and a small floating triangle marker inside. Rendered as one compound path
- * with `fill-rule="evenodd"` so the counter reads as background and the inner
- * marker reads as filled, three crossings brings us back to fill.
- *
- * Fills with `currentColor`, so callers tint it via CSS.
+ * The official Arcadia mark. It is a supplied raster asset so the landing,
+ * dashboard, auth surfaces and installed app all use the exact same logo.
  */
 export default function Logo({ size = 20, className }: LogoProps) {
   return (
-    <svg
-      viewBox="0 0 128 128"
+    <Image
+      src="/brand/arcadia-mark.png"
+      alt=""
       width={size}
       height={size}
-      fill="currentColor"
       aria-hidden="true"
-      className={cn("block", className)}
-    >
-      <path
-        fillRule="evenodd"
-        d="M64 8 L124 120 L4 120 Z M64 44 L96 108 L32 108 Z M64 76 L78 98 L50 98 Z"
-      />
-    </svg>
+      className={cn("block rounded-[18%] object-cover", className)}
+    />
   );
 }

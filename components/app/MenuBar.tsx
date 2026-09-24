@@ -136,6 +136,17 @@ export default function MenuBar({
           label: "Ask Arcad",
           onSelect: () => (pathname.startsWith("/app/arcad") ? undefined : openArcad()),
         },
+        {
+          kind: "item",
+          label: "Send feedback",
+          onSelect: () => {
+            if (pathname === "/app/settings") {
+              document.getElementById("help-feedback")?.scrollIntoView({ behavior: "smooth" });
+            } else {
+              go("/app/settings#help-feedback");
+            }
+          },
+        },
         { kind: "separator" },
         { kind: "item", label: "Plans & pricing", onSelect: () => go("/app/pricing") },
         { kind: "item", label: "Privacy", onSelect: () => go("/privacy") },

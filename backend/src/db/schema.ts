@@ -54,6 +54,24 @@ export const users = sqliteTable(
   ],
 );
 
+/** Product feedback is visible only to developers. The email is saved only by opt-in. */
+export const feedback = sqliteTable(
+  "feedback",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    type: text("type", { enum: ["bug", "idea", "other"] }).notNull(),
+    message: text("message").notNull(),
+    email: text("email"),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [
+    index("feedback_user_created_idx").on(t.userId, t.createdAt),
+    index("feedback_type_created_idx").on(t.type, t.createdAt),
+    index("feedback_created_idx").on(t.createdAt),
+  ],
+);
+
 /** A referral is created on a brand-new account and becomes real only after setup. */
 export const referrals = sqliteTable(
   "referrals",

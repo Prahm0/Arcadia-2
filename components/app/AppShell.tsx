@@ -777,6 +777,14 @@ function SidebarPlanCue() {
     () => findNextStudyBlock(data.events, now),
     [data.events, now],
   );
+  const todayKey = dateKey(new Date(now).toISOString(), timezone);
+  const ring = useMemo(() => {
+    const blocks = data.events.filter((event) => event.category === "study" && dateKey(event.startAt, timezone) === todayKey && event.status !== "cancelled");
+    const goal = Math.round(blocks.reduce((sum, event) => sum + (Date.parse(event.endAt) - Date.parse(event.startAt)), 0) / 60_000);
+    const completed = Math.round(blocks.filter((event) => event.outcome === "completed").reduce((sum, event) => sum + (Date.parse(event.endAt) - Date.parse(event.startAt)), 0) / 60_000);
+    const focused = Number(data.analytics.todayMinutes ?? 0);
+    return goal > 0 ? { done: Math.max(completed, focused), goal } : null;
+  }, [data.analytics.todayMinutes, data.events, timezone, todayKey]);
 
   if (!nextBlock) {
     return (
@@ -829,9 +837,7 @@ function SidebarPlanCue() {
       }}
     >
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-accent-strong)" }}>
-          {beginsNow ? "Your block is ready" : "Your next block"}
-        </p>
+        <span className="flex items-center gap-2"><span className="grid h-7 w-7 place-items-center rounded-full text-[9px] font-semibold tabular-nums" style={{ background: ring ? `conic-gradient(var(--app-accent) ${Math.min(1, ring.done / ring.goal) * 360}deg, var(--app-border) 0deg)` : "var(--app-border)" }}><span className="grid h-5 w-5 place-items-center rounded-full" style={{ background: "var(--app-surface)", color: "var(--app-text-muted)" }}>{ring ? `${ring.done}` : "✦"}</span></span><p className="text-[10px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-accent-strong)" }}>{beginsNow ? "Your block is ready" : "Your next block"}</p></span>
         <span className="text-[14px] transition-transform group-hover:translate-x-0.5" aria-hidden="true" style={{ color: "var(--app-accent-strong)" }}>→</span>
       </div>
       <p className="mt-1.5 truncate text-[13.5px] font-semibold" style={{ color: "var(--app-text)" }}>
@@ -841,7 +847,7 @@ function SidebarPlanCue() {
         {nextBlock.subject ? `${nextBlock.subject} · ` : ""}{timeLabel}
       </p>
       <p className="mt-2 text-[12px] font-medium" style={{ color: "var(--app-accent-strong)" }}>
-        {beginsNow ? "Start focus" : "Review block"}
+        {ring ? `${ring.done} of ${ring.goal} min today · ${beginsNow ? "Start focus" : "Review block"}` : beginsNow ? "Start focus" : "Review block"}
       </p>
     </Link>
   );

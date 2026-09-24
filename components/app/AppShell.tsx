@@ -427,7 +427,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
                 Upgrade to Pro
               </Link>
             )}
-            {user && !isGuestEmail(user.email) ? (
+            {user && !isGuestEmail(user.email) && !user.hasSubscription ? (
               <Link
                 href="/app/invite"
                 aria-current={pathname.startsWith("/app/invite") ? "page" : undefined}

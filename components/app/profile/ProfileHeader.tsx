@@ -74,7 +74,7 @@ export default function ProfileHeader({ data, replace, replanned }: SectionProps
         </div>
         <div className="flex items-center gap-2 self-start sm:self-center">
           <PageTour id="profile" />
-          {!isGuestEmail(dashboard.user.email) ? (
+          {!isGuestEmail(dashboard.user.email) && !dashboard.user.hasSubscription ? (
             <Link href="/app/invite" className={appButtonClass("secondary")}>
               Invite friends
             </Link>

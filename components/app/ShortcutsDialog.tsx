@@ -5,8 +5,9 @@ import { GO_TARGETS } from "@/lib/app/commands";
 import Kbd from "./Kbd";
 
 const GENERAL: { label: string; keys: string[] }[] = [
+  { label: "Search", keys: ["/"] },
   { label: "New task", keys: ["N"] },
-  { label: "Toggle sidebar", keys: ["["] },
+  { label: "Collapse or expand sidebar", keys: ["["] },
   { label: "Keyboard shortcuts", keys: ["?"] },
   { label: "Close menu or dialog", keys: ["Esc"] },
 ];

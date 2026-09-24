@@ -1,7 +1,8 @@
 import { and, eq, gte, lt, sql } from "drizzle-orm";
 import { Hono } from "hono";
-import { CONSISTENCY_THRESHOLD, levelForXp } from "../../../shared/progress";
+import { CONSISTENCY_THRESHOLD, levelForXp, XP } from "../../../shared/progress";
 import { db, schema } from "../db";
+import { awardXp } from "../lib/rewards";
 import { DAY, MINUTE, startOfLocalDay } from "../lib/time";
 import type { Env, Variables } from "../types";
 
@@ -21,7 +22,8 @@ progress.get("/", async (c) => {
   const focusedMinutes = Math.round(sessions.filter((session) => session.type !== "break").reduce((sum, session) => sum + session.seconds, 0) / 60);
   const doneMinutes = Math.max(completedMinutes, focusedMinutes);
   const closed = doneMinutes >= Math.ceil(goalMinutes * CONSISTENCY_THRESHOLD);
-  const xp = Number(totals[0]?.xp ?? 0); const level = levelForXp(xp);
+  const ringReward = closed ? await awardXp(database, userId, "ring_closed", String(start), XP.ringClosed) : [];
+  const xp = Number(totals[0]?.xp ?? 0) + ringReward.reduce((sum, reward) => sum + reward.xp, 0); const level = levelForXp(xp);
   return c.json({ xp, level: level.level, title: level.title, levelProgress: { current: level.progress, needed: level.needed }, todayRing: { doneMinutes, goalMinutes, closed }, streak: { days: 0, freezes: 0, protectedToday: false }, achievements: [], personalBests: {}, recentUnlocks: [] });
 });
 

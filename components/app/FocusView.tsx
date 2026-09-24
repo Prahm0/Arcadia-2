@@ -21,7 +21,9 @@ import PipTimer, { PIP_COMPACT_HEIGHT, PIP_WIDTH, PlayPauseIcon } from "./focus/
 import SessionTodos, { useOwnTodos, type TodoItem } from "./focus/SessionTodos";
 import { useDocumentPip } from "./focus/useDocumentPip";
 import { useStudySessionSave } from "@/lib/app/useStudySessionSave";
+import { isNative } from "@/lib/capacitor/platform";
 import { constellationById } from "@/shared/constellations";
+import StudyWithMe from "./focus/StudyWithMe";
 
 const BUILT_IN_PRESETS = [
   { label: "Deep focus", focus: 50 * 60, break: 10 * 60 },
@@ -212,11 +214,21 @@ function FocusViewInner() {
   const pip = useDocumentPip();
   const [pipExpanded, setPipExpanded] = useState(false);
   const [pipBlocked, setPipBlocked] = useState(false);
+  const [studyWithMeOpen, setStudyWithMeOpen] = useState(false);
+  const [studyWithMeComplete, setStudyWithMeComplete] = useState(false);
 
   async function popOut() {
     setPipExpanded(false);
     const win = await pip.open({ width: PIP_WIDTH, height: PIP_COMPACT_HEIGHT });
     setPipBlocked(win === null);
+  }
+
+  function openStudyWithMe() {
+    if (!isNative() && document.documentElement.requestFullscreen) {
+      void document.documentElement.requestFullscreen().catch(() => {});
+    }
+    setStudyWithMeComplete(false);
+    setStudyWithMeOpen(true);
   }
 
   const loadRecents = useCallback(async () => {
@@ -300,7 +312,9 @@ function FocusViewInner() {
     if (!running) return;
     const endsAt = Date.now() + remainingRef.current * 1000;
     intervalRef.current = window.setInterval(() => {
-      setRemaining(Math.max(0, Math.round((endsAt - Date.now()) / 1000)));
+      const next = Math.max(0, Math.round((endsAt - Date.now()) / 1000));
+      if (next === 0) setStudyWithMeComplete(true);
+      setRemaining(next);
     }, 250);
     return () => {
       if (intervalRef.current) window.clearInterval(intervalRef.current);
@@ -428,6 +442,7 @@ function FocusViewInner() {
   }
 
   function start() {
+    setStudyWithMeComplete(false);
     if (phase === "idle") {
       setPhase("focus");
       setRemaining(preset.focus);
@@ -453,6 +468,7 @@ function FocusViewInner() {
     setPhase("idle");
     setRemaining(preset.focus);
     setDistractions(0);
+    setStudyWithMeComplete(false);
   }
 
   function skip() {
@@ -473,6 +489,7 @@ function FocusViewInner() {
       setRemaining(preset.focus);
     }
     setRunning(false);
+    setStudyWithMeComplete(false);
   }
 
   function detach() {
@@ -550,6 +567,15 @@ function FocusViewInner() {
           className="relative flex flex-col items-center rounded-xl px-6 pb-8 pt-12"
           style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
         >
+          <button
+            type="button"
+            onClick={openStudyWithMe}
+            className="ui-press absolute left-3 top-3 flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12.5px] font-medium hover:bg-[color-mix(in_oklab,var(--app-text)_6%,transparent)]"
+            style={{ color: "var(--app-text-muted)" }}
+          >
+            <span aria-hidden="true">✦</span>
+            Study with me
+          </button>
           {pip.supported ? (
             <button
               type="button"
@@ -908,6 +934,18 @@ function FocusViewInner() {
         timezone={timezone}
         initialMode="miss-reason"
         onClose={() => setMissReasonEvent(null)}
+      />
+      <StudyWithMe
+        open={studyWithMeOpen}
+        onExit={() => setStudyWithMeOpen(false)}
+        running={running}
+        remaining={remaining}
+        total={totalForPhase}
+        subject={subject}
+        goal={sessionGoal}
+        todosDone={todosDone}
+        todosTotal={todos.length}
+        complete={studyWithMeComplete}
       />
     </>
   );

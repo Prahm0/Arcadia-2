@@ -10,6 +10,7 @@ import { useTheme, type ThemeMode } from "@/lib/app/theme";
 import { is24Hour, set24Hour } from "@/lib/app/timeFormat";
 import { requestDashboardRefresh } from "@/lib/app/useDashboardAutoRefresh";
 import { MenuRow, menuItems, moveInMenu, type MenuEntry } from "./Menu";
+import { useModKey } from "./SearchDialog";
 import { getActiveTour, subscribeActiveTour } from "./tour/tours";
 
 interface Menu {
@@ -22,6 +23,7 @@ interface MenuBarProps {
   onToggleSidebar: () => void;
   onNewTask: () => void;
   onShowShortcuts: () => void;
+  onSearch: () => void;
   onSignOut: () => void;
 }
 
@@ -35,9 +37,11 @@ export default function MenuBar({
   onToggleSidebar,
   onNewTask,
   onShowShortcuts,
+  onSearch,
   onSignOut,
 }: MenuBarProps) {
   const router = useRouter();
+  const modKey = useModKey();
   const pathname = usePathname();
   const { mode, setMode } = useTheme();
   const { patch } = useDashboardData();
@@ -86,7 +90,7 @@ export default function MenuBar({
     {
       label: "View",
       entries: [
-        { kind: "check", label: "Sidebar", checked: sidebarOpen, shortcut: ["["], onSelect: onToggleSidebar },
+        { kind: "check", label: "Expanded sidebar", checked: sidebarOpen, shortcut: ["["], onSelect: onToggleSidebar },
         {
           kind: "check",
           label: "24-hour time",
@@ -110,13 +114,17 @@ export default function MenuBar({
     },
     {
       label: "Go",
-      entries: GO_TARGETS.map((target) => ({
-        kind: "check" as const,
-        label: target.label,
-        checked: target.href === "/app" ? pathname === "/app" : pathname.startsWith(target.href),
-        shortcut: ["G", target.key === "," ? "," : target.key.toUpperCase()],
-        onSelect: () => go(target.href),
-      })),
+      entries: [
+        { kind: "item", label: "Search…", shortcut: [modKey, "K"], onSelect: onSearch },
+        { kind: "separator" },
+        ...GO_TARGETS.map((target) => ({
+          kind: "check" as const,
+          label: target.label,
+          checked: target.href === "/app" ? pathname === "/app" : pathname.startsWith(target.href),
+          shortcut: ["G", target.key === "," ? "," : target.key.toUpperCase()],
+          onSelect: () => go(target.href),
+        })),
+      ],
     },
     {
       label: "Help",

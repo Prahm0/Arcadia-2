@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import type { PlannerTask } from "@/lib/api/types";
@@ -21,6 +22,21 @@ export default function DeadlinesView() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<PlannerTask | null>(null);
   const [detailTask, setDetailTask] = useState<PlannerTask | null>(null);
+
+  // Search links here with ?task=<id>: open that task's sheet once per link.
+  const taskParam = useSearchParams().get("task");
+  const [openedParam, setOpenedParam] = useState<string | null>(null);
+  if (taskParam !== openedParam) {
+    setOpenedParam(taskParam);
+    const linked = taskParam ? data.tasks.find((task) => task.id === taskParam) : undefined;
+    if (linked) setDetailTask(linked);
+  }
+  useEffect(() => {
+    if (!taskParam) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("task");
+    window.history.replaceState(window.history.state, "", url.toString());
+  }, [taskParam]);
 
   // Track the freshest copy of the open task so optimistic patches (add-time,
   // notes, complete) flow into the sheet without waiting for reload.

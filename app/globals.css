@@ -974,3 +974,88 @@ html[data-app-theme] .type-mono-label {
   }
   .sheet-print * { color: #111 !important; background: transparent !important; box-shadow: none !important; }
 }
+
+/* Every dropdown in the app. The closed field keeps each component's own
+   look; the open list matches the app instead of the operating system's
+   blue-highlight menu. Chromium draws it from these rules (customisable
+   select); other browsers keep their native list, in the app's light or
+   dark scheme. */
+[data-app-theme] select {
+  color-scheme: inherit;
+}
+
+@supports (appearance: base-select) {
+  [data-app-theme] select,
+  [data-app-theme] ::picker(select) {
+    appearance: base-select;
+  }
+
+  [data-app-theme] select {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border: 0;
+    cursor: pointer;
+  }
+
+  /* A thin chevron, like the app's other icons, instead of a solid triangle. */
+  [data-app-theme] select::picker-icon {
+    content: "";
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+    background: var(--app-text-muted);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8l5 5 5-5'/%3E%3C/svg%3E") center / contain no-repeat;
+    transition: rotate 150ms ease-out;
+  }
+
+  [data-app-theme] select:open::picker-icon {
+    rotate: 180deg;
+  }
+
+  [data-app-theme] ::picker(select) {
+    margin-block: 4px;
+    padding: 4px;
+    max-height: min(320px, 50svh);
+    overflow-y: auto;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    background: var(--app-elev);
+    color: var(--app-text);
+    box-shadow: var(--elev-3);
+    font-size: 13.5px;
+  }
+
+  [data-app-theme] select option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 32px;
+    padding: 6px 10px;
+    border-radius: 5px;
+    color: var(--app-text);
+    cursor: pointer;
+  }
+
+  [data-app-theme] select option:hover,
+  [data-app-theme] select option:focus-visible {
+    background: color-mix(in oklab, var(--app-text) 8%, transparent);
+    outline: none;
+  }
+
+  [data-app-theme] select option:checked {
+    font-weight: 600;
+  }
+
+  [data-app-theme] select option::checkmark {
+    order: 1;
+    margin-inline-start: auto;
+    color: var(--app-text-muted);
+  }
+
+  [data-app-theme] select option:disabled {
+    color: var(--app-text-faint);
+    cursor: default;
+  }
+}

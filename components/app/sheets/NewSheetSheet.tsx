@@ -12,7 +12,7 @@ import { Label, Select, Sheet, TextInput } from "../profile/ui";
 import { useSubjects } from "../cards/shared";
 
 type Start = "blank" | "arcad";
-type Source = "topic" | "file" | "deck";
+type Source = "file" | "deck";
 
 /**
  * A new summary sheet: blank with the usual headings, or an Arcad draft from
@@ -40,15 +40,13 @@ function NewSheetForm({ onClose, initialSubject }: { onClose: () => void; initia
   const [title, setTitle] = useState("");
   const [subjectId, setSubjectId] = useState(initialSubject ?? subjects[0]?.id ?? "");
   const [start, setStart] = useState<Start>("blank");
-  const [source, setSource] = useState<Source>("topic");
-  const [topicId, setTopicId] = useState("");
+  const [source, setSource] = useState<Source>("file");
   const [fileId, setFileId] = useState("");
   const [deckId, setDeckId] = useState("");
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const profileSubjects = useMemo(() => (profileState.status === "ready" ? profileState.data.subjects : []), [profileState]);
-  const topics = useMemo(() => profileSubjects.find((subject) => subject.id === subjectId)?.topics ?? [], [profileSubjects, subjectId]);
   const files = useMemo(
     () =>
       profileSubjects
@@ -75,7 +73,7 @@ function NewSheetForm({ onClose, initialSubject }: { onClose: () => void; initia
       stashDraft({
         title: title.trim(),
         subjectId: subjectId || null,
-        topicId: topicId || null,
+        topicId: null,
         sections: SECTION_PRESETS.slice(0, 3).map((heading) => ({ heading, body: "" })),
         note: "",
         source: "manual",
@@ -83,9 +81,9 @@ function NewSheetForm({ onClose, initialSubject }: { onClose: () => void; initia
       router.push("/app/sheets/new");
       return;
     }
-    const pick = source === "topic" ? { topicId } : source === "file" ? { subjectFileId: fileId } : { deckId };
+    const pick = source === "file" ? { subjectFileId: fileId } : { deckId };
     if (!Object.values(pick)[0]) {
-      setError(source === "topic" ? "Choose a syllabus topic." : source === "file" ? "Choose a file." : "Choose a deck.");
+      setError(source === "file" ? "Choose a file." : "Choose a deck.");
       return;
     }
     setWorking(true);
@@ -122,7 +120,6 @@ function NewSheetForm({ onClose, initialSubject }: { onClose: () => void; initia
             value={subjectId}
             onChange={(id) => {
               setSubjectId(id);
-              setTopicId("");
               setFileId("");
               setDeckId("");
             }}
@@ -138,41 +135,16 @@ function NewSheetForm({ onClose, initialSubject }: { onClose: () => void; initia
 
         <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="How to start">
           <Option selected={start === "blank"} onSelect={() => setStart("blank")} title="Blank" body="Key ideas, Formulas, Definitions." />
-          <Option selected={start === "arcad"} onSelect={() => setStart("arcad")} title="Generate draft" body="From a topic, file or deck." />
+          <Option selected={start === "arcad"} onSelect={() => setStart("arcad")} title="Generate draft" body="From an uploaded file or a deck." />
         </div>
-
-        {start === "blank" && topics.length > 0 ? (
-          <Label text="Syllabus topic (optional)">
-            <Select value={topicId} onChange={setTopicId}>
-              <option value="">None</option>
-              {topics.map((topic) => (
-                <option key={topic.id} value={topic.id}>
-                  {topic.title}
-                </option>
-              ))}
-            </Select>
-          </Label>
-        ) : null}
 
         {start === "arcad" ? (
           <div className="space-y-3">
-            <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Draft from">
-              <Option selected={source === "topic"} onSelect={() => setSource("topic")} title="Topic" body="Syllabus" />
+            <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Draft from">
               <Option selected={source === "file"} onSelect={() => setSource("file")} title="File" body="Uploaded notes" />
               <Option selected={source === "deck"} onSelect={() => setSource("deck")} title="Deck" body="Flashcards" />
             </div>
-            {source === "topic" ? (
-              <Label text="Syllabus topic" hint={topics.length ? "Uses the topic's syllabus detail and your files for this subject." : "Add a syllabus to this subject to pick a topic."}>
-                <Select value={topicId} onChange={setTopicId}>
-                  <option value="">{profileState.status === "loading" ? "Loading topics…" : "Choose a topic"}</option>
-                  {topics.map((topic) => (
-                    <option key={topic.id} value={topic.id}>
-                      {topic.title}
-                    </option>
-                  ))}
-                </Select>
-              </Label>
-            ) : source === "file" ? (
+            {source === "file" ? (
               <Label text="Uploaded file" hint="Files that have been read and stored.">
                 <Select value={fileId} onChange={setFileId}>
                   <option value="">{profileState.status === "loading" ? "Loading files…" : "Choose a file"}</option>

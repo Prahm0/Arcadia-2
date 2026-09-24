@@ -92,7 +92,7 @@ export default function SheetsView({ startCreating = false }: { startCreating?: 
             title={
               "No sheets yet"
             }
-            body="One page per topic: key ideas, formulas, definitions and common mistakes. Write one, or generate a draft from a syllabus topic, an uploaded file or a deck."
+            body="One page per topic: key ideas, formulas, definitions and common mistakes. Write one, or generate a draft from an uploaded file or a deck."
             example={
               <>
                 <ExampleRow title="Stoichiometry" meta="Chemistry · Formulas, Definitions, Common mistakes" />

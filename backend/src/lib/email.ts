@@ -32,8 +32,9 @@ export async function sendEmail(env: Env, args: SendArgs): Promise<boolean> {
   });
 
   if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    console.error("[email] resend failed", response.status, detail.slice(0, 500));
+    // Provider error payloads can echo a recipient address. Keep logs useful
+    // without risking personal data from verification or reset mail.
+    console.error("[email] resend failed", response.status);
     return false;
   }
   return true;
@@ -125,6 +126,32 @@ export function verificationEmail(link: string) {
     html: emailLayout({
       heading: "Welcome to Arcadia",
       preheader: "Confirm your email to start planning your week.",
+      body,
+    }),
+  };
+}
+
+export function resetPasswordEmail(link: string) {
+  const body = `
+    <p style="margin:0 0 20px;font-size:15px;line-height:1.55;color:#3a3a4a;">
+      Use this link to choose a new password for your Arcadia account.
+    </p>
+    ${emailButton(link, "Reset my password")}
+    <p style="margin:22px 0 6px;font-size:13px;line-height:1.5;color:#6b7280;">
+      Or paste this link into your browser:
+    </p>
+    <p style="margin:0 0 20px;font-size:13px;line-height:1.5;word-break:break-all;">
+      <a href="${link}" style="color:#7c5cff;text-decoration:none;">${link}</a>
+    </p>
+    <p style="margin:0;font-size:13px;line-height:1.5;color:#6b7280;">
+      This link works for 60 minutes. If you didn&rsquo;t ask for this, you can ignore this email.
+    </p>`;
+  return {
+    subject: "Reset your Arcadia password",
+    text: `Reset your Arcadia password.\n\nUse this link to choose a new password:\n${link}\n\nThis link works for 60 minutes. If you didn't ask for this, you can ignore this email.\n\narcadiahq.app`,
+    html: emailLayout({
+      heading: "Reset your Arcadia password",
+      preheader: "Choose a new password for your Arcadia account.",
       body,
     }),
   };

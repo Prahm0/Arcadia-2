@@ -1,8 +1,8 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, gte } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../db";
-import { sendEmail, verificationEmail } from "../lib/email";
-import { newId, newToken } from "../lib/ids";
+import { resetPasswordEmail, sendEmail, verificationEmail } from "../lib/email";
+import { newId, newToken, sha256Hex } from "../lib/ids";
 import { hashPassword, newSalt, passwordProblem, verifyPassword } from "../lib/password";
 import { encryptToken } from "../lib/crypto";
 import { createPendingReferral, createReferralCode, normaliseReferralCode } from "../lib/referrals";
@@ -25,6 +25,10 @@ import { DAY } from "../lib/time";
 import type { Env, Variables } from "../types";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PASSWORD_RESET_TTL = 60 * 60 * 1000;
+const PASSWORD_RESET_COOLDOWN = 60 * 1000;
+const PASSWORD_RESET_OK = { message: "If an account exists, we've emailed a reset link." };
+const PASSWORD_RESET_EXPIRED = { error: "This reset link has expired. Request a new one." };
 
 const auth = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -439,6 +443,113 @@ auth.post("/resend-verification", async (c) => {
   await sendEmail(c.env, { to: email, ...verificationEmail(link) });
 
   return c.json(genericOk);
+});
+
+auth.post("/forgot-password", async (c) => {
+  // This endpoint intentionally has one response for every outcome. It means
+  // someone cannot use it to discover who has an Arcadia account.
+  const body = await c.req.json<{ email?: string }>().catch(() => null);
+  const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
+
+  if (!EMAIL_PATTERN.test(email) || email.length > 254) {
+    // Keep invalid and unknown addresses from being conspicuously faster than
+    // an account lookup and reset-mail request.
+    await hashPassword("password-reset", "password-reset-decoy");
+    return c.json(PASSWORD_RESET_OK);
+  }
+
+  const database = db(c.env.DB);
+  const [user] = await database
+    .select({
+      id: schema.users.id,
+      email: schema.users.email,
+      passwordResetRequestedAt: schema.users.passwordResetRequestedAt,
+    })
+    .from(schema.users)
+    .where(eq(schema.users.email, email))
+    .limit(1);
+
+  const now = Date.now();
+  const recentlyRequested = (user?.passwordResetRequestedAt ?? 0) > now - PASSWORD_RESET_COOLDOWN;
+  if (!user || user.email.endsWith("@arcadia.local") || recentlyRequested) {
+    await hashPassword("password-reset", "password-reset-decoy");
+    return c.json(PASSWORD_RESET_OK);
+  }
+
+  const token = newToken(32);
+  const tokenHash = await sha256Hex(token);
+  await database
+    .update(schema.users)
+    .set({
+      passwordResetTokenHash: tokenHash,
+      passwordResetExpiresAt: now + PASSWORD_RESET_TTL,
+      passwordResetRequestedAt: now,
+    })
+    .where(eq(schema.users.id, user.id));
+
+  const link = `${c.env.APP_ORIGIN}/reset-password?token=${encodeURIComponent(token)}`;
+  // Do not expose mail-provider failures, account state, or a reset token to
+  // the caller. The generic success copy remains the same in all cases.
+  await sendEmail(c.env, { to: user.email, ...resetPasswordEmail(link) });
+  return c.json(PASSWORD_RESET_OK);
+});
+
+auth.post("/reset-password", async (c) => {
+  const body = await c.req.json<{ token?: string; password?: string }>().catch(() => null);
+  const token = typeof body?.token === "string" ? body.token : "";
+  const password = typeof body?.password === "string" ? body.password : "";
+
+  if (!token || token.length > 512) return c.json(PASSWORD_RESET_EXPIRED, 400);
+
+  const database = db(c.env.DB);
+  const tokenHash = await sha256Hex(token);
+  const [user] = await database
+    .select({ id: schema.users.id })
+    .from(schema.users)
+    .where(
+      and(
+        eq(schema.users.passwordResetTokenHash, tokenHash),
+        gte(schema.users.passwordResetExpiresAt, Date.now()),
+      ),
+    )
+    .limit(1);
+
+  if (!user) return c.json(PASSWORD_RESET_EXPIRED, 400);
+
+  const problem = passwordProblem(password);
+  if (problem) return c.json({ error: problem }, 422);
+
+  const salt = newSalt();
+  const passwordHash = await hashPassword(password, salt);
+  // Include the still-valid hash in the write predicate, not just the read
+  // above. That makes consuming a token atomic: a second tab or concurrent
+  // request cannot also use the same link.
+  const [updated] = await database
+    .update(schema.users)
+    .set({
+      passwordHash,
+      passwordSalt: salt,
+      passwordResetTokenHash: null,
+      passwordResetExpiresAt: null,
+      passwordResetRequestedAt: null,
+      emailVerified: true,
+      lastSignInAt: Date.now(),
+    })
+    .where(
+      and(
+        eq(schema.users.id, user.id),
+        eq(schema.users.passwordResetTokenHash, tokenHash),
+        gte(schema.users.passwordResetExpiresAt, Date.now()),
+      ),
+    )
+    .returning({ id: schema.users.id });
+
+  if (!updated) return c.json(PASSWORD_RESET_EXPIRED, 400);
+
+  await database.delete(schema.sessions).where(eq(schema.sessions.userId, user.id));
+
+  const { csrfToken } = await createSession(c, user.id);
+  return c.json({ redirect: "/app", csrfToken });
 });
 
 auth.post("/login", async (c) => {

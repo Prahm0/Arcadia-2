@@ -5,7 +5,7 @@ import { useState, type ReactNode } from "react";
 import { useStudySky } from "@/lib/app/StudySkyProvider";
 import { formatMinutes } from "@/lib/api/time";
 import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
-import { constellationById, milestoneLabel, type ConstellationId, type SkyCard } from "@/shared/constellations";
+import { constellationById, focusTime, milestoneLabel, type ConstellationDefinition, type ConstellationId, type SkyCard } from "@/shared/constellations";
 import AppButton, { appButtonClass } from "../AppButton";
 import { SubjectTag } from "../cards/shared";
 import ConstellationArtwork from "./ConstellationArtwork";
@@ -72,6 +72,7 @@ export default function YourSky({
 
   const cards = sky?.cards ?? [];
   const owned = cards.filter((card) => card.earnedAt !== null);
+  const unseen = owned.filter((card) => !card.seen);
   const starsLit = cards.reduce((sum, card) => sum + card.milestones.filter((star) => star.earnedAt !== null).length, 0);
   const followed = cards.find((card) => card.id === sky?.preferences.followed) ?? cards[0];
   const definition = followed ? constellationById(followed.id)! : null;
@@ -160,7 +161,7 @@ export default function YourSky({
                   </p>
                   {next ? (
                     <p className="mt-1 text-[12px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
-                      {followed.value} / {definition.thresholds[next.index]} {metricUnit(definition.metric)}. No deadline.
+                      {progress(definition, followed.value, definition.thresholds[next.index])}. No deadline.
                     </p>
                   ) : null}
                 </div>
@@ -214,12 +215,18 @@ export default function YourSky({
           </div>
         )}
 
-        {owned.some((card) => !card.seen) ? (
+        {unseen.length ? (
           <div className="mt-5 flex flex-wrap items-center gap-2">
             <p className="mr-1 text-[13px] font-medium" style={{ color: "var(--app-text)" }}>New in your collection</p>
-            {owned.filter((card) => !card.seen).map((card) => (
+            {/* A long study history can form dozens of cards at once; show a few. */}
+            {unseen.slice(0, 4).map((card) => (
               <AppButton key={card.id} onClick={() => open(card)}>✦ {constellationById(card.id)!.name}</AppButton>
             ))}
+            {unseen.length > 4 ? (
+              <AppButton variant="ghost" onClick={() => { setFilter("collected"); document.getElementById("constellations")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>
+                +{unseen.length - 4} more
+              </AppButton>
+            ) : null}
           </div>
         ) : null}
       </section>
@@ -229,7 +236,7 @@ export default function YourSky({
           <Heading
             id="constellations-heading"
             title="All streak cards"
-            body="Different ways of studying, each with its own card. Everything you do advances all of them; following one just brings it into view."
+            body="Five cards for different ways of studying, then all 88 constellations of the night sky, formed one after another as your focus adds up. Following a card just brings it into view."
             aside={
               <div role="group" aria-label="Show" className="flex flex-wrap gap-1">
                 {FILTERS.map((item) => (
@@ -298,6 +305,7 @@ export default function YourSky({
               </p>
               <h3 className="mt-3 text-[26px] font-medium tracking-[-.03em]">{detailDefinition.name}</h3>
               <p className="mt-3 text-[14px] leading-relaxed" style={{ color: "var(--app-text-soft)" }}>{detailDefinition.description}</p>
+              {detailDefinition.atlas ? <SkyFacts definition={detailDefinition} /> : null}
               <p className="mt-4 text-[13px] leading-relaxed" style={{ color: "var(--app-text-muted)" }}>{detailDefinition.requirement}</p>
               <div className="my-6 border-y py-4 text-[12px] leading-relaxed" style={{ borderColor: "var(--app-border)", color: "var(--app-text-muted)" }}>
                 <p className="font-medium" style={{ color: "var(--app-text)" }}>Your rewards</p>
@@ -380,9 +388,35 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function metricUnit(metric: "minutes" | "days" | "subjects" | "sessions") {
-  if (metric === "minutes") return "minutes";
-  if (metric === "days") return "study days";
-  if (metric === "subjects") return "subjects with 15 minutes";
-  return "sessions";
+function progress(definition: ConstellationDefinition, value: number, target: number) {
+  if (definition.atlas) return `${focusTime(value)} of ${focusTime(target)} focused`;
+  if (definition.metric === "minutes") return `${value} / ${target} minutes`;
+  if (definition.metric === "days") return `${value} / ${target} study days`;
+  if (definition.metric === "subjects") return `${value} / ${target} subjects with 15 minutes`;
+  return `${value} / ${target} sessions`;
+}
+
+const HEMISPHERE = { Northern: "Northern sky", Southern: "Southern sky", Equator: "Along the equator" } as const;
+
+/** The real sky behind a constellation card. */
+function SkyFacts({ definition }: { definition: ConstellationDefinition }) {
+  const atlas = definition.atlas!;
+  const facts = [
+    ["Brightest star", atlas.brightest],
+    ["First charted", atlas.charted],
+    ["Share of the sky", `${atlas.areaPercent.toFixed(1)}%`],
+    ["Hemisphere", HEMISPHERE[atlas.hemisphere]],
+    ["Best seen", `${atlas.bestMonth} evenings`],
+    ["Card", `${atlas.order + 1} of 88`],
+  ];
+  return (
+    <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
+      {facts.map(([label, value]) => (
+        <div key={label} className="min-w-0">
+          <dt className="text-[11px]" style={{ color: "var(--app-text-muted)" }}>{label}</dt>
+          <dd className="mt-0.5 truncate text-[13px] font-medium" style={{ color: "var(--app-text)" }}>{value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
 }

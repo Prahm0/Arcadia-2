@@ -41,3 +41,20 @@ test("legacy sky is only available to existing students and does not cap other p
   assert.ok(card(rows, "first-sky", true).earnedAt);
   assert.ok(card(rows, "scholar", true).earnedAt);
 });
+test("the 88 constellations form one after another, a star per 25 minutes", async () => {
+  const { CONSTELLATIONS } = await import("../shared/constellations.ts");
+  const atlas = CONSTELLATIONS.filter((item) => item.atlas);
+  assert.equal(atlas.length, 88);
+  assert.equal(new Set(CONSTELLATIONS.map((item) => item.id)).size, CONSTELLATIONS.length);
+  for (const item of atlas) {
+    assert.equal(item.points.length, item.thresholds.length);
+    assert.equal(item.mags.length, item.points.length);
+    assert.ok(item.edges.every(([a, b]) => a < item.points.length && b < item.points.length));
+  }
+  const [first, second] = atlas;
+  const minutes = (first.points.length + 1) * 25;
+  const cards = evaluateSky([session("long", minutes * 60)], "Australia/Sydney", false);
+  assert.ok(cards.find((item) => item.id === first.id).earnedAt);
+  assert.deepEqual(cards.find((item) => item.id === second.id).milestones.map((star) => star.earnedAt !== null).slice(0, 2), [true, false]);
+  assert.equal(cards.find((item) => item.id === atlas[2].id).milestones.some((star) => star.earnedAt !== null), false);
+});

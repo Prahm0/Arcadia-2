@@ -958,3 +958,19 @@ html[data-app-theme] .type-mono-label {
   opacity: calc(0.45 + 0.55 * var(--p, 1));
   will-change: transform, opacity;
 }
+
+/* Printing a summary sheet: just the sheet, black on white, on one A4 page. */
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body * { visibility: hidden; }
+  .sheet-print, .sheet-print * { visibility: visible; }
+  .sheet-print {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    padding: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+  .sheet-print * { color: #111 !important; background: transparent !important; box-shadow: none !important; }
+}

@@ -16,6 +16,7 @@ import EventDetailSheet from "./EventDetailSheet";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import SyllabusNudge from "./SyllabusNudge";
+import SessionSheetLink from "./sheets/SessionSheetLink";
 import PipTimer, { PIP_COMPACT_HEIGHT, PIP_WIDTH, PlayPauseIcon } from "./focus/PipTimer";
 import SessionTodos, { useOwnTodos, type TodoItem } from "./focus/SessionTodos";
 import { useDocumentPip } from "./focus/useDocumentPip";
@@ -743,6 +744,7 @@ function FocusViewInner() {
                 onRemove={removeTodo}
               />
               {plan && linkedEvent && !linkedEvent.checkout ? <SyllabusNudge plan={plan} /> : null}
+              {linkedEvent ? <SessionSheetLink subject={linkedEvent.subject} topic={plan?.topic ?? linkedEvent.title} /> : null}
               {linkedEvent ? (
                 linkedEvent.checkout ? (
                   <p className="mt-4 text-[13px]" style={{ color: "var(--app-success)" }}>

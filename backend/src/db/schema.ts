@@ -540,6 +540,25 @@ export const cards = sqliteTable(
   (t) => [index("cards_deck_idx").on(t.deckId, t.position), index("cards_user_due_idx").on(t.userId, t.dueAt)],
 );
 
+/** A one-page summary sheet. `sections` is JSON: [{ heading, body }]. */
+export const sheets = sqliteTable(
+  "sheets",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    subjectId: text("subject_id").references(() => subjects.id, { onDelete: "set null" }),
+    topicId: text("topic_id").references(() => subjectTopics.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    sections: text("sections").notNull().default("[]"),
+    source: text("source").notNull().default("manual"),
+    createdAt: integer("created_at").notNull().default(now),
+    updatedAt: integer("updated_at").notNull().default(now),
+  },
+  (t) => [index("sheets_user_subject_idx").on(t.userId, t.subjectId)],
+);
+
 export const uploads = sqliteTable(
   "uploads",
   {

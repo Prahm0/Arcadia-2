@@ -66,6 +66,10 @@ export default function DeadlinesView() {
     return days >= 0 && days <= 7;
   });
   const overdue = pending.filter((task) => daysUntil(task.dueAt, timezone) < 0);
+  const prepByTask = useMemo(() => new Map(data.tasks.map((task) => {
+    const sessions = data.events.filter((event) => event.category === "study" && event.taskId === task.id && Date.parse(event.startAt) <= Date.parse(task.dueAt));
+    return [task.id, { planned: sessions.length, done: sessions.filter((event) => event.outcome === "completed").length }];
+  })), [data.events, data.tasks]);
 
   function edit(task: PlannerTask) {
     setEditing(task);
@@ -186,6 +190,7 @@ export default function DeadlinesView() {
             dueThisWeek={thisWeek.length}
             overdue={overdue.length}
             minutesThisWeek={thisWeek.reduce((sum, task) => sum + task.remainingMinutes, 0)}
+            prep={prepByTask.get(nextTask.id)}
             onOpen={() => setDetailTask(nextTask)}
             onContextMenu={taskMenu(nextTask)}
           />
@@ -206,6 +211,7 @@ export default function DeadlinesView() {
                   task={task}
                   timezone={timezone}
                   color={subjectColor.get((task.subject || "").toLowerCase())}
+                  prep={prepByTask.get(task.id)}
                   onClick={() => setDetailTask(task)}
                   onContextMenu={taskMenu(task)}
                 />
@@ -242,6 +248,7 @@ function DeadlineOverview({
   minutesThisWeek,
   onOpen,
   onContextMenu,
+  prep,
 }: {
   task: PlannerTask;
   timezone: string;
@@ -251,6 +258,7 @@ function DeadlineOverview({
   minutesThisWeek: number;
   onOpen: () => void;
   onContextMenu: (event: React.MouseEvent) => void;
+  prep?: { planned: number; done: number };
 }) {
   const state = deadlineState(task.dueAt, timezone);
   const attention = state.days <= 1 || state.days < 0;
@@ -291,6 +299,7 @@ function DeadlineOverview({
               Open deadline
             </AppButton>
           </div>
+          {prep?.planned ? <PrepProgress prep={prep} color={color} /> : null}
         </div>
         <div className="grid grid-cols-2 border-t px-5 py-4 sm:px-6 @3xl/main:grid-cols-1 @3xl/main:border-l @3xl/main:border-t-0" style={{ borderColor: "var(--app-border)" }}>
           <DeadlineSnapshot label={overdue > 0 ? "Overdue" : "Due this week"} value={String(overdue > 0 ? overdue : dueThisWeek)} detail={overdue > 0 ? "needs a new plan" : "tasks to prepare for"} tone={overdue > 0 ? "danger" : "default"} />
@@ -312,11 +321,12 @@ function DeadlineSnapshot({ label, value, detail, tone = "default" }: { label: s
 }
 
 function DeadlineRow({
-  task, timezone, color, onClick, onContextMenu,
+  task, timezone, color, prep, onClick, onContextMenu,
 }: {
   task: PlannerTask;
   timezone: string;
   color?: string;
+  prep?: { planned: number; done: number };
   onClick: () => void;
   onContextMenu: (event: React.MouseEvent) => void;
 }) {
@@ -353,6 +363,7 @@ function DeadlineRow({
           <div className="mt-2 h-1 overflow-hidden rounded-full sm:hidden" style={{ background: "var(--app-border)" }} aria-label={`${formatDurationMinutes(task.remainingMinutes)} of work left`}>
             <div className="h-full rounded-full" style={{ width: `${Math.max(3, progress * 100)}%`, background: color || "var(--app-accent)" }} />
           </div>
+          {prep?.planned ? <PrepProgress prep={prep} color={color} compact /> : null}
         </div>
         <div className="hidden w-24 shrink-0 sm:block">
           <p className="text-right text-[11px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
@@ -372,6 +383,11 @@ function DeadlineRow({
       </button>
     </li>
   );
+}
+
+function PrepProgress({ prep, color, compact = false }: { prep: { planned: number; done: number }; color?: string; compact?: boolean }) {
+  const ratio = Math.min(1, prep.done / prep.planned);
+  return <div className={compact ? "mt-2" : "mt-4 max-w-sm"}><div className="flex justify-between gap-2 text-[11px]" style={{ color: "var(--app-text-muted)" }}><span>Prep done</span><span className="tabular-nums">{prep.done} of {prep.planned}</span></div><div className="mt-1 h-1.5 overflow-hidden rounded-full" style={{ background: "var(--app-border)" }}><div className="h-full rounded-full" style={{ width: `${ratio * 100}%`, background: color || "var(--app-accent)", transition: "width 300ms ease" }} /></div></div>;
 }
 
 function DeadlineDateBadge({ state }: { state: ReturnType<typeof deadlineState> }) {

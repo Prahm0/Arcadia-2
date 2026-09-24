@@ -10,7 +10,8 @@ export interface PendingStudySession {
   endedAt: string;
 }
 const memory = new Map<string, PendingStudySession[]>();
-const inFlight = new Map<string, Promise<void>>();
+type Reward = { xp: number; source: string };
+const inFlight = new Map<string, Promise<Reward[]>>();
 const key = (userId: string) => `arcadia:pending-study:${userId}`;
 export function pendingStudySessions(userId: string): PendingStudySession[] {
   try {
@@ -27,17 +28,19 @@ export function queueStudySession(userId: string, session: PendingStudySession) 
   const existing = pendingStudySessions(userId);
   if (!existing.some((item) => item.activityId === session.activityId)) write(userId, [...existing, session]);
 }
-export function flushStudySessions(userId: string): Promise<void> {
+export function flushStudySessions(userId: string): Promise<Reward[]> {
   const active = inFlight.get(userId);
   if (active) return active;
   const job = (async () => {
+    const rewards: Reward[] = [];
     while (true) {
       const batch = pendingStudySessions(userId).slice(0, 100);
-      if (!batch.length) return;
-      const result = await api<{ acceptedActivityIds: string[] }>("/api/study-sessions", { method: "POST", body: JSON.stringify(batch) });
+      if (!batch.length) return rewards;
+      const result = await api<{ acceptedActivityIds: string[]; rewards?: Reward[] }>("/api/study-sessions", { method: "POST", body: JSON.stringify(batch) });
       const sent = new Set(result.acceptedActivityIds || []);
       write(userId, pendingStudySessions(userId).filter((item) => !sent.has(item.activityId)));
       if (batch.some((item) => !sent.has(item.activityId))) throw new Error("Some sessions could not be saved. Check your device’s date and time before retrying.");
+      rewards.push(...(result.rewards ?? []));
     }
   })().finally(() => inFlight.delete(userId));
   inFlight.set(userId, job);

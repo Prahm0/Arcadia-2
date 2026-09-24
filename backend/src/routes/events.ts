@@ -5,6 +5,8 @@ import { serialiseEvent } from "../lib/serialise";
 import { planIsCurrent, planSession, type Checkout, type SessionPlan } from "../lib/session-plan";
 import { effectiveTier, isPaidTier } from "../lib/tiers";
 import { DAY, MINUTE } from "../lib/time";
+import { awardXp } from "../lib/rewards";
+import { XP } from "../../../shared/progress";
 import type { Env, Variables } from "../types";
 
 type EventRow = typeof schema.events.$inferSelect;
@@ -152,7 +154,13 @@ events.post("/:id/outcome", async (c) => {
   } else {
     await applyOutcome(database, event, outcome);
   }
-  return c.json({ ok: true, event: await reread(database, event.id) });
+  const rewards = outcome === "completed" && event.outcome !== "completed" && event.category === "study"
+    ? await awardXp(database, userId, "study_block", event.id, XP.studyBlock)
+    : [];
+  if (outcome === "planned" && event.outcome === "completed") {
+    await database.delete(schema.xpEvents).where(and(eq(schema.xpEvents.userId, userId), eq(schema.xpEvents.source, "study_block"), eq(schema.xpEvents.sourceId, event.id)));
+  }
+  return c.json({ ok: true, event: await reread(database, event.id), rewards });
 });
 
 /** Moving a block (drag on the Schedule). A moved block is pinned where it's put. */

@@ -337,6 +337,15 @@ export const studySessions = sqliteTable(
   (t) => [index("study_sessions_user_ended_idx").on(t.userId, t.endedAt), uniqueIndex("study_sessions_activity_idx").on(t.userId, t.activityId)],
 );
 
+export const xpEvents = sqliteTable("xp_events", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  source: text("source").notNull(),
+  sourceId: text("source_id").notNull(),
+  xp: integer("xp").notNull(),
+  createdAt: integer("created_at").notNull().default(now),
+}, (t) => [uniqueIndex("xp_events_user_source_unique").on(t.userId, t.source, t.sourceId), index("xp_events_user_created_idx").on(t.userId, t.createdAt)]);
+
 export const constellationPreferences = sqliteTable("constellation_preferences", {
   userId: text("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
   followed: text("followed").notNull().default("first-light"),

@@ -22,7 +22,6 @@ import SessionTodos, { useOwnTodos, type TodoItem } from "./focus/SessionTodos";
 import { useDocumentPip } from "./focus/useDocumentPip";
 import { useStudySessionSave } from "@/lib/app/useStudySessionSave";
 import { isNative } from "@/lib/capacitor/platform";
-import { constellationById } from "@/shared/constellations";
 import StudyWithMe from "./focus/StudyWithMe";
 
 const BUILT_IN_PRESETS = [
@@ -521,7 +520,7 @@ function FocusViewInner() {
         tour={linkedEvent ? undefined : "focus"}
       />
 
-      {studySave.status !== "idle" && <div className="mx-auto max-w-[960px] px-6 pt-4 sm:px-10"><div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 text-[13px]" style={{ borderColor: "var(--app-border)", background: "var(--app-surface)", color: "var(--app-text)" }}><span>{studySave.status === "saving" ? "Saving your study progress…" : studySave.status === "pending" ? "Your session is waiting to sync. Keep this browser’s data to retry later." : studySave.receipt.cards.length ? `✦ ${cardNames(studySave.receipt.cards)} ${studySave.receipt.cards.length === 1 ? "is" : "are"} yours. Saved to your collection.` : studySave.receipt.stars ? `✦ ${studySave.receipt.stars} new ${studySave.receipt.stars === 1 ? "star" : "stars"} on your streak cards.` : "Your study session is saved."}</span>{studySave.status === "pending" ? <AppButton onClick={() => void studySave.retry()}>Retry save</AppButton> : studySave.status === "saved" ? <Link href={studySave.receipt.cards.length ? "/app/streaks#constellations" : "/app/streaks#sky"} className="text-[12px] underline underline-offset-4">{studySave.receipt.cards.length ? "View streak cards" : "View streaks"}</Link> : null}</div></div>}
+      {studySave.status !== "idle" && <div className="mx-auto max-w-[960px] px-6 pt-4 sm:px-10"><div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 text-[13px]" style={{ borderColor: "var(--app-border)", background: "var(--app-surface)", color: "var(--app-text)" }}><span>{studySave.status === "saving" ? "Saving your study progress…" : studySave.status === "pending" ? "Your session is waiting to sync. Keep this browser’s data to retry later." : studySave.receipt.cards.length ? `✦ ${studySave.receipt.cards.length === 1 ? "New constellation unlocked" : "New constellations unlocked"}${studySave.receipt.xp ? ` · +${studySave.receipt.xp} XP` : ""}` : studySave.receipt.stars ? `✦ ${studySave.receipt.stars} new ${studySave.receipt.stars === 1 ? "star" : "stars"} on your streak cards${studySave.receipt.xp ? ` · +${studySave.receipt.xp} XP` : ""}` : studySave.receipt.xp ? `✦ +${studySave.receipt.xp} XP earned.` : "Your study session is saved."}</span>{studySave.status === "pending" ? <AppButton onClick={() => void studySave.retry()}>Retry save</AppButton> : studySave.status === "saved" ? <Link href={studySave.receipt.cards.length ? "/app/streaks#constellations" : "/app/streaks#sky"} className="text-[12px] underline underline-offset-4">{studySave.receipt.cards.length ? "View streak cards" : "View streaks"}</Link> : null}</div></div>}
 
       {linkedEvent ? (
         // What this session is, in one glance: subject and time, Arcad's
@@ -1123,11 +1122,4 @@ function formatClock(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
-/** "Crux", "Crux and Lyra", or "Crux, Lyra and 3 more" when a long history forms many at once. */
-function cardNames(ids: string[]) {
-  const names = ids.map((id) => constellationById(id)!.name);
-  if (names.length <= 2) return names.join(" and ");
-  return `${names.slice(0, 2).join(", ")} and ${names.length - 2} more`;
 }

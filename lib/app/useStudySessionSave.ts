@@ -9,18 +9,20 @@ export function useStudySessionSave(userId: string) {
   const latest = useRef(sky);
   useEffect(() => { latest.current = sky; }, [sky]);
   const [status, setStatus] = useState<"idle" | "saving" | "pending" | "saved">("idle");
-  const [receipt, setReceipt] = useState<{ stars: number; cards: ConstellationId[] }>({ stars: 0, cards: [] });
+  const [receipt, setReceipt] = useState<{ stars: number; cards: ConstellationId[]; xp: number }>({ stars: 0, cards: [], xp: 0 });
   const retry = useCallback(async () => {
     if (!pendingStudySessions(userId).length) return;
     const before = latest.current;
     setStatus("saving");
     try {
-      await flushStudySessions(userId);
+      const rewards = await flushStudySessions(userId);
       const after = await refresh();
       if (after && before) {
         const starsBefore = before.cards.reduce((sum, card) => sum + card.milestones.filter((star) => star.earnedAt !== null).length, 0);
         const starsAfter = after.cards.reduce((sum, card) => sum + card.milestones.filter((star) => star.earnedAt !== null).length, 0);
-        setReceipt({ stars: Math.max(0, starsAfter - starsBefore), cards: after.cards.filter((card) => card.earnedAt !== null && !before.cards.find((old) => old.id === card.id)?.earnedAt).map((card) => card.id) });
+        setReceipt({ stars: Math.max(0, starsAfter - starsBefore), cards: after.cards.filter((card) => card.earnedAt !== null && !before.cards.find((old) => old.id === card.id)?.earnedAt).map((card) => card.id), xp: rewards.reduce((sum, reward) => sum + reward.xp, 0) });
+      } else {
+        setReceipt({ stars: 0, cards: [], xp: rewards.reduce((sum, reward) => sum + reward.xp, 0) });
       }
       setStatus("saved");
     } catch { setStatus("pending"); }

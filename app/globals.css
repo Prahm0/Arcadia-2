@@ -1645,3 +1645,15 @@ html[data-app-theme] .type-mono-label {
     animation: hero-fade 200ms ease-out both;
   }
 }
+
+/* iOS Safari zooms into any focused field whose text is under 16px and does
+   not zoom back out. Keep fields at 16px on iOS touch devices. */
+@supports (-webkit-touch-callout: none) {
+  @media (pointer: coarse) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    textarea,
+    select {
+      font-size: max(16px, 1em) !important;
+    }
+  }
+}

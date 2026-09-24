@@ -38,7 +38,7 @@ function timeLabel(iso: string, tz: string): string {
 }
 
 export default function OnboardingWow({ onContinue }: { onContinue: () => void }) {
-  const { data, reload } = useDashboardData();
+  const { data } = useDashboardData();
   const tz = data.profile?.timezone || (typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "Australia/Brisbane");
 
   const [loading, setLoading] = useState<Reason | null>(null);
@@ -62,7 +62,6 @@ export default function OnboardingWow({ onContinue }: { onContinue: () => void }
       const res = await api<RecoveryResult>("/api/plan/recover", { method: "POST", body: JSON.stringify(body) });
       setResult(res);
       analytics.recoveryUsed(reason, res.moved ?? 0, true);
-      void reload();
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : "Couldn't reach Arcad. You can try this any time from Today.");
     } finally {

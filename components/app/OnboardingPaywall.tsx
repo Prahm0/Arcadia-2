@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { api } from "@/lib/api/client";
 import { analytics } from "@/lib/analytics/events";
+import { useNativeIOS } from "@/lib/capacitor/platform";
 import AppButton from "./AppButton";
+import IosPricingView from "./IosPricingView";
+import { TIERS } from "./PricingView";
 
 /**
  * Shown once, right after the plan is built, before the student reaches the
@@ -55,6 +58,11 @@ export default function OnboardingPaywall({ onContinueFree }: { onContinueFree: 
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showWinback, setShowWinback] = useState(false);
+  // In the iOS app, digital subscriptions must be sold through Apple In-App
+  // Purchase (App Store guideline 3.1.1), never Stripe. Same moment, Apple's
+  // prices and purchase sheet.
+  const nativeIOS = useNativeIOS();
+  if (nativeIOS) return <NativeOnboardingPaywall onContinueFree={onContinueFree} />;
 
   async function checkout(plan: PlanKey, winback = false) {
     setBusy(`${plan}${winback ? "-wb" : ""}`);
@@ -269,6 +277,34 @@ function WinbackOffer({
             No thanks, continue with Free
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function NativeOnboardingPaywall({ onContinueFree }: { onContinueFree: () => void }) {
+  return (
+    <div className="relative min-h-svh w-full overflow-y-auto" style={{ background: "var(--app-bg)", color: "var(--app-text)" }}>
+      <div className="mx-auto flex w-full max-w-[860px] flex-col px-5 pb-[calc(env(safe-area-inset-bottom,0px)+32px)] pt-[calc(env(safe-area-inset-top,0px)+24px)]">
+        <div className="text-center">
+          <p className="type-eyebrow" style={{ color: "var(--app-arcad-strong)" }}>
+            Your plan is ready
+          </p>
+          <h1 className="mt-3 text-[30px] font-medium leading-[1.1] tracking-[-0.02em]">
+            Get the <span className="accent-serif">most</span> out of your week.
+          </h1>
+        </div>
+        <div className="mt-6">
+          <IosPricingView tiers={TIERS} />
+        </div>
+        <button
+          type="button"
+          onClick={onContinueFree}
+          className="mx-auto mt-6 text-[14px] underline underline-offset-4"
+          style={{ color: "var(--app-text-muted)" }}
+        >
+          Continue with Free
+        </button>
       </div>
     </div>
   );

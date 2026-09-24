@@ -46,6 +46,7 @@ interface NavGroup {
   key: string;
   label: string;
   icon: ReactNode;
+  href?: string;
   items: NavItem[];
 }
 
@@ -68,9 +69,8 @@ const NAV_GROUPS: NavGroup[] = [
     key: "arcad",
     label: "Arcad",
     icon: icon(<path d="M4 5h12v9H8l-4 3V5z" />),
-    items: [
-      { label: "Plan and chat", href: "/app/arcad", icon: icon(<path d="M4 5h12v9H8l-4 3V5z" />) },
-    ],
+    href: "/app/arcad",
+    items: [],
   },
   {
     key: "plan",
@@ -265,6 +265,29 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
             </Link>
 
             {NAV_GROUPS.map((group) => {
+              if (group.href) {
+                const active = pathname.startsWith(group.href);
+                return (
+                  <Link
+                    key={group.key}
+                    href={group.href}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13.5px] font-medium",
+                      !active && "ui-hover",
+                    )}
+                    style={{
+                      color: active ? "var(--app-text)" : "var(--app-text-soft)",
+                      background: active ? ACTIVE_BG : "transparent",
+                    }}
+                  >
+                    <span aria-hidden="true" style={{ color: active ? "var(--app-accent)" : "var(--app-text-muted)" }}>
+                      {group.icon}
+                    </span>
+                    {group.label}
+                  </Link>
+                );
+              }
               const groupActive = group.items.some((item) =>
                 item.href === "/app" ? pathname === "/app" : pathname.startsWith(item.href),
               );

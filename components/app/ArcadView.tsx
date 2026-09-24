@@ -8,6 +8,7 @@ import { analytics } from "@/lib/analytics/events";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { useStreak } from "@/lib/app/useStreak";
 import { buildContextualStarters, buildGreeting, type Starter } from "@/lib/app/arcadStarters";
+import { PAID_PRICING, type PaidTier } from "@/lib/app/pricing";
 import { requestDashboardRefresh } from "@/lib/app/useDashboardAutoRefresh";
 import AppButton from "./AppButton";
 import ArcadOrb from "./ArcadOrb";
@@ -217,10 +218,15 @@ function ArcadPage() {
           ),
         });
         if (!response.ok || !response.body) {
-          const payload = (await response.json().catch(() => null)) as { error?: string; code?: string } | null;
+          const payload = (await response.json().catch(() => null)) as {
+            error?: string;
+            code?: string;
+            upgradeTier?: PaidTier | null;
+          } | null;
           markFailed({
             message: payload?.error || `Arcad couldn't answer (${response.status}).`,
             capped: payload?.code === "message_cap_reached",
+            upgradeTier: payload?.upgradeTier,
           });
           return;
         }
@@ -683,6 +689,9 @@ function Suggestions({ starters, onPick }: { starters: Starter[]; onPick: (start
 
 function SendErrorNote({ error }: { error: SendError }) {
   if (error.capped) {
+    const upgradeTier = error.upgradeTier;
+    const upgradeName = upgradeTier === "pro" ? "Pro" : upgradeTier === "max" ? "Max" : null;
+    const weeklyPrice = upgradeTier ? PAID_PRICING[upgradeTier].weekly : null;
     return (
       <div
         className="ml-9 mt-4 rounded-lg px-4 py-3"
@@ -691,13 +700,15 @@ function SendErrorNote({ error }: { error: SendError }) {
         <p className="text-[14px]" style={{ color: "var(--app-text)" }}>
           {error.message}
         </p>
-        <Link
-          href="/app/pricing"
-          className="mt-2.5 inline-flex h-8 items-center rounded-md px-3 text-[13px] font-medium"
-          style={{ background: "var(--app-arcad)", color: "var(--app-arcad-on)" }}
-        >
-          See plans
-        </Link>
+        {upgradeName && weeklyPrice !== null ? (
+          <Link
+            href="/app/pricing"
+            className="mt-2.5 inline-flex h-8 items-center rounded-md px-3 text-[13px] font-medium"
+            style={{ background: "var(--app-arcad)", color: "var(--app-arcad-on)" }}
+          >
+            Upgrade to {upgradeName} · ${weeklyPrice.toFixed(2)}/week
+          </Link>
+        ) : null}
       </div>
     );
   }

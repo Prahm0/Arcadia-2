@@ -125,10 +125,13 @@ chat.post("/", async (c) => {
       {
         error:
           tier === "free"
-            ? `You've used your ${DAILY_MESSAGE_CAP.free} free messages for today. Upgrade to Pro for ${DAILY_MESSAGE_CAP.pro}/day.`
+            ? `You've used your ${DAILY_MESSAGE_CAP.free} free messages for today.`
+            : tier === "pro"
+              ? `You've used your ${DAILY_MESSAGE_CAP.pro} Pro messages for today. Resets at midnight UTC.`
             : `You've hit today's cap of ${cap.cap} Arcad messages. Resets at midnight UTC.`,
         code: "message_cap_reached",
         tier,
+        upgradeTier: tier === "free" ? "pro" : tier === "pro" ? "max" : null,
         cap: cap.cap,
         used: cap.used,
       },
@@ -213,6 +216,9 @@ chat.post("/", async (c) => {
           prompt,
           context.memoryEnabled ? [PROPOSE_TOOL, REMEMBER_TOOL] : [PROPOSE_TOOL],
         );
+        if (!result.content.trim() && result.toolCalls.length === 0) {
+          throw new Error("Arcad couldn't respond.");
+        }
 
         // Memories save straight away (no approval step); the student sees
         // them in the chat and can delete them from their profile.
@@ -304,7 +310,9 @@ chat.post("/", async (c) => {
         // The send was consumed up front so a rejected turn leaves no
         // half-written message. Since we never delivered a reply, hand the
         // message back so a failed send does not cost the student their quota.
-        await refundMessage(database, userId).catch(() => {});
+        await refundMessage(database, userId, cap.day).catch((refundError) => {
+          console.error("[chat] failed to refund an undelivered message", refundError);
+        });
         // Take the question back out so a retry doesn't leave it in the
         // conversation twice, and drop a chat that never got going.
         await database

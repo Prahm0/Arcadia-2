@@ -82,6 +82,8 @@ export interface CapCheckResult {
   tier: Tier;
   used: number;
   cap: number;
+  /** The UTC day this reservation belongs to, even if the model call crosses midnight. */
+  day: string;
 }
 
 /**
@@ -122,9 +124,9 @@ export async function tryConsumeMessage(
           eq(schema.arcadUsage.day, day),
         ),
       );
-    return { allowed: false, tier, used: cap, cap };
+    return { allowed: false, tier, used: cap, cap, day };
   }
-  return { allowed: true, tier, used, cap };
+  return { allowed: true, tier, used, cap, day };
 }
 
 /**
@@ -137,8 +139,8 @@ export async function tryConsumeMessage(
 export async function refundMessage(
   database: ReturnType<typeof makeDb>,
   userId: string,
+  day = todayUtc(),
 ): Promise<void> {
-  const day = todayUtc();
   await database
     .update(schema.arcadUsage)
     .set({ count: sql`MAX(${schema.arcadUsage.count} - 1, 0)` })

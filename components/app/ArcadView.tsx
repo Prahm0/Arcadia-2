@@ -593,7 +593,7 @@ function ArcadPage() {
                 <ProactiveArcadCards limit={1} compact />
               </div>
 
-              {draftReady && !limitReached ? <Suggestions starters={starters} onPick={(starter) => void send(starter.message)} /> : null}
+              {draftReady && !limitReached ? <Suggestions starters={starters} onPick={(starter) => fillComposer(starter.message)} /> : null}
             </div>
           </div>
         ) : (
@@ -703,7 +703,7 @@ function MessageLimitNotice({ usage }: { usage: ArcadUsage }) {
       }}
     >
       <p className="text-[13.5px] font-medium" style={{ color: "var(--app-text)" }}>
-        You&apos;ve used your {usage.cap} {tierName} messages for today. Resets at midnight UTC.
+        You&apos;ve used your {usage.cap} {tierName} messages for today. Resets at midnight.
       </p>
       {upgradeName && weeklyPrice !== null ? (
         <Link href="/app/pricing" className="mt-1 inline-flex text-[12.5px] font-medium hover:underline" style={{ color: "var(--app-arcad)" }}>

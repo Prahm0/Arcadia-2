@@ -365,7 +365,10 @@ export default function ArcadFloatingButton() {
                   <button
                     key={starter.label}
                     type="button"
-                    onClick={() => void send(starter.message)}
+                    onClick={() => {
+                      setMessage(starter.message);
+                      requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
+                    }}
                     className="rounded-md px-3 py-2.5 text-left text-[12.5px] font-medium transition-colors ui-hover"
                     style={{
                       border: "1px solid var(--app-border)",

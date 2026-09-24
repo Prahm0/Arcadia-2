@@ -9,6 +9,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import type { db as makeDb } from "../db";
 import { schema } from "../db";
+import { DEFAULT_MESSAGE_USAGE_TIMEZONE, messageUsageWindow, type MessageUsageWindow } from "./message-usage-window";
 
 export type Tier = "free" | "pro" | "max";
 
@@ -30,14 +31,17 @@ export const DECK_LIMIT: Record<Tier, number> = {
   max: Number.POSITIVE_INFINITY,
 };
 
-/**
- * UTC calendar day as `YYYY-MM-DD`. UTC (not local) keeps the cap
- * predictable regardless of where the user lives — otherwise a Sydney
- * user's "day" flips 14 hours before a New York user's, and a message
- * cap resets at unrelated moments per timezone.
- */
-export function todayUtc(): string {
-  return new Date().toISOString().slice(0, 10);
+async function userMessageUsageWindow(
+  database: ReturnType<typeof makeDb>,
+  userId: string,
+  at = Date.now(),
+): Promise<MessageUsageWindow> {
+  const [profile] = await database
+    .select({ timezone: schema.profiles.timezone })
+    .from(schema.profiles)
+    .where(eq(schema.profiles.userId, userId))
+    .limit(1);
+  return messageUsageWindow(profile?.timezone, at);
 }
 
 export function isValidTier(value: string | null | undefined): value is Tier {
@@ -79,15 +83,13 @@ export async function getUserTier(
   return effectiveTier(user?.tier, user?.developerAccess ?? false, user?.proBonusUntil, Date.now(), user?.developerTier);
 }
 
-export function messageUsageSnapshot(tier: Tier, used: number, day = todayUtc()) {
-  const [year, month, date] = day.split("-").map(Number);
-  const resetAt = new Date(Date.UTC(year, month - 1, date + 1)).toISOString();
+export function messageUsageSnapshot(tier: Tier, used: number, window = messageUsageWindow(DEFAULT_MESSAGE_USAGE_TIMEZONE)) {
   return {
     tier,
     used,
     cap: DAILY_MESSAGE_CAP[tier],
     upgradeTier: tier === "free" ? "pro" : tier === "pro" ? "max" : null,
-    resetAt,
+    resetAt: window.resetAt,
   };
 }
 
@@ -96,14 +98,14 @@ export async function getMessageUsage(
   userId: string,
   tier: Tier,
 ): Promise<ReturnType<typeof messageUsageSnapshot>> {
-  const day = todayUtc();
+  const window = await userMessageUsageWindow(database, userId);
   const [row] = await database
     .select({ count: schema.arcadUsage.count })
     .from(schema.arcadUsage)
-    .where(and(eq(schema.arcadUsage.userId, userId), eq(schema.arcadUsage.day, day)))
+    .where(and(eq(schema.arcadUsage.userId, userId), eq(schema.arcadUsage.day, window.day)))
     .limit(1);
 
-  return messageUsageSnapshot(tier, row?.count ?? 0, day);
+  return messageUsageSnapshot(tier, row?.count ?? 0, window);
 }
 
 export interface CapCheckResult {
@@ -111,8 +113,9 @@ export interface CapCheckResult {
   tier: Tier;
   used: number;
   cap: number;
-  /** The UTC day this reservation belongs to, even if the model call crosses midnight. */
+  /** The local day this reservation belongs to, even if the model call crosses midnight. */
   day: string;
+  window: MessageUsageWindow;
 }
 
 /**
@@ -128,7 +131,8 @@ export async function tryConsumeMessage(
   tier: Tier,
 ): Promise<CapCheckResult> {
   const cap = DAILY_MESSAGE_CAP[tier];
-  const day = todayUtc();
+  const window = await userMessageUsageWindow(database, userId);
+  const day = window.day;
 
   const [row] = await database
     .insert(schema.arcadUsage)
@@ -153,9 +157,9 @@ export async function tryConsumeMessage(
           eq(schema.arcadUsage.day, day),
         ),
       );
-    return { allowed: false, tier, used: cap, cap, day };
+    return { allowed: false, tier, used: cap, cap, day, window };
   }
-  return { allowed: true, tier, used, cap, day };
+  return { allowed: true, tier, used, cap, day, window };
 }
 
 /**
@@ -168,10 +172,11 @@ export async function tryConsumeMessage(
 export async function refundMessage(
   database: ReturnType<typeof makeDb>,
   userId: string,
-  day = todayUtc(),
+  day?: string,
 ): Promise<void> {
+  const usageDay = day ?? (await userMessageUsageWindow(database, userId)).day;
   await database
     .update(schema.arcadUsage)
     .set({ count: sql`MAX(${schema.arcadUsage.count} - 1, 0)` })
-    .where(and(eq(schema.arcadUsage.userId, userId), eq(schema.arcadUsage.day, day)));
+    .where(and(eq(schema.arcadUsage.userId, userId), eq(schema.arcadUsage.day, usageDay)));
 }

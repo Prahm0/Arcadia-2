@@ -270,7 +270,7 @@ function DeadlineOverview({
       }}
       aria-label="Next deadline"
     >
-      <div className="grid lg:grid-cols-[minmax(0,1fr)_210px]">
+      <div className="grid @3xl/main:grid-cols-[minmax(0,1fr)_210px]">
         <div className="min-w-0 px-5 py-5 sm:px-6 sm:py-6">
           <p className="type-eyebrow" style={{ color: attention ? "var(--app-danger)" : "var(--app-accent-strong)" }}>
             {state.days < 0 ? "Needs attention" : "Next deadline"}
@@ -292,7 +292,7 @@ function DeadlineOverview({
             </AppButton>
           </div>
         </div>
-        <div className="grid grid-cols-2 border-t px-5 py-4 sm:px-6 lg:grid-cols-1 lg:border-l lg:border-t-0" style={{ borderColor: "var(--app-border)" }}>
+        <div className="grid grid-cols-2 border-t px-5 py-4 sm:px-6 @3xl/main:grid-cols-1 @3xl/main:border-l @3xl/main:border-t-0" style={{ borderColor: "var(--app-border)" }}>
           <DeadlineSnapshot label={overdue > 0 ? "Overdue" : "Due this week"} value={String(overdue > 0 ? overdue : dueThisWeek)} detail={overdue > 0 ? "needs a new plan" : "tasks to prepare for"} tone={overdue > 0 ? "danger" : "default"} />
           <DeadlineSnapshot label="This week" value={formatDurationMinutes(minutesThisWeek)} detail="of work left" />
         </div>

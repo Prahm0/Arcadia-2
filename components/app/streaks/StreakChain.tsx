@@ -67,7 +67,7 @@ export default function StreakChain({ streak, today }: { streak: StreakSummary; 
           background: `radial-gradient(60% 90% at 78% 40%, color-mix(in srgb, ${GOLD} 9%, transparent), transparent 70%), radial-gradient(40% 70% at 12% 90%, #26334770, transparent 70%)`,
         }}
       />
-      <div className="grid gap-6 px-6 pb-4 pt-6 sm:px-8 sm:pt-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-10">
+      <div className="grid gap-6 px-6 pb-4 pt-6 sm:px-8 sm:pt-8 @3xl/main:grid-cols-[220px_minmax(0,1fr)] @3xl/main:gap-10">
         <div>
           <p className="text-[10px] uppercase tracking-[.16em] text-[#a8b4c4]">Current streak</p>
           <p className="mt-3 flex items-baseline gap-2">

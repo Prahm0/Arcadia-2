@@ -21,7 +21,7 @@ export default function TodayRail() {
   return (
     <aside
       aria-label="Your progress"
-      className="self-start overflow-hidden rounded-xl lg:sticky lg:top-6"
+      className="self-start overflow-hidden rounded-xl @3xl/main:sticky @3xl/main:top-6"
       style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
     >
       <CompanionSection />

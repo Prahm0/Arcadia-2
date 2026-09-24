@@ -562,7 +562,7 @@ function FocusViewInner() {
         </div>
       ) : null}
 
-      <div className="mx-auto grid w-full max-w-[960px] gap-6 px-6 py-8 sm:px-10 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="mx-auto grid w-full max-w-[960px] gap-6 px-6 py-8 sm:px-10 @3xl/main:grid-cols-[minmax(0,1fr)_340px]">
         <div
           className="relative flex flex-col items-center rounded-xl px-6 pb-8 pt-12"
           style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}

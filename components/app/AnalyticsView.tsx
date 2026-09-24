@@ -99,14 +99,14 @@ export default function AnalyticsView() {
         <>
           {insight ? <AnalyticsInsight insight={insight} /> : null}
 
-          <div className="mx-auto grid w-full max-w-[1140px] grid-cols-2 gap-3 px-6 pt-4 sm:px-10 lg:grid-cols-4 lg:gap-4">
+          <div className="mx-auto grid w-full max-w-[1140px] grid-cols-2 gap-3 px-6 pt-4 sm:px-10 @3xl/main:grid-cols-4 @3xl/main:gap-4">
             <StatCard label="Focus time" value={show(formatMinutes(current.minutes))} delta={change(current.minutes, previous.minutes)} was={`${formatMinutes(previous.minutes)} ${lastLabel}`} />
             <StatCard label="Sessions" value={show(String(current.sessions))} delta={change(current.sessions, previous.sessions)} was={`${previous.sessions} ${lastLabel}`} />
             <StatCard label="Avg session" value={show(formatMinutes(current.averageMinutes))} delta={change(current.averageMinutes, previous.averageMinutes)} was={`${formatMinutes(previous.averageMinutes)} ${lastLabel}`} />
             <StatCard label="Active days" value={show(`${activeDays}/${daily.length || (period === "week" ? 7 : 30)}`)} delta={change(activeDays, previousActiveDays)} was={`${previousActiveDays} ${lastLabel}`} />
           </div>
 
-          <div className="mx-auto grid w-full max-w-[1140px] gap-4 px-6 pt-4 sm:px-10 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <div className="mx-auto grid w-full max-w-[1140px] gap-4 px-6 pt-4 sm:px-10 @3xl/main:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
             <Panel title="Daily focus" note={<Legend />}>
               {loading && !analytics ? <Muted>Loading…</Muted> : (
                 <Bars

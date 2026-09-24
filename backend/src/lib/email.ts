@@ -105,6 +105,36 @@ function emailButton(href: string, label: string): string {
   </table>`;
 }
 
+function escapeHtml(text: string): string {
+  return text.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!);
+}
+
+export function roomReportEmail(args: {
+  roomCode: string;
+  reason: string;
+  note: string;
+  messageBody: string;
+  reporterUserId: string;
+  reportedUserId: string;
+}) {
+  const detail = [
+    `Room code: ${args.roomCode}`,
+    `Reason: ${args.reason}`,
+    `Reporter user id: ${args.reporterUserId}`,
+    `Reported user id: ${args.reportedUserId}`,
+    `Message snapshot: ${args.messageBody}`,
+    args.note ? `Reporter note: ${args.note}` : null,
+  ].filter(Boolean).join("\n");
+  const body = `
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.55;color:#3a3a4a;">A study room message was reported and needs review within 24 hours.</p>
+    <pre style="margin:0;padding:14px;white-space:pre-wrap;word-break:break-word;background:#f5f5f7;border-radius:8px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.55;color:#1a1a2e;">${escapeHtml(detail)}</pre>`;
+  return {
+    subject: `Arcadia room report: ${args.reason}`,
+    text: `Arcadia room report\n\n${detail}`,
+    html: emailLayout({ heading: "Study room report", preheader: "A room message needs review.", body }),
+  };
+}
+
 export function verificationEmail(link: string) {
   const body = `
     <p style="margin:0 0 20px;font-size:15px;line-height:1.55;color:#3a3a4a;">

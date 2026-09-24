@@ -1,7 +1,9 @@
 import { and, asc, count, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema, type Database } from "../db";
+import { roomReportEmail, sendEmail } from "../lib/email";
 import { newId } from "../lib/ids";
+import { containsRoomContactInfo, isObjectionableRoomMessage } from "../lib/moderation";
 import { livePresence } from "../lib/presence";
 import { effectiveTier, getUserTier, type Tier } from "../lib/tiers";
 import { DAY, iso, startOfLocalDay } from "../lib/time";
@@ -18,6 +20,10 @@ const ROOM_ICONS = ["", "📚", "🎯", "🧪", "✏️", "🌙", "⚡"] as cons
 // 32 symbols keeps `byte % 32` unbiased.
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const CODE_LENGTH = 6;
+const MAX_REPORTS_PER_DAY = 10;
+const MAX_MESSAGES_PER_MINUTE = 20;
+const REPORT_REASONS = ["bullying_harassment", "hateful_sexual", "spam", "other"] as const;
+type ReportReason = (typeof REPORT_REASONS)[number];
 
 type Room = typeof schema.studyRooms.$inferSelect;
 
@@ -176,6 +182,21 @@ async function dashboard(database: Database, room: Room, userId: string) {
       members: [],
     };
   }
+  const removedMembers = room.ownerUserId === userId
+    ? await database
+      .select({
+        userId: schema.studyRoomRemovedMembers.userId,
+        profileName: schema.profiles.displayName,
+        accountName: schema.users.name,
+        removedAt: schema.studyRoomRemovedMembers.removedAt,
+      })
+      .from(schema.studyRoomRemovedMembers)
+      .leftJoin(schema.profiles, eq(schema.profiles.userId, schema.studyRoomRemovedMembers.userId))
+      .leftJoin(schema.users, eq(schema.users.id, schema.studyRoomRemovedMembers.userId))
+      .where(eq(schema.studyRoomRemovedMembers.roomId, room.id))
+      .orderBy(desc(schema.studyRoomRemovedMembers.removedAt))
+    : [];
+
   return {
     isMember: true,
     room: serialiseRoom(room, {
@@ -192,10 +213,48 @@ async function dashboard(database: Database, room: Room, userId: string) {
       }),
     }),
     members,
+    removedMembers: removedMembers.map((member) => ({
+      userId: member.userId,
+      displayName: cleanName(member.profileName, 40) || cleanName(member.accountName, 40) || "Student",
+      removedAt: iso(member.removedAt),
+    })),
   };
 }
 
 const studyRooms = new Hono<{ Bindings: Env; Variables: Variables }>();
+
+studyRooms.get("/blocked", async (c) => {
+  const { userId } = c.get("session");
+  const database = db(c.env.DB);
+  const rows = await database
+    .select({
+      userId: schema.userBlocks.blockedUserId,
+      profileName: schema.profiles.displayName,
+      accountName: schema.users.name,
+      createdAt: schema.userBlocks.createdAt,
+    })
+    .from(schema.userBlocks)
+    .leftJoin(schema.profiles, eq(schema.profiles.userId, schema.userBlocks.blockedUserId))
+    .leftJoin(schema.users, eq(schema.users.id, schema.userBlocks.blockedUserId))
+    .where(eq(schema.userBlocks.blockerUserId, userId))
+    .orderBy(desc(schema.userBlocks.createdAt));
+  return c.json({
+    people: rows.map((person) => ({
+      userId: person.userId,
+      displayName: cleanName(person.profileName, 40) || cleanName(person.accountName, 40) || "Student",
+      blockedAt: iso(person.createdAt),
+    })),
+  });
+});
+
+studyRooms.delete("/blocked/:userId", async (c) => {
+  const { userId } = c.get("session");
+  const database = db(c.env.DB);
+  await database
+    .delete(schema.userBlocks)
+    .where(and(eq(schema.userBlocks.blockerUserId, userId), eq(schema.userBlocks.blockedUserId, c.req.param("userId"))));
+  return c.json({ ok: true });
+});
 
 studyRooms.get("/", async (c) => {
   const { userId } = c.get("session");
@@ -379,7 +438,20 @@ studyRooms.get("/:code/messages", async (c) => {
     .where(eq(schema.studyRoomMessages.roomId, room.id))
     .orderBy(desc(schema.studyRoomMessages.createdAt))
     .limit(50);
-  return c.json({ messages: rows.reverse().map((row) => ({ ...row, createdAt: iso(row.createdAt) })) });
+  const [blocks, reports] = await Promise.all([
+    database
+      .select({ blockedUserId: schema.userBlocks.blockedUserId })
+      .from(schema.userBlocks)
+      .where(eq(schema.userBlocks.blockerUserId, userId)),
+    database
+      .select({ messageId: schema.roomReports.messageId })
+      .from(schema.roomReports)
+      .where(and(eq(schema.roomReports.roomId, room.id), eq(schema.roomReports.reporterUserId, userId))),
+  ]);
+  const blockedUserIds = new Set(blocks.map((block) => block.blockedUserId));
+  const reportedMessageIds = new Set(reports.map((report) => report.messageId));
+  const visible = rows.filter((row) => !blockedUserIds.has(row.userId) && !reportedMessageIds.has(row.id));
+  return c.json({ messages: visible.reverse().map((row) => ({ ...row, createdAt: iso(row.createdAt) })) });
 });
 
 studyRooms.post("/:code/messages", async (c) => {
@@ -391,11 +463,22 @@ studyRooms.post("/:code/messages", async (c) => {
   const body = await c.req.json<{ body?: unknown }>().catch(() => null);
   const message = typeof body?.body === "string" ? body.body.trim() : "";
   if (!message || message.length > 500) return c.json({ error: "Messages must be 1–500 characters." }, 422);
+  if (isObjectionableRoomMessage(message) || containsRoomContactInfo(message)) {
+    return c.json({ error: "That message can't be sent in Arcadia." }, 422);
+  }
+  const createdAt = Date.now();
+  const [recent] = await database.select({ n: count() })
+    .from(schema.studyRoomMessages)
+    .where(and(
+      eq(schema.studyRoomMessages.roomId, room.id),
+      eq(schema.studyRoomMessages.userId, userId),
+      gte(schema.studyRoomMessages.createdAt, createdAt - 60 * 1000),
+    ));
+  if ((recent?.n ?? 0) >= MAX_MESSAGES_PER_MINUTE) return c.json({ error: "You've sent a lot of messages. Try again in a minute." }, 429);
   const [last] = await database.select({ createdAt: schema.studyRoomMessages.createdAt })
     .from(schema.studyRoomMessages)
     .where(and(eq(schema.studyRoomMessages.roomId, room.id), eq(schema.studyRoomMessages.userId, userId)))
     .orderBy(desc(schema.studyRoomMessages.createdAt)).limit(1);
-  const createdAt = Date.now();
   if (last && createdAt - last.createdAt < 2000) return c.json({ error: "Wait a moment before sending another message." }, 429);
   const [member] = await database.select({ displayName: schema.studyRoomMembers.displayName })
     .from(schema.studyRoomMembers)
@@ -403,6 +486,90 @@ studyRooms.post("/:code/messages", async (c) => {
   const row = { id: newId("rmsg"), roomId: room.id, userId, displayName: member?.displayName ?? "Student", body: message, createdAt };
   await database.insert(schema.studyRoomMessages).values(row);
   return c.json({ message: { id: row.id, userId, body: message, createdAt: iso(createdAt), displayName: member?.displayName ?? "Student" } }, 201);
+});
+
+studyRooms.post("/:code/messages/:messageId/report", async (c) => {
+  const { userId } = c.get("session");
+  const database = db(c.env.DB);
+  const room = await findRoom(database, c.req.param("code"));
+  if (!room) return c.json({ error: "No room with that code." }, 404);
+  if (!(await isRoomMember(database, room.id, userId))) return c.json({ error: "Join the room to report a message." }, 403);
+  const body = await c.req.json<{ reason?: unknown; note?: unknown }>().catch(() => null);
+  const reason = typeof body?.reason === "string" ? body.reason : "";
+  const note = cleanName(body?.note, 300);
+  if (!REPORT_REASONS.some((value) => value === reason)) return c.json({ error: "Choose a report reason." }, 422);
+  const [message] = await database
+    .select({ id: schema.studyRoomMessages.id, userId: schema.studyRoomMessages.userId, body: schema.studyRoomMessages.body })
+    .from(schema.studyRoomMessages)
+    .where(and(eq(schema.studyRoomMessages.roomId, room.id), eq(schema.studyRoomMessages.id, c.req.param("messageId"))))
+    .limit(1);
+  if (!message) return c.json({ error: "Message not found." }, 404);
+  if (message.userId === userId) return c.json({ error: "You can't report your own message." }, 422);
+
+  const [[reportCount], [existing]] = await Promise.all([
+    database
+      .select({ n: count() })
+      .from(schema.roomReports)
+      .where(and(eq(schema.roomReports.reporterUserId, userId), gte(schema.roomReports.createdAt, Date.now() - DAY))),
+    database
+      .select({ id: schema.roomReports.id })
+      .from(schema.roomReports)
+      .where(and(eq(schema.roomReports.reporterUserId, userId), eq(schema.roomReports.messageId, message.id)))
+      .limit(1),
+  ]);
+  if (existing) return c.json({ ok: true, message: "Thanks. We'll review this within 24 hours." });
+  if ((reportCount?.n ?? 0) >= MAX_REPORTS_PER_DAY) return c.json({ error: "You've reached today's report limit." }, 429);
+
+  const report = {
+    id: newId("report"), roomId: room.id, messageId: message.id, reporterUserId: userId,
+    reportedUserId: message.userId, reason: reason as ReportReason, note, messageBody: message.body,
+    createdAt: Date.now(), status: "open",
+  };
+  await database.insert(schema.roomReports).values(report);
+  try {
+    await sendEmail(c.env, {
+      to: "teamarcadiahq@gmail.com",
+      ...roomReportEmail({
+        roomCode: room.code,
+        reason: report.reason,
+        note,
+        messageBody: message.body,
+        reporterUserId: userId,
+        reportedUserId: message.userId,
+      }),
+    });
+  } catch {
+    console.error("[study-rooms] report email delivery failed");
+  }
+  return c.json({ ok: true, message: "Thanks. We'll review this within 24 hours." }, 201);
+});
+
+studyRooms.post("/:code/members/:memberId/block", async (c) => {
+  const { userId } = c.get("session");
+  const targetUserId = c.req.param("memberId");
+  if (targetUserId === userId) return c.json({ error: "You can't block yourself." }, 422);
+  const database = db(c.env.DB);
+  const room = await findRoom(database, c.req.param("code"));
+  if (!room) return c.json({ error: "No room with that code." }, 404);
+  if (!(await isRoomMember(database, room.id, userId))) return c.json({ error: "Join the room to block a member." }, 403);
+  const [[member], [messageAuthor]] = await Promise.all([
+    database
+      .select({ userId: schema.studyRoomMembers.userId })
+      .from(schema.studyRoomMembers)
+      .where(and(eq(schema.studyRoomMembers.roomId, room.id), eq(schema.studyRoomMembers.userId, targetUserId)))
+      .limit(1),
+    database
+      .select({ userId: schema.studyRoomMessages.userId })
+      .from(schema.studyRoomMessages)
+      .where(and(eq(schema.studyRoomMessages.roomId, room.id), eq(schema.studyRoomMessages.userId, targetUserId)))
+      .limit(1),
+  ]);
+  if (!member && !messageAuthor) return c.json({ error: "Member not found." }, 404);
+  await database
+    .insert(schema.userBlocks)
+    .values({ blockerUserId: userId, blockedUserId: targetUserId, createdAt: Date.now() })
+    .onConflictDoNothing();
+  return c.json({ ok: true });
 });
 
 studyRooms.delete("/:code/messages/:messageId", async (c) => {
@@ -416,6 +583,42 @@ studyRooms.delete("/:code/messages/:messageId", async (c) => {
   if (!message) return c.json({ error: "Message not found." }, 404);
   if (message.userId !== userId && room.ownerUserId !== userId) return c.json({ error: "You cannot remove this message." }, 403);
   await database.delete(schema.studyRoomMessages).where(and(eq(schema.studyRoomMessages.roomId, room.id), eq(schema.studyRoomMessages.id, c.req.param("messageId"))));
+  return c.json({ ok: true });
+});
+
+studyRooms.post("/:code/members/:memberId/remove", async (c) => {
+  const { userId } = c.get("session");
+  const targetUserId = c.req.param("memberId");
+  const database = db(c.env.DB);
+  const room = await findRoom(database, c.req.param("code"));
+  if (!room) return c.json({ error: "No room with that code." }, 404);
+  if (room.ownerUserId !== userId) return c.json({ error: "Only the room owner can remove members." }, 403);
+  if (targetUserId === userId) return c.json({ error: "The room owner can't be removed." }, 422);
+  const [member] = await database
+    .select({ userId: schema.studyRoomMembers.userId })
+    .from(schema.studyRoomMembers)
+    .where(and(eq(schema.studyRoomMembers.roomId, room.id), eq(schema.studyRoomMembers.userId, targetUserId)))
+    .limit(1);
+  if (!member) return c.json({ error: "Member not found." }, 404);
+  await database.batch([
+    database
+      .insert(schema.studyRoomRemovedMembers)
+      .values({ roomId: room.id, userId: targetUserId, removedAt: Date.now() })
+      .onConflictDoUpdate({ target: [schema.studyRoomRemovedMembers.roomId, schema.studyRoomRemovedMembers.userId], set: { removedAt: Date.now() } }),
+    database.delete(schema.studyRoomMembers).where(and(eq(schema.studyRoomMembers.roomId, room.id), eq(schema.studyRoomMembers.userId, targetUserId))),
+  ]);
+  return c.json({ ok: true });
+});
+
+studyRooms.delete("/:code/members/:memberId/removal", async (c) => {
+  const { userId } = c.get("session");
+  const database = db(c.env.DB);
+  const room = await findRoom(database, c.req.param("code"));
+  if (!room) return c.json({ error: "No room with that code." }, 404);
+  if (room.ownerUserId !== userId) return c.json({ error: "Only the room owner can allow members back in." }, 403);
+  await database
+    .delete(schema.studyRoomRemovedMembers)
+    .where(and(eq(schema.studyRoomRemovedMembers.roomId, room.id), eq(schema.studyRoomRemovedMembers.userId, c.req.param("memberId"))));
   return c.json({ ok: true });
 });
 
@@ -470,6 +673,12 @@ studyRooms.post("/:code/join", async (c) => {
 
   // Joining twice (double click, re-opened link) is a no-op, not an error.
   if (!existing) {
+    const [removed] = await database
+      .select({ userId: schema.studyRoomRemovedMembers.userId })
+      .from(schema.studyRoomRemovedMembers)
+      .where(and(eq(schema.studyRoomRemovedMembers.roomId, room.id), eq(schema.studyRoomRemovedMembers.userId, userId)))
+      .limit(1);
+    if (removed) return c.json({ error: "The room owner has removed you from this room." }, 403);
     const capacity = ROOM_CAPACITY[await getUserTier(database, room.ownerUserId)];
     const [[members], [memberships]] = await Promise.all([
       database

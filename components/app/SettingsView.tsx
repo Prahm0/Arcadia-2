@@ -44,6 +44,12 @@ interface AccountResponse {
   };
 }
 
+interface BlockedPerson {
+  userId: string;
+  displayName: string;
+  blockedAt: string;
+}
+
 export default function SettingsView() {
   const router = useRouter();
   const { data, patch, reload } = useDashboardData();
@@ -54,6 +60,9 @@ export default function SettingsView() {
   const [passwordNotice, setPasswordNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
 
   const [account, setAccount] = useState<AccountResponse["account"] | null>(null);
+  const [blockedPeople, setBlockedPeople] = useState<BlockedPerson[]>([]);
+  const [blockedPeopleLoading, setBlockedPeopleLoading] = useState(true);
+  const [unblockingUserId, setUnblockingUserId] = useState<string | null>(null);
   const [soundOn, setSoundOn] = useState(true);
   const [remindersOn, setRemindersOn] = useState(false);
   const [permission, setPermission] = useState<NotificationPermissionState>("default");
@@ -68,6 +77,25 @@ export default function SettingsView() {
     setLeadMin(getLeadMinutes());
     setUse24h(is24Hour());
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    api<{ people: BlockedPerson[] }>("/api/study-rooms/blocked")
+      .then((response) => { if (active) setBlockedPeople(response.people); })
+      .catch(() => { if (active) setBlockedPeople([]); })
+      .finally(() => { if (active) setBlockedPeopleLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  async function unblockPerson(person: BlockedPerson) {
+    setUnblockingUserId(person.userId);
+    try {
+      await api(`/api/study-rooms/blocked/${encodeURIComponent(person.userId)}`, { method: "DELETE" });
+      setBlockedPeople((current) => current.filter((item) => item.userId !== person.userId));
+    } finally {
+      setUnblockingUserId(null);
+    }
+  }
 
   function toggleTimeFormat(next: boolean) {
     setUse24h(next);
@@ -535,6 +563,14 @@ export default function SettingsView() {
               </button>
             ))}
           </div>
+        </Card>
+
+        <Card>
+          <SectionHeader label="Blocked people" />
+          <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>
+            Their messages are hidden from you in every study room. You can unblock them here any time.
+          </p>
+          {blockedPeopleLoading ? <p className="mt-3 text-[12px]" style={{ color: "var(--app-text-faint)" }}>Loading blocked people…</p> : blockedPeople.length === 0 ? <p className="mt-3 text-[12px]" style={{ color: "var(--app-text-faint)" }}>You haven&apos;t blocked anyone.</p> : <ul className="mt-3 flex flex-col gap-2">{blockedPeople.map((person) => <li key={person.userId} className="flex items-center justify-between gap-3 rounded-md px-3 py-2.5" style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)" }}><span className="min-w-0 truncate text-[13px]" style={{ color: "var(--app-text)" }}>{person.displayName}</span><AppButton variant="ghost" loading={unblockingUserId === person.userId} onClick={() => void unblockPerson(person)}>Unblock</AppButton></li>)}</ul>}
         </Card>
 
         <Card>

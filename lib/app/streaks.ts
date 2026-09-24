@@ -1,12 +1,13 @@
 import type { PlannerEvent } from "@/lib/api/types";
 import { dateKey } from "@/lib/api/time";
+import { CONSISTENCY_THRESHOLD as sharedConsistencyThreshold } from "@/shared/progress";
 
 /**
  * A day counts as "consistent" when planned study minutes are met to at least
  * this ratio. 70% intentionally leaves headroom for a class overrun or a
  * late-starting session without breaking a streak.
  */
-export const CONSISTENCY_THRESHOLD = 0.7;
+export const CONSISTENCY_THRESHOLD = sharedConsistencyThreshold;
 
 export const STREAK_MILESTONES = [3, 7, 30] as const;
 

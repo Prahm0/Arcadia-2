@@ -2,9 +2,10 @@ import { and, eq, gte } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../db";
 import { newId } from "../lib/ids";
-import { DAY } from "../lib/time";
+import { DAY, startOfLocalDay } from "../lib/time";
 import type { Env, Variables } from "../types";
 import { readStudySky } from "../lib/constellations";
+import { awardFocusXp } from "../lib/rewards";
 
 interface SessionInput {
   activityId?: string;
@@ -35,6 +36,7 @@ studySessions.post("/", async (c) => {
   catch { dayFormat = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Sydney", year: "numeric", month: "2-digit", day: "2-digit" }); }
   let stored = 0;
   const acceptedActivityIds: string[] = [];
+  const rewards: { xp: number; source: string }[] = [];
 
   for (const item of items) {
     if (!item || typeof item !== "object") continue;
@@ -63,13 +65,16 @@ studySessions.post("/", async (c) => {
       endedAt,
     }).onConflictDoNothing({ target: [schema.studySessions.userId, schema.studySessions.activityId] }).returning({ id: schema.studySessions.id });
     stored += inserted.length;
+    if (inserted[0] && String(item.type ?? "focus") !== "break") {
+      rewards.push(...await awardFocusXp(database, userId, inserted[0].id, seconds / 60, startOfLocalDay(endedAt, profile?.timezone || "Australia/Sydney")));
+    }
     if (item.activityId) acceptedActivityIds.push(item.activityId);
   }
 
   // The activity is already durable. Reconciliation can safely retry on a sky
   // read if a transient failure occurs after saving the session.
   await readStudySky(database, userId).catch((error) => console.error("[study-sky] Reconciliation deferred", error));
-  return c.json({ ok: true, stored, acceptedActivityIds }, 201);
+  return c.json({ ok: true, stored, acceptedActivityIds, rewards }, 201);
 });
 
 studySessions.get("/", async (c) => {

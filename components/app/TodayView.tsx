@@ -31,6 +31,7 @@ import SundayReviewInline from "./SundayReviewInline";
 import { subjectColour } from "@/lib/app/subjectColour";
 import { SubjectTag } from "./cards/shared";
 import { playCompletionTick } from "@/lib/app/completion";
+import TodayProgress from "./TodayProgress";
 
 const CATEGORY_BAR = CATEGORY_COLOR;
 
@@ -46,6 +47,8 @@ export default function TodayView() {
   const [showLife, setShowLife] = useState(false);
   const [lifeAutoReason, setLifeAutoReason] = useState<string | null>(null);
   const [celebrateId, setCelebrateId] = useState<{ id: string; at: number } | null>(null);
+  const [xpReward, setXpReward] = useState<number | null>(null);
+  const [progressRefresh, setProgressRefresh] = useState(0);
   const [openEventId, setOpenEventId] = useState<string | null>(null);
   const [openEventMode, setOpenEventMode] = useState<EventSheetMode>("details");
 
@@ -137,7 +140,7 @@ export default function TodayView() {
       playCompletionTick();
     }
     try {
-      await api(`/api/events/${encodeURIComponent(event.id)}/outcome`, {
+      const result = await api<{ rewards?: Array<{ xp: number }> }>(`/api/events/${encodeURIComponent(event.id)}/outcome`, {
         method: "POST",
         body: JSON.stringify({ outcome }),
       });
@@ -149,6 +152,12 @@ export default function TodayView() {
             : existing,
         ),
       }));
+      const earned = result.rewards?.reduce((sum, reward) => sum + reward.xp, 0) ?? 0;
+      if (earned > 0) {
+        setXpReward(earned);
+        window.setTimeout(() => setXpReward(null), 1200);
+      }
+      setProgressRefresh((value) => value + 1);
     } finally {
       setBusyId(null);
     }
@@ -183,6 +192,12 @@ export default function TodayView() {
           </>
         }
       />
+      <TodayProgress refreshKey={progressRefresh} />
+      {xpReward !== null ? (
+        <div className="pointer-events-none fixed left-1/2 top-24 z-[100] -translate-x-1/2 app-pop rounded-full px-4 py-2 text-sm font-semibold shadow-lg" style={{ background: "var(--app-arcad)", color: "white" }}>
+          +{xpReward} XP
+        </div>
+      ) : null}
 
       <div className="mx-auto grid w-full max-w-[1160px] gap-8 px-6 pb-10 pt-6 sm:px-10 @3xl/main:grid-cols-[minmax(0,1fr)_320px]">
         <section className="min-w-0">

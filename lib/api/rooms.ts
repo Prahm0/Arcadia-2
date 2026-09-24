@@ -1,4 +1,5 @@
 import { api } from "@/lib/api/client";
+import type { CheerKind } from "@/shared/roomFeed";
 
 export type RoomActivity = "idle" | "focus" | "break";
 
@@ -10,6 +11,7 @@ export interface StudyRoom {
   colour: string;
   icon: string;
   weeklyGoalMinutes: number | null;
+  dailyGoalMinutes?: number | null;
   ownerUserId: string;
   createdAt: string;
   joinedAt?: string;
@@ -19,6 +21,8 @@ export interface StudyRoom {
   todaySeconds?: number;
   weekSeconds?: number;
   weekActivity?: Array<{ day: string; seconds: number; sessions: number }>;
+  /** The viewer's school term for the leaderboard, or the past 30 days. */
+  term?: { label: string; since: string };
 }
 
 /**
@@ -35,9 +39,36 @@ export interface StudyRoomMember {
   startedAt: string | null;
   durationSeconds: number | null;
   updatedAt: string | null;
+  /** Whose session this member joined, while both are focusing. */
+  groupHostId?: string | null;
   /** Logged focus time in the member's own local "today". */
   todaySeconds: number;
   weekSeconds: number;
+  termSeconds?: number;
+  totalSeconds?: number;
+  avatarColour?: string | null;
+  developerAccess?: boolean;
+  /** The streak card they show off, and how many they've collected. */
+  constellation?: { id: string; cards: number } | null;
+  /** Cheers received since this focus session started. */
+  sessionCheers?: number;
+}
+
+export type RoomFeedItem =
+  | { type: "session"; id: string; at: string; userId: string; seconds: number; cheers: number }
+  | { type: "start"; id: string; at: string; userId: string; subject: string | null }
+  | { type: "group"; id: string; at: string; hostId: string; userIds: string[] }
+  | { type: "cheer"; id: string; at: string; fromUserId: string; toUserId: string; kind: CheerKind }
+  | { type: "join"; id: string; at: string; userId: string }
+  | { type: "rank"; id: string; at: string; userId: string; rank: number }
+  | { type: "milestone"; id: string; at: string; hours: number }
+  | { type: "goal"; id: string; at: string };
+
+export interface RoomCheers {
+  /** Cheers sent to you in the last few minutes, newest first. */
+  received: Array<{ id: string; fromUserId: string; kind: CheerKind; createdAt: string }>;
+  /** When you can next cheer each person, by user id. */
+  cooldowns: Record<string, string>;
 }
 
 /** What someone who isn't in the room yet gets back, enough to say "Join X?". */
@@ -80,8 +111,23 @@ export interface BlockedRoomPerson {
 export type RoomReportReason = "bullying_harassment" | "hateful_sexual" | "spam" | "other";
 
 export type RoomDashboard =
-  | { isMember: true; room: StudyRoom; members: StudyRoomMember[]; removedMembers: Array<{ userId: string; displayName: string; removedAt: string }> }
+  | {
+      isMember: true;
+      room: StudyRoom;
+      members: StudyRoomMember[];
+      removedMembers: Array<{ userId: string; displayName: string; removedAt: string }>;
+      feed?: RoomFeedItem[];
+      cheers?: RoomCheers;
+    }
   | { isMember: false; room: RoomPreview; members: [] };
+
+/** Returns when you can next cheer them. */
+export async function sendCheer(code: string, toUserId: string, kind: CheerKind): Promise<{ retryAt: string }> {
+  return api<{ ok: boolean; retryAt: string }>(`/api/study-rooms/${encodeURIComponent(code)}/cheers`, {
+    method: "POST",
+    body: JSON.stringify({ toUserId, kind }),
+  });
+}
 
 export async function listRooms(): Promise<StudyRoom[]> {
   const response = await api<{ rooms: StudyRoom[] }>("/api/study-rooms");
@@ -96,7 +142,7 @@ export async function createRoom(name: string, description = "", colour = "slate
   return response.room;
 }
 
-export async function updateRoom(code: string, patch: { name: string; description: string; colour: string; icon?: string; weeklyGoalMinutes?: number | null }): Promise<RoomDashboard> {
+export async function updateRoom(code: string, patch: { name: string; description: string; colour: string; icon?: string; weeklyGoalMinutes?: number | null; dailyGoalMinutes?: number | null }): Promise<RoomDashboard> {
   return api<RoomDashboard>(`/api/study-rooms/${encodeURIComponent(code)}`, {
     method: "PATCH",
     body: JSON.stringify(patch),

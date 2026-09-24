@@ -119,7 +119,7 @@ export default function StartNowCard() {
  * The session to put front and centre: one already started, else the one
  * on right now, else the next one today.
  */
-function pickSession(events: PlannerEvent[], now: number, timezone: string): { target: PlannerEvent | null; isNow: boolean } {
+export function pickSession(events: PlannerEvent[], now: number, timezone: string): { target: PlannerEvent | null; isNow: boolean } {
   const day = new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(now);
   const open = events
     .filter(

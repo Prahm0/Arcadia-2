@@ -6,6 +6,8 @@ export interface PresenceState {
   subject?: string | null;
   startedAt?: string | null;
   durationSeconds?: number | null;
+  /** The room member whose session this timer joined. */
+  groupHostId?: string | null;
 }
 
 /**

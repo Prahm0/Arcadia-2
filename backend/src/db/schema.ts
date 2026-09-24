@@ -624,6 +624,7 @@ export const studyRooms = sqliteTable(
     colour: text("colour").notNull().default("slate"),
     icon: text("icon").notNull().default(""),
     weeklyGoalMinutes: integer("weekly_goal_minutes"),
+    dailyGoalMinutes: integer("daily_goal_minutes"),
     ownerUserId: text("owner_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -710,6 +711,23 @@ export const studyRoomRemovedMembers = sqliteTable(
   (t) => [primaryKey({ columns: [t.roomId, t.userId] }), index("study_room_removed_members_user_idx").on(t.userId)],
 );
 
+/** A quick "keep going" from one room member to another while they study. */
+export const studyRoomCheers = sqliteTable(
+  "study_room_cheers",
+  {
+    id: text("id").primaryKey(),
+    roomId: text("room_id").notNull().references(() => studyRooms.id, { onDelete: "cascade" }),
+    fromUserId: text("from_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    toUserId: text("to_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [
+    index("study_room_cheers_room_time_idx").on(t.roomId, t.createdAt),
+    index("study_room_cheers_pair_idx").on(t.fromUserId, t.toUserId, t.createdAt),
+  ],
+);
+
 // One row per user, written by the focus timer and read by every room the
 // user is in. A focus/break row older than PRESENCE_STALE_MS reads as idle.
 export const userPresence = sqliteTable("user_presence", {
@@ -720,6 +738,8 @@ export const userPresence = sqliteTable("user_presence", {
   subject: text("subject"),
   startedAt: integer("started_at"),
   durationSeconds: integer("duration_seconds"),
+  // Set when this timer joined another member's session (see study rooms).
+  groupHostId: text("group_host_id"),
   updatedAt: integer("updated_at").notNull().default(now),
 });
 

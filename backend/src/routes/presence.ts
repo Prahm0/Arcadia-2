@@ -8,6 +8,7 @@ interface PresenceInput {
   subject?: string | null;
   startedAt?: string | null;
   durationSeconds?: number | null;
+  groupHostId?: string | null;
 }
 
 const presence = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -39,8 +40,14 @@ presence.put("/", async (c) => {
     durationSeconds =
       Number.isFinite(duration) && duration > 0 ? Math.min(Math.round(duration), 24 * 3600) : null;
   }
+  // Rooms only show a group when the host is in the same room and still
+  // focusing, so an id that points nowhere just reads as a solo session.
+  const groupHostId =
+    activity === "focus" && typeof body.groupHostId === "string" && body.groupHostId !== userId
+      ? body.groupHostId.slice(0, 64) || null
+      : null;
 
-  const values = { activity, subject, startedAt, durationSeconds, updatedAt: now };
+  const values = { activity, subject, startedAt, durationSeconds, groupHostId, updatedAt: now };
   await db(c.env.DB)
     .insert(schema.userPresence)
     .values({ userId, ...values })

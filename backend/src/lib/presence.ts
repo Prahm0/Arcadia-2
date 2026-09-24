@@ -16,6 +16,7 @@ export interface PresenceRow {
   subject: string | null;
   startedAt: number | null;
   durationSeconds: number | null;
+  groupHostId?: string | null;
   updatedAt: number;
 }
 
@@ -24,13 +25,15 @@ export interface LivePresence {
   subject: string | null;
   startedAt: number | null;
   durationSeconds: number | null;
+  /** Whose session this timer joined, while it's still running. */
+  groupHostId: string | null;
   updatedAt: number | null;
 }
 
 /** What a presence row means right now, with staleness applied. */
 export function livePresence(row: PresenceRow | null | undefined, now: number): LivePresence {
   if (!row) {
-    return { activity: "idle", subject: null, startedAt: null, durationSeconds: null, updatedAt: null };
+    return { activity: "idle", subject: null, startedAt: null, durationSeconds: null, groupHostId: null, updatedAt: null };
   }
   const activity = (ACTIVITIES as readonly string[]).includes(row.activity)
     ? (row.activity as Activity)
@@ -44,13 +47,14 @@ export function livePresence(row: PresenceRow | null | undefined, now: number): 
     row.durationSeconds !== null &&
     now > row.startedAt + row.durationSeconds * 1000 + 5 * MINUTE;
   if (stale || overrun) {
-    return { activity: "idle", subject: row.subject, startedAt: null, durationSeconds: null, updatedAt: row.updatedAt };
+    return { activity: "idle", subject: row.subject, startedAt: null, durationSeconds: null, groupHostId: null, updatedAt: row.updatedAt };
   }
   return {
     activity,
     subject: row.subject,
     startedAt: activity === "idle" ? null : row.startedAt,
     durationSeconds: activity === "idle" ? null : row.durationSeconds,
+    groupHostId: activity === "focus" ? row.groupHostId ?? null : null,
     updatedAt: row.updatedAt,
   };
 }

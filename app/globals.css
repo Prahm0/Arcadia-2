@@ -962,6 +962,305 @@ html[data-app-theme] .type-mono-label {
   --from: 0.4;
   --to: 0.75;
 }
+/* Arcad the character. Pops in when he appears, floats while idle, tilts his
+   head side to side while thinking (with a spark riding his ring), and hops
+   for attention when something needs you. Hovering the button he lives in
+   gets a wiggle. The sheen and glints keep the artwork from feeling static. */
+.arcad-orb {
+  animation: arcad-orb-pop 460ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes arcad-orb-pop {
+  from { transform: scale(0.6); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.arcad-orb-float {
+  animation: arcad-orb-float 5.2s ease-in-out infinite;
+}
+@keyframes arcad-orb-float {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-7%) rotate(2.5deg); }
+}
+.arcad-orb[data-state="thinking"] .arcad-orb-float {
+  animation: arcad-orb-ponder 1.8s ease-in-out infinite;
+}
+@keyframes arcad-orb-ponder {
+  0%, 100% { transform: translateY(0) rotate(-7deg); }
+  25% { transform: translateY(-5%) rotate(0deg) scale(1.03); }
+  50% { transform: translateY(0) rotate(7deg); }
+  75% { transform: translateY(-5%) rotate(0deg) scale(1.03); }
+}
+
+.arcad-orb-mood {
+  transform-origin: 50% 85%;
+}
+.arcad-orb[data-state="alert"] .arcad-orb-mood {
+  animation: arcad-orb-hop 2.6s ease-out infinite;
+}
+@keyframes arcad-orb-hop {
+  0%, 60%, 100% { transform: translateY(0) scale(1, 1); }
+  67% { transform: translateY(0) scale(1.1, 0.88); }
+  77% { transform: translateY(-18%) scale(0.94, 1.07); }
+  87% { transform: translateY(0) scale(1.07, 0.93); }
+  93% { transform: translateY(0) scale(0.98, 1.02); }
+}
+@media (hover: hover) {
+  :is(button, a):hover .arcad-orb:not([data-state="alert"]) .arcad-orb-mood:not([data-move]),
+  .arcad-orb:not([data-state="alert"]):hover .arcad-orb-mood:not([data-move]) {
+    animation: arcad-orb-wiggle 700ms ease-in-out;
+  }
+}
+
+/* He turns toward the pointer; ArcadOrb.tsx sets the transform. */
+.arcad-orb-look {
+  transition: transform 650ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* One-shot moves (data-move, set from ArcadOrb.tsx). They outrank the alert
+   hop so a tap or a cheer always plays. */
+.arcad-orb .arcad-orb-mood[data-move="hello"] { animation: arcad-orb-hello 1.3s ease-in-out; }
+.arcad-orb .arcad-orb-mood[data-move="spin"] { animation: arcad-orb-spin 950ms cubic-bezier(0.5, 0, 0.3, 1); }
+.arcad-orb .arcad-orb-mood[data-move="double-hop"] { animation: arcad-orb-double-hop 950ms ease-out; }
+.arcad-orb .arcad-orb-mood[data-move="peek"] { animation: arcad-orb-peek 1.8s ease-in-out; }
+.arcad-orb .arcad-orb-mood[data-move="jelly"] { animation: arcad-orb-jelly 850ms ease-out; }
+.arcad-orb .arcad-orb-mood[data-move="boop"] { animation: arcad-orb-boop 520ms ease-out; }
+.arcad-orb .arcad-orb-mood[data-move="boop-alt"] { animation: arcad-orb-boop-alt 520ms ease-out; }
+.arcad-orb .arcad-orb-mood[data-move="cheer"] { animation: arcad-orb-cheer 900ms cubic-bezier(0.3, 0.7, 0.4, 1); }
+.arcad-orb .arcad-orb-mood[data-move="startle"] { animation: arcad-orb-startle 650ms ease-out; }
+
+/* A wave hello when he first shows up big: a beat, then a happy rock. */
+@keyframes arcad-orb-hello {
+  0%, 30% { transform: rotate(0) scale(1); }
+  42% { transform: rotate(-14deg) scale(1.06); }
+  56% { transform: rotate(12deg) scale(1.06); }
+  70% { transform: rotate(-8deg) scale(1.04); }
+  84% { transform: rotate(4deg); }
+  100% { transform: rotate(0) scale(1); }
+}
+/* A barrel roll, tucking in on the way round. */
+@keyframes arcad-orb-spin {
+  0% { transform: rotate(0) scale(1); }
+  20% { transform: rotate(-20deg) scale(0.92); }
+  75% { transform: rotate(370deg) scale(0.92); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+@keyframes arcad-orb-double-hop {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  10% { transform: translateY(0) scale(1.08, 0.9); }
+  25% { transform: translateY(-14%) scale(0.95, 1.05); }
+  40% { transform: translateY(0) scale(1.08, 0.92); }
+  55% { transform: translateY(-20%) scale(0.94, 1.06); }
+  75% { transform: translateY(0) scale(1.07, 0.93); }
+  88% { transform: translateY(0) scale(0.98, 1.02); }
+}
+/* A look around: left, hold, right, hold, back. */
+@keyframes arcad-orb-peek {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  18%, 38% { transform: translateX(-9%) rotate(-12deg); }
+  55%, 75% { transform: translateX(9%) rotate(12deg); }
+}
+@keyframes arcad-orb-jelly {
+  0%, 100% { transform: scale(1, 1); }
+  20% { transform: scale(1.14, 0.86); }
+  40% { transform: scale(0.9, 1.1); }
+  60% { transform: scale(1.06, 0.95); }
+  80% { transform: scale(0.98, 1.02); }
+}
+@keyframes arcad-orb-boop {
+  0%, 100% { transform: scale(1, 1); }
+  25% { transform: scale(1.2, 0.8); }
+  55% { transform: scale(0.9, 1.12); }
+  80% { transform: scale(1.04, 0.97); }
+}
+@keyframes arcad-orb-boop-alt {
+  0%, 100% { transform: scale(1, 1); }
+  25% { transform: scale(1.2, 0.8); }
+  55% { transform: scale(0.9, 1.12); }
+  80% { transform: scale(1.04, 0.97); }
+}
+@keyframes arcad-orb-cheer {
+  0%, 100% { transform: translateY(0) rotate(0) scale(1); }
+  15% { transform: translateY(0) scale(1.1, 0.88); }
+  45% { transform: translateY(-24%) rotate(-10deg) scale(1.08); }
+  65% { transform: translateY(-10%) rotate(8deg) scale(1.05); }
+  85% { transform: translateY(0) scale(1.05, 0.95); }
+}
+@keyframes arcad-orb-startle {
+  0%, 100% { transform: translateY(0) scale(1); }
+  20% { transform: translateY(-16%) scale(1.14); }
+  35% { transform: translateY(-16%) scale(1.14) rotate(-6deg); }
+  50% { transform: translateY(-16%) scale(1.14) rotate(6deg); }
+  75% { transform: translateY(0) scale(0.96, 1.04); }
+}
+
+/* Asleep: slow, droopy drift, dimmer, with Zs rising off his shoulder. */
+.arcad-orb[data-asleep] .arcad-orb-float {
+  animation: arcad-orb-doze 6s ease-in-out infinite;
+}
+@keyframes arcad-orb-doze {
+  0%, 100% { transform: translateY(4%) rotate(10deg) scale(1.02, 0.98); }
+  50% { transform: translateY(1%) rotate(8deg) scale(0.99, 1.01); }
+}
+.arcad-orb[data-asleep] .arcad-orb-art {
+  filter: brightness(0.78) saturate(0.85);
+}
+.arcad-orb-art {
+  transition: filter 900ms ease;
+}
+.arcad-orb[data-asleep] .arcad-orb-glint,
+.arcad-orb[data-asleep] .arcad-orb-sheen { display: none; }
+.arcad-orb-zzz {
+  position: absolute;
+  right: -8%;
+  top: -12%;
+  z-index: 20;
+  pointer-events: none;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-weight: 600;
+  line-height: 1;
+  color: color-mix(in oklab, var(--app-arcad) 60%, white);
+}
+.arcad-orb-zzz span {
+  position: absolute;
+  opacity: 0;
+  animation: arcad-orb-zzz 3.6s ease-out infinite;
+}
+.arcad-orb-zzz span:nth-child(2) { animation-delay: 1.2s; font-size: 0.8em; }
+.arcad-orb-zzz span:nth-child(3) { animation-delay: 2.4s; font-size: 0.65em; }
+@keyframes arcad-orb-zzz {
+  0% { opacity: 0; transform: translate(0, 0) rotate(-10deg); }
+  20% { opacity: 0.9; }
+  100% { opacity: 0; transform: translate(70%, -140%) rotate(12deg); }
+}
+
+/* A spray of little stars from a boop or a cheer. */
+.arcad-orb-burst {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+}
+.arcad-orb-burst svg {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  opacity: 0;
+  filter: drop-shadow(0 0 2px rgb(255 240 200 / 0.8));
+  animation: arcad-orb-burst 700ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+@keyframes arcad-orb-burst {
+  0% { opacity: 1; transform: rotate(var(--a)) translateY(0) scale(0.3); }
+  60% { opacity: 1; }
+  100% { opacity: 0; transform: rotate(var(--a)) translateY(calc(var(--r) * -1)) scale(0.9) rotate(90deg); }
+}
+
+/* Thinking makes his stars twinkle faster too. */
+.arcad-orb[data-state="thinking"] .arcad-orb-glint {
+  animation-duration: 1.8s;
+}
+@keyframes arcad-orb-wiggle {
+  0%, 100% { transform: rotate(0) scale(1); }
+  20% { transform: rotate(-12deg) scale(1.08); }
+  45% { transform: rotate(9deg) scale(1.08); }
+  70% { transform: rotate(-5deg) scale(1.04); }
+}
+
+/* A soft band of light that crosses the orb body now and then. Inset to the
+   body so it never lights the dark corners of the artwork. */
+.arcad-orb-sheen {
+  position: absolute;
+  left: 14%;
+  top: 14%;
+  width: 70%;
+  height: 70%;
+  border-radius: 50%;
+  overflow: hidden;
+  pointer-events: none;
+}
+.arcad-orb-sheen::after {
+  content: "";
+  position: absolute;
+  inset: -20% auto -20% 0;
+  width: 45%;
+  background: linear-gradient(100deg, transparent 0%, rgb(255 255 255 / 0.4) 50%, transparent 100%);
+  mix-blend-mode: soft-light;
+  transform: translateX(-160%) skewX(-18deg);
+  animation: arcad-orb-sheen 7s ease-in-out infinite 1.2s;
+}
+@keyframes arcad-orb-sheen {
+  0%, 72% { transform: translateX(-160%) skewX(-18deg); }
+  100% { transform: translateX(330%) skewX(-18deg); }
+}
+
+/* Glints flash over the three stars on his ring, one after another. */
+.arcad-orb-glint {
+  position: absolute;
+  width: 26%;
+  height: 26%;
+  translate: -50% -50%;
+  pointer-events: none;
+  opacity: 0;
+  filter: drop-shadow(0 0 2px rgb(255 240 200 / 0.9));
+  animation: arcad-orb-glint 4.2s ease-in-out infinite;
+}
+@keyframes arcad-orb-glint {
+  0%, 70%, 100% { opacity: 0; transform: scale(0.2) rotate(0deg); }
+  80% { opacity: 1; transform: scale(1) rotate(45deg); }
+  90% { opacity: 0; transform: scale(0.3) rotate(90deg); }
+}
+
+/* Thinking: a spark rides the tilted ring. X and Y swing a quarter-cycle
+   apart to trace an ellipse; it dims on the far side. */
+.arcad-orb-orbit {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  transform: rotate(18deg);
+}
+.arcad-orb-orbit-x,
+.arcad-orb-orbit-y {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.arcad-orb-orbit-x {
+  animation: arcad-orb-orbit-x 0.8s ease-in-out infinite alternate;
+}
+.arcad-orb-orbit-y {
+  animation: arcad-orb-orbit-y 0.8s ease-in-out infinite alternate -0.4s;
+}
+@keyframes arcad-orb-orbit-x {
+  from { transform: translateX(-44%); }
+  to { transform: translateX(44%); }
+}
+@keyframes arcad-orb-orbit-y {
+  from { transform: translateY(-17%); opacity: 0.35; }
+  to { transform: translateY(17%); opacity: 1; }
+}
+.arcad-orb-spark {
+  border-radius: 50%;
+  background: #fff8e6;
+  box-shadow: 0 0 4px 1px rgb(255 236 190 / 0.9), 0 0 9px 2px color-mix(in oklab, var(--app-arcad) 70%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arcad-orb,
+  .arcad-orb .arcad-orb-float,
+  .arcad-orb .arcad-orb-mood,
+  .arcad-orb-sheen::after,
+  .arcad-orb-orbit-x,
+  .arcad-orb-orbit-y { animation: none !important; }
+  .arcad-orb-look { transition: none; }
+  .arcad-orb-glint,
+  .arcad-orb-orbit,
+  .arcad-orb-zzz,
+  .arcad-orb-burst { display: none; }
+}
+
 /* Arcad's "thinking" line: a soft light passing over the words. */
 @keyframes arcad-shimmer {
   from { background-position: 100% 0; }

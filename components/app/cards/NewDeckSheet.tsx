@@ -7,6 +7,8 @@ import { useProfile } from "@/lib/api/profile";
 import { SEPARATOR_LABELS, guessSeparator, parseCards, type Separator } from "@/lib/app/cardImport";
 import { cn } from "@/lib/cn";
 import AppButton from "../AppButton";
+import InlineUpload from "../files/InlineUpload";
+import { useRefreshOnUpload } from "../files/UploadProvider";
 import { Label, Select, Sheet, TextArea, TextInput } from "../profile/ui";
 import { useSubjects } from "./shared";
 
@@ -33,7 +35,8 @@ export default function NewDeckSheet({
 function NewDeckForm({ onClose, initialSubject }: { onClose: () => void; initialSubject: string | null }) {
   const router = useRouter();
   const { subjects } = useSubjects();
-  const { state: profileState } = useProfile();
+  const { state: profileState, refresh: refreshProfile } = useProfile();
+  useRefreshOnUpload(refreshProfile);
   const [title, setTitle] = useState("");
   const [subjectId, setSubjectId] = useState(initialSubject ?? subjects[0]?.id ?? "");
   const [start, setStart] = useState<Start>("blank");
@@ -72,7 +75,7 @@ function NewDeckForm({ onClose, initialSubject }: { onClose: () => void; initial
       return;
     }
     if (start === "arcad" && generationSource === "file" && !selectedSourceFile) {
-      setError("Choose an uploaded file Arcad has read.");
+      setError("Choose a file Arcad has read, or upload one.");
       return;
     }
     setSaving(true);
@@ -208,7 +211,7 @@ function NewDeckForm({ onClose, initialSubject }: { onClose: () => void; initial
               </p>
               <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Flashcard source">
                 <StartOption selected={generationSource === "topic"} onSelect={() => setGenerationSource("topic")} title="A topic" body="Tell Arcad what to cover." />
-                <StartOption selected={generationSource === "file"} onSelect={() => setGenerationSource("file")} title="Uploaded notes" body="Use a file Arcad has read." />
+                <StartOption selected={generationSource === "file"} onSelect={() => setGenerationSource("file")} title="Your notes" body="A file you've uploaded, or a new one." />
               </div>
             </div>
 
@@ -223,26 +226,35 @@ function NewDeckForm({ onClose, initialSubject }: { onClose: () => void; initial
                 />
               </Label>
             ) : (
-              <Label
-                text="Uploaded file"
-                hint={profileState.status === "loading" ? "Loading files…" : "Only files Arcad has read and can still access appear here."}
-              >
-                <Select
-                  value={subjectFileId}
-                  onChange={(id) => {
-                    setSubjectFileId(id);
-                    const file = sourceFiles.find((item) => item.id === id);
-                    if (file) setSubjectId(file.subjectId);
-                  }}
-                >
-                  <option value="">{profileState.status === "error" ? "Couldn't load uploaded files" : "Choose a file"}</option>
-                  {sourceFiles.map((file) => (
-                    <option key={file.id} value={file.id}>
-                      {file.subjectName} · {file.filename}
-                    </option>
-                  ))}
-                </Select>
-              </Label>
+              <div className="space-y-3">
+                {sourceFiles.length || profileState.status !== "ready" ? (
+                  <Label
+                    text="Your notes"
+                    hint={profileState.status === "loading" ? "Loading files…" : "Files Arcad has read. Or upload another below."}
+                  >
+                    <Select
+                      value={subjectFileId}
+                      onChange={(id) => {
+                        setSubjectFileId(id);
+                        const file = sourceFiles.find((item) => item.id === id);
+                        if (file) setSubjectId(file.subjectId);
+                      }}
+                    >
+                      <option value="">{profileState.status === "error" ? "Couldn't load your files" : "Choose a file"}</option>
+                      {sourceFiles.map((file) => (
+                        <option key={file.id} value={file.id}>
+                          {file.subjectName} · {file.filename}
+                        </option>
+                      ))}
+                    </Select>
+                  </Label>
+                ) : null}
+                <InlineUpload
+                  subjectId={subjectId}
+                  title={sourceFiles.length ? "Upload other notes" : "Upload the notes to make cards from"}
+                  onRead={setSubjectFileId}
+                />
+              </div>
             )}
 
             <p className="text-[12px] leading-[1.45]" style={{ color: "var(--app-text-faint)" }}>

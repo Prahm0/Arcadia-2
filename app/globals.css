@@ -619,6 +619,19 @@ html[data-app-theme] {
 
 .recovery-bar-tooltip span { color: var(--app-text-muted); }
 
+/* Upload progress while Arcad reads a file: no percentage to show, so a
+   short bar slides across. Holds still under reduced motion. */
+.upload-reading { animation: upload-reading 1.3s ease-in-out infinite; }
+
+@keyframes upload-reading {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(290%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .upload-reading { animation: none; width: 100% !important; opacity: 0.5; }
+}
+
 @keyframes recovery-ghost-out {
   0%, 30% { opacity: 0.92; }
   100% { opacity: 0; }

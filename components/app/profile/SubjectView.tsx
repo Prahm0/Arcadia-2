@@ -10,6 +10,7 @@ import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
 import { formatWeekly, suggestedWeeklyMinutes } from "@/lib/app/studyTargets";
 import AppButton from "../AppButton";
+import { useRefreshOnUpload, useUploadPage } from "../files/UploadProvider";
 import ResourcesSection from "./ResourcesSection";
 import SubjectSheets from "../sheets/SubjectSheets";
 import SyllabusSection from "./SyllabusSection";
@@ -23,6 +24,14 @@ const NOTES_LIMIT = 2000;
  */
 export default function SubjectView({ subjectId }: { subjectId: string }) {
   const { state, refresh } = useProfile();
+  const found = state.status === "ready" ? state.data.subjects.find((item) => item.id === subjectId) : undefined;
+  // Files dropped anywhere on the page are for this subject.
+  useUploadPage({
+    subjectId,
+    kind: "resource",
+    syllabi: found?.syllabus ? { [subjectId]: found.syllabus.filename } : undefined,
+  });
+  useRefreshOnUpload(refresh);
 
   if (state.status === "loading") {
     return (
@@ -36,7 +45,7 @@ export default function SubjectView({ subjectId }: { subjectId: string }) {
     );
   }
 
-  const subject = state.status === "ready" ? state.data.subjects.find((item) => item.id === subjectId) : undefined;
+  const subject = found;
   if (!subject) {
     return (
       <div className="mx-auto flex max-w-[420px] flex-col items-center gap-4 px-6 py-20 text-center">

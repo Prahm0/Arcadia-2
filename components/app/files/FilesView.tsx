@@ -1,23 +1,33 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo } from "react";
 import { useProfile } from "@/lib/api/profile";
 import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
+import AppButton, { appButtonClass } from "../AppButton";
 import EmptyState from "../EmptyState";
 import PageHeader from "../PageHeader";
-import { appButtonClass } from "../AppButton";
 import { SubjectTag } from "../cards/shared";
 import ResourcesSection from "../profile/ResourcesSection";
+import DropArea from "./DropArea";
+import { LockGlyph, UploadGlyph, useRefreshOnUpload, useUploadPage, useUploads } from "./UploadProvider";
 
 /**
  * Every file Arcad has read, one section per subject: the syllabus, then
- * the textbook chapters, handouts and notes. Same files as each subject's
- * page, all in one place.
+ * the textbook chapters, handouts and notes. Upload starts here without
+ * picking a subject first; the upload sheet asks which one.
  */
 export default function FilesView() {
   const { state, refresh } = useProfile();
-  const subjects = state.status === "ready" ? state.data.subjects : [];
+  const { canUpload, choose } = useUploads();
+  const subjects = useMemo(() => (state.status === "ready" ? state.data.subjects : []), [state]);
   const count = subjects.reduce((sum, subject) => sum + subject.resources.length + (subject.syllabus ? 1 : 0), 0);
+  const syllabi = useMemo(
+    () => Object.fromEntries(subjects.flatMap((subject) => (subject.syllabus ? [[subject.id, subject.syllabus.filename]] : []))),
+    [subjects],
+  );
+  useUploadPage({ syllabi });
+  useRefreshOnUpload(refresh);
 
   return (
     <>
@@ -25,6 +35,13 @@ export default function FilesView() {
         eyebrow="Resources"
         title="Files"
         meta={state.status === "ready" && subjects.length ? `${count} ${count === 1 ? "file" : "files"} across ${subjects.length} ${subjects.length === 1 ? "subject" : "subjects"}` : undefined}
+        action={
+          subjects.length ? (
+            <AppButton variant="primary" icon={canUpload ? <UploadGlyph /> : <LockGlyph />} onClick={() => choose({ syllabi })}>
+              Upload
+            </AppButton>
+          ) : undefined
+        }
       />
       <div className="mx-auto flex w-full max-w-[820px] flex-col gap-5 px-6 py-8 sm:px-10">
         {state.status === "loading" ? (
@@ -50,42 +67,30 @@ export default function FilesView() {
             }
           />
         ) : (
-          subjects.map((subject, index) => {
-            const href = `/app/profile/subjects/${encodeURIComponent(subject.id)}`;
-            return (
+          <>
+            <DropArea preset={{ syllabi }} />
+            {subjects.map((subject, index) => (
               <ResourcesSection
                 key={subject.id}
                 sectionId={`files-${subject.id}`}
                 subject={subject}
                 refresh={refresh}
+                includeSyllabus
+                syllabi={syllabi}
                 title={<SubjectTag subject={{ name: subject.name, colour: subject.colour || SUBJECT_COLORS[index % SUBJECT_COLORS.length] }} />}
-                meta={
-                  <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
-                    {subject.syllabus ? (
-                      subject.syllabus.stored ? (
-                        <a
-                          href={`/api/subject-files/${encodeURIComponent(subject.syllabus.id)}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="underline decoration-1 underline-offset-2"
-                        >
-                          Syllabus: {subject.syllabus.filename}
-                        </a>
-                      ) : (
-                        <span>Syllabus: {subject.syllabus.filename}</span>
-                      )
-                    ) : (
-                      <Link href={`${href}#syllabus`} className="underline decoration-1 underline-offset-2">
-                        Add the syllabus
-                      </Link>
-                    )}
-                  </span>
-                }
+                meta={describe(subject.syllabus ? 1 : 0, subject.resources.length)}
               />
-            );
-          })
+            ))}
+          </>
         )}
       </div>
     </>
   );
+}
+
+/** "Syllabus and 3 notes", "No syllabus yet · 1 note". */
+function describe(syllabus: number, notes: number): string {
+  const noteText = notes === 1 ? "1 note or handout" : `${notes} notes and handouts`;
+  if (syllabus) return notes ? `Syllabus and ${noteText}` : "Syllabus, no notes yet";
+  return notes ? `No syllabus yet · ${noteText}` : "Nothing here yet";
 }

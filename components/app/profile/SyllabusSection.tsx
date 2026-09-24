@@ -1,11 +1,13 @@
 "use client";
 
-import Link from "next/link";
-import { useRef, useState } from "react";
-import { ApiError, api } from "@/lib/api/client";
+import { useState } from "react";
+import { api } from "@/lib/api/client";
 import type { AssessmentKind, ProfileSubject, SubjectAssessment, SubjectTopic } from "@/lib/api/profile";
-import { MATERIAL_ACCEPT, formatDateSpan, uploadMaterial } from "@/lib/api/subjectMaterials";
+import { formatDateSpan } from "@/lib/api/subjectMaterials";
 import AppButton from "../AppButton";
+import DropArea from "../files/DropArea";
+import { PendingRow } from "../files/FileRows";
+import { useUploads } from "../files/UploadProvider";
 import { PlusIcon } from "./SubjectsSection";
 import { Label, Section, Select, Sheet, TextInput } from "./ui";
 
@@ -32,34 +34,34 @@ export default function SyllabusSection({
   /** After adding a deadline, which changes the plan. */
   replanned: () => Promise<void>;
 }) {
-  const input = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-  const [notice, setNotice] = useState<{ tone: "ok" | "error"; text: string; upgrade?: boolean } | null>(null);
+  const { items, choose, retry, dismiss } = useUploads();
+  const [notice, setNotice] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
+  const [notedKey, setNotedKey] = useState<number | null>(null);
   const [topicSheet, setTopicSheet] = useState<SubjectTopic | "new" | null>(null);
   const [assessmentSheet, setAssessmentSheet] = useState<SubjectAssessment | "new" | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
-  async function upload(file: File) {
-    setUploading(true);
-    setNotice(null);
-    try {
-      const result = await uploadMaterial(subject.id, file, "syllabus");
-      await refresh();
-      setNotice(
-        result.read
-          ? { tone: "ok", text: `Got it: ${result.topics} topics and ${result.assessments} assessments. Check they look right.` }
-          : { tone: "error", text: result.message ?? "Arcad couldn't read that one." },
-      );
-    } catch (err) {
-      setNotice({
-        tone: "error",
-        text: err instanceof Error ? err.message : "Upload failed.",
-        upgrade: err instanceof ApiError && err.status === 402,
-      });
-    } finally {
-      setUploading(false);
-      if (input.current) input.current.value = "";
-    }
+  const mine = items.filter((item) => item.subjectId === subject.id && item.kind === "syllabus");
+  // Still going, or failed and waiting on a retry or dismiss.
+  const inFlight = mine.filter((item) => item.status !== "done" && item.status !== "unread");
+  const preset = {
+    subjectId: subject.id,
+    kind: "syllabus" as const,
+    syllabi: subject.syllabus ? { [subject.id]: subject.syllabus.filename } : undefined,
+  };
+
+  // Say how the last upload went, and keep saying it after the queue clears.
+  const finished = [...mine].reverse().find((item) => item.status === "done" || item.status === "unread");
+  if (finished && finished.key !== notedKey) {
+    setNotedKey(finished.key);
+    setNotice(
+      finished.status === "done" && finished.result
+        ? {
+            tone: "ok",
+            text: `Got it: ${finished.result.topics} topics and ${finished.result.assessments} assessments. Check they look right.`,
+          }
+        : { tone: "error", text: finished.message ?? "Arcad couldn't read that one." },
+    );
   }
 
   async function removeSyllabus() {
@@ -97,28 +99,12 @@ export default function SyllabusSection({
       title="Syllabus"
       meta="Your unit outline or assessment schedule. Arcad pulls out what's taught when and what's assessed."
     >
-      <input
-        ref={input}
-        type="file"
-        accept={MATERIAL_ACCEPT}
-        className="hidden"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) void upload(file);
-        }}
-      />
-
-      {uploading ? (
-        <div className="flex items-center gap-3 rounded-md p-4" style={{ background: "var(--app-surface-soft)" }} role="status">
-          <span
-            aria-hidden="true"
-            className="h-4 w-4 animate-spin rounded-full border-2"
-            style={{ borderColor: "var(--app-border)", borderTopColor: "var(--app-arcad)" }}
-          />
-          <span className="text-[13.5px]" style={{ color: "var(--app-text-soft)" }}>
-            Arcad&apos;s reading it. Give it a few seconds.
-          </span>
-        </div>
+      {inFlight.length ? (
+        <ul className="rounded-md px-4" style={{ background: "var(--app-surface-soft)" }}>
+          {inFlight.map((item) => (
+            <PendingRow key={item.key} item={item} retry={retry} dismiss={dismiss} />
+          ))}
+        </ul>
       ) : subject.syllabus ? (
         <div
           className="flex flex-wrap items-center justify-between gap-3 rounded-md px-4 py-3"
@@ -144,7 +130,7 @@ export default function SyllabusSection({
                 Open
               </a>
             ) : null}
-            <AppButton size="sm" variant="secondary" onClick={() => input.current?.click()}>
+            <AppButton size="sm" variant="secondary" onClick={() => choose(preset)}>
               Replace
             </AppButton>
             <AppButton size="sm" variant="ghost" loading={busy === "syllabus"} onClick={() => void removeSyllabus()}>
@@ -153,25 +139,11 @@ export default function SyllabusSection({
           </div>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => input.current?.click()}
-          onDragOver={(event) => event.preventDefault()}
-          onDrop={(event) => {
-            event.preventDefault();
-            const file = event.dataTransfer.files?.[0];
-            if (file) void upload(file);
-          }}
-          className="flex w-full flex-col items-center gap-1 rounded-md px-4 py-6 text-center transition-colors ui-hover"
-          style={{ border: "1.5px dashed var(--app-border-strong)" }}
-        >
-          <span className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>
-            Upload your syllabus
-          </span>
-          <span className="text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
-            PDF or a photo, up to 8 MB. Drop it here or tap to choose.
-          </span>
-        </button>
+        <DropArea
+          preset={preset}
+          title="Upload your syllabus"
+          hint="A PDF or a photo of it, up to 8 MB. Drop it here or choose the file."
+        />
       )}
 
       {notice ? (
@@ -181,14 +153,6 @@ export default function SyllabusSection({
           style={{ color: notice.tone === "error" ? "var(--app-danger)" : "var(--app-success)" }}
         >
           {notice.text}
-          {notice.upgrade ? (
-            <>
-              {" "}
-              <Link href="/app/pricing" className="underline" style={{ color: "var(--app-accent-strong)" }}>
-                See plans
-              </Link>
-            </>
-          ) : null}
         </p>
       ) : null}
 

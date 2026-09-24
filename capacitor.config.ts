@@ -18,7 +18,7 @@ const config: CapacitorConfig = {
     cleartext: false,
   },
   ios: {
-    contentInset: "always",
+    contentInset: "never",
     backgroundColor: "#04040e",
     scrollEnabled: true,
     preferredContentMode: "mobile",

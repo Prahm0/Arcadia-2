@@ -15,7 +15,7 @@ const THROTTLE_MS = 12_000;
  *
  * Mount once from AppShell, no return value.
  */
-export function useDashboardAutoRefresh(reload: () => Promise<void> | void): void {
+export function useDashboardAutoRefresh(reload: () => Promise<void> | void, enabled = true): void {
   const lastRefreshRef = useRef(0);
   const reloadRef = useRef(reload);
   useEffect(() => {
@@ -23,7 +23,7 @@ export function useDashboardAutoRefresh(reload: () => Promise<void> | void): voi
   }, [reload]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !enabled) return;
 
     function maybeRefresh(reason: string) {
       const now = Date.now();
@@ -51,7 +51,7 @@ export function useDashboardAutoRefresh(reload: () => Promise<void> | void): voi
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener(REFRESH_EVENT, onCustom);
     };
-  }, []);
+  }, [enabled]);
 }
 
 /**

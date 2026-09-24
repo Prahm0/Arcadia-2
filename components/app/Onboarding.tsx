@@ -10,10 +10,12 @@ import { fittedWeeklyMinutes, formatWeekly } from "@/lib/app/studyTargets";
 import { WEEKDAYS } from "./CommitmentSheet";
 import OnboardingBuild from "./OnboardingBuild";
 import OnboardingPaywall from "./OnboardingPaywall";
+import { setOnboardingOfferPending } from "@/lib/app/onboarding-offer";
 import OnboardingWow from "./OnboardingWow";
 import { Label, Select, TextArea, TextInput, WeeklyStepper } from "./profile/ui";
 
 interface OnboardingProps {
+  userId: string;
   defaultName: string;
   defaultTimezone: string;
   onComplete: () => void;
@@ -157,7 +159,7 @@ const toggleDay = (days: number[], day: number) =>
  * should know. The last screen hands it to Arcad, which plans the next month
  * while a progress bar shows each stage (see OnboardingBuild).
  */
-export default function Onboarding({ defaultName, defaultTimezone, onComplete }: OnboardingProps) {
+export default function Onboarding({ userId, defaultName, defaultTimezone, onComplete }: OnboardingProps) {
   const [step, setStep] = useState(0);
   const [building, setBuilding] = useState(false);
   // After the plan builds: first the wow moment (feel the adaptive replan),
@@ -406,7 +408,7 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
   }
 
   if (showPaywall) {
-    return <OnboardingPaywall onContinueFree={onComplete} />;
+    return <OnboardingPaywall onContinueFree={onComplete} onCheckoutStarted={() => setOnboardingOfferPending(userId, false)} />;
   }
 
   if (showWow) {
@@ -419,6 +421,7 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
         save={async () => {
           const body = payload();
           await api("/api/onboarding", { method: "POST", body: JSON.stringify(body) });
+          setOnboardingOfferPending(userId, true);
           analytics.onboardingCompleted(body.subjects.length, body.tasks.length);
         }}
         onBack={() => setBuilding(false)}

@@ -194,6 +194,9 @@ export default function ContextPanel({
         <Link href="/app/settings#calendars" className="ui-hover -mx-2 rounded-md px-2 py-1" style={{ color: "var(--app-text-muted)" }}>
           {data.google?.connected || data.calendarFeeds?.length ? "Connected calendars" : "Connect a calendar"}
         </Link>
+        <Link href="/app/settings#calendar-export" className="ui-hover -mx-2 rounded-md px-2 py-1" style={{ color: "var(--app-text-muted)" }}>
+          Add to Google or Apple Calendar
+        </Link>
       </div>
     </aside>
   );

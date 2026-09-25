@@ -6,6 +6,7 @@ import account from "./routes/account";
 import analytics from "./routes/analytics";
 import auth from "./routes/auth";
 import billing from "./routes/billing";
+import calendarExport from "./routes/calendar-export";
 import calendarFeeds from "./routes/calendar-feeds";
 import { cards, decks } from "./routes/cards";
 import { sheets } from "./routes/sheets";
@@ -68,6 +69,9 @@ const PUBLIC_PREFIXES = [
   // — the state parameter carries the userId, verified by HMAC.
   "/api/google/callback",
   "/api/google/config",
+  // Calendar apps fetch the export feed without cookies; the token in the
+  // path is the credential.
+  "/api/calendar-export/feed/",
   // Stripe posts webhook events from its own IPs; the HMAC signature
   // header is the authentication.
   "/api/billing/webhook",
@@ -89,6 +93,7 @@ app.route("/api/waitlist", waitlist);
 app.route("/api/account", account);
 app.route("/api/analytics", analytics);
 app.route("/api/billing", billing);
+app.route("/api/calendar-export", calendarExport);
 app.route("/api/calendar-feeds", calendarFeeds);
 app.route("/api/cards", cards);
 app.route("/api/chat", chat);

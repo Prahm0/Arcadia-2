@@ -4,6 +4,7 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState, type CSSProper
 import type { PlannerEvent, PlannerTask } from "@/lib/api/types";
 import { dateKey } from "@/lib/api/time";
 import { cn } from "@/lib/cn";
+import { select as hapticSelect } from "@/lib/capacitor/haptics";
 import { SubjectTag } from "../cards/shared";
 import { eventMinutes, isExam, sameSubject, shortDate, shortMinutes, WEEKDAYS } from "./calendar";
 import { ExamWord } from "./bits";
@@ -235,6 +236,7 @@ export default function TermMatrix(props: TermMatrixProps) {
                 role="tab"
                 aria-selected={active}
                 onClick={() => {
+                  if (!active) void hapticSelect();
                   setOpen(null);
                   onViewChange(option.value);
                 }}

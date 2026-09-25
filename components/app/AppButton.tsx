@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { tap } from "@/lib/capacitor/haptics";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md";
@@ -50,6 +51,7 @@ export default function AppButton({
   icon,
   className,
   children,
+  onClick,
   ...rest
 }: AppButtonProps) {
   return (
@@ -57,6 +59,10 @@ export default function AppButton({
       {...rest}
       disabled={disabled || loading}
       className={appButtonClass(variant, size, className)}
+      onClick={(event) => {
+        if (variant === "primary" && !disabled && !loading) void tap();
+        onClick?.(event);
+      }}
     >
       {loading ? (
         <span

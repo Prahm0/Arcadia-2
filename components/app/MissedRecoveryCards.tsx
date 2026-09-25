@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api/client";
+import { success } from "@/lib/capacitor/haptics";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import type { DashboardResponse, MissReason, PlannerEvent } from "@/lib/api/types";
 import { formatClock } from "@/lib/api/time";
@@ -101,6 +102,7 @@ export default function MissedRecoveryCards() {
         method: "POST",
         body: JSON.stringify({ outcome }),
       });
+      if (outcome === "completed") void success();
       await reload();
       setState(event.id, {
         saving: false,

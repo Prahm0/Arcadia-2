@@ -361,7 +361,7 @@ export default function EventDetailSheet({
           <div>
             <dt className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>When</dt>
             <dd className="type-mono-label mt-1.5" style={{ color: "var(--app-text)" }}>
-              {formatClock(displayedEvent.startAt, timezone)}–{formatClock(displayEvent.endAt, timezone)}
+              {formatClock(displayedEvent.startAt, timezone)}–{formatClock(displayedEvent.endAt, timezone)}
             </dd>
           </div>
           <div>

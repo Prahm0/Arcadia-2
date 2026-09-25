@@ -57,9 +57,20 @@ export type MissReason = "sick" | "tired" | "other_plans" | "forgot" | "didnt_fe
 export interface SessionPlan {
   /** What the session is on, e.g. "3.2 Limiting reagents". */
   topic: string;
+  /** The syllabus topic it's on, when it is one, and that topic's name. */
+  topicId?: string | null;
+  topicTitle?: string | null;
   /** Why now, e.g. "Prac report due Mon 2 Nov". */
   why: string;
-  steps: Array<{ minutes: number; text: string }>;
+  steps: Array<{
+    minutes: number;
+    text: string;
+    /** Set when a step is on another topic than the session (last time's leftovers). */
+    topicId?: string | null;
+    topic?: string | null;
+    /** learn | practice | review | assignment | study */
+    kind?: string;
+  }>;
   /** "fallback" when built without Arcad (offline or unavailable). */
   by: "arcad" | "fallback";
   /** Planner version; older plans are redone. */

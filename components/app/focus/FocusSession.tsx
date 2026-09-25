@@ -87,6 +87,12 @@ export type Phase = "focus" | "break" | "idle";
 const DONE_KEY = "arcadia:focus:done:";
 const TIMER_KEY = "arcadia:focus:timer:";
 
+/** The syllabus topic a free timer session is on, for the study log. */
+export interface TopicChoice {
+  id: string | null;
+  title: string;
+}
+
 interface SavedTimer {
   eventId: string | null;
   phase: Phase;
@@ -96,6 +102,7 @@ interface SavedTimer {
   presetLabel: string;
   subject: string;
   goal: string;
+  topic?: TopicChoice | null;
   distractions: number;
   activityId: string | null;
 }
@@ -187,6 +194,12 @@ export interface FocusSession {
   goal: string;
   setGoal: (goal: string) => void;
   sessionGoal: string;
+  /** A free timer's topic (blocks log through their plan and check-out). */
+  topic: TopicChoice | null;
+  setTopic: (topic: TopicChoice | null) => void;
+  /** A free session just logged on a topic, waiting to be rated. */
+  rateable: { activityId: string; topic: string } | null;
+  clearRateable: () => void;
   distractions: number;
   addDistraction: () => void;
 
@@ -355,6 +368,8 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
     linkedEvent?.subject || data.subjects[0]?.name || "General",
   );
   const [goal, setGoal] = useState(linkedEvent?.title ?? "");
+  const [topic, setTopic] = useState<TopicChoice | null>(null);
+  const [rateable, setRateable] = useState<{ activityId: string; topic: string } | null>(null);
   const [distractions, setDistractions] = useState(0);
   const [complete, setComplete] = useState(false);
   const [logged, setLogged] = useState(0);
@@ -436,6 +451,7 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
       setPhase(saved.phase);
       setSubject(saved.subject || linkedEvent?.subject || data.subjects[0]?.name || "General");
       setGoal(saved.goal ?? linkedEvent?.title ?? "");
+      setTopic(saved.topic ?? null);
       setDistractions(Number.isInteger(saved.distractions) ? saved.distractions : 0);
       activityId.current = saved.activityId ?? null;
       const left = saved.running && typeof saved.endsAt === "number"
@@ -498,10 +514,11 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
       presetLabel: preset.label,
       subject,
       goal,
+      topic,
       distractions,
       activityId: activityId.current,
     });
-  }, [timerRestored, timerStorageKey, phase, running, remaining, preset.label, subject, goal, distractions]);
+  }, [timerRestored, timerStorageKey, phase, running, remaining, preset.label, subject, goal, topic, distractions]);
 
   useEffect(() => {
     if (remaining !== 0) return;
@@ -586,7 +603,21 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
   ) {
     if (seconds > 0) {
       activityId.current ??= crypto.randomUUID();
-      await studySave.save({ activityId: activityId.current, type, seconds, subject, goal: sessionGoal, distractions, endedAt: new Date().toISOString() });
+      const id = activityId.current;
+      // A free focus session on a topic goes in the study log; a block logs
+      // through its plan and check-out instead.
+      const onTopic = !linkedEvent && type === "focus" && topic ? topic : null;
+      await studySave.save({
+        activityId: id,
+        type,
+        seconds,
+        subject,
+        goal: sessionGoal,
+        distractions,
+        endedAt: new Date().toISOString(),
+        ...(onTopic ? { topicId: onTopic.id, topic: onTopic.title } : {}),
+      });
+      if (onTopic && seconds >= 60) setRateable({ activityId: id, topic: onTopic.title });
     }
 
     if (linkedEvent && opts.markEvent) {
@@ -731,10 +762,18 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
     phaseColour,
     colour,
     subject,
-    setSubject,
+    // Topics belong to a subject, so a new subject starts without one.
+    setSubject: (next: string) => {
+      setSubject(next);
+      if (next !== subject) setTopic(null);
+    },
     goal,
     setGoal,
     sessionGoal,
+    topic,
+    setTopic,
+    rateable,
+    clearRateable: () => setRateable(null),
     distractions,
     addDistraction: () => setDistractions((d) => d + 1),
     plan,

@@ -537,6 +537,39 @@ export const subjectTopics = sqliteTable(
   (t) => [index("subject_topics_subject_idx").on(t.subjectId, t.position)],
 );
 
+/**
+ * What was studied, on which topic, for how long and how it left them: one
+ * row per topic touched in a session (see migration 0030 and lib/study-log).
+ */
+export const studyLog = sqliteTable(
+  "study_log",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    subjectId: text("subject_id").references(() => subjects.id, { onDelete: "set null" }),
+    subject: text("subject"),
+    topicId: text("topic_id").references(() => subjectTopics.id, { onDelete: "set null" }),
+    topic: text("topic").notNull().default(""),
+    eventId: text("event_id"),
+    activityId: text("activity_id"),
+    kind: text("kind").notNull().default("study"),
+    minutes: integer("minutes").notNull(),
+    confidence: text("confidence"),
+    note: text("note").notNull().default(""),
+    source: text("source").notNull().default("checkout"),
+    studiedAt: integer("studied_at").notNull(),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [
+    index("study_log_user_subject_idx").on(t.userId, t.subjectId, t.studiedAt),
+    index("study_log_event_idx").on(t.eventId),
+    index("study_log_activity_idx").on(t.userId, t.activityId),
+    index("study_log_topic_idx").on(t.topicId),
+  ],
+);
+
 export const subjectAssessments = sqliteTable(
   "subject_assessments",
   {

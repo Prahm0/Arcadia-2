@@ -137,19 +137,19 @@ account.delete("/", async (c) => {
     .limit(1);
   if (!user) return c.json({ error: "Not signed in." }, 401);
 
-  if (!user.lastSignInAt || Date.now() - user.lastSignInAt > RECENT_SIGN_IN_MS) {
+  // Guest accounts have no password to re-enter, so the recent sign-in check
+  // would make deletion impossible for them. Their session is the credential.
+  const isGuest = user.email.endsWith("@arcadia.local");
+  if (!isGuest && (!user.lastSignInAt || Date.now() - user.lastSignInAt > RECENT_SIGN_IN_MS)) {
     return c.json({
       error: "For your security, sign out and sign in again before deleting your account.",
       code: "recent_sign_in_required",
     }, 403);
   }
 
-  if (user.billingProvider === "app_store" && user.subscriptionStatus === "active") {
-    return c.json({
-      error: "Manage your active App Store subscription before deleting this account.",
-      code: "app_store_subscription_active",
-    }, 409);
-  }
+  // An App Store subscription is billed by Apple and can only be cancelled by
+  // the student in their Apple ID settings. Apple requires deletion to stay
+  // available anyway; the app warns them before they confirm.
 
   try {
     const subscriptions = user.stripeCustomerId

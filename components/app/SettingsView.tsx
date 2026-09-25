@@ -1058,14 +1058,14 @@ export default function SettingsView() {
           </Card>
         ) : null}
 
-        {isGuest ? null : (
+        {(
           <Card>
             <SectionHeader label="Danger zone" />
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>Delete account</p>
                 <p className="mt-1 text-[13px] leading-5" style={{ color: "var(--app-text-muted)" }}>
-                  Permanently remove your account and all Arcadia data.
+                  {isGuest ? "Permanently remove this guest account and its plan." : "Permanently remove your account and all Arcadia data."}
                 </p>
               </div>
               <AppButton variant="danger" onClick={() => setDeleteAccountOpen(true)}>
@@ -1078,6 +1078,8 @@ export default function SettingsView() {
       {deleteAccountOpen ? (
         <DeleteAccountModal
           hasPaidPlan={hasPaidPlan}
+          billingProvider={data.user.billingProvider ?? null}
+          isGuest={isGuest}
           onClose={() => setDeleteAccountOpen(false)}
           onManageSubscription={() => {
             setDeleteAccountOpen(false);

@@ -30,6 +30,8 @@ const config: CapacitorConfig = {
     },
     SplashScreen: {
       launchAutoHide: true,
+      // Stay up while the live app loads; NativeShell hides it on mount.
+      launchShowDuration: 10000,
       backgroundColor: "#04040e",
       showSpinner: false,
     },

@@ -483,7 +483,7 @@ export function groundwork(
   const keep = inputs.existing.filter(
     (event) =>
       (event.source !== "sleep" ||
-        (event.pinned && event.outcome === "planned" && event.endAt > now)) &&
+        (event.pinned && event.outcome === "planned")) &&
       (event.pinned ||
         event.outcome !== "planned" ||
         !REMATERIALISED.has(event.source) ||
@@ -520,7 +520,7 @@ export function groundwork(
     const id = `evt_sleep_${userId}_${localDateKey(slot.start, tz)}`;
     const delayed = inputs.existing.find((event) =>
       event.id === id && event.source === "sleep" && event.pinned &&
-      event.outcome === "planned" && event.endAt > now,
+      event.outcome === "planned",
     );
     if (delayed) continue; // The pinned override is already included below via `keep`.
 

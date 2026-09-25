@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import type { DashboardResponse, MissReason, PlannerEvent } from "@/lib/api/types";
-import { formatClock } from "@/lib/api/time";
+import { formatClock, formatDurationMinutes, formatFriendlyDate } from "@/lib/api/time";
 import { playCompletionTick } from "@/lib/app/completion";
 import AppButton from "./AppButton";
 import MissReasonPicker from "./MissReasonPicker";
@@ -38,7 +38,10 @@ export default function EventDetailSheet({
   const [rescheduling, setRescheduling] = useState(initialMode === "reschedule");
   const [reasoning, setReasoning] = useState(false);
   const [draftStart, setDraftStart] = useState("");
+  const [draftEnd, setDraftEnd] = useState("");
   const [savingReschedule, setSavingReschedule] = useState(false);
+  const [savingSleepDelay, setSavingSleepDelay] = useState(false);
+  const [confirmedSleepEvent, setConfirmedSleepEvent] = useState<PlannerEvent | null>(null);
 
   useEffect(() => {
     if (!event) return;
@@ -55,21 +58,27 @@ export default function EventDetailSheet({
     setError(null);
     setRescheduling(initialMode === "reschedule");
     setReasoning(
-      initialMode === "miss-reason" && (data.user.tier === "pro" || data.user.tier === "max"),
+      event.category === "study" && initialMode === "miss-reason" && (data.user.tier === "pro" || data.user.tier === "max"),
     );
     setDraftStart(toZonedDateTimeInput(event.startAt, timezone));
+    setDraftEnd(toZonedDateTimeInput(event.endAt, timezone));
   }, [event, initialMode, timezone, data.user.tier]);
 
   if (!event) return null;
 
+  const displayedEvent = event.category === "sleep" && confirmedSleepEvent?.id === event.id ? confirmedSleepEvent : event;
   const linkedTask = event.taskId ? data.tasks.find((task) => task.id === event.taskId) : null;
-  const minutes = Math.round((Date.parse(event.endAt) - Date.parse(event.startAt)) / 60000);
+  const minutes = Math.round((Date.parse(displayedEvent.endAt) - Date.parse(displayedEvent.startAt)) / 60000);
   const isCompleted = event.outcome === "completed";
   const isMissed = event.outcome === "missed";
   const canAct = !isCompleted && !isMissed;
   const isStudy = event.category === "study";
+  const isSleep = event.category === "sleep";
+  const sleepPast = isSleep && Date.parse(displayedEvent.endAt) <= Date.now();
+  const sleepStarted = isSleep && Date.parse(displayedEvent.startAt) <= Date.now() && !sleepPast;
   const isEditable = event.editable !== false;
-  const canReschedule = isEditable && canAct;
+  const canReschedule = !isSleep && isEditable && canAct;
+  const canAdjustSleep = isSleep && canAct && !sleepPast && (event.source === "sleep" || isEditable);
   const hasPaidPlan = data.user.tier === "pro" || data.user.tier === "max";
   const canCaptureMissReason = isStudy && hasPaidPlan;
 
@@ -186,8 +195,77 @@ export default function EventDetailSheet({
     }
   }
 
+  async function saveSleepTime() {
+    if (!event || !canAdjustSleep) return;
+    const nextStart = parseZonedDateTimeInput(draftStart, timezone);
+    const nextEnd = parseZonedDateTimeInput(draftEnd, timezone);
+    if (!nextStart || !nextEnd || Date.parse(nextEnd) <= Date.parse(nextStart) || Date.parse(nextEnd) <= Date.now()) {
+      setError("Choose a valid bedtime and wake-up time for this night.");
+      return;
+    }
+    setSavingReschedule(true);
+    setError(null);
+    try {
+      const response = await api<{ event: PlannerEvent }>(`/api/events/${encodeURIComponent(event.id)}/sleep-time`, {
+        method: "PATCH",
+        body: JSON.stringify({ startAt: nextStart, endAt: nextEnd }),
+      });
+      setConfirmedSleepEvent(response.event);
+      patch((previous) => ({
+        ...previous,
+        events: previous.events.map((candidate) => candidate.id === event.id ? response.event : candidate),
+      }));
+      try {
+        window.localStorage.removeItem(`arcadia:sleep-start:shown:${event.id}`);
+      } catch {
+        /* The time still saves if this browser blocks local storage. */
+      }
+      await reload().catch(() => {});
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't adjust this sleep block.");
+    } finally {
+      setSavingReschedule(false);
+    }
+  }
+
+  async function delaySleep(minutes: 15 | 30 | 60) {
+    if (!event || !canAdjustSleep || event.source !== "sleep" || savingSleepDelay) return;
+    setSavingSleepDelay(true);
+    setError(null);
+    try {
+      const response = await api<{ event: PlannerEvent }>(`/api/events/${encodeURIComponent(event.id)}/snooze`, {
+        method: "POST",
+        body: JSON.stringify({ minutes }),
+      });
+      setConfirmedSleepEvent(response.event);
+      setDraftStart(toZonedDateTimeInput(response.event.startAt, timezone));
+      setDraftEnd(toZonedDateTimeInput(response.event.endAt, timezone));
+      patch((previous) => ({
+        ...previous,
+        events: previous.events.map((candidate) => candidate.id === event.id ? response.event : candidate),
+      }));
+      try {
+        window.localStorage.removeItem(`arcadia:sleep-start:shown:${event.id}`);
+      } catch {
+        /* The new time still saves if this browser blocks local storage. */
+      }
+      await reload().catch(() => {});
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't delay this sleep block.");
+    } finally {
+      setSavingSleepDelay(false);
+    }
+  }
+
   const stateChip =
-    event.outcome === "completed"
+    isSleep
+      ? sleepPast
+        ? { label: "Past sleep block", tone: "muted" as const }
+        : sleepStarted
+          ? { label: "Happening now", tone: "accent" as const }
+          : { label: "Scheduled", tone: "accent" as const }
+      : event.outcome === "completed"
       ? { label: "Done", tone: "success" as const }
       : event.outcome === "missed"
         ? { label: "Missed", tone: "muted" as const }
@@ -255,6 +333,11 @@ export default function EventDetailSheet({
             >
               {event.title}
             </h2>
+            {isSleep ? (
+              <p className="mt-0.5 text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
+                {formatFriendlyDate(displayedEvent.startAt, timezone)}
+              </p>
+            ) : null}
             {event.subject ? (
               <p className="mt-0.5 text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
                 {event.subject}
@@ -278,13 +361,13 @@ export default function EventDetailSheet({
           <div>
             <dt className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>When</dt>
             <dd className="type-mono-label mt-1.5" style={{ color: "var(--app-text)" }}>
-              {formatClock(event.startAt, timezone)}–{formatClock(event.endAt, timezone)}
+              {formatClock(displayedEvent.startAt, timezone)}–{formatClock(displayEvent.endAt, timezone)}
             </dd>
           </div>
           <div>
             <dt className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Length</dt>
-            <dd className="type-mono-label mt-1.5" style={{ color: "var(--app-text)" }}>
-              {minutes} min
+            <dd className="type-mono-label mt-1.5" aria-live={isSleep ? "polite" : undefined} style={{ color: "var(--app-text)" }}>
+              {isSleep ? formatDurationMinutes(minutes) : `${minutes} min`}
             </dd>
           </div>
           {linkedTask ? (
@@ -304,19 +387,27 @@ export default function EventDetailSheet({
           ) : null}
         </dl>
 
+        {isSleep ? (
+          <p className="mt-4 text-[13px] leading-5" style={{ color: "var(--app-text-muted)" }}>
+            {sleepPast
+              ? "This was the sleep time on your schedule. Arcadia doesn't track whether you slept."
+              : "Adjust this night without changing your usual bedtime."}
+          </p>
+        ) : null}
+
         {error ? (
           <p className="mt-4 text-[13px]" style={{ color: "var(--app-danger)" }}>
             {error}
           </p>
         ) : null}
 
-        {rescheduling ? (
+        {rescheduling && (!isSleep || canAdjustSleep) ? (
           <div
             className="mt-5 rounded-md p-4"
             style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)" }}
           >
             <label className="block text-[13px] font-medium" htmlFor="reschedule-start">
-              New start time
+              {isSleep ? "Bedtime for this night" : "New start time"}
             </label>
             <input
               id="reschedule-start"
@@ -326,15 +417,32 @@ export default function EventDetailSheet({
               className="mt-2 h-9 w-full rounded-md px-3 text-[13px] outline-none"
               style={{ background: "var(--app-elev)", color: "var(--app-text)", border: "1px solid var(--app-border-strong)" }}
             />
+            {isSleep ? (
+              <>
+                <label className="mt-4 block text-[13px] font-medium" htmlFor="reschedule-end">
+                  Wake-up time for this night
+                </label>
+                <input
+                  id="reschedule-end"
+                  type="datetime-local"
+                  value={draftEnd}
+                  onChange={(input) => setDraftEnd(input.target.value)}
+                  className="mt-2 h-9 w-full rounded-md px-3 text-[13px] outline-none"
+                  style={{ background: "var(--app-elev)", color: "var(--app-text)", border: "1px solid var(--app-border-strong)" }}
+                />
+              </>
+            ) : null}
             <p className="mt-2 text-[12px]" style={{ color: "var(--app-text-muted)" }}>
-              The session keeps its current length and is pinned at the new time.
+              {isSleep
+                ? "Only this night changes. Your usual bedtime and wake-up time stay the same."
+                : "The session keeps its current length and is pinned at the new time."}
             </p>
             <div className="mt-4 flex justify-end gap-2">
               <AppButton type="button" variant="ghost" onClick={() => setRescheduling(false)} disabled={savingReschedule}>
                 Cancel
               </AppButton>
-              <AppButton type="button" variant="primary" onClick={() => void saveReschedule()} loading={savingReschedule}>
-                Save time
+              <AppButton type="button" variant="primary" onClick={() => void (isSleep ? saveSleepTime() : saveReschedule())} loading={savingReschedule}>
+                {isSleep ? "Save this night" : "Save time"}
               </AppButton>
             </div>
           </div>
@@ -355,22 +463,56 @@ export default function EventDetailSheet({
           </div>
         ) : null}
 
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            {isEditable && !isCompleted && !isMissed ? (
-              <AppButton
-                type="button"
-                variant="ghost"
-                onClick={remove}
-                loading={busy === "delete"}
-              >
-                Remove
-              </AppButton>
-            ) : (
-              <span />
-            )}
+        {canAdjustSleep && event.source === "sleep" && !rescheduling ? (
+          <div className="mt-5">
+            <p className="mb-2 text-[13px] font-medium">Delay this night</p>
+            <div className="flex flex-wrap gap-2">
+              {([15, 30, 60] as const).map((delay) => (
+                <AppButton
+                  key={delay}
+                  type="button"
+                  variant="secondary"
+                  disabled={savingSleepDelay}
+                  loading={savingSleepDelay}
+                  onClick={() => void delaySleep(delay)}
+                >
+                  +{delay} min
+                </AppButton>
+              ))}
+            </div>
           </div>
+        ) : null}
+
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
+          {isSleep ? (
+            <Link href="/app/profile#routine" onClick={onClose} className="text-[13px] underline underline-offset-4" style={{ color: "var(--app-text-muted)" }}>
+              Edit usual sleep schedule
+            </Link>
+          ) : (
+            <div className="flex items-center gap-2">
+              {isEditable && !isCompleted && !isMissed ? (
+                <AppButton
+                  type="button"
+                  variant="ghost"
+                  onClick={remove}
+                  loading={busy === "delete"}
+                >
+                  Remove
+                </AppButton>
+              ) : (
+                <span />
+              )}
+            </div>
+          )}
           <div className="flex items-center gap-2">
+            {isSleep && !rescheduling ? (
+              <AppButton type="button" variant="secondary" onClick={onClose}>Close</AppButton>
+            ) : null}
+            {isSleep && canAdjustSleep && !rescheduling ? (
+              <AppButton type="button" variant="primary" disabled={savingSleepDelay} onClick={() => setRescheduling(true)}>
+                Adjust this night
+              </AppButton>
+            ) : null}
             {canReschedule && !rescheduling && !reasoning ? (
               <AppButton type="button" variant="secondary" onClick={() => setRescheduling(true)}>
                 Reschedule
@@ -383,7 +525,7 @@ export default function EventDetailSheet({
                 </AppButton>
               </Link>
             ) : null}
-            {canAct && !rescheduling && !reasoning ? (
+            {!isSleep && canAct && !rescheduling && !reasoning ? (
               <>
                 <AppButton
                   type="button"

@@ -144,6 +144,7 @@ events.post("/:id/outcome", async (c) => {
   const database = db(c.env.DB);
   const event = await ownedEvent(database, userId, c.req.param("id"));
   if (!event) return c.json({ error: "Event not found." }, 404);
+  if (event.category === "sleep") return c.json({ error: "Sleep blocks aren't marked done or missed." }, 409);
 
   const includesReason = Boolean(body && ("missReason" in body || "missNote" in body));
   if (includesReason) {
@@ -222,11 +223,37 @@ events.post("/:id/snooze", async (c) => {
   if (event.category !== "sleep" || event.source !== "sleep" || event.outcome !== "planned") {
     return c.json({ error: "Only a planned sleep block can be delayed." }, 409);
   }
+  if (event.endAt <= Date.now()) return c.json({ error: "Past sleep blocks can't be changed." }, 409);
 
   const offset = minutes * MINUTE;
   await database.update(schema.events)
     .set({ startAt: event.startAt + offset, endAt: event.endAt + offset, pinned: true })
     .where(eq(schema.events.id, event.id));
+  return c.json({ ok: true, event: await reread(database, event.id) });
+});
+
+/** Edit one sleep block while leaving the profile's regular bedtime untouched. */
+events.patch("/:id/sleep-time", async (c) => {
+  const { userId } = c.get("session");
+  const body = await c.req.json<{ startAt?: unknown; endAt?: unknown }>().catch(() => null);
+  const database = db(c.env.DB);
+  const event = await ownedEvent(database, userId, c.req.param("id"));
+  if (!event) return c.json({ error: "Event not found." }, 404);
+  if (event.category !== "sleep" || (event.source !== "sleep" && !event.editable) || event.outcome !== "planned") {
+    return c.json({ error: "This sleep block can't be adjusted." }, 409);
+  }
+  if (event.endAt <= Date.now()) return c.json({ error: "Past sleep blocks can't be changed." }, 409);
+
+  const startAt = Date.parse(String(body?.startAt ?? ""));
+  const endAt = Date.parse(String(body?.endAt ?? ""));
+  if (!Number.isFinite(startAt) || !Number.isFinite(endAt) || endAt <= startAt || endAt <= Date.now()) {
+    return c.json({ error: "Choose a valid start and end time for this night." }, 422);
+  }
+  if (endAt - startAt < 30 * MINUTE || endAt - startAt > 16 * 60 * MINUTE) {
+    return c.json({ error: "Choose a sleep block between 30 minutes and 16 hours." }, 422);
+  }
+
+  await database.update(schema.events).set({ startAt, endAt, pinned: true }).where(eq(schema.events.id, event.id));
   return c.json({ ok: true, event: await reread(database, event.id) });
 });
 

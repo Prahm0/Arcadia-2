@@ -256,6 +256,7 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
       const study = event.category === "study";
       const planned = event.outcome === "planned";
       const editable = event.editable !== false;
+      const sleepAdjustable = event.category === "sleep" && planned && Date.parse(event.endAt) > Date.now() && (event.source === "sleep" || editable);
       const name = study ? studyTitle(event) : event.title;
       return [
         { kind: "item", label: "Open", onSelect: () => setSelectedEvent(event) },
@@ -270,16 +271,16 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
           label: event.outcome === "completed" ? "Mark not done" : "Mark done",
           onSelect: () => void planner.setEventDone(event, event.outcome !== "completed"),
         },
-        editable && planned && {
+        (sleepAdjustable || (editable && planned && event.category !== "sleep")) && {
           kind: "item",
-          label: "Reschedule…",
+          label: sleepAdjustable ? "Adjust this night…" : "Reschedule…",
           onSelect: () => {
             setEventMode("reschedule");
             setSelectedEvent(event);
           },
         },
         { kind: "separator" },
-        editable && planned && {
+        editable && planned && event.category !== "sleep" && {
           kind: "item",
           label: "Remove from schedule…",
           danger: true,

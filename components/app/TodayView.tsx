@@ -383,15 +383,17 @@ function TodayCard(props: TodayCardProps) {
             {laterEvents.map((event) => (
               <li
                 key={event.id}
-                className="flex items-center gap-4 text-[13.5px]"
+                className="text-[13.5px]"
                 onContextMenu={(e) =>
                   showContextMenu(
                     e,
                     [
                       { kind: "item", label: "Details", onSelect: () => onOpen(event, "details") },
-                      event.editable !== false && event.outcome === "planned" && {
+                      (event.category === "sleep"
+                        ? event.outcome === "planned" && Date.parse(event.endAt) > Date.now() && (event.source === "sleep" || event.editable !== false)
+                        : event.editable !== false && event.outcome === "planned") && {
                         kind: "item",
-                        label: "Reschedule…",
+                        label: event.category === "sleep" ? "Adjust this night…" : "Reschedule…",
                         onSelect: () => onOpen(event, "reschedule"),
                       },
                     ],
@@ -399,18 +401,20 @@ function TodayCard(props: TodayCardProps) {
                   )
                 }
               >
-                <span
-                  className="tabular-nums w-[80px] shrink-0"
-                  style={{ color: "var(--app-text-muted)" }}
-                >
-                  {inProgressIds.has(event.id) ? "Now" : formatClock(event.startAt, timezone)}
-                </span>
-                <span className="truncate" style={{ color: "var(--app-text)" }}>
-                  {event.title}
-                  {inProgressIds.has(event.id) ? (
-                    <span style={{ color: "var(--app-text-muted)" }}> · until {formatClock(event.endAt, timezone)}</span>
-                  ) : null}
-                </span>
+                <button type="button" onClick={() => onOpen(event, "details")} className="flex w-full items-center gap-4 text-left">
+                  <span
+                    className="tabular-nums w-[80px] shrink-0"
+                    style={{ color: "var(--app-text-muted)" }}
+                  >
+                    {inProgressIds.has(event.id) ? "Now" : formatClock(event.startAt, timezone)}
+                  </span>
+                  <span className="truncate" style={{ color: "var(--app-text)" }}>
+                    {event.title}
+                    {inProgressIds.has(event.id) ? (
+                      <span style={{ color: "var(--app-text-muted)" }}> · until {formatClock(event.endAt, timezone)}</span>
+                    ) : null}
+                  </span>
+                </button>
               </li>
             ))}
           </ul>

@@ -15,11 +15,11 @@ import SyllabusNudge from "./SyllabusNudge";
 import SessionSheetLink from "./sheets/SessionSheetLink";
 import { PlayPauseIcon } from "./focus/PipTimer";
 import SessionTodos from "./focus/SessionTodos";
-import SessionRating from "./focus/SessionRating";
-import TopicSelect from "./focus/TopicSelect";
 import { clampMinutes, formatClock, useFocusSession, type FocusSession } from "./focus/FocusSession";
 import { isNative } from "@/lib/capacitor/platform";
 import StudyWithMe from "./focus/StudyWithMe";
+import SessionRating from "./focus/SessionRating";
+import TopicSelect from "./focus/TopicSelect";
 
 type AsideTab = "setup" | "todo" | "recents";
 

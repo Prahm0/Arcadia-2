@@ -8,6 +8,7 @@ import { useNativeIOS } from "@/lib/capacitor/platform";
 import {
   getIosPurchaseOptions,
   iosIntroOfferStatus,
+  iosStorefrontCountry,
   purchaseIosOption,
   type IosPurchaseOption,
 } from "@/lib/capacitor/revenuecat";
@@ -338,8 +339,10 @@ function NativeOnboardingPaywall({
             extra: {
               optionCount: options.length,
               hasProMonthly: Boolean(proMonthly),
+              price: proMonthly?.priceString ?? null,
               introPrice: proMonthly?.introPriceString ?? null,
               eligibilityStatus: status,
+              storefront: await iosStorefrontCountry(data.user.id),
             },
           });
         }

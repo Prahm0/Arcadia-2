@@ -48,8 +48,6 @@ interface TimeGridProps {
   onToggleTask?: (task: PlannerTask) => void;
   /** A deadline dragged to another day. */
   onMoveTask?: (task: PlannerTask, dayKey: string) => void;
-  /** A row under Due for each day's habits. */
-  habitsRow?: (day: DayColumn) => React.ReactNode;
   /** Shown over the grid, e.g. the first-deadline prompt. */
   overlay?: React.ReactNode;
   /** Right-click menus for a block, a deadline, and a day's empty space. */
@@ -94,7 +92,6 @@ export default function TimeGrid({
   onToggleDone,
   onToggleTask,
   onMoveTask,
-  habitsRow,
   overlay,
   menus,
 }: TimeGridProps) {
@@ -305,16 +302,6 @@ export default function TimeGrid({
             </div>
           ) : null}
 
-          {habitsRow ? (
-            <div className="grid" style={{ gridTemplateColumns: columns, borderBottom: "1px solid var(--app-border)" }}>
-              <div className="pr-2 pt-1.5 text-right text-[10.5px] font-medium" style={{ color: "var(--app-text-faint)" }}>Habits</div>
-              {days.map((day) => (
-                <div key={day.key} className="min-w-0 px-1 py-1" style={{ borderLeft: "1px solid color-mix(in oklab, var(--app-border) 70%, transparent)" }}>
-                  {habitsRow(day)}
-                </div>
-              ))}
-            </div>
-          ) : null}
         </div>
 
         <div className="relative grid" style={{ gridTemplateColumns: columns, height: 24 * HOUR_PX }}>

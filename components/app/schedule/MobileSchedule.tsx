@@ -20,6 +20,18 @@ const CATEGORY_STYLE: Record<string, CategoryBlockStyle> = Object.fromEntries(
   ]),
 );
 
+const FIXED_COMMITMENT_STYLE: CategoryBlockStyle = {
+  bg: "var(--app-surface-soft)",
+  text: "var(--app-text-soft)",
+  border: "var(--app-border-strong)",
+};
+
+function mobileBlockStyle(event: PlannerEvent, subjects: DashboardResponse["subjects"]): CategoryBlockStyle {
+  const hue = event.category === "study" ? subjectColour(subjects, event.subject) : null;
+  if (hue) return hueBlock(hue);
+  return event.category === "sleep" ? CATEGORY_STYLE.sleep : FIXED_COMMITMENT_STYLE;
+}
+
 function IconButton({ children, onClick, label }: { children: React.ReactNode; onClick: () => void; label: string }) {
   return (
     <button
@@ -100,8 +112,7 @@ export function MobileWeekSchedule({
               {dayEvents.length ? (
                 <div className="flex flex-col gap-1.5 p-2">
                   {dayEvents.map((event) => {
-                    const hue = event.category === "study" ? subjectColour(subjects, event.subject) : null;
-                    const styles = hue ? hueBlock(hue) : CATEGORY_STYLE[event.category] ?? CATEGORY_STYLE.other;
+                    const styles = mobileBlockStyle(event, subjects);
                     const completed = event.outcome === "completed";
                     const missed = event.outcome === "missed";
                     const time = event.kind === "all-day" ? "All day" : `${formatClock(event.startAt, timezone)} to ${formatClock(event.endAt, timezone)}`;
@@ -272,8 +283,7 @@ export function MobileDaySchedule({
           />
 
           {blocks.map(({ event, position }) => {
-            const hue = event.category === "study" ? subjectColour(subjects, event.subject) : null;
-            const styles = hue ? hueBlock(hue) : CATEGORY_STYLE[event.category] ?? CATEGORY_STYLE.other;
+            const styles = mobileBlockStyle(event, subjects);
             const completed = event.outcome === "completed";
             const missed = event.outcome === "missed";
             return (

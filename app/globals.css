@@ -1670,3 +1670,15 @@ html[data-app-theme] .type-mono-label {
     }
   }
 }
+
+/* Mobile tab bar height. While the on-screen keyboard is open the bar hides
+   (like native apps) and layouts that reserve room for it reclaim it. */
+:root {
+  --mobile-nav-h: 72px;
+}
+html.keyboard-open {
+  --mobile-nav-h: 0px;
+}
+html.keyboard-open .app-mobile-nav {
+  display: none;
+}

@@ -9,6 +9,8 @@ import { isNative } from "@/lib/capacitor/platform";
  *   zooms back out, leaving screens stuck enlarged. Native apps don't pinch.
  * - Keeps the student inside the app. The landing page ("/") is for the web;
  *   any link that lands there (e.g. a legal page's logo) goes back to /app.
+ * - Hides the tab bar while the keyboard is open (html.keyboard-open), so it
+ *   doesn't ride up on top of the keyboard.
  * - Keeps the clock readable: the status bar text is dark on light screens
  *   and light on dark ones, following the page background and theme.
  * A no-op on the web.
@@ -33,6 +35,16 @@ export default function NativeShell() {
     const observer = new MutationObserver(() => void syncStatusBar());
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "style", "data-app-theme"] });
     observer.observe(document.body, { attributes: true, attributeFilter: ["class", "style"] });
+    const root = document.documentElement;
+    const keyboardHandles: Array<{ remove: () => Promise<void> }> = [];
+    void import("@capacitor/keyboard").then(async ({ Keyboard }) => {
+      if (cancelled) return;
+      keyboardHandles.push(
+        await Keyboard.addListener("keyboardWillShow", () => root.classList.add("keyboard-open")),
+        await Keyboard.addListener("keyboardWillHide", () => root.classList.remove("keyboard-open")),
+      );
+    });
+
     const scheme = window.matchMedia("(prefers-color-scheme: dark)");
     const onScheme = () => void syncStatusBar();
     scheme.addEventListener("change", onScheme);
@@ -40,6 +52,8 @@ export default function NativeShell() {
       cancelled = true;
       observer.disconnect();
       scheme.removeEventListener("change", onScheme);
+      root.classList.remove("keyboard-open");
+      for (const handle of keyboardHandles) void handle.remove();
     };
   }, []);
   return null;

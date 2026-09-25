@@ -23,6 +23,7 @@ export default function NativeShell() {
       meta.content = `${meta.content}, maximum-scale=1, user-scalable=no`;
     }
     if (window.location.pathname === "/") window.location.replace("/app");
+    void import("@capacitor/splash-screen").then(({ SplashScreen }) => SplashScreen.hide()).catch(() => {});
 
     let cancelled = false;
     const syncStatusBar = async () => {

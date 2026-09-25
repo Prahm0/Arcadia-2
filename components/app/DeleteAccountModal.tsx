@@ -7,12 +7,17 @@ import AppButton from "./AppButton";
 
 interface DeleteAccountModalProps {
   hasPaidPlan: boolean;
+  /** Who bills the subscription: we can cancel Stripe, only the student can cancel Apple. */
+  billingProvider?: "stripe" | "app_store" | null;
+  isGuest?: boolean;
   onClose: () => void;
   onManageSubscription: () => void;
 }
 
 export default function DeleteAccountModal({
   hasPaidPlan,
+  billingProvider = null,
+  isGuest = false,
   onClose,
   onManageSubscription,
 }: DeleteAccountModalProps) {
@@ -70,13 +75,34 @@ export default function DeleteAccountModal({
           This permanently removes your Arcadia account, subjects, tasks, study history, chats,
           flashcards and uploaded files. It cannot be undone.
         </p>
-        <p className="mt-2 text-[13px] leading-5" style={{ color: "var(--app-text-faint)" }}>
-          For security, you must have signed in within the last 15 minutes.
-        </p>
-        <p className="mt-2 text-[13px] leading-5" style={{ color: "var(--app-text-faint)" }}>
-          Stripe retains payment and invoice records where required for accounting.
-        </p>
-        {hasPaidPlan ? (
+        {isGuest ? null : (
+          <p className="mt-2 text-[13px] leading-5" style={{ color: "var(--app-text-faint)" }}>
+            For security, you must have signed in within the last 15 minutes.
+          </p>
+        )}
+        {billingProvider === "stripe" ? (
+          <p className="mt-2 text-[13px] leading-5" style={{ color: "var(--app-text-faint)" }}>
+            Stripe retains payment and invoice records where required for accounting.
+          </p>
+        ) : null}
+        {hasPaidPlan && billingProvider === "app_store" ? (
+          <div
+            className="mt-4 rounded-md px-4 py-3 text-[13.5px] leading-5"
+            style={{ background: "color-mix(in oklab, var(--app-danger) 10%, var(--app-surface))", color: "var(--app-text-soft)" }}
+          >
+            Deleting your account does not cancel your App Store subscription. Apple keeps billing
+            it until you cancel it in your iPhone&rsquo;s Settings, under your name, then Subscriptions.
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={onManageSubscription}
+              className="ml-1 font-medium underline underline-offset-4 disabled:opacity-60"
+              style={{ color: "var(--app-text)" }}
+            >
+              Manage subscription
+            </button>
+          </div>
+        ) : hasPaidPlan ? (
           <div
             className="mt-4 rounded-md px-4 py-3 text-[13.5px] leading-5"
             style={{ background: "color-mix(in oklab, var(--app-danger) 10%, var(--app-surface))", color: "var(--app-text-soft)" }}

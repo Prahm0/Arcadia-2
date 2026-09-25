@@ -204,6 +204,15 @@ export default function IosPricingView({ tiers }: { tiers: IosTier[] }) {
           </p>
         </div>
 
+        <p className="text-[12px] leading-5" style={{ color: "var(--app-text-muted)" }}>
+          Subscriptions renew automatically at the price shown unless cancelled at least 24 hours
+          before the end of the current period. Payment is charged to your Apple ID. Manage or
+          cancel any time in your iPhone&rsquo;s Settings.{" "}
+          <a href="/terms" className="underline underline-offset-2">Terms of Use</a>
+          {" · "}
+          <a href="/privacy" className="underline underline-offset-2">Privacy Policy</a>
+        </p>
+
         {error ? (
           <div
             role="alert"

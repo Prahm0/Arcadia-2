@@ -2,10 +2,12 @@ import type { SchoolTerm } from "@/lib/api/types";
 import { addDays, dayColumn, mondayOf, type DayColumn } from "./calendar";
 
 export interface PeriodWeek {
-  /** "Week 3", or "Holidays" for a week with no school days. */
+  /** "Week 3", "T3 W10", or "Holidays" for a week with no school days. */
   label: string;
   /** Week number within the term; null in the holidays. */
   number: number | null;
+  /** Whether this is a school week. Rolling windows can cross several terms. */
+  school: boolean;
   days: DayColumn[];
 }
 
@@ -92,9 +94,49 @@ function withWeeks(period: Omit<TermPeriod, "weeks">, today: string, timezone: s
     const days = Array.from({ length: 7 }, (_, i) => dayColumn(addDays(monday, i), today, timezone));
     const inTerm = !period.termStart || days.some((day) => isSchoolDay(period, day.key));
     if (inTerm) number += 1;
-    weeks.push({ label: inTerm ? `Week ${number}` : "Holidays", number: inTerm ? number : null, days });
+    weeks.push({ label: inTerm ? `Week ${number}` : "Holidays", number: inTerm ? number : null, school: inTerm, days });
   }
   return { ...period, weeks };
+}
+
+/**
+ * A useful term view is anchored around the student, not the beginning of a
+ * term. It intentionally crosses term and holiday boundaries so today stays
+ * in the middle and the next stretch of work is always visible.
+ */
+export function rollingPeriodFor(key: string, terms: SchoolTerm[], today: string, timezone: string): TermPeriod {
+  const centre = mondayOf(key);
+  const start = addDays(centre, -35); // Five weeks before the current week.
+  const end = addDays(centre, 48); // Six weeks after it, inclusive.
+  const sorted = [...terms].sort((a, b) => a.start.localeCompare(b.start));
+  const weeks: PeriodWeek[] = [];
+
+  for (let monday = start; monday <= end; monday = addDays(monday, 7)) {
+    const days = Array.from({ length: 7 }, (_, i) => dayColumn(addDays(monday, i), today, timezone));
+    const term = sorted.find((candidate) => days.some((day) => day.key >= candidate.start && day.key <= candidate.end));
+    if (!term) {
+      weeks.push({ label: "Holidays", number: null, school: false, days });
+      continue;
+    }
+    const firstSchoolDay = days.find((day) => day.key >= term.start && day.key <= term.end)?.key ?? term.start;
+    const number = Math.floor(
+      (Date.parse(`${mondayOf(firstSchoolDay)}T12:00:00Z`) - Date.parse(`${mondayOf(term.start)}T12:00:00Z`)) / (7 * 86_400_000),
+    ) + 1;
+    weeks.push({ label: `T${term.term} W${number}`, number, school: true, days });
+  }
+
+  const year = Number(centre.slice(0, 4));
+  return {
+    id: `rolling:${centre}`,
+    name: "Rolling term view",
+    year,
+    start,
+    end,
+    termStart: null,
+    termEnd: null,
+    weeks,
+    isTerm: false,
+  };
 }
 
 /** The period a date falls in. */

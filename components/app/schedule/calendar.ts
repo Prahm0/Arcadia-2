@@ -144,10 +144,18 @@ export const CATEGORY_LABEL: Record<PlannerEvent["category"], string> = {
   other: "Other",
 };
 
-/** Study blocks take their subject's colour; everything else its category's. */
+/** Study blocks take their subject's colour. Fixed commitments stay neutral so study stands out. */
 export function blockStyle(event: PlannerEvent, subjects: Subjects): CategoryBlockStyle {
   const hue = event.category === "study" ? subjectColour(subjects, event.subject) : null;
-  return hue ? hueBlock(hue) : categoryBlock(event.category);
+  if (hue) return hueBlock(hue);
+  if (event.category !== "sleep") {
+    return {
+      bg: "var(--app-surface-soft)",
+      text: "var(--app-text-soft)",
+      border: "var(--app-border-strong)",
+    };
+  }
+  return categoryBlock(event.category);
 }
 
 export function isDraggable(event: PlannerEvent): boolean {

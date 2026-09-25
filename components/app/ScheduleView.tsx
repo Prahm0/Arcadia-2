@@ -18,13 +18,12 @@ import PageTour from "./tour/PageTour";
 import TimeGrid, { type ScheduleMenus } from "./schedule/TimeGrid";
 import TermMatrix, { type MatrixView } from "./schedule/TermMatrix";
 import AnalyticsStrip from "./schedule/AnalyticsStrip";
+import SubjectProgress from "./schedule/SubjectProgress";
 import ContextPanel, { type SubjectInfo } from "./schedule/ContextPanel";
 import DayPanel from "./schedule/DayPanel";
-import HabitsPanel, { HabitsCard } from "./schedule/HabitsPanel";
-import { HabitsProvider, useHabits } from "./schedule/habits";
 import { MobileDaySchedule, MobileWeekSchedule } from "./schedule/MobileSchedule";
 import { usePlanner } from "./schedule/usePlanner";
-import { holidayNote, periodDates, periodFor, periodPosition, stepPeriod } from "./schedule/period";
+import { periodFor, periodPosition, rollingPeriodFor } from "./schedule/period";
 import { ChevronIcon } from "./schedule/bits";
 import {
   addDays,
@@ -52,15 +51,12 @@ interface Prefs {
   mode: ScheduleMode;
   matrix: MatrixView;
   subjects: string[];
-  habitsOpen: Record<ScheduleMode, boolean>;
 }
 
 const DEFAULT_PREFS: Prefs = {
   mode: "term",
   matrix: "subjects",
   subjects: [],
-  // Day view is for doing, so habits are open there.
-  habitsOpen: { term: false, week: false, day: true },
 };
 
 export default function ScheduleView() {
@@ -74,11 +70,7 @@ export default function ScheduleView() {
     return () => clearInterval(id);
   }, []);
 
-  return (
-    <HabitsProvider userId={data.user.id} today={today}>
-      <Planner now={now} today={today} timezone={timezone} />
-    </HabitsProvider>
-  );
+  return <Planner now={now} today={today} timezone={timezone} />;
 }
 
 function Planner({ now, today, timezone }: { now: Date; today: string; timezone: string }) {
@@ -86,7 +78,6 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
   const router = useRouter();
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
   const [anchor, setAnchor] = useState(today);
-  const [habitDay, setHabitDay] = useState(today);
   const [mobileWeek, setMobileWeek] = useState(false);
   const [taskSheet, setTaskSheet] = useState<{ due: string | null; subject: string | null; editing: PlannerTask | null } | null>(null);
   const [detailTask, setDetailTask] = useState<PlannerTask | null>(null);
@@ -94,7 +85,6 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
   const [eventMode, setEventMode] = useState<"details" | "reschedule">("details");
   const wide = useMediaQuery("(min-width: 768px)");
   const { mode, matrix } = prefs;
-  const { habits } = useHabits();
 
   // The view, matrix tab, subject filter and panel state are this browser's conveniences.
   useEffect(() => {
@@ -107,7 +97,6 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
           ...DEFAULT_PREFS,
           ...saved,
           subjects: Array.isArray(saved.subjects) ? saved.subjects : [],
-          habitsOpen: { ...DEFAULT_PREFS.habitsOpen, ...saved.habitsOpen },
         });
       } catch {
         /* defaults */
@@ -131,15 +120,16 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
   const setMode = useCallback(
     (next: ScheduleMode) => {
       updatePrefs({ mode: next });
-      if (next === "day") setHabitDay(anchor <= today ? anchor : today);
     },
-    [updatePrefs, anchor, today],
+    [updatePrefs],
   );
 
   const terms = useMemo(() => data.terms ?? [], [data.terms]);
   const period = useMemo(() => periodFor(anchor, terms, today, timezone), [anchor, terms, today, timezone]);
+  const rollingPeriod = useMemo(() => rollingPeriodFor(anchor, terms, today, timezone), [anchor, terms, today, timezone]);
+  const displayPeriod = mode === "term" ? rollingPeriod : period;
   const todayPeriod = useMemo(() => periodFor(today, terms, today, timezone), [terms, today, timezone]);
-  const planner = usePlanner(period, timezone);
+  const planner = usePlanner(displayPeriod, timezone);
 
   const subjects = useMemo<SubjectInfo[]>(
     () => data.subjects.map((subject, index) => ({ name: subject.name, colour: subject.colour || SUBJECT_COLORS[index % SUBJECT_COLORS.length] })),
@@ -178,28 +168,21 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
 
   const step = useCallback(
     (direction: -1 | 1) => {
-      setAnchor((current) => (mode === "term" ? stepPeriod(periodFor(current, terms, today, timezone), direction) : addDays(current, direction * (mode === "week" ? 7 : 1))));
+      setAnchor((current) => addDays(current, direction * (mode === "term" ? 28 : mode === "week" ? 7 : 1)));
     },
-    [mode, terms, today, timezone],
+    [mode],
   );
   const goToday = useCallback(() => {
     setAnchor(today);
-    setHabitDay(today);
   }, [today]);
   const openDay = useCallback(
     (key: string) => {
       setAnchor(key);
-      setHabitDay(key <= today ? key : today);
       updatePrefs({ mode: "day" });
     },
-    [today, updatePrefs],
+    [updatePrefs],
   );
   const addTask = useCallback((due: string | null, subject: string | null = null) => setTaskSheet({ due, subject, editing: null }), []);
-  const toggleHabits = useCallback(
-    () => updatePrefs({ habitsOpen: { ...prefs.habitsOpen, [mode]: !prefs.habitsOpen[mode] } }),
-    [prefs.habitsOpen, mode, updatePrefs],
-  );
-
   const reschedule = useCallback(
     (eventId: string, startMs: number) => {
       const event = planner.events.find((candidate) => candidate.id === eventId);
@@ -208,7 +191,7 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
     [planner],
   );
 
-  // 1/2/3 or D/W for the view, T for today, arrows or J/K to move, H for habits.
+  // 1/2/3 or D/W for the view, T for today, arrows or J/K to move.
   // A key right after G belongs to the app's go-to shortcuts.
   const lastKey = useRef({ key: "", at: 0 });
   useEffect(() => {
@@ -227,7 +210,6 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
         w: () => setMode("week"),
         d: () => setMode("day"),
         t: goToday,
-        h: toggleHabits,
         arrowleft: () => step(-1),
         k: () => step(-1),
         arrowright: () => step(1),
@@ -240,7 +222,7 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [goToday, setMode, step, toggleHabits]);
+  }, [goToday, setMode, step]);
 
   const liveEvent = useMemo(
     () => (selectedEvent ? planner.events.find((event) => event.id === selectedEvent.id) ?? data.events.find((event) => event.id === selectedEvent.id) ?? null : null),
@@ -311,33 +293,11 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
     ],
   };
 
-  const title =
-    mode === "term" ? `${period.name}${period.isTerm ? `, ${period.year}` : ` ${period.year}`}` : mode === "week" ? weekTitle(days) : dayTitle(anchor);
-  const meta = mode === "term" ? `${periodDates(period)}${holidayNote(period, today)}` : periodPosition(period, anchor);
+  const title = mode === "term" ? "Term view" : mode === "week" ? weekTitle(days) : dayTitle(anchor);
+  const meta = mode === "term" ? `${periodPosition(todayPeriod, today)} · 5 weeks before and 6 ahead` : periodPosition(period, anchor);
   const stripDay = mode === "day" ? anchor : today;
-  const stripRange =
-    mode === "term"
-      ? { from: period.start, to: period.end, label: period.isTerm ? period.name : "this period" }
-      : mode === "week"
-        ? { from: week[0].key, to: week[6].key, label: "this week" }
-        : { from: anchor, to: anchor, label: anchor === today ? "today" : "this day" };
-  const showingToday = mode === "term" ? today >= period.start && today <= period.end : days.some((day) => day.key === today) && (mode !== "day" || anchor === today);
-  const habitsOpen = prefs.habitsOpen[mode];
+  const showingToday = mode === "term" ? anchor === today : days.some((day) => day.key === today) && (mode !== "day" || anchor === today);
   const noDeadlines = !data.tasks.length && !planner.tasks.some((task) => task.status === "pending");
-
-  const habitsRow = useCallback(
-    (day: DayColumn) => (
-      <DayHabits
-        day={day.key}
-        today={today}
-        onOpen={() => {
-          setHabitDay(day.key <= today ? day.key : today);
-          updatePrefs({ habitsOpen: { ...prefs.habitsOpen, [mode]: true } });
-        }}
-      />
-    ),
-    [today, prefs.habitsOpen, mode, updatePrefs],
-  );
 
   const sheets = (
     <>
@@ -370,7 +330,7 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
   );
 
   const matrixProps = {
-    period,
+    period: displayPeriod,
     view: matrix,
     onViewChange: (value: MatrixView) => updatePrefs({ matrix: value }),
     subjects: shownSubjects,
@@ -380,7 +340,7 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
     today,
     nowMs: now.getTime(),
     timezone,
-    focusDay: anchor >= period.start && anchor <= period.end ? anchor : period.start,
+    focusDay: anchor >= displayPeriod.start && anchor <= displayPeriod.end ? anchor : displayPeriod.start,
     onOpenDay: openDay,
     onAddTask: (key: string, subject: string | null) => addTask(key, subject),
     onOpenTask: setDetailTask,
@@ -392,8 +352,11 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
   };
 
   const strip = (
-    <AnalyticsStrip day={stripDay} today={today} studyEvents={studyEvents} tasks={tasks} range={stripRange} timezone={timezone} />
+    <AnalyticsStrip day={stripDay} today={today} studyEvents={studyEvents} timezone={timezone} />
   );
+  const subjectProgress = mode !== "day" ? (
+    <SubjectProgress subjects={shownSubjects} studyEvents={studyEvents} anchor={anchor} timezone={timezone} />
+  ) : null;
 
   return (
     <>
@@ -424,7 +387,7 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
               </div>
             </div>
             {strip}
-            <HabitsCard key={mode} defaultOpen={mode === "day"} day={habitDay} today={today} onDayChange={setHabitDay} />
+            {subjectProgress}
             {mode === "term" ? (
               <>
                 {subjects.length ? <SubjectChips subjects={subjects} selected={selected} onToggle={toggleSubject} /> : null}
@@ -523,7 +486,7 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
               today={today}
               timezone={timezone}
               todayPeriod={todayPeriod}
-              period={period}
+              period={displayPeriod}
               studyEvents={studyEvents}
               tasks={tasks}
               subjects={subjects}
@@ -531,14 +494,12 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
               onToggleSubject={toggleSubject}
               roomy={mode !== "day"}
               onOpenTask={setDetailTask}
-              onJump={(key) => {
-                setAnchor(key);
-                if (mode === "day") setHabitDay(key <= today ? key : today);
-              }}
+              onJump={setAnchor}
             />
 
             <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 p-3 lg:p-4">
               {strip}
+              {subjectProgress}
               <div className="relative flex min-h-0 flex-1 overflow-hidden rounded-lg" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
                 {mode === "term" ? (
                   <TermMatrix {...matrixProps} />
@@ -560,7 +521,6 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
                     onToggleDone={(event) => void planner.setEventDone(event, event.outcome !== "completed")}
                     onToggleTask={(task) => void planner.setTaskDone(task, task.status !== "complete")}
                     onMoveTask={(task, key) => void planner.moveTask(task, key)}
-                    habitsRow={mode === "week" && habits.length ? habitsRow : undefined}
                     overlay={noDeadlines ? <FirstDeadline onAdd={() => addTask(null)} /> : null}
                     menus={menus}
                   />
@@ -588,55 +548,13 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
               />
             ) : null}
 
-            <HabitsPanel
-              expanded={habitsOpen}
-              onExpandedChange={(value) => updatePrefs({ habitsOpen: { ...prefs.habitsOpen, [mode]: value } })}
-              day={habitDay}
-              today={today}
-              onDayChange={setHabitDay}
-            />
+            {/* TODO: reminders replace the former habits panel. Keep habit data intact. */}
           </div>
         </div>
       )}
 
       {sheets}
     </>
-  );
-}
-
-/** A week column's habits: one square per habit, click to open the panel on that day. */
-function DayHabits({ day, today, onOpen }: { day: string; today: string; onOpen: () => void }) {
-  const { habits, isDone, dayScore } = useHabits();
-  const live = habits.filter((habit) => habit.since <= day);
-  const score = dayScore(day);
-  const future = day > today;
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="ui-hover flex w-full items-center gap-1.5 rounded px-1 py-0.5"
-      title={future ? "Still to come" : `${score.done} of ${score.total} habits done. Open habits`}
-      aria-label={`${score.done} of ${score.total} habits done, open habits`}
-    >
-      <span className="flex flex-wrap gap-[2px]">
-        {live.map((habit) => (
-          <span
-            key={habit.id}
-            className="h-[7px] w-[7px] rounded-[2px]"
-            style={{
-              background: isDone(habit.id, day) ? "var(--app-text)" : "transparent",
-              boxShadow: isDone(habit.id, day) ? undefined : "inset 0 0 0 1px var(--app-border-strong)",
-              opacity: future ? 0.5 : 1,
-            }}
-          />
-        ))}
-      </span>
-      {!future && score.total ? (
-        <span className="ml-auto text-[10.5px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
-          {score.done}/{score.total}
-        </span>
-      ) : null}
-    </button>
   );
 }
 

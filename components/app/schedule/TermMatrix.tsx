@@ -6,19 +6,17 @@ import { dateKey } from "@/lib/api/time";
 import { cn } from "@/lib/cn";
 import { SubjectTag } from "../cards/shared";
 import { eventMinutes, isExam, sameSubject, shortDate, shortMinutes, WEEKDAYS } from "./calendar";
-import { ExamWord, FlameGlyph } from "./bits";
+import { ExamWord } from "./bits";
 import CellPopover, { type CellDetail } from "./CellPopover";
 import type { SubjectInfo } from "./ContextPanel";
-import { HabitGlyph, useHabits } from "./habits";
 import { isSchoolDay, type TermPeriod } from "./period";
 
-export type MatrixView = "subjects" | "tasks" | "study" | "habits";
+export type MatrixView = "subjects" | "tasks" | "study";
 
 const MATRIX_VIEWS: Array<{ value: MatrixView; label: string }> = [
   { value: "subjects", label: "Subjects" },
   { value: "tasks", label: "Tasks" },
   { value: "study", label: "Study" },
-  { value: "habits", label: "Habits" },
 ];
 
 const FULL_LABEL_W = 208;
@@ -71,14 +69,13 @@ interface TermMatrixProps {
 }
 
 /**
- * The whole term at a glance: a row per subject (or task, or habit), a square
+ * The rolling term at a glance: a row per subject or task, a square
  * per day, grouped into weeks. Each square says whether the day's study was
  * planned, part done or done, and a folded corner marks a deadline or exam.
  */
 export default function TermMatrix(props: TermMatrixProps) {
   const { period, view, onViewChange, subjects, showOther, studyEvents, tasks, today, nowMs, timezone, focusDay, compact } = props;
   const LABEL_W = compact ? 124 : FULL_LABEL_W;
-  const habits = useHabits();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [focus, setFocus] = useState<{ r: number; c: number } | null>(null);
   const [open, setOpen] = useState<{ rowId: string; day: string; anchor: HTMLElement } | null>(null);
@@ -100,25 +97,6 @@ export default function TermMatrix(props: TermMatrixProps) {
       const done = list.filter((event) => event.outcome === "completed").reduce((sum, event) => sum + eventMinutes(event), 0);
       return planned ? `${shortMinutes(done)} / ${shortMinutes(planned)}` : "";
     };
-
-    if (view === "habits") {
-      return habits.habits.map((habit) => ({
-        id: habit.id,
-        label: (
-          <span className="flex min-w-0 items-center gap-2" style={{ color: "var(--app-text)" }}>
-            <span style={{ color: "var(--app-text-muted)" }}><HabitGlyph icon={habit.icon} size={14} /></span>
-            <span className="truncate text-[12.5px]">{habit.name}</span>
-          </span>
-        ),
-        aside: habits.streak(habit.id, today) ? (
-          <span className="flex items-center gap-0.5"><FlameGlyph size={10} />{habits.streak(habit.id, today)}</span>
-        ) : null,
-        colour: null,
-        subject: null,
-        blocks: () => false,
-        tasks: () => false,
-      }));
-    }
 
     if (view === "tasks") {
       const withWork = new Set(periodBlocks.map((event) => event.taskId).filter(Boolean));
@@ -188,7 +166,7 @@ export default function TermMatrix(props: TermMatrixProps) {
       });
     }
     return subjectRows;
-  }, [view, subjects, showOther, studyEvents, tasks, habits, today, period, timezone]);
+  }, [view, subjects, showOther, studyEvents, tasks, period, timezone]);
 
   const detailFor = useCallback(
     (row: Row, day: string): CellDetail => {
@@ -210,7 +188,7 @@ export default function TermMatrix(props: TermMatrixProps) {
     }
     const week = Math.floor(index / 7);
     const x = week * (7 * SLOT + WEEK_GAP) + (index % 7) * SLOT;
-    scroller.scrollLeft = Math.max(0, x - (scroller.clientWidth - LABEL_W) * 0.3);
+    scroller.scrollLeft = Math.max(0, x - (scroller.clientWidth - LABEL_W) / 2);
   }, [period.id, focusDay, days, LABEL_W]);
 
   const onKeyDown = useCallback(
@@ -367,7 +345,7 @@ export default function TermMatrix(props: TermMatrixProps) {
                     <div key={week.days[0].key} className="flex shrink-0" style={{ marginLeft: wi ? WEEK_GAP : 0, borderTop: row.total ? "1px solid var(--app-border)" : undefined }}>
                       {week.days.map((day, di) => {
                         const c = wi * 7 + di;
-                        const school = isSchoolDay(period, day.key);
+                        const school = week.school && isSchoolDay(period, day.key);
                         const isFocus = roving.r === r && roving.c === c;
                         const isOpen = open?.rowId === row.id && open.day === day.key;
                         const common = {
@@ -387,31 +365,19 @@ export default function TermMatrix(props: TermMatrixProps) {
                             }}
                             role="gridcell"
                           >
-                            {view === "habits" ? (
-                              <HabitCell
-                                {...common}
-                                done={habits.isDone(row.id, day.key)}
-                                future={day.key > today}
-                                before={(habits.habits.find((h) => h.id === row.id)?.since ?? "") > day.key}
-                                today={day.key === today}
-                                label={`${habits.habits.find((h) => h.id === row.id)?.name ?? "Habit"}, ${shortDate(day.key)}`}
-                                onToggle={() => habits.toggle(row.id, day.key)}
-                              />
-                            ) : (
-                              <WorkCell
-                                {...common}
-                                detail={detailFor(row, day.key)}
-                                view={view}
-                                school={school}
-                                today={today}
-                                nowMs={nowMs}
-                                colour={row.colour}
-                                total={row.total}
-                                inSpan={row.span ? day.key >= row.span.from && day.key <= row.span.to : false}
-                                selected={isOpen}
-                                onOpen={(anchor) => setOpen(isOpen ? null : { rowId: row.id, day: day.key, anchor })}
-                              />
-                            )}
+                            <WorkCell
+                              {...common}
+                              detail={detailFor(row, day.key)}
+                              view={view}
+                              school={school}
+                              today={today}
+                              nowMs={nowMs}
+                              colour={row.colour}
+                              total={row.total}
+                              inSpan={row.span ? day.key >= row.span.from && day.key <= row.span.to : false}
+                              selected={isOpen}
+                              onOpen={(anchor) => setOpen(isOpen ? null : { rowId: row.id, day: day.key, anchor })}
+                            />
                           </div>
                         );
                       })}
@@ -528,42 +494,6 @@ function WorkCell({
   );
 }
 
-function HabitCell({
-  done,
-  future,
-  before,
-  today,
-  label,
-  onToggle,
-  ...common
-}: CellCommon & { done: boolean; future: boolean; before: boolean; today: boolean; label: string; onToggle: () => void }) {
-  return (
-    <button
-      type="button"
-      {...common}
-      role="checkbox"
-      aria-checked={done}
-      aria-label={label}
-      disabled={future}
-      onClick={onToggle}
-      className="rounded-[4px] transition-transform duration-100 hover:scale-[1.18] focus-visible:scale-[1.18] focus-visible:outline-none disabled:hover:scale-100"
-      style={{
-        width: CELL,
-        height: CELL,
-        background: done ? "var(--app-text)" : future || before ? "transparent" : "var(--app-surface-soft)",
-        boxShadow: done
-          ? undefined
-          : today
-            ? "inset 0 0 0 1.5px var(--app-text-muted)"
-            : future || before
-              ? "inset 0 0 0 1px var(--app-border)"
-              : undefined,
-        opacity: future ? 0.5 : 1,
-      }}
-    />
-  );
-}
-
 function cellState(detail: CellDetail, school: boolean, today: string, nowMs: number): CellState {
   const { blocks } = detail;
   if (!blocks.length) return school ? "empty" : "inactive";
@@ -632,9 +562,7 @@ function Legend({ view }: { view: MatrixView }) {
   );
   const ink = "var(--app-text-soft)";
   let items: ReactNode[];
-  if (view === "habits") {
-    items = [item({ background: "var(--app-text)" }, "Done"), item({ background: "var(--app-surface-soft)" }, "Not done"), item({ boxShadow: "inset 0 0 0 1px var(--app-border)", opacity: 0.6 }, "Still to come")];
-  } else if (view === "study") {
+  if (view === "study") {
     items = [
       <span key="scale" className="flex items-center gap-1">
         Less
@@ -669,7 +597,6 @@ function EmptyRows({ view }: { view: MatrixView }) {
     subjects: "Add subjects in your profile and they'll each get a row here.",
     tasks: "No deadlines this term yet. Add one and it gets a row, with its study laid out to the due date.",
     study: "Add subjects in your profile to see study by subject.",
-    habits: "No habits yet. Add some in the habits panel and tick them off here day by day.",
   };
   return (
     <p className="sticky left-0 max-w-[420px] px-4 py-6 text-[13px] leading-relaxed" style={{ color: "var(--app-text-muted)" }}>

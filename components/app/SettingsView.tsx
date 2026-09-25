@@ -1003,13 +1003,20 @@ export default function SettingsView() {
               ) : null}
               <div className="flex items-center justify-between pt-2">
                 <Notice notice={billingNotice} />
-                <div className="flex gap-2">
+                <div className="flex flex-wrap justify-end gap-2">
                   {tier === "free" && !data.user.developerAccess ? (
                     <AppButton
                       variant="primary"
                       onClick={() => router.push("/app/pricing")}
                     >
                       See plans
+                    </AppButton>
+                  ) : null}
+                  {/* App Store subscribers switch tiers from the plans page,
+                      which the header's Pro/Max badge doesn't lead to. */}
+                  {nativeIOS && hasSubscription && data.user.billingProvider === "app_store" ? (
+                    <AppButton variant="primary" onClick={() => router.push("/app/pricing")}>
+                      Change plan
                     </AppButton>
                   ) : null}
                   {hasSubscription && (!nativeIOS || data.user.billingProvider === "app_store") ? (

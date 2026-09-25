@@ -148,7 +148,7 @@ export async function dispatchPushCheckIns(env: Env, now = Date.now()): Promise<
         title: "Sleep starts in 5 minutes",
         body: "Time to wind down. Rest helps you recharge for tomorrow.",
         tag: `arcadia-sleep-${event.id}`,
-        link: "/app/schedule",
+        link: `/app/schedule?eventId=${encodeURIComponent(event.id)}`,
       }),
     ),
   );

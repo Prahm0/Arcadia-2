@@ -482,7 +482,8 @@ export function groundwork(
     event.source === "auto" && event.startAt <= now && event.endAt > now;
   const keep = inputs.existing.filter(
     (event) =>
-      event.source !== "sleep" &&
+      (event.source !== "sleep" ||
+        (event.pinned && event.outcome === "planned")) &&
       (event.pinned ||
         event.outcome !== "planned" ||
         !REMATERIALISED.has(event.source) ||
@@ -516,6 +517,13 @@ export function groundwork(
   }
 
   for (const slot of sleepSlots(profile, from, to)) {
+    const id = `evt_sleep_${userId}_${localDateKey(slot.start, tz)}`;
+    const delayed = inputs.existing.find((event) =>
+      event.id === id && event.source === "sleep" && event.pinned &&
+      event.outcome === "planned",
+    );
+    if (delayed) continue; // The pinned override is already included below via `keep`.
+
     busy.push(slot);
     // The night before the window still blocks early study time, but its
     // event starts outside the rows loaded for reconciliation.
@@ -523,7 +531,7 @@ export function groundwork(
     fixed.push({
       // One id per user and local night also prevents overlapping rebuilds
       // from inserting the same sleep block with different random ids.
-      id: `evt_sleep_${userId}_${localDateKey(slot.start, tz)}`,
+      id,
       userId,
       title: "Sleep",
       category: "sleep",

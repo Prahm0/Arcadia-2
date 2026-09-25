@@ -82,6 +82,7 @@ interface SessionNotificationInput {
   title: string;
   body: string;
   tag: string;
+  href?: string;
 }
 
 /**
@@ -89,16 +90,26 @@ interface SessionNotificationInput {
  * granted permission. The tag dedupes: showing the same notification twice
  * for the same tag replaces the previous instead of stacking.
  */
-export function showNotification({ title, body, tag }: SessionNotificationInput): void {
+export function showNotification({ title, body, tag, href = "/app" }: SessionNotificationInput): void {
   if (!notificationsSupported()) return;
   if (Notification.permission !== "granted") return;
   try {
-    new Notification(title, {
+    const notification = new Notification(title, {
       body,
       tag,
       icon: "/icon.png",
       badge: "/icon.png",
     });
+    const destination = href.startsWith("/app") ? href : "/app";
+    notification.onclick = () => {
+      notification.close();
+      try {
+        window.focus();
+      } catch {
+        /* Continue to the destination even if the browser won't focus the tab. */
+      }
+      window.location.assign(destination);
+    };
   } catch {
     /* Chrome throws on some ephemeral origins; silently ignore. */
   }

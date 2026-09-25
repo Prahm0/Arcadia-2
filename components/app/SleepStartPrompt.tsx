@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { api } from "@/lib/api/client";
+import { formatClock } from "@/lib/api/time";
+import type { DashboardResponse, PlannerEvent } from "@/lib/api/types";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { isGuestEmail } from "@/lib/auth/guest";
 import AppButton from "./AppButton";
@@ -10,12 +13,60 @@ const START_WINDOW_MS = 60_000;
 const DISPLAY_MS = 5 * 60_000;
 const SHOWN_PREFIX = "arcadia:sleep-start:shown:";
 
-/** A quiet, once-per-night prompt when the calendar's sleep block begins. */
+/** A centered, dismissible prompt when the calendar's sleep block begins. */
 export default function SleepStartPrompt({ blocked }: { blocked: boolean }) {
-  const { data } = useDashboardData();
+  const { data, patch, reload } = useDashboardData();
   const [shown, setShown] = useState<{ id: string; expiresAt: number } | null>(null);
+  const [delayError, setDelayError] = useState<string | null>(null);
+  const [savingDelay, setSavingDelay] = useState(false);
   const shownThisVisit = useRef(new Set<string>());
   const isGuest = isGuestEmail(data.user.email);
+  const timezone = data.profile?.timezone || data.user.timezone || "Australia/Sydney";
+  const event = shown ? data.events.find((candidate) => candidate.id === shown.id) ?? null : null;
+
+  async function delayTonight(minutes: 15 | 30 | 60) {
+    if (!event || savingDelay) return;
+    const selectedEvent = event;
+    const previousStart = selectedEvent.startAt;
+    const previousEnd = selectedEvent.endAt;
+    const previousPinned = selectedEvent.pinned;
+    const nextStart = new Date(Date.parse(previousStart) + minutes * 60_000).toISOString();
+    const nextEnd = new Date(Date.parse(previousEnd) + minutes * 60_000).toISOString();
+    setSavingDelay(true);
+    setDelayError(null);
+    patch((previous: DashboardResponse) => ({
+      ...previous,
+      events: previous.events.map((candidate) => candidate.id === selectedEvent.id
+        ? { ...candidate, startAt: nextStart, endAt: nextEnd, pinned: true }
+        : candidate),
+    }));
+    try {
+      await api<{ event: PlannerEvent }>(`/api/events/${encodeURIComponent(selectedEvent.id)}/snooze`, {
+        method: "POST",
+        body: JSON.stringify({ minutes }),
+      });
+      await reload();
+      // The snoozed time is a new opportunity to remind, including if the
+      // student uses another +15/+30/+60 choice before dismissing this card.
+      shownThisVisit.current.delete(selectedEvent.id);
+      try {
+        window.localStorage.removeItem(`${SHOWN_PREFIX}${selectedEvent.id}`);
+      } catch {
+        /* The in-memory marker is enough for this visit. */
+      }
+      setShown({ id: selectedEvent.id, expiresAt: Date.now() + DISPLAY_MS });
+    } catch (error) {
+      patch((previous: DashboardResponse) => ({
+        ...previous,
+        events: previous.events.map((candidate) => candidate.id === selectedEvent.id
+          ? { ...candidate, startAt: previousStart, endAt: previousEnd, pinned: previousPinned }
+          : candidate),
+      }));
+      setDelayError(error instanceof Error ? error.message : "Couldn't delay tonight's sleep block.");
+    } finally {
+      setSavingDelay(false);
+    }
+  }
 
   useEffect(() => {
     if (isGuest || blocked) return;
@@ -71,22 +122,65 @@ export default function SleepStartPrompt({ blocked }: { blocked: boolean }) {
     };
   }, [shown]);
 
-  if (blocked || !shown || !data.events.some((event) => event.id === shown.id && event.outcome === "planned")) return null;
+  if (blocked || !shown || !event || event.outcome !== "planned") return null;
 
   return (
-    <section
-      role="status"
-      className="fixed bottom-24 right-4 z-[65] w-[calc(100%-2rem)] max-w-sm rounded-xl p-5 lg:bottom-6 lg:right-6"
-      style={{ background: "var(--app-elev)", boxShadow: "var(--elev-3)", color: "var(--app-text)" }}
-    >
-      <p className="type-eyebrow" style={{ color: "var(--app-accent-strong)" }}>Sleep reminder</p>
-      <h2 className="mt-2 text-[19px] font-medium tracking-[-0.02em]">Time to wind down</h2>
-      <p className="mt-2 text-[13.5px] leading-5" style={{ color: "var(--app-text-muted)" }}>
-        Your sleep block has started. Rest helps you recharge for tomorrow.
-      </p>
-      <div className="mt-4 flex justify-end">
-        <AppButton type="button" variant="secondary" onClick={() => setShown(null)}>Got it</AppButton>
-      </div>
-    </section>
+    <div className="fixed inset-0 z-[70] flex items-end justify-center p-0 sm:items-center sm:p-6">
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 cursor-default"
+        style={{ background: "color-mix(in oklab, black 52%, transparent)" }}
+        onClick={() => { if (!savingDelay) setShown(null); }}
+      />
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="sleep-start-title"
+        className="relative w-full max-w-[460px] rounded-t-xl p-6 sm:rounded-xl"
+        style={{ background: "var(--app-elev)", boxShadow: "var(--elev-3)", color: "var(--app-text)" }}
+      >
+        <div
+          aria-hidden="true"
+          className="grid size-10 place-items-center rounded-full"
+          style={{ background: "var(--app-accent-soft)", color: "var(--app-accent-strong)" }}
+        >
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7">
+            <path d="M10 3v7l4 2" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="10" cy="10" r="7" />
+          </svg>
+        </div>
+        <p className="mt-5 type-eyebrow" style={{ color: "var(--app-accent-strong)" }}>Sleep reminder</p>
+        <h2 id="sleep-start-title" className="mt-1.5 text-[24px] font-medium tracking-[-0.02em]">
+          Time to wind down
+        </h2>
+        <p className="mt-2 text-[14px] leading-6" style={{ color: "var(--app-text-muted)" }}>
+          Your sleep block has started. Rest helps you recharge for tomorrow.
+        </p>
+        <p className="mt-3 text-[13.5px] font-medium">
+          Tonight&apos;s sleep starts at {formatClock(event.startAt, timezone)}.
+        </p>
+        <div className="mt-6">
+          <p className="mb-2 text-[13px] font-medium">Need a little more time?</p>
+          <div className="flex flex-wrap gap-2">
+            {([15, 30, 60] as const).map((minutes) => (
+              <AppButton
+                key={minutes}
+                type="button"
+                variant="secondary"
+                loading={savingDelay}
+                disabled={savingDelay}
+                onClick={() => void delayTonight(minutes)}
+              >
+                +{minutes} min
+              </AppButton>
+            ))}
+          </div>
+          {delayError ? <p role="alert" className="mt-2 text-[13px]" style={{ color: "var(--app-danger)" }}>{delayError}</p> : null}
+        </div>
+        <div className="mt-5 flex justify-end">
+          <AppButton type="button" variant="primary" disabled={savingDelay} onClick={() => setShown(null)}>Got it</AppButton>
+        </div>
+      </section>
+    </div>
   );
 }

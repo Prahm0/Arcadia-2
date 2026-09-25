@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import type { PlannerEvent, PlannerTask } from "@/lib/api/types";
+import { dateKey } from "@/lib/api/time";
 import { isTypingTarget } from "@/lib/app/commands";
 import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
 import { studyTitle } from "@/lib/app/subjectColour";
@@ -117,6 +118,25 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
       return next;
     });
   }, []);
+
+  const handledNotificationEvent = useRef(false);
+  useEffect(() => {
+    if (handledNotificationEvent.current) return;
+    const url = new URL(window.location.href);
+    const eventId = url.searchParams.get("eventId");
+    if (!eventId) return;
+    const event = data.events.find((candidate) => candidate.id === eventId);
+    if (!event) return;
+
+    handledNotificationEvent.current = true;
+    /* eslint-disable react-hooks/set-state-in-effect -- apply a deliberate notification deep link. */
+    setAnchor(dateKey(event.startAt, timezone));
+    updatePrefs({ mode: "day" });
+    setSelectedEvent(event);
+    /* eslint-enable react-hooks/set-state-in-effect */
+    url.searchParams.delete("eventId");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [data.events, timezone, updatePrefs]);
 
   const setMode = useCallback(
     (next: ScheduleMode) => {
@@ -237,6 +257,7 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
       const study = event.category === "study";
       const planned = event.outcome === "planned";
       const editable = event.editable !== false;
+      const sleepAdjustable = event.category === "sleep" && planned && Date.parse(event.endAt) > Date.now() && (event.source === "sleep" || editable);
       const name = study ? studyTitle(event) : event.title;
       return [
         { kind: "item", label: "Open", onSelect: () => setSelectedEvent(event) },
@@ -251,16 +272,16 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
           label: event.outcome === "completed" ? "Mark not done" : "Mark done",
           onSelect: () => void planner.setEventDone(event, event.outcome !== "completed"),
         },
-        editable && planned && {
+        (sleepAdjustable || (editable && planned && event.category !== "sleep")) && {
           kind: "item",
-          label: "Reschedule…",
+          label: sleepAdjustable ? "Adjust this night…" : "Reschedule…",
           onSelect: () => {
             setEventMode("reschedule");
             setSelectedEvent(event);
           },
         },
         { kind: "separator" },
-        editable && planned && {
+        editable && planned && event.category !== "sleep" && {
           kind: "item",
           label: "Remove from schedule…",
           danger: true,

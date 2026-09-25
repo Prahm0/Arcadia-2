@@ -144,6 +144,17 @@ export async function iosIntroOfferStatus(userId: string, productIdentifier: str
   return result[productIdentifier]?.status ?? null;
 }
 
+/** The App Store country StoreKit is pricing in (e.g. "AUS"), for diagnostics. */
+export async function iosStorefrontCountry(userId: string): Promise<string | null> {
+  const purchases = (await purchasesFor(userId))?.purchases;
+  if (!purchases) return null;
+  try {
+    return (await purchases.getStorefront()).countryCode;
+  } catch {
+    return null;
+  }
+}
+
 export async function restoreIosPurchases(userId: string): Promise<void> {
   const purchases = (await purchasesFor(userId))?.purchases;
   if (!purchases) throw new Error("In-app purchases are not available in this build yet.");

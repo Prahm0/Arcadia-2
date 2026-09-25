@@ -1,0 +1,110 @@
+.ambient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(44% 50% at 5% 52%, rgba(124, 92, 255, 0.14), transparent 74%),
+    radial-gradient(34% 45% at 94% 12%, rgba(198, 184, 255, 0.08), transparent 72%);
+}
+
+.reviewCard {
+  position: relative;
+  display: flex;
+  height: 100%;
+  min-height: 290px;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  padding: clamp(24px, 3vw, 38px);
+  background: rgba(255, 255, 255, 0.035);
+  transition:
+    transform 500ms var(--ease-out-expo),
+    border-color 350ms ease,
+    background-color 350ms ease,
+    box-shadow 500ms ease;
+}
+
+.reviewCard:hover {
+  transform: translateY(-5px);
+  border-color: rgba(198, 184, 255, 0.35);
+  background-color: rgba(255, 255, 255, 0.055);
+  box-shadow: 0 22px 70px -46px rgba(124, 92, 255, 0.55);
+}
+
+.featured {
+  min-height: 575px;
+  background:
+    radial-gradient(85% 74% at 87% 5%, rgba(137, 108, 255, 0.2), transparent 72%),
+    linear-gradient(145deg, #17203a 0%, #111626 58%, #10131e 100%);
+}
+
+.featured:hover {
+  background-color: #17203a;
+}
+
+.featured::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: -50%;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(143, 116, 255, 0.11), transparent 35%);
+  animation: glow-drift 16s ease-in-out infinite alternate;
+}
+
+.supporting {
+  min-height: 275px;
+}
+
+.orbit {
+  position: absolute;
+  top: -175px;
+  right: -165px;
+  width: 550px;
+  height: 550px;
+  border: 1px solid rgba(198, 184, 255, 0.14);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 72px rgba(198, 184, 255, 0.025),
+    0 0 0 144px rgba(198, 184, 255, 0.018);
+  transform: rotate(-18deg);
+  transition: transform 900ms var(--ease-out-expo);
+}
+
+.featured:hover .orbit {
+  transform: rotate(2deg) scale(1.04);
+}
+
+.avatar {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  place-items: center;
+  border: 1px solid rgba(198, 184, 255, 0.35);
+  border-radius: 50%;
+  background: rgba(198, 184, 255, 0.12);
+  color: #d9cfff;
+}
+
+@keyframes glow-drift {
+  from { transform: translate3d(-10%, -8%, 0); }
+  to { transform: translate3d(10%, 8%, 0); }
+}
+
+@media (max-width: 1023px) {
+  .featured { min-height: 440px; }
+}
+
+@media (max-width: 639px) {
+  .featured { min-height: 430px; }
+  .supporting { min-height: 280px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reviewCard,
+  .orbit { transition: none; }
+  .reviewCard:hover { transform: none; }
+  .featured::after { animation: none; }
+}

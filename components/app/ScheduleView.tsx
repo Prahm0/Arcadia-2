@@ -23,6 +23,7 @@ import ContextPanel, { type SubjectInfo } from "./schedule/ContextPanel";
 import DayPanel from "./schedule/DayPanel";
 import { MobileDaySchedule, MobileWeekSchedule } from "./schedule/MobileSchedule";
 import { usePlanner } from "./schedule/usePlanner";
+import { ScheduleMoreMenu } from "./schedule/ResetSchedule";
 import { periodFor, periodPosition, rollingPeriodFor } from "./schedule/period";
 import { ChevronIcon } from "./schedule/bits";
 import {
@@ -370,9 +371,12 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
             meta={`${title} · ${meta}`}
             tour="schedule"
             action={
-              <AppButton variant="primary" onClick={() => addTask(mode === "day" ? anchor : null)} icon={<PlusIcon />}>
-                Add task
-              </AppButton>
+              <>
+                <AppButton variant="primary" onClick={() => addTask(mode === "day" ? anchor : null)} icon={<PlusIcon />}>
+                  Add task
+                </AppButton>
+                <ScheduleMoreMenu />
+              </>
             }
           />
           <div className="flex flex-col gap-4 px-4 pb-6 pt-4">
@@ -477,6 +481,7 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
               <AppButton variant="primary" onClick={() => addTask(mode === "day" ? anchor : null)} icon={<PlusIcon />} title="Add task (N)">
                 Add task
               </AppButton>
+              <ScheduleMoreMenu />
             </div>
           </div>
 

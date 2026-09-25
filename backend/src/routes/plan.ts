@@ -3,6 +3,7 @@ import { db } from "../db";
 import { getMonthPlan, makeMonthPlan } from "../lib/month-plan";
 import { getRecoveryAvailability, recoverPlan, RecoveryAlreadyUsedError, type RecoveryInput, type RecoveryReason } from "../lib/recovery";
 import { replan } from "../lib/replan";
+import { resetCounts, resetSchedule } from "../lib/reset";
 import { awardXp } from "../lib/rewards";
 import { XP } from "../../../shared/progress";
 import type { Env, Variables } from "../types";
@@ -49,6 +50,21 @@ plan.post("/schedule", async (c) => {
   const database = db(c.env.DB);
   await replan(database, userId);
   return c.json({ ok: true, refining: true });
+});
+
+/** What a reset would undo, so the confirm can say so (or say there's nothing to reset). */
+plan.get("/reset", async (c) => {
+  const { userId } = c.get("session");
+  return c.json(await resetCounts(db(c.env.DB), userId));
+});
+
+/**
+ * Resetting the schedule: the blocks the student moved or removed from now on
+ * go back to where Arcad planned them. Everything they've done stays.
+ */
+plan.post("/reset", async (c) => {
+  const { userId } = c.get("session");
+  return c.json({ ok: true, ...(await resetSchedule(db(c.env.DB), userId)) });
 });
 
 /**

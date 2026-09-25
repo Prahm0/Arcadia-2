@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
-import type { CompanionProfile, PlannerTask } from "@/lib/api/types";
+import { useMemo, type ReactNode } from "react";
+import type { PlannerTask } from "@/lib/api/types";
 import { formatDueSoon, formatDurationMinutes } from "@/lib/api/time";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { START_STREAK_HINT } from "@/lib/app/streaks";
 import { useStreak } from "@/lib/app/useStreak";
-import Companion from "./Companion";
-import CompanionSheet from "./CompanionSheet";
+import { upcomingExamReadiness, type ExamReadiness } from "@/lib/app/examReadiness";
 import RailStreakCard from "./sky/RailStreakCard";
 
 /**
@@ -19,6 +18,17 @@ import RailStreakCard from "./sky/RailStreakCard";
 export default function TodayRail() {
   const { data } = useDashboardData();
   const timezone = data.profile?.timezone || data.user.timezone || "Australia/Brisbane";
+  const urgency = useMemo(() => new Map(upcomingExamReadiness(data).map((item) => [item.taskId, item])), [data]);
+  const deadlines = useMemo(
+    () => [...data.focusTasks].sort((a, b) => {
+      const urgentA = urgency.get(a.id);
+      const urgentB = urgency.get(b.id);
+      if (Boolean(urgentA) !== Boolean(urgentB)) return urgentA ? -1 : 1;
+      if (urgentA && urgentB && urgentA.behindMinutes !== urgentB.behindMinutes) return urgentB.behindMinutes - urgentA.behindMinutes;
+      return Date.parse(a.dueAt) - Date.parse(b.dueAt);
+    }),
+    [data.focusTasks, urgency],
+  );
 
   return (
     <aside
@@ -26,11 +36,10 @@ export default function TodayRail() {
       className="self-start overflow-hidden rounded-xl @3xl/main:sticky @3xl/main:top-6"
       style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
     >
-      <CompanionSection />
       <WeekSection days={data.analytics.days ?? []} todayMinutes={Number(data.analytics.todayMinutes ?? 0)} />
       <StreakSection />
       <RailStreakCard />
-      <DeadlinesSection tasks={data.focusTasks} timezone={timezone} />
+      <DeadlinesSection tasks={deadlines} timezone={timezone} urgency={urgency} />
       <Link
         href="/app/analytics"
         className="ui-hover flex items-center justify-between border-t px-5 py-3 text-[13px] font-medium"
@@ -61,63 +70,6 @@ function Section({ title, aside, children }: { title: string; aside?: ReactNode;
   );
 }
 
-function CompanionSection() {
-  const { data } = useDashboardData();
-  const [open, setOpen] = useState(false);
-  const companion = data.companion;
-  const profile = normalizeProfile(companion?.profile);
-  const level = Math.max(1, Math.min(4, Number(companion?.level ?? 1)));
-  const focused = Number(companion?.focusedMinutes ?? 0);
-  const next = companion?.nextLevelMinutes ?? null;
-  const previous = [0, 300, 1200, 3000][level - 1];
-  const progress = next ? Math.min(1, (focused - previous) / (next - previous)) : 1;
-
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="ui-hover flex w-full items-center gap-4 px-5 pb-4 pt-5 text-left"
-        aria-label={`${profile.name}, stage ${level}. Customise your companion`}
-      >
-        <Companion
-          form={profile.form}
-          palette={profile.palette}
-          accessory={profile.accessory}
-          level={level}
-          state={companion?.state === "recovering" ? "recovering" : "ready"}
-          size={72}
-        />
-        <span className="min-w-0 flex-1">
-          <span className="flex items-baseline justify-between gap-2">
-            <span className="truncate text-[16px] font-semibold tracking-[-0.01em]" style={{ color: "var(--app-text)" }}>
-              {profile.name}
-            </span>
-            <span className="shrink-0 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
-              Stage {level}
-            </span>
-          </span>
-          <span
-            className="mt-2.5 block h-[3px] overflow-hidden rounded-[1px]"
-            style={{ background: "var(--app-border)" }}
-            aria-hidden="true"
-          >
-            <span
-              className="block h-full"
-              style={{ width: `${Math.max(2, progress * 100)}%`, background: "var(--app-text)", transition: "width 0.5s var(--ease-out-expo)" }}
-            />
-          </span>
-          <span className="mt-1.5 block text-[12.5px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
-            {next
-              ? `${formatDurationMinutes(Math.max(1, next - focused))} of focus to stage ${level + 1}`
-              : `${formatDurationMinutes(focused)} focused, fully grown`}
-          </span>
-        </span>
-      </button>
-      <CompanionSheet open={open} onClose={() => setOpen(false)} initial={profile} />
-    </>
-  );
-}
 
 function WeekSection({ days, todayMinutes }: { days: Array<{ date: string; minutes: number }>; todayMinutes: number }) {
   const total = days.reduce((sum, day) => sum + day.minutes, 0);
@@ -188,7 +140,7 @@ function StreakSection() {
   );
 }
 
-function DeadlinesSection({ tasks, timezone }: { tasks: PlannerTask[]; timezone: string }) {
+function DeadlinesSection({ tasks, timezone, urgency }: { tasks: PlannerTask[]; timezone: string; urgency: Map<string, ExamReadiness> }) {
   return (
     <Section title="Due next">
       {tasks.length === 0 ? (
@@ -200,7 +152,7 @@ function DeadlinesSection({ tasks, timezone }: { tasks: PlannerTask[]; timezone:
           {tasks.slice(0, 3).map((task) => (
             <li key={task.id} className="min-w-0">
               <p className="truncate text-[13.5px] font-medium" style={{ color: "var(--app-text)" }}>
-                {task.title}
+                {task.title}{urgency.has(task.id) ? <span className="ml-1.5 rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold" style={{ background: "color-mix(in oklab, var(--app-danger) 11%, var(--app-surface))", color: "var(--app-danger)" }}>Urgent</span> : null}
               </p>
               <p className="mt-0.5 truncate text-[12px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
                 {task.subject ? `${task.subject} · ` : ""}
@@ -224,16 +176,4 @@ function Chevron() {
       <path d="M8 5l5 5-5 5" />
     </svg>
   );
-}
-
-function normalizeProfile(input: unknown): CompanionProfile {
-  const raw = input && typeof input === "object" ? (input as Record<string, unknown>) : {};
-  const name = typeof raw.name === "string" && raw.name.trim() ? raw.name.slice(0, 40) : "Star";
-  const form = raw.form === "comet" || raw.form === "nebula" ? raw.form : "orb";
-  const palette = raw.palette === "aqua" || raw.palette === "coral" || raw.palette === "gold" ? raw.palette : "violet";
-  const accessory =
-    raw.accessory === "ring" || raw.accessory === "star" || raw.accessory === "book" || raw.accessory === "headphones"
-      ? raw.accessory
-      : "none";
-  return { name, form, palette, accessory };
 }

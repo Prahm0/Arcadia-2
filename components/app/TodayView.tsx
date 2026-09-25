@@ -45,6 +45,7 @@ export default function TodayView() {
   const [showTaskSheet, setShowTaskSheet] = useState(false);
   const [showLife, setShowLife] = useState(false);
   const [lifeAutoReason, setLifeAutoReason] = useState<string | null>(null);
+  const [lifeAutoDeadline, setLifeAutoDeadline] = useState<{ title: string; subject: string | null; dueAt: string } | null>(null);
   const [celebrateId, setCelebrateId] = useState<{ id: string; at: number } | null>(null);
   const [xpReward, setXpReward] = useState<number | null>(null);
   const [progressRefresh, setProgressRefresh] = useState(0);
@@ -94,8 +95,13 @@ export default function TodayView() {
   // open the recovery sheet pre-run, so the fix is one tap from the nudge.
   useEffect(() => {
     const onLife = (event: Event) => {
-      const reason = (event as CustomEvent<string>).detail ?? null;
+      const detail = (event as CustomEvent<{ reason?: unknown; deadline?: unknown } | string>).detail;
+      const reason = typeof detail === "string" ? detail : detail?.reason;
+      const deadline = typeof detail === "object" && detail?.deadline && typeof detail.deadline === "object"
+        ? detail.deadline as { title: string; subject: string | null; dueAt: string }
+        : null;
       setLifeAutoReason(typeof reason === "string" ? reason : null);
+      setLifeAutoDeadline(deadline);
       setShowLife(true);
     };
     window.addEventListener("arcadia:life", onLife);
@@ -241,9 +247,11 @@ export default function TodayView() {
       <LifeHappened
         open={showLife}
         autoReason={lifeAutoReason}
+        autoDeadline={lifeAutoDeadline}
         onClose={() => {
           setShowLife(false);
           setLifeAutoReason(null);
+          setLifeAutoDeadline(null);
         }}
       />
       <EventDetailSheet

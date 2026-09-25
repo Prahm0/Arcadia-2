@@ -16,6 +16,7 @@ import NewTaskSheet from "./NewTaskSheet";
 import TaskDetailSheet from "./TaskDetailSheet";
 import { categoryColor } from "@/lib/app/categoryColors";
 import { subjectCount } from "@/lib/app/subjectCount";
+import { upcomingExamReadiness, type ExamReadiness } from "@/lib/app/examReadiness";
 
 export default function DeadlinesView() {
   const { data, patch, reload } = useDashboardData();
@@ -54,10 +55,12 @@ export default function DeadlinesView() {
     return map;
   }, [data.subjects]);
 
-  const grouped = useMemo(() => groupTasks(data.tasks, timezone), [data.tasks, timezone]);
+  const readiness = useMemo(() => upcomingExamReadiness(data), [data]);
+  const readinessByTask = useMemo(() => new Map(readiness.map((item) => [item.taskId, item])), [readiness]);
+  const grouped = useMemo(() => groupTasks(data.tasks, timezone, readinessByTask), [data.tasks, timezone, readinessByTask]);
   const pending = useMemo(
-    () => data.tasks.filter((task) => task.status === "pending").sort((a, b) => Date.parse(a.dueAt) - Date.parse(b.dueAt)),
-    [data.tasks],
+    () => sortByUrgency(data.tasks.filter((task) => task.status === "pending"), readinessByTask),
+    [data.tasks, readinessByTask],
   );
   const total = pending.length;
   const totalMinutes = pending.reduce((sum, task) => sum + task.remainingMinutes, 0);
@@ -213,6 +216,7 @@ export default function DeadlinesView() {
                   timezone={timezone}
                   color={subjectColor.get((task.subject || "").toLowerCase())}
                   prep={prepByTask.get(task.id)}
+                  urgency={readinessByTask.get(task.id)}
                   onClick={() => setDetailTask(task)}
                   onContextMenu={taskMenu(task)}
                 />
@@ -322,12 +326,13 @@ function DeadlineSnapshot({ label, value, detail, tone = "default" }: { label: s
 }
 
 function DeadlineRow({
-  task, timezone, color, prep, onClick, onContextMenu,
+  task, timezone, color, prep, urgency, onClick, onContextMenu,
 }: {
   task: PlannerTask;
   timezone: string;
   color?: string;
   prep?: { planned: number; done: number };
+  urgency?: ExamReadiness;
   onClick: () => void;
   onContextMenu: (event: React.MouseEvent) => void;
 }) {
@@ -347,9 +352,12 @@ function DeadlineRow({
       >
         <DeadlineDateBadge state={state} />
         <div className="min-w-0 flex-1">
-          <p className="text-[15px] font-medium tracking-[-0.005em]" style={{ color: "var(--app-text)" }}>
-            {task.title}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="min-w-0 truncate text-[15px] font-medium tracking-[-0.005em]" style={{ color: "var(--app-text)" }}>
+              {task.title}
+            </p>
+            {urgency ? <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ color: "var(--app-danger)", background: "color-mix(in oklab, var(--app-danger) 11%, var(--app-surface))" }}>Urgent</span> : null}
+          </div>
           <p className="mt-1 text-[12.5px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
             {task.subject ? (
               <>
@@ -409,11 +417,11 @@ function DeadlineDateBadge({ state }: { state: ReturnType<typeof deadlineState> 
   );
 }
 
-function groupTasks(tasks: PlannerTask[], timezone: string) {
+function groupTasks(tasks: PlannerTask[], timezone: string, readiness: Map<string, ExamReadiness>) {
   const now = new Date();
   const todayKey = dateKey(now.toISOString(), timezone);
   const groups: Record<string, PlannerTask[]> = { "Overdue": [], "This week": [], "Next week": [], "Later": [] };
-  const pending = tasks.filter((t) => t.status === "pending").sort((a, b) => Date.parse(a.dueAt) - Date.parse(b.dueAt));
+  const pending = sortByUrgency(tasks.filter((t) => t.status === "pending"), readiness);
   for (const task of pending) {
     const dueKey = dateKey(task.dueAt, timezone);
     const days = daysBetween(todayKey, dueKey);
@@ -425,6 +433,16 @@ function groupTasks(tasks: PlannerTask[], timezone: string) {
   return Object.entries(groups)
     .filter(([, list]) => list.length > 0)
     .map(([label, list]) => ({ label, tasks: list, minutes: list.reduce((sum, task) => sum + task.remainingMinutes, 0) }));
+}
+
+function sortByUrgency(tasks: PlannerTask[], readiness: Map<string, ExamReadiness>) {
+  return [...tasks].sort((a, b) => {
+    const urgentA = readiness.get(a.id);
+    const urgentB = readiness.get(b.id);
+    if (Boolean(urgentA) !== Boolean(urgentB)) return urgentA ? -1 : 1;
+    if (urgentA && urgentB && urgentA.behindMinutes !== urgentB.behindMinutes) return urgentB.behindMinutes - urgentA.behindMinutes;
+    return Date.parse(a.dueAt) - Date.parse(b.dueAt);
+  });
 }
 
 function deadlineState(iso: string, timezone: string) {

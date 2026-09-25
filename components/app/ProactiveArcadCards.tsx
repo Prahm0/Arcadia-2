@@ -59,7 +59,7 @@ export default function ProactiveArcadCards({ limit = 2, compact = false }: Proa
     dismiss(card.id);
     if (action.lifeReason) {
       // Today listens for this and opens the recovery sheet, pre-run.
-      window.dispatchEvent(new CustomEvent("arcadia:life", { detail: action.lifeReason }));
+      window.dispatchEvent(new CustomEvent("arcadia:life", { detail: { reason: action.lifeReason, deadline: action.lifeDeadline } }));
     } else if (action.href) {
       router.push(action.href);
     } else if (action.arcadPrompt) {

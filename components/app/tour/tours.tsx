@@ -81,11 +81,12 @@ export const TOUR_VERSION = 1;
 // changes, change its step in the same commit.
 export const TOURS: Record<TourId, Tour> = {
   today: {
-    title: "Today",
+    title: "Arcadia",
+    version: 2,
     steps: [
       {
-        title: "Today's focus list",
-        body: "Focus lists the study blocks Arcadia planned for today: what each one is for, how long it takes and when it starts.",
+        title: "Start with what is next",
+        body: "Today shows the next study block Arcadia planned for you, with the subject, purpose and time it needs.",
         visual: (
           <Window width={300} title="Focus · what matters today">
             <Row bar={CAT.study} title="Kinematics review" meta="Physics · 4:00pm" right={<Mono>50m</Mono>} />
@@ -95,71 +96,36 @@ export const TOURS: Record<TourId, Tour> = {
         ),
       },
       {
-        title: "Start, tick or skip",
-        body: "Click a block to start a focus session on it. Tick the box when it's done, or mark it Missed if it didn't happen.",
+        title: "When life happens, rebuild",
+        body: "A block did not happen or a deadline moved? Tap Life happened and Arcadia makes room while protecting the important work.",
         visual: (
-          <Window width={300} title="Focus">
-            <Row bar="var(--app-border)" title="Kinematics review" meta="Physics" done right={<Check done />} />
-            <Row
-              bar={CAT.study}
-              title="Lab report draft"
-              meta="Chemistry · 6:30pm"
-              highlight
-              right={
-                <span className="flex items-center gap-2">
-                  <span className="text-[9.5px]" style={{ color: "var(--app-accent-strong)" }}>Focus →</span>
-                  <Check />
-                </span>
-              }
-            />
-            <Row
-              bar={CAT.study}
-              title="Essay plan"
-              meta="English · 8:00pm"
-              right={
-                <span className="flex items-center gap-2">
-                  <span className="text-[9.5px]" style={{ color: "var(--app-text-muted)" }}>Missed</span>
-                  <Check />
-                </span>
-              }
-            />
-            <Pointer style={{ left: 120, top: 70 }} />
+          <Window width={300} title="Life happened">
+            <Row bar={CAT.school} title="Training moved to Thursday" meta="Make room for it" />
+            <Row bar={CAT.study} title="Physics revision" meta="Shifted to Wednesday · 45 min" highlight />
+            <div className="mt-2 flex justify-end"><MockButton size="sm" variant="primary">Rebuild my week</MockButton></div>
           </Window>
         ),
       },
       {
-        title: "The rest at a glance",
-        body: "The side column keeps your next deadlines, today's and this week's focus time, and your streak in view.",
+        title: "See your week clearly",
+        body: "Schedule shows your commitments in grey and your subject-coloured study blocks in the gaps. Subject progress shows what is done of the plan.",
         visual: (
-          <div className="grid w-[320px] grid-cols-[1fr_1.35fr] items-start gap-2">
-            <Stack gap={6}>
-              <Stat label="Streak" value="4" sub="days" />
-              <Stat label="Today · min" value="45" />
-              <Stat label="Week · hr" value="6.2" />
-            </Stack>
-            <Window width={180} title="Next deadlines">
-              <Row bar={CAT.rose} title="Chemistry lab report" meta="Due Fri" />
-              <Row bar={CAT.school} title="Complex numbers" meta="Due next Wed" />
-              <Row bar={CAT.extra} title="English essay" meta="Due 12 Oct" />
-            </Window>
-          </div>
+          <WeekGrid width={310} blocks={[
+            { day: 0, start: 0, length: 4, color: CAT.school, label: "School" },
+            { day: 1, start: 0, length: 4, color: CAT.school, label: "School" },
+            { day: 2, start: 0, length: 4, color: CAT.school, label: "School" },
+            { day: 0, start: 5, length: 2, color: CAT.study, label: "Physics" },
+            { day: 2, start: 5, length: 2, color: CAT.rose, label: "Chemistry" },
+          ]} />
         ),
       },
       {
-        title: "Add work as it arrives",
-        body: "Press New task, or N anywhere, the moment something is set. Arcadia fits it into your week before it's due.",
+        title: "Focus lights the sky",
+        body: "Start a focus session from your next block. Study days build your streak, focus minutes light stars and stars complete the cards you collect.",
         visual: (
-          <Window width={290} title="New task">
-            <Stack>
-              <MockInput label="Title" value="English essay draft" focused />
-              <div className="grid grid-cols-2 gap-2">
-                <MockInput label="Subject" value="English" />
-                <MockInput label="Due" value="Fri 26 Sep" />
-              </div>
-              <div className="flex justify-end">
-                <MockButton variant="primary">Add &amp; schedule</MockButton>
-              </div>
-            </Stack>
+          <Window width={280} title="Focus">
+            <div className="flex items-center justify-center py-2"><TimerRing time="45:00" label="Chemistry" progress={0.45} size={112} /></div>
+            <Row bar={CAT.study} title="Chemistry revision" meta="45 min · ready to start" right={<Check />} />
           </Window>
         ),
       },

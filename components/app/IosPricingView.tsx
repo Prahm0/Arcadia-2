@@ -37,6 +37,10 @@ export default function IosPricingView({ tiers }: { tiers: IosTier[] }) {
   const isGuest = isGuestEmail(data.user.email);
   const billingProvider = data.user.billingProvider ?? null;
   const hasSubscription = Boolean(data.user.hasSubscription);
+  // An App Store subscriber can switch plans right here: Apple treats buying
+  // the other tier in the same group as an upgrade or downgrade. Only a web
+  // (Stripe) subscription has to be changed where it was bought.
+  const lockedElsewhere = hasSubscription && billingProvider !== "app_store";
   const [interval, setInterval] = useState<RevenueCatInterval>("month");
   const [options, setOptions] = useState<IosPurchaseOption[]>([]);
   const [loadingOffers, setLoadingOffers] = useState(true);
@@ -88,7 +92,7 @@ export default function IosPricingView({ tiers }: { tiers: IosTier[] }) {
       router.push("/register");
       return;
     }
-    if (hasSubscription) {
+    if (lockedElsewhere) {
       setError("Your current subscription is already active. Manage it where you bought it before changing plans.");
       return;
     }
@@ -186,6 +190,7 @@ export default function IosPricingView({ tiers }: { tiers: IosTier[] }) {
               interval={interval}
               currentTier={currentTier}
               hasSubscription={hasSubscription}
+              lockedElsewhere={lockedElsewhere}
               billingProvider={billingProvider}
               isGuest={isGuest}
               loading={busy === "purchase"}
@@ -265,6 +270,7 @@ function IosTierCard({
   interval,
   currentTier,
   hasSubscription,
+  lockedElsewhere,
   billingProvider,
   isGuest,
   loading,
@@ -276,6 +282,7 @@ function IosTierCard({
   interval: RevenueCatInterval;
   currentTier: TierKey;
   hasSubscription: boolean;
+  lockedElsewhere: boolean;
   billingProvider: "stripe" | "app_store" | null;
   isGuest: boolean;
   loading: boolean;
@@ -339,8 +346,14 @@ function IosTierCard({
         ) : isFree ? (
           <AppButton variant="ghost" disabled>{hasSubscription ? "Paid plan active" : "Free plan"}</AppButton>
         ) : (
-          <AppButton variant={tier.highlighted ? "primary" : "secondary"} onClick={onPurchase} loading={loading} disabled={!option || hasSubscription}>
-            {isGuest ? `Sign up for ${tier.name}` : hasSubscription ? "Current subscription active" : `Start ${tier.name}`}
+          <AppButton variant={tier.highlighted ? "primary" : "secondary"} onClick={onPurchase} loading={loading} disabled={!option || lockedElsewhere}>
+            {isGuest
+              ? `Sign up for ${tier.name}`
+              : lockedElsewhere
+                ? "Current subscription active"
+                : hasSubscription
+                  ? `Switch to ${tier.name}`
+                  : `Start ${tier.name}`}
           </AppButton>
         )}
       </div>

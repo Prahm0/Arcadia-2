@@ -574,7 +574,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
         )}
 
         <main
-          className="@container/main flex-1 min-w-0 pb-[calc(env(safe-area-inset-bottom,0)+72px)] lg:pb-0"
+          className="@container/main flex-1 min-w-0 pb-[calc(env(safe-area-inset-bottom,0)+var(--mobile-nav-h))] lg:pb-0"
         >
           {isGuestEmail(user?.email) ? (
             <GuestBanner />

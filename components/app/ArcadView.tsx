@@ -496,7 +496,7 @@ function ArcadPage() {
   );
 
   return (
-    <div className="flex h-[calc(100svh-3rem-env(safe-area-inset-top,0px)-72px-env(safe-area-inset-bottom,0px))] min-h-[420px] lg:h-[calc(100svh-2.5rem)]">
+    <div className="flex h-[calc(100svh-3rem-env(safe-area-inset-top,0px)-var(--mobile-nav-h)-env(safe-area-inset-bottom,0px))] min-h-[420px] lg:h-[calc(100svh-2.5rem)]">
       {/* Past chats: a column on wide screens, a drawer otherwise. */}
       <aside
         className="hidden shrink-0 overflow-hidden transition-[width] duration-200 ease-out motion-reduce:transition-none xl:block"

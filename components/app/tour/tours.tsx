@@ -288,7 +288,7 @@ export const TOURS: Record<TourId, Tour> = {
 
   schedule: {
     title: "Schedule",
-    version: 2,
+    version: 3,
     steps: [
       {
         title: "Your term at a glance",
@@ -358,27 +358,6 @@ export const TOURS: Record<TourId, Tour> = {
             />
             <Pointer style={{ left: 196, top: 70 }} />
           </div>
-        ),
-      },
-      {
-        title: "Habits beside the plan",
-        body: "Tick off habits from the panel on the right in any view, and keep their streaks going. Press H to open or close it.",
-        visual: (
-          <Window width={220}>
-            <Stack gap={7} style={{ padding: "2px 4px" }}>
-              {[
-                { name: "Wake up at 6:00", done: true, streak: 6 },
-                { name: "Read 10 pages", done: true, streak: 3 },
-                { name: "Gym", done: false, streak: 0 },
-              ].map((habit) => (
-                <div key={habit.name} className="flex items-center gap-2 text-[10.5px]" style={{ color: "var(--app-text)" }}>
-                  <span className="h-3 w-3 rounded-[3px]" style={{ background: habit.done ? "var(--app-text)" : undefined, boxShadow: habit.done ? undefined : "inset 0 0 0 1px var(--app-border-strong)" }} />
-                  <span className="flex-1" style={{ textDecoration: habit.done ? "line-through" : undefined, color: habit.done ? "var(--app-text-muted)" : "var(--app-text)" }}>{habit.name}</span>
-                  {habit.streak ? <span style={{ color: "var(--app-text-muted)" }}>{habit.streak}</span> : null}
-                </div>
-              ))}
-            </Stack>
-          </Window>
         ),
       },
       {

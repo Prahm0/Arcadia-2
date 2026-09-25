@@ -73,6 +73,7 @@ export function useSessionReminders(): void {
               title: minutesUntil <= 0 ? "Sleep · starting now" : `Sleep · in ${minutesUntil} min`,
               body: `Time to wind down. Rest helps you recharge for tomorrow. Bedtime: ${formatClock(event.startAt, timezone)}.`,
               tag: `arcadia:event:${event.id}`,
+              href: `/app/schedule?eventId=${encodeURIComponent(event.id)}`,
             });
             return;
           }
@@ -85,6 +86,7 @@ export function useSessionReminders(): void {
             title: minutesUntil <= 0 ? `${subject} · starting now` : `${subject} · in ${minutesUntil} min`,
             body: `${body} · ${formatClock(event.startAt, timezone)}`,
             tag: `arcadia:event:${event.id}`,
+            href: `/app/focus?eventId=${encodeURIComponent(event.id)}`,
           });
         }, delay);
         timersRef.current.push(id);

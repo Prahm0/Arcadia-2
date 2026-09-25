@@ -324,6 +324,7 @@ export async function planSession(env: Env, database: Database, userId: string, 
       ],
       PLAN_SCHEMA,
       300,
+      { usage: { feature: "session_plan", userId } },
     );
     if (!reply || !clip(reply.topic, 60)) return fallbackPlan(inputs);
     return {

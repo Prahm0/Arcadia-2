@@ -810,9 +810,38 @@ export const dayLayouts = sqliteTable(
     layout: text("layout"),
     inputsKey: text("inputs_key"),
     wantedKey: text("wanted_key"),
+    // When wantedKey last changed, so the cron waits for edits to settle.
+    wantedAt: integer("wanted_at"),
     // When a refresh started, so the cron doesn't run two at once.
     workingAt: integer("working_at"),
     updatedAt: integer("updated_at").notNull().default(now),
   },
   (t) => [index("day_layouts_wanted_idx").on(t.wantedKey)],
+);
+
+/**
+ * Tokens and estimated cost of each call to the AI provider, so spend can be
+ * broken down by feature, model and tier. `costMicros` is millionths of a
+ * US dollar, null for a model lib/openai.ts has no price for.
+ */
+export const aiUsage = sqliteTable(
+  "ai_usage",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+    feature: text("feature").notNull(),
+    model: text("model").notNull(),
+    serviceTier: text("service_tier"),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    cachedTokens: integer("cached_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    reasoningTokens: integer("reasoning_tokens").notNull().default(0),
+    costMicros: integer("cost_micros"),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [
+    index("ai_usage_created_idx").on(t.createdAt),
+    index("ai_usage_feature_created_idx").on(t.feature, t.createdAt),
+    index("ai_usage_user_created_idx").on(t.userId, t.createdAt),
+  ],
 );

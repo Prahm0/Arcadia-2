@@ -333,7 +333,7 @@ async function arcadPlan(env: Env, inputs: PlanInputs, effort: PlanEffort): Prom
         messages,
         PLAN_SCHEMA,
         isReasoningModel(model) ? replyBudget(true, premium) : 1400,
-        { model, reasoningEffort: effort.reasoningEffort },
+        { model, reasoningEffort: effort.reasoningEffort, usage: { feature: "month_plan", userId: inputs.profile.userId } },
       );
       break;
     } catch (err) {

@@ -28,6 +28,10 @@ export interface Env {
   REVENUECAT_ENTITLEMENT_PRO: string;
   REVENUECAT_ENTITLEMENT_MAX: string;
   APPLE_BUNDLE_ID: string;
+  // PostHog project key and host for server-side events (lib/posthog.ts).
+  // The key is the same public one the browser ships with.
+  POSTHOG_KEY?: string;
+  POSTHOG_HOST?: string;
 
   // secrets (wrangler secret put)
   OPENAI_API_KEY?: string;

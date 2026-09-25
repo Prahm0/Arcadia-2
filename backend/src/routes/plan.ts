@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { db } from "../db";
 import { getMonthPlan, makeMonthPlan } from "../lib/month-plan";
+import { track } from "../lib/posthog";
 import { getRecoveryAvailability, recoverPlan, RecoveryAlreadyUsedError, type RecoveryInput, type RecoveryReason } from "../lib/recovery";
 import { replan } from "../lib/replan";
 import { resetCounts, resetSchedule } from "../lib/reset";
@@ -64,7 +65,9 @@ plan.get("/reset", async (c) => {
  */
 plan.post("/reset", async (c) => {
   const { userId } = c.get("session");
-  return c.json({ ok: true, ...(await resetSchedule(db(c.env.DB), userId)) });
+  const counts = await resetSchedule(db(c.env.DB), userId);
+  track(c, userId, "schedule_reset", { moved: counts.moved, removed: counts.removed });
+  return c.json({ ok: true, ...counts });
 });
 
 /**

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent, type PointerEvent, type ReactNode } from "react";
 import { api, saveCsrf } from "@/lib/api/client";
-import { analytics } from "@/lib/analytics/events";
+import { analytics, resetAnalytics } from "@/lib/analytics/events";
 import type { AuthUser, Notice, PlannerEvent } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
@@ -181,6 +181,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
       /* still clear locally */
     } finally {
       saveCsrf(null);
+      resetAnalytics();
       router.push("/login");
     }
   }

@@ -26,7 +26,12 @@ function track(event: string, props?: Record<string, unknown>): void {
   posthog.capture(event, props);
 }
 
-/** The acquisition-to-revenue funnel, named once. */
+/**
+ * The acquisition-to-revenue funnel, named once. Anything the backend saves
+ * (payments, focus sessions, decks, files…) is sent from the Worker instead,
+ * see backend/src/lib/posthog.ts, so ad blockers and closed tabs don't drop
+ * it. subscription_activated/changed/ended come from the billing webhooks.
+ */
 export const analytics = {
   signupStarted: () => track("signup_started"),
   signupCompleted: () => track("signup_completed"),
@@ -35,7 +40,6 @@ export const analytics = {
     track("onboarding_completed", { subjectCount, taskCount }),
   checkoutStarted: (plan: string, interval: string) =>
     track("checkout_started", { plan, interval }),
-  subscriptionActivated: (tier: string) => track("subscription_activated", { tier }),
   arcadMessageSent: () => track("arcad_message_sent"),
   /**
    * The core USP loop: a student told Arcad life changed and the plan reflowed.

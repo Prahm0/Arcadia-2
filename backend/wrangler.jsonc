@@ -39,7 +39,11 @@
     // below is set with `wrangler secret put`.
     "REVENUECAT_ENTITLEMENT_PRO": "pro",
     "REVENUECAT_ENTITLEMENT_MAX": "max",
-    "APPLE_BUNDLE_ID": "app.arcadiahq.arcadia"
+    "APPLE_BUNDLE_ID": "app.arcadiahq.arcadia",
+    // PostHog for server-side events (lib/posthog.ts). The project key is
+    // public by design; it's the same one the browser bundle ships with.
+    "POSTHOG_KEY": "phc_kWBHKrQWB7pvNdMT4GhnXRtnxZrzqR9x6r2VPEtAjYJA",
+    "POSTHOG_HOST": "https://eu.i.posthog.com"
   },
 
   "d1_databases": [

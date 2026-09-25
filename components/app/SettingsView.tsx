@@ -34,6 +34,7 @@ import DeleteAccountModal from "./DeleteAccountModal";
 import { isNative, useNativeIOS } from "@/lib/capacitor/platform";
 import { getIosSubscriptionManagementUrl, logOutRevenueCat } from "@/lib/capacitor/revenuecat";
 import { DeveloperFeedback, FeedbackForm } from "./Feedback";
+import CalendarExport from "./CalendarExport";
 
 interface AccountResponse {
   account: {
@@ -615,6 +616,11 @@ export default function SettingsView() {
           </div>
         </Card>
 
+        <Card id="calendar-export" className="scroll-mt-24">
+          <SectionHeader label="Add to your calendar" />
+          <CalendarExport isGuest={isGuest} />
+        </Card>
+
         <Card id="calendars" className="scroll-mt-24">
           <SectionHeader label="Google Calendar" />
           {!hasPaidPlan ? <PlanGate onUpgrade={() => router.push("/app/pricing")} /> : null}
@@ -633,9 +639,9 @@ export default function SettingsView() {
               <p className="mt-1.5 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
                 {google.connected
                   ? google.lastSyncAt
-                    ? `Last sync ${relativeTime(google.lastSyncAt)}. Imported events show as fixed on Schedule; study blocks Arcadia creates are written to a dedicated Arcadia calendar.`
+                    ? `Last sync ${relativeTime(google.lastSyncAt)}. Imported events show as fixed on Schedule.`
                     : "Just connected. First sync is running in the background, refresh in a minute."
-                  : "Import school, work, and personal events so Arcadia plans study around them. Arcadia writes generated study blocks to its own Arcadia calendar; nothing else is changed."}
+                  : "Import school, work, and personal events so Arcadia plans study around them. Read-only, so nothing in Google changes. To see your study blocks in Google, use Add to your calendar above."}
               </p>
             </div>
             <div className="flex flex-shrink-0 items-center gap-2">

@@ -345,6 +345,22 @@ export const calendarFeeds = sqliteTable(
   (t) => [index("calendar_feeds_user_idx").on(t.userId)],
 );
 
+// One private subscription link per student, so Google Calendar and Apple
+// Calendar can show Arcadia's study blocks and deadlines. The token is the
+// whole credential for the read-only feed; rotating it cuts off old copies.
+export const calendarExports = sqliteTable(
+  "calendar_exports",
+  {
+    userId: text("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    token: text("token").notNull(),
+    createdAt: integer("created_at").notNull().default(now),
+    lastFetchedAt: integer("last_fetched_at"),
+  },
+  (t) => [uniqueIndex("calendar_exports_token_idx").on(t.token)],
+);
+
 export const studySessions = sqliteTable(
   "study_sessions",
   {

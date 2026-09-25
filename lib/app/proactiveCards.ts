@@ -3,6 +3,7 @@ import type { StreakSummary } from "@/lib/app/streaks";
 import { STREAK_MILESTONES } from "@/lib/app/streaks";
 import { previousWeekWindow, weekWindowContaining, buildWeeklyReview } from "@/lib/app/weeklyReview";
 import { dateKey } from "@/lib/api/time";
+import { upcomingExamReadiness } from "./examReadiness";
 
 export type ProactiveTone = "info" | "celebrate" | "warn";
 
@@ -13,6 +14,8 @@ export interface ProactiveAction {
   arcadPrompt?: string;
   /** Opens the "Life happened" recovery sheet on Today, pre-run with this reason. */
   lifeReason?: string;
+  /** Optional values to pre-fill the recovery sheet's new-deadline form. */
+  lifeDeadline?: { title: string; subject: string | null; dueAt: string };
   /** Optional tone override; primary defaults to accent. */
   variant?: "primary" | "ghost";
 }
@@ -20,7 +23,7 @@ export interface ProactiveAction {
 export interface ProactiveCard {
   /** Stable per-event id used for dismissal storage. */
   id: string;
-  kind: "deadline-24h" | "streak-milestone" | "low-week" | "plan-slipped";
+  kind: "exam-readiness" | "deadline-24h" | "streak-milestone" | "low-week" | "plan-slipped";
   tone: ProactiveTone;
   eyebrow: string;
   title: string;
@@ -72,6 +75,31 @@ export function buildProactiveCards(
           : `You slipped past ${slipped.length} study blocks today. Want me to rebuild the rest of your week around them?`,
       actions: [{ label: "Rebalance my week", lifeReason: "missed", variant: "primary" }],
     });
+  }
+
+  // --- Exam readiness ---
+  // Assessments already have real study blocks. Compare the blocks that have
+  // elapsed with the minutes actually completed, then offer the same recovery
+  // flow a student can use anywhere else in Arcadia.
+  const readiness = upcomingExamReadiness(data, now)[0];
+  if (readiness) {
+    const task = data.tasks.find((candidate) => candidate.id === readiness.taskId);
+    if (task) {
+      const due = readiness.daysLeft === 0 ? "today" : readiness.daysLeft === 1 ? "tomorrow" : `in ${readiness.daysLeft} days`;
+      cards.push({
+        id: `exam-readiness:${task.id}:${dateKey(task.dueAt, timezone)}`,
+        kind: "exam-readiness",
+        tone: "warn",
+        eyebrow: "Urgent prep",
+        title: `${task.title} is ${due}. You are ${readiness.behindMinutes} min behind on prep.`,
+        actions: [{
+          label: "Fix my week",
+          lifeReason: "new_deadline",
+          lifeDeadline: { title: task.title, subject: task.subject ?? null, dueAt: task.dueAt },
+          variant: "primary",
+        }],
+      });
+    }
   }
 
   // --- Deadline within 24h ---

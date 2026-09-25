@@ -44,11 +44,13 @@ export default function LifeHappened({
   open,
   onClose,
   autoReason = null,
+  autoDeadline = null,
 }: {
   open: boolean;
   onClose: () => void;
   /** When opened from a proactive nudge, run this reason straight away. */
   autoReason?: string | null;
+  autoDeadline?: { title: string; subject: string | null; dueAt: string } | null;
 }) {
   const { data, reload } = useDashboardData();
   const tz = data.profile?.timezone || (typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "Australia/Brisbane");
@@ -103,10 +105,15 @@ export default function LifeHappened({
     ranAuto.current = true;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setReason(match.key);
+    if (match.key === "new_deadline" && autoDeadline) {
+      setDlTitle(autoDeadline.title);
+      setDlSubject(autoDeadline.subject ?? "");
+      setDlDue(autoDeadline.dueAt.slice(0, 10));
+    }
     if (!match.needsInput) void run(match.key);
     // run is stable for our purposes; guarded by ranAuto so it fires once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, autoReason, result]);
+  }, [open, autoReason, autoDeadline, result]);
 
   if (!open) return null;
 

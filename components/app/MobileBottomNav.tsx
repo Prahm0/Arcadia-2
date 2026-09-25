@@ -23,8 +23,8 @@ function icon(path: ReactNode) {
 }
 
 /**
- * Fixed bottom navigation for mobile. Five slots, Today, Schedule, Add, Arcad,
- * More, sized to the platform tap target (56 px column, min 44 px control).
+ * Fixed bottom navigation for mobile. Five slots, Today, Schedule, Sessions,
+ * Arcad, More (new tasks come from the button on Today and Deadlines), sized to the platform tap target (56 px column, min 44 px control).
  * Respects the iOS home-indicator safe area via env(safe-area-inset-bottom).
  */
 export default function MobileBottomNav() {
@@ -53,9 +53,11 @@ export default function MobileBottomNav() {
       matcher: (p) => p.startsWith("/app/schedule"),
     },
     {
-      key: "add",
-      label: "Add",
-      icon: icon(<><circle cx="12" cy="12" r="9" /><path d="M12 8v8M8 12h8" /></>),
+      key: "sessions",
+      label: "Sessions",
+      href: "/app/sessions",
+      icon: icon(<><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="3.5" /></>),
+      matcher: (p) => p.startsWith("/app/sessions"),
     },
     {
       key: "arcad",
@@ -72,11 +74,6 @@ export default function MobileBottomNav() {
   ];
 
   function trigger(slot: Slot) {
-    if (slot.key === "add") {
-      // Handoff to Today, TodayView reads ?new=1 and opens New Task on mount.
-      router.push("/app?new=1");
-      return;
-    }
     if (slot.key === "more") {
       setMoreOpen(true);
       return;
@@ -99,7 +96,6 @@ export default function MobileBottomNav() {
         <ul className="mx-auto flex max-w-[560px] items-stretch justify-between">
           {slots.map((slot) => {
             const active = slot.matcher ? slot.matcher(pathname) : false;
-            const isAdd = slot.key === "add";
             return (
               <li key={slot.key} className="flex-1">
                 {slot.href && slot.key !== "more" ? (
@@ -125,20 +121,11 @@ export default function MobileBottomNav() {
                     )}
                     style={{
                       minHeight: 56,
-                      color: isAdd
-                        ? "var(--app-accent-strong)"
-                        : active
-                          ? "var(--app-accent-strong)"
-                          : "var(--app-text-muted)",
+                      color: active ? "var(--app-accent-strong)" : "var(--app-text-muted)",
                     }}
-                    aria-label={isAdd ? "Add task" : slot.label}
+                    aria-label={slot.label}
                   >
-                    <span
-                      aria-hidden="true"
-                      style={isAdd ? { transform: "scale(1.1)" } : undefined}
-                    >
-                      {slot.icon}
-                    </span>
+                    <span aria-hidden="true">{slot.icon}</span>
                     <span>{slot.label}</span>
                   </button>
                 )}

@@ -91,7 +91,7 @@ function SearchPanel({ onClose, onNewTask, onShowShortcuts }: Omit<SearchDialogP
     }));
     const actions: Result[] = [
       { id: "action:task", group: "Actions", label: "New task", keywords: "add deadline assignment", icon: ICONS.plus, run: onNewTask },
-      { id: "action:focus", group: "Actions", label: "Start a focus session", keywords: "timer pomodoro study", icon: ICONS.focus, run: go("/app/focus") },
+      { id: "action:focus", group: "Actions", label: "Start a session", keywords: "timer pomodoro study", icon: ICONS.focus, run: go("/app/sessions") },
       { id: "action:arcad", group: "Actions", label: "Ask Arcad", keywords: "chat help ai", icon: ICONS.chat, run: () => openArcad() },
       { id: "action:deck", group: "Actions", label: "New card deck", keywords: "flashcards", icon: ICONS.plus, run: go("/app/cards?new=1") },
       { id: "action:sheet", group: "Actions", label: "New summary sheet", keywords: "notes", icon: ICONS.plus, run: go("/app/sheets?new=1") },
@@ -131,7 +131,7 @@ function SearchPanel({ onClose, onNewTask, onShowShortcuts }: Omit<SearchDialogP
           .join(" · "),
         keywords: event.subject ?? "",
         icon: ICONS.focus,
-        run: go(`/app/focus?eventId=${encodeURIComponent(event.id)}`),
+        run: go(`/app/sessions?eventId=${encodeURIComponent(event.id)}`),
       }));
     const subjects: Result[] = data.subjects.map((subject) => ({
       id: `subject:${subject.id}`,

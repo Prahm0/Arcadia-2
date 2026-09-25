@@ -67,10 +67,10 @@ export default function MenuBar({
       label: "File",
       entries: [
         { kind: "item", label: "New task…", shortcut: ["N"], onSelect: onNewTask },
-        { kind: "item", label: "New study room…", onSelect: () => go("/app/rooms") },
+        { kind: "item", label: "New study room…", onSelect: () => go("/app/sessions/rooms") },
         { kind: "item", label: "New card deck…", onSelect: () => go("/app/cards?new=1") },
         { kind: "item", label: "New summary sheet…", onSelect: () => go("/app/sheets?new=1") },
-        { kind: "item", label: "Start focus session", onSelect: () => go("/app/focus") },
+        { kind: "item", label: "Start a session", onSelect: () => go("/app/sessions") },
         { kind: "separator" },
         { kind: "item", label: "Your profile", shortcut: ["G", "P"], onSelect: () => go("/app/profile") },
         { kind: "item", label: "Settings", shortcut: ["G", ","], onSelect: () => go("/app/settings") },

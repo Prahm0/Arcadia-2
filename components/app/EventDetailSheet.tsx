@@ -519,9 +519,9 @@ export default function EventDetailSheet({
               </AppButton>
             ) : null}
             {isStudy && canAct && !rescheduling && !reasoning ? (
-              <Link href={`/app/focus?eventId=${encodeURIComponent(event.id)}`} onClick={onClose}>
+              <Link href={`/app/sessions?eventId=${encodeURIComponent(event.id)}`} onClick={onClose}>
                 <AppButton type="button" variant="secondary">
-                  Start focus
+                  Start session
                 </AppButton>
               </Link>
             ) : null}

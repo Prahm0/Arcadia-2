@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { api } from "@/lib/api/client";
 import { analytics } from "@/lib/analytics/events";
 import { useNativeIOS } from "@/lib/capacitor/platform";
 import {
   getIosPurchaseOptions,
-  iosIntroOfferEligible,
+  iosIntroOfferStatus,
   purchaseIosOption,
   type IosPurchaseOption,
 } from "@/lib/capacitor/revenuecat";
@@ -322,13 +323,29 @@ function NativeOnboardingPaywall({
     let active = true;
     void (async () => {
       try {
-        const pro = (await getIosPurchaseOptions(data.user.id)).find(
-          (option) => option.tier === "pro" && option.interval === "month" && option.introPriceString,
-        );
-        if (!pro || !(await iosIntroOfferEligible(data.user.id, pro.productIdentifier))) return;
-        if (active) setOffer(pro);
-      } catch {
-        /* no offer: Free is still one tap away */
+        const options = await getIosPurchaseOptions(data.user.id);
+        const proMonthly = options.find((option) => option.tier === "pro" && option.interval === "month");
+        const status = proMonthly?.introPriceString
+          ? await iosIntroOfferStatus(data.user.id, proMonthly.productIdentifier)
+          : null;
+        // 2 = eligible. Anything else means no offer; 1 (already subscribed
+        // before) is expected, the rest point at a setup problem worth seeing.
+        if (proMonthly && status === 2) {
+          if (active) setOffer(proMonthly);
+        } else if (status !== 1) {
+          Sentry.captureMessage("iOS intro offer not shown", {
+            level: "info",
+            extra: {
+              optionCount: options.length,
+              hasProMonthly: Boolean(proMonthly),
+              introPrice: proMonthly?.introPriceString ?? null,
+              eligibilityStatus: status,
+            },
+          });
+        }
+      } catch (cause) {
+        // No offer: Free is still one tap away.
+        Sentry.captureException(cause);
       }
     })();
     return () => {

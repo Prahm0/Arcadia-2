@@ -133,12 +133,15 @@ export async function purchaseIosOption(
  * Apple grants it once per subscription group, so anyone who has subscribed
  * before pays the normal price; we only advertise the offer when it's real.
  */
-export async function iosIntroOfferEligible(userId: string, productIdentifier: string): Promise<boolean> {
+/**
+ * Apple's intro-offer eligibility for this Apple ID: 0 unknown, 1 ineligible,
+ * 2 eligible, 3 no intro offer exists. Null when purchases aren't available.
+ */
+export async function iosIntroOfferStatus(userId: string, productIdentifier: string): Promise<number | null> {
   const purchases = (await purchasesFor(userId))?.purchases;
-  if (!purchases) return false;
+  if (!purchases) return null;
   const result = await purchases.checkTrialOrIntroductoryPriceEligibility({ productIdentifiers: [productIdentifier] });
-  // 2 = INTRO_ELIGIBILITY_STATUS_ELIGIBLE
-  return result[productIdentifier]?.status === 2;
+  return result[productIdentifier]?.status ?? null;
 }
 
 export async function restoreIosPurchases(userId: string): Promise<void> {

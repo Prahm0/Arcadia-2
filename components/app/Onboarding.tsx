@@ -138,6 +138,18 @@ interface Deadline {
   minutes: number;
 }
 const EMPTY_DEADLINE: Deadline = { title: "", subject: "", type: "assignment", dueOn: "", minutes: 180 };
+
+/**
+ * A new deadline starts due a week out, so it's valid straight away. iOS shows
+ * an empty date field as a blank box with no hint, which left students stuck
+ * on "needs a due date" without seeing where to set it.
+ */
+function newDeadline(): Deadline {
+  const due = new Date();
+  due.setDate(due.getDate() + 7);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return { ...EMPTY_DEADLINE, dueOn: `${due.getFullYear()}-${pad(due.getMonth() + 1)}-${pad(due.getDate())}` };
+}
 const MAX_DEADLINES = 8;
 const MAX_GOALS = 5;
 
@@ -877,7 +889,7 @@ export default function Onboarding({ userId, defaultName, defaultTimezone, onCom
                         onClick={() => setDeadlines((prev) => prev.filter((_, i) => i !== index))}
                       />
                     </div>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:items-end">
                       <Select value={item.subject} onChange={(subject) => updateDeadline(index, { subject })}>
                         <option value="">No subject</option>
                         {selectedSubjects.map((subject) => (
@@ -893,7 +905,9 @@ export default function Onboarding({ userId, defaultName, defaultTimezone, onCom
                           </option>
                         ))}
                       </Select>
-                      <TextInput type="date" value={item.dueOn} onChange={(dueOn) => updateDeadline(index, { dueOn })} />
+                      <Label text="Due">
+                        <TextInput type="date" value={item.dueOn} onChange={(dueOn) => updateDeadline(index, { dueOn })} />
+                      </Label>
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label="How much work is left">
                       <span className="mr-1 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
@@ -919,7 +933,7 @@ export default function Onboarding({ userId, defaultName, defaultTimezone, onCom
                 type="button"
                 variant="secondary"
                 className="self-start"
-                onClick={() => setDeadlines((prev) => [...prev, { ...EMPTY_DEADLINE }])}
+                onClick={() => setDeadlines((prev) => [...prev, newDeadline()])}
               >
                 {deadlines.length ? "Add another" : "Add a deadline"}
               </AppButton>

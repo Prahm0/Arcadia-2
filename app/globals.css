@@ -1671,6 +1671,25 @@ html[data-app-theme] .type-mono-label {
   }
 }
 
+/* iOS renders date and time fields as native controls with their own minimum
+   width, so they spill out of narrow cards, and an empty one collapses to a
+   sliver. Let them size like any other field. iOS only: desktop browsers
+   keep their own picker styling. */
+@supports (-webkit-touch-callout: none) {
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 2.75rem;
+  }
+  input::-webkit-date-and-time-value {
+    text-align: left;
+  }
+}
+
 /* Mobile tab bar height. While the on-screen keyboard is open the bar hides
    (like native apps) and layouts that reserve room for it reclaim it. */
 :root {

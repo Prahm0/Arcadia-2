@@ -15,6 +15,9 @@ export interface Env {
   OPENAI_PLAN_MODEL_MAX?: string;
   // Local dev only: point Arcad at a stand-in server instead of OpenAI.
   OPENAI_BASE_URL?: string;
+  // PostHog project for server-side funnel events. Defaults to the public client key.
+  POSTHOG_KEY?: string;
+  POSTHOG_HOST?: string;
   STRIPE_PRICE_PRO_WEEKLY: string;
   STRIPE_PRICE_PRO_MONTHLY: string;
   STRIPE_PRICE_PRO_YEARLY: string;

@@ -33,6 +33,8 @@ export const analytics = {
   emailVerified: () => track("email_verified"),
   onboardingCompleted: (subjectCount: number, taskCount: number) =>
     track("onboarding_completed", { subjectCount, taskCount }),
+  /** A paywall was shown: `surface` says which one (after onboarding, or the plans page). */
+  paywallViewed: (surface: "onboarding" | "pricing") => track("paywall_viewed", { surface }),
   checkoutStarted: (plan: string, interval: string) =>
     track("checkout_started", { plan, interval }),
   subscriptionActivated: (tier: string) => track("subscription_activated", { tier }),

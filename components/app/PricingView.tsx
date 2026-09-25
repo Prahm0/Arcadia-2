@@ -94,6 +94,10 @@ export default function PricingView() {
     window.history.replaceState({}, "", url.toString());
   }, [cancelled]);
 
+  useEffect(() => {
+    analytics.paywallViewed("pricing");
+  }, []);
+
   if (nativeIOS) return <IosPricingView tiers={TIERS} />;
 
   async function startCheckout(plan: "pro" | "max") {

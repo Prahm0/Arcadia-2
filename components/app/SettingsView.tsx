@@ -550,6 +550,15 @@ export default function SettingsView() {
                 </AppButton>
               </div>
             ) : null}
+            <div
+              className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"
+              style={{ borderColor: "var(--app-border)" }}
+            >
+              <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>
+                Sign out of this device. Your data stays safe on the server.
+              </p>
+              <AppButton variant="secondary" onClick={signOut}>Sign out</AppButton>
+            </div>
           </div>
         </Card>
 
@@ -1035,16 +1044,6 @@ export default function SettingsView() {
             </form>
           </Card>
         )}
-
-        <Card>
-          <SectionHeader label="Session" />
-          <div className="flex items-center justify-between">
-            <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
-              Sign out of this device. Your data stays safe on the server.
-            </p>
-            <AppButton variant="secondary" onClick={signOut}>Sign out</AppButton>
-          </div>
-        </Card>
 
         <Card id="help-feedback" className="scroll-mt-24">
           <SectionHeader label="Help & feedback" />

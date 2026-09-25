@@ -207,6 +207,29 @@ events.patch("/:id", async (c) => {
   return c.json({ ok: true, event: await reread(database, event.id) });
 });
 
+/** Delay one generated sleep block without changing the user's usual sleep schedule. */
+events.post("/:id/snooze", async (c) => {
+  const { userId } = c.get("session");
+  const body = await c.req.json<{ minutes?: unknown }>().catch(() => null);
+  const minutes = body?.minutes;
+  if (minutes !== 15 && minutes !== 30 && minutes !== 60) {
+    return c.json({ error: "Choose a delay of 15, 30, or 60 minutes." }, 422);
+  }
+
+  const database = db(c.env.DB);
+  const event = await ownedEvent(database, userId, c.req.param("id"));
+  if (!event) return c.json({ error: "Event not found." }, 404);
+  if (event.category !== "sleep" || event.source !== "sleep" || event.outcome !== "planned") {
+    return c.json({ error: "Only a planned sleep block can be delayed." }, 409);
+  }
+
+  const offset = minutes * MINUTE;
+  await database.update(schema.events)
+    .set({ startAt: event.startAt + offset, endAt: event.endAt + offset, pinned: true })
+    .where(eq(schema.events.id, event.id));
+  return c.json({ ok: true, event: await reread(database, event.id) });
+});
+
 /**
  * Taking a block off the schedule. A block Arcadia planned is kept as skipped
  * rather than deleted, or the next re-plan would put it straight back; the

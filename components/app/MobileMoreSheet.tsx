@@ -18,7 +18,9 @@ function icon(path: ReactNode) {
   );
 }
 
+// Sessions has its own tab in the bar; Arcad moved here to make room.
 const ITEMS: MoreItem[] = [
+  { label: "Arcad",       href: "/app/arcad",       icon: icon(<path d="M3.5 5h13v8.5H7L3.5 16.5V5z" />) },
   { label: "Profile",     href: "/app/profile",     icon: icon(<><circle cx="10" cy="8" r="3" /><path d="M4.5 16.5c1-2.6 3.1-4 5.5-4s4.5 1.4 5.5 4" /></>) },
   { label: "Deadlines",   href: "/app/deadlines",   icon: icon(<><circle cx="10" cy="10" r="7" /><path d="M10 6v4l3 2" /></>) },
   { label: "Analytics",   href: "/app/analytics",   icon: icon(<><path d="M4 15v-4M9 15V7M14 15v-6" /><path d="M2 17h16" /></>) },

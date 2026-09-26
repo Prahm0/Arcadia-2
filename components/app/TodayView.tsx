@@ -191,8 +191,10 @@ export default function TodayView() {
             >
               Life happened
             </AppButton>
+            {/* Phones have Add in the tab bar, so this would be a second copy. */}
             <AppButton
               variant="primary"
+              className="max-lg:hidden"
               onClick={() => setShowTaskSheet(true)}
               icon={<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M10 4v12M4 10h12" strokeLinecap="round" /></svg>}
             >
@@ -298,8 +300,9 @@ function TodayCard(props: TodayCardProps) {
       className="w-full rounded-lg surface-card"
       style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
     >
+      {/* The page header already carries the date on phones. */}
       <div
-        className="flex items-center justify-between px-5 py-4 sm:px-6"
+        className="flex items-center justify-between px-5 py-4 max-lg:hidden sm:px-6"
         style={{ borderBottom: "1px solid var(--app-border)" }}
       >
         <p className="text-[13px] font-medium" style={{ color: "var(--app-text-muted)" }}>

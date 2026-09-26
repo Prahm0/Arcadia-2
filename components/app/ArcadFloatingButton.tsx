@@ -287,7 +287,8 @@ export default function ArcadFloatingButton() {
       onClick={mounted ? hidePanel : () => showPanel()}
       aria-label="Open Arcad side panel"
       aria-expanded={open}
-      className="group fixed bottom-[calc(env(safe-area-inset-bottom,0)+88px)] right-4 z-40 flex items-center gap-2.5 rounded-full py-1.5 pl-1.5 pr-3 surface-raised ui-pressable lg:bottom-6 lg:right-6"
+      // Just the orb on phones so it doesn't sit over the page's cards.
+      className="group fixed bottom-[calc(env(safe-area-inset-bottom,0)+88px)] right-4 z-40 flex items-center gap-2.5 rounded-full p-1.5 surface-raised ui-pressable lg:bottom-6 lg:right-6 lg:pr-3"
       style={{
         background: "var(--app-surface)",
         border: "1px solid var(--app-border-strong)",
@@ -304,7 +305,7 @@ export default function ArcadFloatingButton() {
           />
         ) : null}
       </span>
-      <span className="type-mono-label" style={{ color: "var(--app-text-soft)" }}>
+      <span className="type-mono-label max-lg:hidden" style={{ color: "var(--app-text-soft)" }}>
         Ask Arcad
       </span>
     </button>

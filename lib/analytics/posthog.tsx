@@ -4,6 +4,7 @@ import posthog from "posthog-js";
 import { PostHogProvider as PHProvider } from "posthog-js/react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
+import { isNativeIOS } from "@/lib/capacitor/platform";
 
 // The project token is a public client-side key by design (it ships in the
 // browser bundle, exactly like the Sentry DSN). Committing it as the default
@@ -42,6 +43,9 @@ function start(): void {
       maskTextSelector: "*",
     },
   });
+  // Every event says whether it came from the iPhone app or the web, so each
+  // funnel can be split by platform.
+  posthog.register({ platform: isNativeIOS() ? "ios" : "web" });
 }
 
 function PageviewTracker() {

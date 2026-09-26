@@ -6,6 +6,7 @@ import { planIsCurrent, planSession, type Checkout, type SessionPlan } from "../
 import { effectiveTier, isPaidTier } from "../lib/tiers";
 import { DAY, MINUTE } from "../lib/time";
 import { awardXp } from "../lib/rewards";
+import { captureServerEvent } from "../lib/posthog";
 import { XP } from "../../../shared/progress";
 import type { Env, Variables } from "../types";
 
@@ -159,9 +160,18 @@ events.post("/:id/outcome", async (c) => {
   } else {
     await applyOutcome(database, event, outcome);
   }
-  const rewards = outcome === "completed" && event.outcome !== "completed" && event.category === "study"
+  const newlyCompleted = outcome === "completed" && event.outcome !== "completed" && event.category === "study";
+  const rewards = newlyCompleted
     ? await awardXp(database, userId, "study_block", event.id, XP.studyBlock)
     : [];
+  // Blocks get completed from six places in the app; counting it here once
+  // gives the funnel its activation step (first study block done).
+  if (newlyCompleted) {
+    captureServerEvent(c.env, (promise) => c.executionCtx.waitUntil(promise), userId, "study_block_completed", {
+      minutes: Math.round((event.endAt - event.startAt) / MINUTE),
+      source: event.source,
+    });
+  }
   if (outcome === "planned" && event.outcome === "completed") {
     await database.delete(schema.xpEvents).where(and(eq(schema.xpEvents.userId, userId), eq(schema.xpEvents.source, "study_block"), eq(schema.xpEvents.sourceId, event.id)));
   }

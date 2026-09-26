@@ -77,6 +77,9 @@ export default function OnboardingPaywall({
   // Purchase (App Store guideline 3.1.1), never Stripe. Same moment, Apple's
   // prices and purchase sheet.
   const nativeIOS = useNativeIOS();
+  useEffect(() => {
+    analytics.paywallViewed("onboarding");
+  }, []);
   if (nativeIOS) {
     return (
       <NativeOnboardingPaywall

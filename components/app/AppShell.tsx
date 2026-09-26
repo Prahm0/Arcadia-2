@@ -897,8 +897,11 @@ function writeSidebarPref(open: boolean) {
 
 function BrandMark() {
   return (
-    <Link href="/app" aria-label="Arcadia, go to Today" title="Arcadia" className="grid h-8 w-8 place-items-center rounded-md">
+    <Link href="/app" aria-label="Arcadia, go to Today" title="Arcadia" className="flex h-8 items-center gap-2 rounded-md">
       <Logo size={28} />
+      <span className="text-[19px] font-bold tracking-[-0.02em]" style={{ color: "var(--app-text)" }}>
+        Arcadia
+      </span>
     </Link>
   );
 }

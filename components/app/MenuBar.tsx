@@ -251,9 +251,12 @@ export default function MenuBar({
         href="/app"
         aria-label="Arcadia, go to Today"
         title="Arcadia"
-        className="mr-1.5 grid h-7 w-7 place-items-center rounded-md ui-hover"
+        className="mr-2 flex h-7 items-center gap-2 rounded-md pl-0.5 pr-1.5 ui-hover"
       >
         <Logo size={22} />
+        <span className="text-[16px] font-bold tracking-[-0.02em]" style={{ color: "var(--app-text)" }}>
+          Arcadia
+        </span>
       </Link>
 
       <div role="menubar" aria-label="Application" className="flex items-center gap-0.5">

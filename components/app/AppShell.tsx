@@ -584,7 +584,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
         </main>
         <ArcadFloatingButton />
       </div>
-      <MobileBottomNav />
+      <MobileBottomNav onAdd={openNewTask} />
       <NewTaskSheet open={newTaskOpen} onClose={() => setNewTaskOpen(false)} />
       <ShortcutsDialog open={shortcutsOpen} onClose={closeShortcuts} />
       <SearchDialog open={searchOpen} onClose={closeSearch} onNewTask={openNewTask} onShowShortcuts={openShortcuts} />

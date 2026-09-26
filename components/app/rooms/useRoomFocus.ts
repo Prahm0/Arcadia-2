@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { setPresence } from "@/lib/api/presence";
 import { useStudySessionSave } from "@/lib/app/useStudySessionSave";
+import { holdFocus } from "@/lib/capacitor/focusGuard";
 
 /**
  * A focus session started from inside a study room. Deliberately simpler than
@@ -162,6 +163,21 @@ export function useRoomFocus(userId: string, onFinished?: (finished: FinishedFoc
   useEffect(() => () => {
     if (sessionRef.current) publish(null);
   }, []);
+
+  // iOS app: guard the phone (block the picked apps, nudge on leaving) for
+  // the session. Leaving the room page doesn't let go; the phone lifts the
+  // guard itself at the end. Only a session seen ending here releases it, so
+  // the empty first render of a revisit doesn't.
+  const guarding = useRef(false);
+  useEffect(() => {
+    if (session) {
+      guarding.current = true;
+      holdFocus("room", { endsAt: session.endsAt, subject: session.subject });
+    } else if (guarding.current) {
+      guarding.current = false;
+      holdFocus("room", null);
+    }
+  }, [session]);
 
   const start = useCallback((options: StartFocus) => {
     const startedAt = Date.now();

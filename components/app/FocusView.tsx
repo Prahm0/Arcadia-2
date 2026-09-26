@@ -15,6 +15,7 @@ import SyllabusNudge from "./SyllabusNudge";
 import SessionSheetLink from "./sheets/SessionSheetLink";
 import { PlayPauseIcon } from "./focus/PipTimer";
 import SessionTodos from "./focus/SessionTodos";
+import FocusGuardHint from "./focus/FocusGuardHint";
 import SessionsSwitch from "./focus/SessionsSwitch";
 import { clampMinutes, formatClock, useFocusSession, type FocusSession } from "./focus/FocusSession";
 import { isNative } from "@/lib/capacitor/platform";
@@ -338,6 +339,8 @@ function FocusViewInner({ session }: { session: FocusSession }) {
               </span>
             </button>
           ) : null}
+
+          <FocusGuardHint />
 
           {!linkedEvent && data.events.some((e) => e.category === "study" && e.outcome === "planned") ? (
             <Link

@@ -39,6 +39,11 @@ const config: CapacitorConfig = {
       style: "DARK",
       backgroundColor: "#04040e",
     },
+    // Check-ins still show as a banner while Arcadia is open, as they do in
+    // a browser. The focus guard's own nudges stay quiet in the foreground.
+    PushNotifications: {
+      presentationOptions: ["banner", "list", "sound"],
+    },
   },
 };
 

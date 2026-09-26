@@ -30,6 +30,7 @@ export interface Env {
   REVENUECAT_ENTITLEMENT_PRO: string;
   REVENUECAT_ENTITLEMENT_MAX: string;
   APPLE_BUNDLE_ID: string;
+  APNS_TEAM_ID?: string;
   // PostHog project key and host for server-side events (lib/posthog.ts).
   // The key is the same public one the browser ships with.
   POSTHOG_KEY?: string;
@@ -52,6 +53,14 @@ export interface Env {
   REVENUECAT_WEBHOOK_AUTHORIZATION?: string;
   VAPID_PUBLIC_KEY?: string;
   VAPID_PRIVATE_KEY?: string;
+  // iPhone check-ins. An APNs auth key (.p8) from the Apple Developer portal;
+  // the team is APNS_TEAM_ID and the topic is APPLE_BUNDLE_ID.
+  APNS_KEY_ID?: string;
+  APNS_PRIVATE_KEY?: string;
+  // Local dev only: send check-ins to a stand-in server instead of Apple
+  // (`wrangler dev` can't speak HTTP/2 to APNs). Requests go to
+  // <base>/<production|sandbox>/3/device/<token>.
+  APNS_BASE_URL?: string;
 }
 
 export interface SessionContext {

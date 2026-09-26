@@ -20,12 +20,22 @@ import {
   type NotificationPermissionState,
 } from "@/lib/app/notifications";
 import {
+  DEFAULT_PUSH_PREFERENCES,
   enablePushCheckins,
   getPushSubscriptionStatus,
   pushCheckinsSupported,
   updatePushPreferences,
   type PushPreferences,
 } from "@/lib/app/pushCheckins";
+import {
+  FocusGuard,
+  describePicked,
+  isHoldingFocus,
+  releaseFocusGuard,
+  useFocusGuardStatus,
+  type FocusGuardStatus,
+} from "@/lib/capacitor/focusGuard";
+import { unlinkNativePush } from "@/lib/capacitor/nativePush";
 import PageHeader from "./PageHeader";
 import AppButton, { appButtonClass } from "./AppButton";
 import Link from "next/link";
@@ -148,11 +158,7 @@ export default function SettingsView() {
   const nativeShell = isNative();
   const nativeIOS = useNativeIOS();
   const [pushEndpoint, setPushEndpoint] = useState<string | null>(null);
-  const [pushPreferences, setPushPreferences] = useState<PushPreferences>({
-    checkinsEnabled: true,
-    sessionStartEnabled: true,
-    sessionFollowupEnabled: true,
-  });
+  const [pushPreferences, setPushPreferences] = useState<PushPreferences>(DEFAULT_PUSH_PREFERENCES);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushNotice, setPushNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
   const [billingBusy, setBillingBusy] = useState(false);
@@ -240,9 +246,8 @@ export default function SettingsView() {
     setPushBusy(true);
     setPushNotice(null);
     try {
-      const endpoint = await enablePushCheckins();
+      const { endpoint, preferences } = await enablePushCheckins();
       setPushEndpoint(endpoint);
-      const preferences = { checkinsEnabled: true, sessionStartEnabled: true, sessionFollowupEnabled: true };
       setPushPreferences(preferences);
       setPushNotice({ tone: "info", text: "Check-ins enabled on this device." });
     } catch (err) {
@@ -454,6 +459,12 @@ export default function SettingsView() {
     void logOutRevenueCat().catch((error) => {
       console.warn("[revenuecat] sign-out failed", error);
     });
+    // iOS app: unlink this phone's check-ins and lift any app block, while
+    // the session can still do it.
+    await Promise.all([
+      unlinkNativePush().catch((error) => console.warn("[native-push] unlink failed", error)),
+      releaseFocusGuard(),
+    ]);
     try {
       await api("/api/auth/logout", { method: "POST" });
     } catch {
@@ -825,83 +836,86 @@ export default function SettingsView() {
           </div>
         </Card>
 
-        <Card>
-          <SectionHeader label="Schedule reminders" />
-          {!notificationsSupported() ? (
-            <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
-              This browser doesn't support notifications. On iOS Safari, add the app to your Home Screen to unlock them.
-            </p>
-          ) : (
-            <>
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>
-                    Remind me before study and sleep
-                  </p>
-                  <p className="mt-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-                    A quick browser notification before study blocks and bedtime while Arcadia is open in a tab.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={remindersOn}
-                  onClick={() => void toggleReminders(!remindersOn)}
-                  className="inset-ring relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
-                  style={{
-                    background: remindersOn ? "var(--app-accent)" : "var(--app-surface-soft)",
-                  }}
-                >
-                  <span
-                    aria-hidden="true"
-                    className="inline-block h-5 w-5 transform rounded-full surface-raised transition-transform"
-                    style={{ transform: remindersOn ? "translateX(22px)" : "translateX(2px)" }}
-                  />
-                </button>
-              </div>
-
-              {remindersOn ? (
-                <div className="mt-4">
-                  <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Lead time</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {[5, 10, 15, 30].map((option) => (
-                      <button
-                        key={option}
-                        type="button"
-                        onClick={() => updateLead(option)}
-                        className="rounded-md px-3 py-1.5 text-[12.5px] font-medium transition-colors"
-                        style={{
-                          background: leadMin === option ? "var(--app-accent-soft)" : "transparent",
-                          color: leadMin === option ? "var(--app-accent-strong)" : "var(--app-text-soft)",
-                          border: `1px solid ${leadMin === option ? "transparent" : "var(--app-border-strong)"}`,
-                        }}
-                      >
-                        {option} min before
-                      </button>
-                    ))}
+        {/* The iOS app has no browser notifications; push check-ins cover it. */}
+        {nativeIOS ? null : (
+          <Card>
+            <SectionHeader label="Schedule reminders" />
+            {!notificationsSupported() ? (
+              <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
+                This browser doesn't support notifications. On iOS Safari, add the app to your Home Screen to unlock them.
+              </p>
+            ) : (
+              <>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>
+                      Remind me before study and sleep
+                    </p>
+                    <p className="mt-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
+                      A quick browser notification before study blocks and bedtime while Arcadia is open in a tab.
+                    </p>
                   </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={remindersOn}
+                    onClick={() => void toggleReminders(!remindersOn)}
+                    className="inset-ring relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
+                    style={{
+                      background: remindersOn ? "var(--app-accent)" : "var(--app-surface-soft)",
+                    }}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="inline-block h-5 w-5 transform rounded-full surface-raised transition-transform"
+                      style={{ transform: remindersOn ? "translateX(22px)" : "translateX(2px)" }}
+                    />
+                  </button>
                 </div>
-              ) : null}
 
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <span className="type-mono-label" style={{ color: "var(--app-text-muted)" }}>
-                  {permission === "granted"
-                    ? "Browser: allowed"
-                    : permission === "denied"
-                      ? "Browser: blocked, enable notifications in your browser settings for this site"
-                      : permission === "unsupported"
-                        ? "Browser: unsupported"
-                        : "Browser: not asked yet"}
-                </span>
-                {permission !== "denied" ? (
-                  <AppButton type="button" variant="secondary" onClick={testReminder}>
-                    Send a test
-                  </AppButton>
+                {remindersOn ? (
+                  <div className="mt-4">
+                    <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Lead time</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {[5, 10, 15, 30].map((option) => (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => updateLead(option)}
+                          className="rounded-md px-3 py-1.5 text-[12.5px] font-medium transition-colors"
+                          style={{
+                            background: leadMin === option ? "var(--app-accent-soft)" : "transparent",
+                            color: leadMin === option ? "var(--app-accent-strong)" : "var(--app-text-soft)",
+                            border: `1px solid ${leadMin === option ? "transparent" : "var(--app-border-strong)"}`,
+                          }}
+                        >
+                          {option} min before
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 ) : null}
-              </div>
-            </>
-          )}
-        </Card>
+
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <span className="type-mono-label" style={{ color: "var(--app-text-muted)" }}>
+                    {permission === "granted"
+                      ? "Browser: allowed"
+                      : permission === "denied"
+                        ? "Browser: blocked, enable notifications in your browser settings for this site"
+                        : permission === "unsupported"
+                          ? "Browser: unsupported"
+                          : "Browser: not asked yet"}
+                  </span>
+                  {permission !== "denied" ? (
+                    <AppButton type="button" variant="secondary" onClick={testReminder}>
+                      Send a test
+                    </AppButton>
+                  ) : null}
+                </div>
+              </>
+            )}
+          </Card>
+        )}
 
         {isGuest ? null : (
           <Card>
@@ -946,11 +960,25 @@ export default function SettingsView() {
                       onChange={(sessionStartEnabled) => void savePushPreferences({ ...pushPreferences, sessionStartEnabled })}
                     />
                     <PreferenceToggle
+                      label="If I haven't started"
+                      detail="A nudge ten minutes into a study block you haven't started yet."
+                      checked={pushPreferences.lateStartEnabled}
+                      disabled={pushBusy || !pushPreferences.checkinsEnabled}
+                      onChange={(lateStartEnabled) => void savePushPreferences({ ...pushPreferences, lateStartEnabled })}
+                    />
+                    <PreferenceToggle
                       label="Session follow-ups"
                       detail="A nudge when a session needs an outcome, including after two hours."
                       checked={pushPreferences.sessionFollowupEnabled}
                       disabled={pushBusy || !pushPreferences.checkinsEnabled}
                       onChange={(sessionFollowupEnabled) => void savePushPreferences({ ...pushPreferences, sessionFollowupEnabled })}
+                    />
+                    <PreferenceToggle
+                      label="Streak on the line"
+                      detail="An evening heads-up when today's plan won't keep your streak going."
+                      checked={pushPreferences.streakEnabled}
+                      disabled={pushBusy || !pushPreferences.checkinsEnabled}
+                      onChange={(streakEnabled) => void savePushPreferences({ ...pushPreferences, streakEnabled })}
                     />
                   </div>
                 </div>
@@ -959,6 +987,8 @@ export default function SettingsView() {
             <Notice notice={pushNotice} />
           </Card>
         )}
+
+        {nativeIOS ? <FocusGuardSection /> : null}
 
         {isGuest ? null : (
           <Card id="billing" className="scroll-mt-24">
@@ -1173,6 +1203,102 @@ function PreferenceToggle({
         />
       </button>
     </div>
+  );
+}
+
+/**
+ * iOS app only, on every plan: block picked apps while a focus timer runs,
+ * and a nudge for leaving mid-focus. Both live on the phone (FocusGuard
+ * plugin), so there's nothing to save to the account.
+ */
+function FocusGuardSection() {
+  const [status, setStatus] = useFocusGuardStatus();
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
+  const loaded = status !== null;
+
+  // The Focus page links here (#focus-guard); the card only appears once the
+  // phone has answered, after the page's own hash scroll has come and gone.
+  useEffect(() => {
+    if (!loaded || window.location.hash !== "#focus-guard") return;
+    document.getElementById("focus-guard")?.scrollIntoView({ block: "start" });
+  }, [loaded]);
+
+  // An older build of the app, without the plugin.
+  if (!status) return null;
+
+  async function run(action: () => Promise<FocusGuardStatus>, done?: (next: FocusGuardStatus) => string | null) {
+    setBusy(true);
+    setNotice(null);
+    try {
+      const next = await action();
+      setStatus(next);
+      const text = done?.(next);
+      if (text) setNotice({ tone: "info", text });
+    } catch (err) {
+      setNotice({ tone: "error", text: err instanceof Error ? err.message : "Couldn't update that." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const pickApps = () =>
+    run(() => FocusGuard.pickApps(), (next) =>
+      next.cancelled ? null : next.blockingEnabled ? "Saved. They're blocked from your next focus timer." : "Nothing picked, so nothing is blocked.");
+
+  const picked = status.appCount + status.categoryCount + status.websiteCount > 0;
+  const blocking = status.blockingEnabled && picked;
+  const until = status.active && status.blocking && status.endsAt
+    ? new Date(status.endsAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: !is24Hour() })
+    : null;
+
+  return (
+    <Card id="focus-guard" className="scroll-mt-24">
+      <SectionHeader label="While you focus" />
+      <div className="flex flex-col gap-5">
+        {status.blockingSupported ? (
+          <div>
+            <PreferenceToggle
+              label="Block distracting apps"
+              detail={picked
+                ? `${describePicked(status)} stay blocked while a focus timer runs. They unblock when it ends, pauses or hits a break.`
+                : "Pick the apps that pull you away. They stay blocked while a focus timer runs, then unblock."}
+              checked={blocking}
+              disabled={busy}
+              onChange={(next) => void (next && !picked ? pickApps() : run(() => FocusGuard.setPreferences({ blockingEnabled: next })))}
+            />
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <AppButton type="button" variant="secondary" onClick={() => void pickApps()} disabled={busy}>
+                {picked ? "Change apps" : "Choose apps"}
+              </AppButton>
+              {until ? (
+                <span className="type-mono-label" style={{ color: "var(--app-text-muted)" }}>
+                  Blocked until {until}
+                </span>
+              ) : null}
+              {/* A running timer here unblocks by pausing. This is for a block
+                  left over from a timer this visit no longer knows about. */}
+              {until && !isHoldingFocus() ? (
+                <AppButton type="button" variant="ghost" onClick={() => void run(async () => {
+                  await releaseFocusGuard();
+                  return FocusGuard.status();
+                })} disabled={busy}>
+                  Unblock now
+                </AppButton>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+        <PreferenceToggle
+          label="Nudge me if I leave"
+          detail="One nudge if you leave Arcadia mid-focus (locking your phone is fine), and a heads-up when the timer's done."
+          checked={status.nudgesEnabled}
+          disabled={busy}
+          onChange={(nudgesEnabled) => void run(() => FocusGuard.setPreferences({ nudgesEnabled }))}
+        />
+      </div>
+      <Notice notice={notice} />
+    </Card>
   );
 }
 

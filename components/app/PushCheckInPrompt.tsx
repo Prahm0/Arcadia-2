@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
-import { enablePushCheckins, pushCheckinsSupported } from "@/lib/app/pushCheckins";
+import { enablePushCheckins, pushCheckinsSupported, pushPermission } from "@/lib/app/pushCheckins";
 import { isGuestEmail } from "@/lib/auth/guest";
 import AppButton from "./AppButton";
 
@@ -19,17 +19,21 @@ export default function PushCheckInPrompt() {
 
   useEffect(() => {
     if (!paid || isGuestEmail(data.user.email) || !pushCheckinsSupported()) return;
-    if (Notification.permission !== "default") return;
-    try {
-      const visits = Number(window.localStorage.getItem(VISITS_KEY) ?? "0") + 1;
-      window.localStorage.setItem(VISITS_KEY, String(visits));
-      if (visits >= 2 && window.localStorage.getItem(DISMISSED_KEY) !== "1") {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setOpen(true);
+    let active = true;
+    // Asked of iOS in the app, where there's no browser Notification API.
+    void pushPermission().then((permission) => {
+      if (!active || permission !== "prompt") return;
+      try {
+        const visits = Number(window.localStorage.getItem(VISITS_KEY) ?? "0") + 1;
+        window.localStorage.setItem(VISITS_KEY, String(visits));
+        if (visits >= 2 && window.localStorage.getItem(DISMISSED_KEY) !== "1") setOpen(true);
+      } catch {
+        // If storage is unavailable, keep the permission request in Settings.
       }
-    } catch {
-      // If storage is unavailable, keep the permission request in Settings.
-    }
+    }).catch(() => {});
+    return () => {
+      active = false;
+    };
   }, [data.user.email, paid]);
 
   function dismiss() {
@@ -70,7 +74,7 @@ export default function PushCheckInPrompt() {
           Want Arcad to keep you on track?
         </h2>
         <p className="mt-2 text-[14px] leading-6" style={{ color: "var(--app-text-muted)" }}>
-          Get a heads-up before study blocks and bedtime, plus a quick follow-up when a study session needs logging.
+          Get a heads-up before study blocks and bedtime, a nudge if a block starts without you, and a quick follow-up when a session needs logging.
         </p>
         {error ? <p className="mt-3 text-[13px]" style={{ color: "var(--app-danger)" }}>{error}</p> : null}
         <div className="mt-6 flex items-center justify-end gap-2">

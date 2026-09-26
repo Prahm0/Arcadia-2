@@ -56,6 +56,8 @@ npx wrangler secret put RESEND_API_KEY
 npx wrangler secret put TOKEN_ENCRYPTION_KEY
 npx wrangler secret put VAPID_PUBLIC_KEY
 npx wrangler secret put VAPID_PRIVATE_KEY
+npx wrangler secret put APNS_KEY_ID
+npx wrangler secret put APNS_PRIVATE_KEY
 npx wrangler secret put GOOGLE_SIGN_IN_ENABLED
 npx wrangler secret put APPLE_CLIENT_ID
 npx wrangler secret put APPLE_TEAM_ID
@@ -84,6 +86,11 @@ npx web-push generate-vapid-keys --json
 Copy each generated value into the matching secret prompt. Rotating either
 key invalidates existing browser subscriptions, so only rotate after planning
 to have students enable push again.
+
+- `APNS_KEY_ID` and `APNS_PRIVATE_KEY` send the same check-ins to the iOS app
+  over APNs: an APNs auth key (`.p8`) from the Apple Developer portal and its
+  Key ID. The team is `APNS_TEAM_ID` in `wrangler.jsonc`. Without them,
+  iPhones just don't get check-ins. See `IOS_ACCOUNTABILITY_SETUP.md`.
 
 ### Social sign-in setup
 

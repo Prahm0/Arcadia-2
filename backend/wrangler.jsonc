@@ -43,6 +43,9 @@
     "REVENUECAT_ENTITLEMENT_PRO": "pro",
     "REVENUECAT_ENTITLEMENT_MAX": "max",
     "APPLE_BUNDLE_ID": "app.arcadiahq.arcadia",
+    // iPhone check-ins (APNs). The team that owns the bundle ID above; the
+    // auth key itself is APNS_KEY_ID + APNS_PRIVATE_KEY, set as secrets.
+    "APNS_TEAM_ID": "4M56HCN39G",
     // PostHog for server-side events (lib/posthog.ts). The project key is
     // public by design; it's the same one the browser bundle ships with.
     "POSTHOG_KEY": "phc_kWBHKrQWB7pvNdMT4GhnXRtnxZrzqR9x6r2VPEtAjYJA",

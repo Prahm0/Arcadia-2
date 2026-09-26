@@ -6,6 +6,7 @@ import { DAY, startOfLocalDay } from "../lib/time";
 import type { Env, Variables } from "../types";
 import { readStudySky } from "../lib/constellations";
 import { awardFocusXp } from "../lib/rewards";
+import { replaceLog } from "../lib/study-log";
 
 interface SessionInput {
   activityId?: string;
@@ -15,6 +16,9 @@ interface SessionInput {
   goal?: string | null;
   distractions?: number;
   endedAt?: string;
+  /** The syllabus topic a timer session was on (sessions not tied to a block). */
+  topicId?: string | null;
+  topic?: string | null;
 }
 
 const studySessions = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -65,6 +69,19 @@ studySessions.post("/", async (c) => {
       endedAt,
     }).onConflictDoNothing({ target: [schema.studySessions.userId, schema.studySessions.activityId] }).returning({ id: schema.studySessions.id });
     stored += inserted.length;
+    // A timer session on a chosen topic goes in the study log too. Blocks
+    // log through their check-out instead, so they don't send a topic.
+    const topic = item.topic ? String(item.topic).replace(/\s+/g, " ").trim().slice(0, 80) : "";
+    if (inserted[0] && item.activityId && topic && String(item.type ?? "focus") === "focus" && seconds >= 60) {
+      await replaceLog(
+        database,
+        userId,
+        { activityId: item.activityId, source: "timer" },
+        { id: knownSubject?.id ?? null, name: subject },
+        [{ topicId: typeof item.topicId === "string" ? item.topicId : null, topic, kind: "study", minutes: Math.round(seconds / 60), confidence: null, note: "" }],
+        endedAt,
+      );
+    }
     if (inserted[0] && String(item.type ?? "focus") !== "break") {
       rewards.push(...await awardFocusXp(database, userId, inserted[0].id, seconds / 60, startOfLocalDay(endedAt, profile?.timezone || "Australia/Sydney")));
     }

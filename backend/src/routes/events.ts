@@ -6,7 +6,10 @@ import { planIsCurrent, planSession, type Checkout, type SessionPlan } from "../
 import { effectiveTier, isPaidTier } from "../lib/tiers";
 import { DAY, MINUTE } from "../lib/time";
 import { awardXp } from "../lib/rewards";
+import { clearLog, findSubject, replaceLog } from "../lib/study-log";
+import { blockEntries, type CheckoutAnswers } from "../lib/study-record";
 import { XP } from "../../../shared/progress";
+import { isConfidence, overallFeeling, type Confidence } from "../../../shared/studyLog";
 import type { Env, Variables } from "../types";
 
 type EventRow = typeof schema.events.$inferSelect;
@@ -159,6 +162,7 @@ events.post("/:id/outcome", async (c) => {
   } else {
     await applyOutcome(database, event, outcome);
   }
+  if (event.category === "study") await logOutcome(database, userId, event, outcome);
   const rewards = outcome === "completed" && event.outcome !== "completed" && event.category === "study"
     ? await awardXp(database, userId, "study_block", event.id, XP.studyBlock)
     : [];
@@ -167,6 +171,28 @@ events.post("/:id/outcome", async (c) => {
   }
   return c.json({ ok: true, event: await reread(database, event.id), rewards });
 });
+
+/**
+ * Keeps the study log in step with a block's outcome. Ticked done without a
+ * check-out, it's logged from its plan, unrated; un-done or missed, its
+ * entries come back out. A checked-out block keeps what the check-out said.
+ */
+async function logOutcome(database: Database, userId: string, event: EventRow, outcome: Outcome) {
+  if (outcome !== "completed") {
+    await clearLog(database, userId, { eventId: event.id, source: "marked" });
+    return;
+  }
+  if (event.checkout || event.outcome === "completed") return;
+  const subject = await findSubject(database, userId, event.subject);
+  await replaceLog(
+    database,
+    userId,
+    { eventId: event.id, source: "marked" },
+    { id: subject?.id ?? null, name: event.subject },
+    blockEntries(event, Math.round((event.endAt - event.startAt) / MINUTE), null),
+    Math.min(event.endAt, Date.now()),
+  );
+}
 
 /** Moving a block (drag on the Schedule). A moved block is pinned where it's put. */
 events.patch("/:id", async (c) => {
@@ -333,7 +359,7 @@ const FEELINGS = ["good", "ok", "rough"] as const;
 events.post("/:id/checkout", async (c) => {
   const { userId } = c.get("session");
   const body = await c.req
-    .json<{ done?: unknown; leftover?: unknown; feeling?: unknown; minutes?: unknown }>()
+    .json<{ done?: unknown; leftover?: unknown; feeling?: unknown; minutes?: unknown; topics?: unknown }>()
     .catch(() => null);
   if (!body) return c.json({ error: "Invalid request." }, 400);
 
@@ -346,12 +372,27 @@ events.post("/:id/checkout", async (c) => {
   const spent = Number(body.minutes);
   const minutes = Number.isFinite(spent) && spent > 0 ? Math.min(planned, Math.round(spent)) : planned;
   const stepCount = event.plan ? ((JSON.parse(event.plan) as { steps?: unknown[] }).steps?.length ?? 0) : 0;
+  const done = Array.isArray(body.done)
+    ? [...new Set(body.done.map(Number).filter((index) => Number.isInteger(index) && index >= 0 && index < stepCount))]
+    : [];
+  const leftover = String(body.leftover ?? "").replace(/\s+/g, " ").trim().slice(0, 200);
+  // How each topic left them: [{ key, confidence }], keyed as sessionTopics keys them.
+  const ratings = new Map<string, Confidence>(
+    (Array.isArray(body.topics) ? body.topics : []).flatMap((item: unknown) => {
+      const { key, confidence } = (item ?? {}) as { key?: unknown; confidence?: unknown };
+      return typeof key === "string" && isConfidence(confidence) ? [[key.slice(0, 120), confidence] as const] : [];
+    }),
+  );
+  const answers: CheckoutAnswers = { ratings, done, leftover, feeling: body.feeling };
+  const entries = blockEntries(event, minutes, answers);
   const checkout: Checkout = {
-    done: Array.isArray(body.done)
-      ? [...new Set(body.done.map(Number).filter((index) => Number.isInteger(index) && index >= 0 && index < stepCount))]
-      : [],
-    leftover: String(body.leftover ?? "").replace(/\s+/g, " ").trim().slice(0, 200),
-    feeling: (FEELINGS as readonly unknown[]).includes(body.feeling) ? (body.feeling as Checkout["feeling"]) : null,
+    done,
+    leftover,
+    // Newer check-outs rate each topic instead; the least sure one stands in
+    // for the session, which is what the next plan reads.
+    feeling: (FEELINGS as readonly unknown[]).includes(body.feeling)
+      ? (body.feeling as Checkout["feeling"])
+      : overallFeeling([...ratings.values()]),
     minutes,
     at: new Date().toISOString(),
   };
@@ -365,6 +406,9 @@ events.post("/:id/checkout", async (c) => {
     extra.endAt = start + minutes * MINUTE;
   }
   await applyOutcome(database, event, "completed", extra);
+  const subject = await findSubject(database, userId, event.subject);
+  // Logged as of now, the end of the session, so this rating is the latest.
+  await replaceLog(database, userId, { eventId: event.id, source: "checkout" }, { id: subject?.id ?? null, name: event.subject }, entries, Date.now());
   return c.json({ event: await reread(database, event.id) });
 });
 

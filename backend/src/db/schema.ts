@@ -574,6 +574,39 @@ export const subjectTopics = sqliteTable(
   (t) => [index("subject_topics_subject_idx").on(t.subjectId, t.position)],
 );
 
+/**
+ * What was studied, on which topic, for how long and how it left them: one
+ * row per topic touched in a session (see migration 0030 and lib/study-log).
+ */
+export const studyLog = sqliteTable(
+  "study_log",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    subjectId: text("subject_id").references(() => subjects.id, { onDelete: "set null" }),
+    subject: text("subject"),
+    topicId: text("topic_id").references(() => subjectTopics.id, { onDelete: "set null" }),
+    topic: text("topic").notNull().default(""),
+    eventId: text("event_id"),
+    activityId: text("activity_id"),
+    kind: text("kind").notNull().default("study"),
+    minutes: integer("minutes").notNull(),
+    confidence: text("confidence"),
+    note: text("note").notNull().default(""),
+    source: text("source").notNull().default("checkout"),
+    studiedAt: integer("studied_at").notNull(),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [
+    index("study_log_user_subject_idx").on(t.userId, t.subjectId, t.studiedAt),
+    index("study_log_event_idx").on(t.eventId),
+    index("study_log_activity_idx").on(t.userId, t.activityId),
+    index("study_log_topic_idx").on(t.topicId),
+  ],
+);
+
 export const subjectAssessments = sqliteTable(
   "subject_assessments",
   {
@@ -847,9 +880,50 @@ export const dayLayouts = sqliteTable(
     layout: text("layout"),
     inputsKey: text("inputs_key"),
     wantedKey: text("wanted_key"),
+    // When wantedKey last changed, so the cron waits for edits to settle.
+    wantedAt: integer("wanted_at"),
     // When a refresh started, so the cron doesn't run two at once.
     workingAt: integer("working_at"),
     updatedAt: integer("updated_at").notNull().default(now),
   },
   (t) => [index("day_layouts_wanted_idx").on(t.wantedKey)],
+);
+
+/**
+ * Tokens and estimated cost of each call to the AI provider, so spend can be
+ * broken down by feature, model and tier. `costMicros` is millionths of a
+ * US dollar, null for a model lib/openai.ts has no price for.
+ */
+export const aiUsage = sqliteTable(
+  "ai_usage",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+    feature: text("feature").notNull(),
+    model: text("model").notNull(),
+    serviceTier: text("service_tier"),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    cachedTokens: integer("cached_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    reasoningTokens: integer("reasoning_tokens").notNull().default(0),
+    costMicros: integer("cost_micros"),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [
+    index("ai_usage_created_idx").on(t.createdAt),
+    index("ai_usage_feature_created_idx").on(t.feature, t.createdAt),
+    index("ai_usage_user_created_idx").on(t.userId, t.createdAt),
+  ],
+);
+
+/** One row per student per UTC day they opened the app, for actives and retention. */
+export const userActiveDays = sqliteTable(
+  "user_active_days",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    day: text("day").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.day] }), index("user_active_days_day_idx").on(t.day)],
 );

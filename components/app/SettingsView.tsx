@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { api, ApiError, saveCsrf } from "@/lib/api/client";
-import { analytics } from "@/lib/analytics/events";
+import { resetAnalytics } from "@/lib/analytics/events";
 import type { CalendarFeed } from "@/lib/api/types";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { useTheme, type ThemeMode } from "@/lib/app/theme";
@@ -37,7 +37,8 @@ import {
 } from "@/lib/capacitor/focusGuard";
 import { unlinkNativePush } from "@/lib/capacitor/nativePush";
 import PageHeader from "./PageHeader";
-import AppButton from "./AppButton";
+import AppButton, { appButtonClass } from "./AppButton";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { isGuestEmail } from "@/lib/auth/guest";
 import DeleteAccountModal from "./DeleteAccountModal";
@@ -164,7 +165,6 @@ export default function SettingsView() {
   const [developerTierBusy, setDeveloperTierBusy] = useState(false);
   const [billingNotice, setBillingNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
-  const subscriptionTracked = useRef(false);
 
   async function changeDeveloperTier(next: "free" | "pro" | "max") {
     setDeveloperTierBusy(true);
@@ -186,17 +186,11 @@ export default function SettingsView() {
     }
   }
 
+  // The billing webhook records the purchase (backend lib/posthog); this only
+  // tidies the redirect's ?upgrade=success off the address.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (
-      params.get("upgrade") !== "success" ||
-      tier === "free" ||
-      subscriptionTracked.current
-    ) {
-      return;
-    }
-    subscriptionTracked.current = true;
-    analytics.subscriptionActivated(tier);
+    if (params.get("upgrade") !== "success" || tier === "free") return;
     const url = new URL(window.location.href);
     url.searchParams.delete("upgrade");
     window.history.replaceState({}, "", url.toString());
@@ -477,6 +471,7 @@ export default function SettingsView() {
       /* ignore */
     }
     saveCsrf(null);
+    resetAnalytics();
     router.push("/login");
   }
 
@@ -1092,6 +1087,18 @@ export default function SettingsView() {
           <SectionHeader label="Help & feedback" />
           <FeedbackForm email={isGuest ? null : data.user.email} />
         </Card>
+
+        {data.user.developerAccess ? (
+          <Card>
+            <SectionHeader label="Developer metrics" />
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
+                Signups, active students, plans, retention and AI spend.
+              </p>
+              <Link href="/app/admin" className={appButtonClass("secondary")}>Open metrics</Link>
+            </div>
+          </Card>
+        ) : null}
 
         {data.user.developerAccess ? (
           <Card>

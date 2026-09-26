@@ -21,6 +21,9 @@
     // (lib/plan-tier.ts). Max also thinks harder with it.
     "OPENAI_PLAN_MODEL_PRO": "gpt-5",
     "OPENAI_PLAN_MODEL_MAX": "gpt-5",
+    // Reading students' files (course outlines, resources) and writing cards
+    // and sheets from them. gpt-4o-mini bills each PDF page like gpt-4o does.
+    "OPENAI_DOCUMENT_MODEL": "gpt-5-mini",
     // Stripe price IDs — not secret. Live-mode ids, copied over from the
     // sandbox products after the account was activated. Amounts match the
     // sandbox: Pro $4.95/$12.82/$49.40, Max $9.95/$34.54/$205.40 (AUD).
@@ -42,7 +45,11 @@
     "APPLE_BUNDLE_ID": "app.arcadiahq.arcadia",
     // iPhone check-ins (APNs). The team that owns the bundle ID above; the
     // auth key itself is APNS_KEY_ID + APNS_PRIVATE_KEY, set as secrets.
-    "APNS_TEAM_ID": "4M56HCN39G"
+    "APNS_TEAM_ID": "4M56HCN39G",
+    // PostHog for server-side events (lib/posthog.ts). The project key is
+    // public by design; it's the same one the browser bundle ships with.
+    "POSTHOG_KEY": "phc_kWBHKrQWB7pvNdMT4GhnXRtnxZrzqR9x6r2VPEtAjYJA",
+    "POSTHOG_HOST": "https://eu.i.posthog.com"
   },
 
   "d1_databases": [

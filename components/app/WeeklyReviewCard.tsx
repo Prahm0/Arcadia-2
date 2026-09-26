@@ -66,11 +66,11 @@ export default function WeeklyReviewCard({
             : "Arcadia turns the study you complete into a clear look at what worked and what to adjust next week."}
         </p>
         <Link
-          href="/app/focus"
+          href="/app/sessions"
           className="mt-5 inline-flex h-9 items-center rounded-md px-3.5 text-[13px] font-semibold"
           style={{ background: "var(--app-arcad)", color: "var(--app-arcad-on)" }}
         >
-          Start a focus session
+          Start a session
         </Link>
       </div>
     );

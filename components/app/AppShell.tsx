@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent, type PointerEvent, type ReactNode } from "react";
 import { api, saveCsrf } from "@/lib/api/client";
-import { analytics } from "@/lib/analytics/events";
+import { analytics, resetAnalytics } from "@/lib/analytics/events";
 import type { AuthUser, Notice, PlannerEvent } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
@@ -72,6 +72,15 @@ const TODAY: NavItem = {
 
 const NAV_GROUPS: NavGroup[] = [
   {
+    // Where the studying happens, so it sits up top. Rooms live inside it
+    // at /app/sessions/rooms and keep this tab lit.
+    key: "sessions",
+    label: "Sessions",
+    icon: icon(<><circle cx="10" cy="10" r="7" /><circle cx="10" cy="10" r="3" /></>),
+    href: "/app/sessions",
+    items: [],
+  },
+  {
     key: "arcad",
     label: "Arcad",
     icon: icon(<path d="M4 5h12v9H8l-4 3V5z" />),
@@ -85,15 +94,6 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "Schedule", href: "/app/schedule", icon: icon(<><rect x="3" y="4" width="14" height="13" rx="2" /><path d="M3 8h14M7 2v4M13 2v4" /></>) },
       { label: "Deadlines", href: "/app/deadlines", icon: icon(<><circle cx="10" cy="10" r="7" /><path d="M10 6v4l3 2" /></>) },
-    ],
-  },
-  {
-    key: "study",
-    label: "Study",
-    icon: icon(<><circle cx="10" cy="10" r="7" /><circle cx="10" cy="10" r="3" /></>),
-    items: [
-      { label: "Focus", href: "/app/focus", icon: icon(<><circle cx="10" cy="10" r="7" /><circle cx="10" cy="10" r="3" /></>) },
-      { label: "Rooms", href: "/app/rooms", icon: icon(<><circle cx="6" cy="8" r="2" /><circle cx="14" cy="8" r="2" /><path d="M3 16c0-2 1.5-4 3-4M17 16c0-2-1.5-4-3-4M10 17v-1" /></>) },
     ],
   },
   {
@@ -193,6 +193,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
       /* still clear locally */
     } finally {
       saveCsrf(null);
+      resetAnalytics();
       router.push("/login");
     }
   }
@@ -596,7 +597,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
         </main>
         <ArcadFloatingButton />
       </div>
-      <MobileBottomNav />
+      <MobileBottomNav onAdd={openNewTask} />
       <NewTaskSheet open={newTaskOpen} onClose={() => setNewTaskOpen(false)} />
       <ShortcutsDialog open={shortcutsOpen} onClose={closeShortcuts} />
       <SearchDialog open={searchOpen} onClose={closeSearch} onNewTask={openNewTask} onShowShortcuts={openShortcuts} />
@@ -838,7 +839,7 @@ function SidebarPlanCue() {
   const timeLabel = beginsNow
     ? "Ready when you are"
     : `${blockDay === today ? "Today" : "Later"} · ${formatClock(nextBlock.startAt, timezone)} · ${formatDurationMinutes(minutes)}`;
-  const href = beginsNow ? `/app/focus?eventId=${nextBlock.id}&start=1` : `/app/focus?eventId=${nextBlock.id}`;
+  const href = beginsNow ? `/app/sessions?eventId=${nextBlock.id}&start=1` : `/app/sessions?eventId=${nextBlock.id}`;
 
   return (
     <Link
@@ -861,7 +862,7 @@ function SidebarPlanCue() {
         {nextBlock.subject ? `${nextBlock.subject} · ` : ""}{timeLabel}
       </p>
       <p className="mt-2 text-[12px] font-medium" style={{ color: "var(--app-accent-strong)" }}>
-        {ring ? `${ring.done} of ${ring.goal} min today · ${beginsNow ? "Start focus" : "Review block"}` : beginsNow ? "Start focus" : "Review block"}
+        {ring ? `${ring.done} of ${ring.goal} min today · ${beginsNow ? "Start session" : "Review block"}` : beginsNow ? "Start session" : "Review block"}
       </p>
     </Link>
   );

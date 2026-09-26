@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { resetAnalytics } from "@/lib/analytics/events";
 import { api, saveCsrf } from "@/lib/api/client";
 import AppButton from "./AppButton";
 
@@ -42,6 +43,7 @@ export default function DeleteAccountModal({
         body: JSON.stringify({ confirmation }),
       });
       saveCsrf(null);
+      resetAnalytics();
       router.replace("/login?deleted=1");
     } catch (err) {
       setError(err instanceof Error ? err.message : "We couldn't delete your account.");

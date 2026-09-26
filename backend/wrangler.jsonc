@@ -39,7 +39,10 @@
     // below is set with `wrangler secret put`.
     "REVENUECAT_ENTITLEMENT_PRO": "pro",
     "REVENUECAT_ENTITLEMENT_MAX": "max",
-    "APPLE_BUNDLE_ID": "app.arcadiahq.arcadia"
+    "APPLE_BUNDLE_ID": "app.arcadiahq.arcadia",
+    // iPhone check-ins (APNs). The team that owns the bundle ID above; the
+    // auth key itself is APNS_KEY_ID + APNS_PRIVATE_KEY, set as secrets.
+    "APNS_TEAM_ID": "4M56HCN39G"
   },
 
   "d1_databases": [

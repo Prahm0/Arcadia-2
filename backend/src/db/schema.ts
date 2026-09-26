@@ -155,10 +155,47 @@ export const pushSubscriptions = sqliteTable(
     checkinsEnabled: integer("checkins_enabled", { mode: "boolean" }).notNull().default(true),
     sessionStartEnabled: integer("session_start_enabled", { mode: "boolean" }).notNull().default(true),
     sessionFollowupEnabled: integer("session_followup_enabled", { mode: "boolean" }).notNull().default(true),
+    lateStartEnabled: integer("late_start_enabled", { mode: "boolean" }).notNull().default(true),
+    streakEnabled: integer("streak_enabled", { mode: "boolean" }).notNull().default(true),
     createdAt: integer("created_at").notNull().default(now),
     updatedAt: integer("updated_at").notNull().default(now),
   },
   (t) => [index("push_subscriptions_user_idx").on(t.userId)],
+);
+
+// The iOS app's APNs device tokens, with the same per-type flags as
+// push_subscriptions. `environment` is the APNs host the token works on.
+export const nativePushTokens = sqliteTable(
+  "native_push_tokens",
+  {
+    token: text("token").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    platform: text("platform", { enum: ["ios"] }).notNull().default("ios"),
+    environment: text("environment", { enum: ["production", "sandbox"] }).notNull().default("production"),
+    checkinsEnabled: integer("checkins_enabled", { mode: "boolean" }).notNull().default(true),
+    sessionStartEnabled: integer("session_start_enabled", { mode: "boolean" }).notNull().default(true),
+    lateStartEnabled: integer("late_start_enabled", { mode: "boolean" }).notNull().default(true),
+    sessionFollowupEnabled: integer("session_followup_enabled", { mode: "boolean" }).notNull().default(true),
+    streakEnabled: integer("streak_enabled", { mode: "boolean" }).notNull().default(true),
+    createdAt: integer("created_at").notNull().default(now),
+    updatedAt: integer("updated_at").notNull().default(now),
+  },
+  (t) => [index("native_push_tokens_user_idx").on(t.userId)],
+);
+
+// One row per check-in sent, so two cron runs can't send the same one.
+export const pushDeliveries = sqliteTable(
+  "push_deliveries",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    dedupeKey: text("dedupe_key").notNull(),
+    sentAt: integer("sent_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.dedupeKey] }), index("push_deliveries_sent_idx").on(t.sentAt)],
 );
 
 export const profiles = sqliteTable("profiles", {

@@ -19,6 +19,7 @@ import type { DashboardResponse, PlannerEvent, SessionPlan } from "@/lib/api/typ
 import { subjectColour } from "@/lib/app/subjectColour";
 import { useReplaceEvent, useSessionPlan } from "@/lib/app/useSessionPlan";
 import { useStudySessionSave } from "@/lib/app/useStudySessionSave";
+import { holdFocus } from "@/lib/capacitor/focusGuard";
 import CheckoutSheet from "../CheckoutSheet";
 import EventDetailSheet from "../EventDetailSheet";
 import PipTimer, { PIP_COMPACT_HEIGHT, PIP_WIDTH } from "./PipTimer";
@@ -484,6 +485,20 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
     };
     // Restarts when the phase flips, so a break counts from its own length.
   }, [running, phase]);
+
+  // iOS app: guard the phone (block the picked apps, nudge on leaving) while
+  // a focus phase counts down. Pausing, a break or the end lets it go. Reads
+  // the deadline the countdown above just set; the subject only labels the
+  // nudges, so typing in it doesn't re-send.
+  const guardSubject = useRef(subject);
+  useEffect(() => {
+    guardSubject.current = subject;
+  });
+  useEffect(() => {
+    const endsAt = running && phase === "focus" ? timerEndsAtRef.current : null;
+    holdFocus("timer", endsAt ? { endsAt, subject: guardSubject.current } : null);
+  }, [running, phase]);
+  useEffect(() => () => holdFocus("timer", null), []);
 
   // Persist on session changes and every five seconds while counting down.
   // The absolute deadline keeps elapsed time accurate across a reload.

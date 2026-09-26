@@ -33,6 +33,8 @@ import Logo from "@/components/ui/Logo";
 import { Avatar } from "./profile/ui";
 import { isGuestEmail } from "@/lib/auth/guest";
 import { initialiseRevenueCat, logOutRevenueCat } from "@/lib/capacitor/revenuecat";
+import { releaseFocusGuard } from "@/lib/capacitor/focusGuard";
+import { unlinkNativePush, useNativePush } from "@/lib/capacitor/nativePush";
 
 interface AppShellProps {
   user: AuthUser | null;
@@ -140,6 +142,10 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
     });
   }, [user?.id]);
 
+  // iOS app: tapped check-ins open what they're about, and this phone's
+  // push registration stays current. A no-op on the web.
+  useNativePush(user?.id);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("signup") !== "completed" || socialSignupTracked.current) return;
@@ -175,6 +181,12 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
     void logOutRevenueCat().catch((error) => {
       console.warn("[revenuecat] sign-out failed", error);
     });
+    // iOS app: this phone stops getting the account's check-ins, and any app
+    // block lifts. Before logout, while the session can still unlink it.
+    await Promise.all([
+      unlinkNativePush().catch((error) => console.warn("[native-push] unlink failed", error)),
+      releaseFocusGuard(),
+    ]);
     try {
       await api("/api/auth/logout", { method: "POST" });
     } catch {

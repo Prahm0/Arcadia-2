@@ -1,6 +1,7 @@
 import { and, eq, gte, lt } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema, type Database } from "../db";
+import { track } from "../lib/posthog";
 import { serialiseEvent } from "../lib/serialise";
 import { planIsCurrent, planSession, type Checkout, type SessionPlan } from "../lib/session-plan";
 import { effectiveTier, isPaidTier } from "../lib/tiers";
@@ -168,6 +169,10 @@ events.post("/:id/outcome", async (c) => {
     : [];
   if (outcome === "planned" && event.outcome === "completed") {
     await database.delete(schema.xpEvents).where(and(eq(schema.xpEvents.userId, userId), eq(schema.xpEvents.source, "study_block"), eq(schema.xpEvents.sourceId, event.id)));
+  }
+  if (outcome !== "planned" && outcome !== event.outcome && event.category === "study") {
+    const reason = readMissReason(body?.missReason);
+    track(c, userId, outcome === "completed" ? "study_block_done" : "study_block_missed", reason ? { reason } : undefined);
   }
   return c.json({ ok: true, event: await reread(database, event.id), rewards });
 });

@@ -21,6 +21,7 @@ import {
 } from "../lib/cards";
 import { newId } from "../lib/ids";
 import type { ContentPart } from "../lib/openai";
+import { track } from "../lib/posthog";
 import { MATERIAL_TYPES, filePart } from "../lib/syllabus";
 import { iso } from "../lib/time";
 import { DECK_LIMIT, getUserTier, isPaidTier, type Tier } from "../lib/tiers";
@@ -224,6 +225,7 @@ decks.post("/", async (c) => {
     );
   }
   await runBatch(c.env.DB, writes);
+  track(c, userId, "deck_created", { source, cards: cleaned.cards.length });
 
   const row = await ownedDeck(database, userId, id);
   const cards = await deckCards(database, id);
@@ -328,6 +330,7 @@ decks.post("/generate", async (c) => {
     ),
   ];
   await runBatch(c.env.DB, writes);
+  track(c, userId, "deck_created", { source: "arcad", cards: cleaned.cards.length });
 
   const row = await ownedDeck(database, userId, id);
   const cards = await deckCards(database, id);
@@ -518,5 +521,9 @@ cards.post("/reviews", async (c) => {
       .set({ studiedAt: now })
       .where(and(eq(schema.decks.userId, userId), inArray(schema.decks.id, deckIds))),
   ]);
+  track(c, userId, "cards_reviewed", {
+    answers: results.length,
+    correct: results.filter((result) => result.correct).length,
+  });
   return c.json({ cards: updated.map((card) => serialiseCard(card, now)) });
 });

@@ -2,6 +2,7 @@ import { and, eq, gte } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../db";
 import { newId } from "../lib/ids";
+import { trackMany, type ServerEvent } from "../lib/posthog";
 import { DAY, startOfLocalDay } from "../lib/time";
 import type { Env, Variables } from "../types";
 import { readStudySky } from "../lib/constellations";
@@ -41,6 +42,7 @@ studySessions.post("/", async (c) => {
   let stored = 0;
   const acceptedActivityIds: string[] = [];
   const rewards: { xp: number; source: string }[] = [];
+  const saved: ServerEvent[] = [];
 
   for (const item of items) {
     if (!item || typeof item !== "object") continue;
@@ -84,6 +86,11 @@ studySessions.post("/", async (c) => {
     }
     if (inserted[0] && String(item.type ?? "focus") !== "break") {
       rewards.push(...await awardFocusXp(database, userId, inserted[0].id, seconds / 60, startOfLocalDay(endedAt, profile?.timezone || "Australia/Sydney")));
+      saved.push({
+        userId,
+        event: "focus_session_saved",
+        properties: { minutes: Math.round(seconds / 60), type: String(item.type ?? "focus").slice(0, 32), hasSubject: Boolean(knownSubject) },
+      });
     }
     if (item.activityId) acceptedActivityIds.push(item.activityId);
   }
@@ -91,6 +98,7 @@ studySessions.post("/", async (c) => {
   // The activity is already durable. Reconciliation can safely retry on a sky
   // read if a transient failure occurs after saving the session.
   await readStudySky(database, userId).catch((error) => console.error("[study-sky] Reconciliation deferred", error));
+  trackMany(c, saved);
   return c.json({ ok: true, stored, acceptedActivityIds, rewards }, 201);
 });
 

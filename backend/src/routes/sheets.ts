@@ -5,6 +5,7 @@ import { insertCards, runBatch } from "../lib/cards";
 import { newId } from "../lib/ids";
 import type { ContentPart } from "../lib/openai";
 import { aiConfigured } from "../lib/openai";
+import { track } from "../lib/posthog";
 import { draftSheet } from "../lib/sheets";
 import { MATERIAL_TYPES, filePart } from "../lib/syllabus";
 import { iso } from "../lib/time";
@@ -121,6 +122,7 @@ sheets.post("/", async (c) => {
   if (Number(count) >= MAX_SHEETS) return c.json({ error: "That's a lot of sheets. Delete an old one first." }, 422);
 
   const id = newId("sheet");
+  const source = body.source === "arcad" ? "arcad" : "manual";
   await database.insert(schema.sheets).values({
     id,
     userId,
@@ -128,8 +130,9 @@ sheets.post("/", async (c) => {
     topicId,
     title,
     sections: JSON.stringify(cleaned.sections),
-    source: body.source === "arcad" ? "arcad" : "manual",
+    source,
   });
+  track(c, userId, "sheet_created", { source });
   const row = await ownedSheet(database, userId, id);
   return c.json({ sheet: serialiseSheet(row.sheet, row.topicTitle) }, 201);
 });
@@ -226,6 +229,7 @@ sheets.post("/draft", async (c) => {
   if (!reply || "error" in cleaned || cleaned.sections.length === 0) {
     return c.json({ error: "There wasn't enough in that source to draft a sheet. Try a fuller file or topic." }, 422);
   }
+  track(c, userId, "sheet_drafted", { from: body.topicId ? "topic" : body.subjectFileId ? "file" : "deck" });
   return c.json({
     draft: {
       title: cleanSheetTitle(reply.title) || "Summary sheet",
@@ -318,5 +322,6 @@ sheets.post("/:id/deck", async (c) => {
     }),
     insertCards(userId, deckId, cards.slice(0, 500).map((card, position) => ({ id: newId("card"), ...card, position }))),
   ]);
+  track(c, userId, "deck_created", { source: "sheet", cards: Math.min(cards.length, 500) });
   return c.json({ deckId, cardCount: Math.min(cards.length, 500) }, 201);
 });

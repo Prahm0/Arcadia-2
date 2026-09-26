@@ -84,7 +84,6 @@ export default function IosPricingView({ tiers }: { tiers: IosTier[] }) {
 
   async function activateTier(): Promise<RevenueCatTier> {
     const response = await api<{ tier: RevenueCatTier }>("/api/billing/iap/activate", { method: "POST" });
-    analytics.subscriptionActivated(response.tier);
     await reload();
     return response.tier;
   }

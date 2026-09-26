@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { db, schema, type Database } from "../db";
 import { newId } from "../lib/ids";
 import { aiConfigured } from "../lib/openai";
+import { track } from "../lib/posthog";
 import { replan } from "../lib/replan";
 import { relinkTopics } from "../lib/study-log";
 import {
@@ -269,6 +270,14 @@ subjectMaterials.post("/:id/files", async (c) => {
   for (const old of replaced) if (old.storageKey) await c.env.UPLOADS?.delete(old.storageKey);
 
   const [row] = await database.select().from(schema.subjectFiles).where(eq(schema.subjectFiles.id, id)).limit(1);
+  track(c, userId, "file_added", {
+    place: "subject",
+    kind,
+    contentType,
+    read,
+    topics: map?.topics.length ?? 0,
+    assessments: map?.assessments.length ?? 0,
+  });
   return c.json(
     {
       file: serialiseFile(row),

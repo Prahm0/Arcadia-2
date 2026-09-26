@@ -878,3 +878,15 @@ export const aiUsage = sqliteTable(
     index("ai_usage_user_created_idx").on(t.userId, t.createdAt),
   ],
 );
+
+/** One row per student per UTC day they opened the app, for actives and retention. */
+export const userActiveDays = sqliteTable(
+  "user_active_days",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    day: text("day").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.day] }), index("user_active_days_day_idx").on(t.day)],
+);

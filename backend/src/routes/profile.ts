@@ -9,6 +9,7 @@ import { serialiseCommitment, serialiseSubject } from "../lib/serialise";
 import { currentTopic } from "../lib/syllabus";
 import { DAY, iso, localDateKey, parseClock, startOfLocalWeek } from "../lib/time";
 import { serialiseAssessment, serialiseFile, serialiseTopic } from "./syllabus";
+import syllabusCatalog from "./syllabus-catalog";
 import type { Env, Variables } from "../types";
 
 export const AU_STATES = ["ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA"];
@@ -21,6 +22,7 @@ export function countryCode(value: unknown): string | null {
 const TEXT_LIMIT = 1500;
 
 const profile = new Hono<{ Bindings: Env; Variables: Variables }>();
+profile.route("/subjects", syllabusCatalog);
 
 /**
  * Everything the profile page shows, in one read: who the student is, their

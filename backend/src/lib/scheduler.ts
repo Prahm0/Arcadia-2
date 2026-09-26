@@ -343,6 +343,8 @@ export interface DayLayout {
   createdAt: string;
   /** Layouts made on the paid tier's stronger model on `day`, the student's local date. */
   premium?: { day: string; count: number };
+  /** What it was planned from, less work logged since (see day-plan.ts layoutBasis). */
+  basis?: string;
 }
 
 export function readLayout(raw: string | null | undefined): DayLayout | null {
@@ -1125,8 +1127,8 @@ export async function rebuildSchedule(
     writes.push(
       database
         .insert(schema.dayLayouts)
-        .values({ userId, wantedKey: key })
-        .onConflictDoUpdate({ target: schema.dayLayouts.userId, set: { wantedKey: key } }),
+        .values({ userId, wantedKey: key, wantedAt: Date.now() })
+        .onConflictDoUpdate({ target: schema.dayLayouts.userId, set: { wantedKey: key, wantedAt: Date.now() } }),
     );
   }
   if (writes.length > 0) {

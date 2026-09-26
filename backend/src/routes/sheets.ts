@@ -217,7 +217,7 @@ sheets.post("/draft", async (c) => {
 
   let reply: Awaited<ReturnType<typeof draftSheet>>;
   try {
-    reply = await draftSheet(c.env, { label, content });
+    reply = await draftSheet(c.env, userId, { label, content });
   } catch (error) {
     console.error("[sheets] draft failed", error);
     return c.json({ error: "Arcad couldn't draft a sheet right now. Try again in a moment." }, 502);

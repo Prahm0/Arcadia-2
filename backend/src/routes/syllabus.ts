@@ -147,7 +147,7 @@ subjectMaterials.post("/:id/files", async (c) => {
   if (aiConfigured(c.env)) {
     try {
       if (kind === "syllabus") {
-        map = await readSyllabus(c.env, { bytes, contentType, filename }, {
+        map = await readSyllabus(c.env, userId, { bytes, contentType, filename }, {
           subject: subject.name,
           state: profile?.state ?? null,
           today,
@@ -155,7 +155,7 @@ subjectMaterials.post("/:id/files", async (c) => {
         read = Boolean(map && (map.topics.length > 0 || map.assessments.length > 0));
         if (map) summary = `${map.topics.length} topics, ${map.assessments.length} assessments`;
       } else {
-        const outline = await readResource(c.env, { bytes, contentType, filename }, subject.name);
+        const outline = await readResource(c.env, userId, { bytes, contentType, filename }, subject.name);
         read = Boolean(outline);
         summary = outline ?? "";
       }

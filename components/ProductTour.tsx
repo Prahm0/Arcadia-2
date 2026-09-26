@@ -60,7 +60,7 @@ export default function ProductTour() {
         <div data-app-theme="dark" className="mt-16 grid grid-cols-12 gap-4 lg:mt-24 lg:gap-5">
           <Tile
             className="col-span-12 lg:col-span-7"
-            label="Focus"
+            label="Sessions"
             title="A timer that knows what the session is for."
             body="Arcad sets up each block when you open it: the topic, why it matters now and up to three steps. On desktop, pop the timer out and it floats over your other windows."
           >

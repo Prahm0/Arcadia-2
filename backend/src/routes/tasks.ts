@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../db";
 import { newId } from "../lib/ids";
+import { track } from "../lib/posthog";
 import { replan } from "../lib/replan";
 import { serialiseTask } from "../lib/serialise";
 import type { Env, Variables } from "../types";
@@ -53,6 +54,7 @@ tasks.post("/", async (c) => {
     estimatedMinutes: clamp(body.estimatedMinutes, 15, 1200, 60),
     priority: clamp(body.priority, 1, 5, 2),
   });
+  track(c, userId, "task_added", { taskType: body.taskType ?? "study" });
 
   await replan(database, userId);
   return c.json({ ok: true, id }, 201);
@@ -96,6 +98,9 @@ tasks.patch("/:id", async (c) => {
 
   if (Object.keys(patch).length > 0) {
     await database.update(schema.tasks).set(patch).where(eq(schema.tasks.id, id));
+  }
+  if (patch.status === "complete" && existing.status !== "complete") {
+    track(c, userId, "task_completed", { taskType: existing.taskType });
   }
 
   if (Object.keys(patch).some((key) => key !== "notes")) {

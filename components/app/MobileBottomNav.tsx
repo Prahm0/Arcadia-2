@@ -23,9 +23,9 @@ function icon(path: ReactNode) {
 }
 
 /**
- * Fixed bottom navigation for mobile. Five slots, Today, Schedule, Add, Focus,
- * More, sized to the platform tap target (56 px column, min 44 px control).
- * Arcad lives in the floating orb and in More. Respects the iOS
+ * Fixed bottom navigation for mobile. Five slots, Today, Schedule, Add,
+ * Sessions, More, sized to the platform tap target (56 px column, min 44 px
+ * control). Arcad lives in the floating orb and in More. Respects the iOS
  * home-indicator safe area via env(safe-area-inset-bottom).
  */
 export default function MobileBottomNav({ onAdd }: { onAdd: () => void }) {
@@ -59,11 +59,11 @@ export default function MobileBottomNav({ onAdd }: { onAdd: () => void }) {
       icon: icon(<><circle cx="12" cy="12" r="9" /><path d="M12 8v8M8 12h8" /></>),
     },
     {
-      key: "focus",
-      label: "Focus",
-      href: "/app/focus",
+      key: "sessions",
+      label: "Sessions",
+      href: "/app/sessions",
       icon: icon(<><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="3.5" /></>),
-      matcher: (p) => p.startsWith("/app/focus"),
+      matcher: (p) => p.startsWith("/app/sessions"),
     },
     {
       key: "more",

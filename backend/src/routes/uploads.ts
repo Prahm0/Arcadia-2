@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../db";
 import { newId } from "../lib/ids";
+import { track } from "../lib/posthog";
 import { getUserTier, isPaidTier } from "../lib/tiers";
 import { iso } from "../lib/time";
 import type { Env, Variables } from "../types";
@@ -72,6 +73,7 @@ uploads.post("/", async (c) => {
     contentType,
     bytes: file.size,
   });
+  track(c, userId, "file_added", { place: "files", contentType, kb: Math.round(file.size / 1024) });
 
   return c.json({ ok: true, id }, 201);
 });

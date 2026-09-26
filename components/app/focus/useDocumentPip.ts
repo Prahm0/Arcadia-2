@@ -78,7 +78,7 @@ export function useDocumentPip() {
 
   const attach = useCallback((win: Window) => {
     const stopMirroring = mirrorDocument(win);
-    win.document.title = "Focus · Arcadia";
+    win.document.title = "Session · Arcadia";
     const cleanup = () => {
       stopMirroring();
       winRef.current = null;

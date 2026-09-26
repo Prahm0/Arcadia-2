@@ -6,9 +6,16 @@ const nextConfig: NextConfig = {
   // output into a Worker. Set explicitly so `next build` and the OpenNext
   // bundling step can run as two separate commands.
   output: "standalone",
-  // Study Sky merged into Streaks; old links and bookmarks land there.
+  // Old links and bookmarks land on the page that replaced them: Study Sky
+  // merged into Streaks, Focus became Sessions and Rooms moved inside it.
+  // Query strings (?eventId=…) carry over.
   async redirects() {
-    return [{ source: "/app/sky", destination: "/app/streaks", permanent: true }];
+    return [
+      { source: "/app/sky", destination: "/app/streaks", permanent: true },
+      { source: "/app/focus", destination: "/app/sessions", permanent: true },
+      { source: "/app/rooms", destination: "/app/sessions/rooms", permanent: true },
+      { source: "/app/rooms/:code", destination: "/app/sessions/rooms/:code", permanent: true },
+    ];
   },
 };
 

@@ -2,6 +2,7 @@ import { and, asc, desc, eq, gte } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../db";
 import { newId } from "../lib/ids";
+import { track } from "../lib/posthog";
 import type { Env, Variables } from "../types";
 
 const feedback = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -47,6 +48,7 @@ feedback.post("/", async (c) => {
     message,
     email: body.contactMe ? user.email : null,
   });
+  track(c, userId, "feedback_sent", { type: body.type });
   return c.json({ ok: true }, 201);
 });
 

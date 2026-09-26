@@ -2,10 +2,12 @@ import { and, eq, gte } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../db";
 import { newId } from "../lib/ids";
+import { trackMany, type ServerEvent } from "../lib/posthog";
 import { DAY, startOfLocalDay } from "../lib/time";
 import type { Env, Variables } from "../types";
 import { readStudySky } from "../lib/constellations";
 import { awardFocusXp } from "../lib/rewards";
+import { replaceLog } from "../lib/study-log";
 
 interface SessionInput {
   activityId?: string;
@@ -15,6 +17,9 @@ interface SessionInput {
   goal?: string | null;
   distractions?: number;
   endedAt?: string;
+  /** The syllabus topic a timer session was on (sessions not tied to a block). */
+  topicId?: string | null;
+  topic?: string | null;
 }
 
 const studySessions = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -37,6 +42,7 @@ studySessions.post("/", async (c) => {
   let stored = 0;
   const acceptedActivityIds: string[] = [];
   const rewards: { xp: number; source: string }[] = [];
+  const saved: ServerEvent[] = [];
 
   for (const item of items) {
     if (!item || typeof item !== "object") continue;
@@ -65,8 +71,26 @@ studySessions.post("/", async (c) => {
       endedAt,
     }).onConflictDoNothing({ target: [schema.studySessions.userId, schema.studySessions.activityId] }).returning({ id: schema.studySessions.id });
     stored += inserted.length;
+    // A timer session on a chosen topic goes in the study log too. Blocks
+    // log through their check-out instead, so they don't send a topic.
+    const topic = item.topic ? String(item.topic).replace(/\s+/g, " ").trim().slice(0, 80) : "";
+    if (inserted[0] && item.activityId && topic && String(item.type ?? "focus") === "focus" && seconds >= 60) {
+      await replaceLog(
+        database,
+        userId,
+        { activityId: item.activityId, source: "timer" },
+        { id: knownSubject?.id ?? null, name: subject },
+        [{ topicId: typeof item.topicId === "string" ? item.topicId : null, topic, kind: "study", minutes: Math.round(seconds / 60), confidence: null, note: "" }],
+        endedAt,
+      );
+    }
     if (inserted[0] && String(item.type ?? "focus") !== "break") {
       rewards.push(...await awardFocusXp(database, userId, inserted[0].id, seconds / 60, startOfLocalDay(endedAt, profile?.timezone || "Australia/Sydney")));
+      saved.push({
+        userId,
+        event: "focus_session_saved",
+        properties: { minutes: Math.round(seconds / 60), type: String(item.type ?? "focus").slice(0, 32), hasSubject: Boolean(knownSubject) },
+      });
     }
     if (item.activityId) acceptedActivityIds.push(item.activityId);
   }
@@ -74,6 +98,7 @@ studySessions.post("/", async (c) => {
   // The activity is already durable. Reconciliation can safely retry on a sky
   // read if a transient failure occurs after saving the session.
   await readStudySky(database, userId).catch((error) => console.error("[study-sky] Reconciliation deferred", error));
+  trackMany(c, saved);
   return c.json({ ok: true, stored, acceptedActivityIds, rewards }, 201);
 });
 

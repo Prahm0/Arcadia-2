@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { db, schema } from "../db";
 import {
   createCheckoutSession,
@@ -10,10 +10,12 @@ import {
   type StripeSubscription,
 } from "../lib/stripe";
 import { activeRevenueCatEntitlement, fetchRevenueCatSubscriber } from "../lib/revenuecat";
+import { track } from "../lib/posthog";
 import { isValidTier } from "../lib/tiers";
 import type { Env, Variables } from "../types";
 
 const billing = new Hono<{ Bindings: Env; Variables: Variables }>();
+type Ctx = Context<{ Bindings: Env; Variables: Variables }>;
 
 type Plan = "pro" | "max";
 type Interval = "week" | "month" | "year";
@@ -62,6 +64,13 @@ function priceIdFor(env: Env, plan: Plan, interval: Interval): string | null {
   };
   const value = lookup[`${plan}:${interval}`];
   return value && value.length > 0 ? value : null;
+}
+
+function intervalForPriceId(env: Env, priceId: string): Interval | null {
+  if ([env.STRIPE_PRICE_PRO_WEEKLY, env.STRIPE_PRICE_MAX_WEEKLY].includes(priceId)) return "week";
+  if ([env.STRIPE_PRICE_PRO_MONTHLY, env.STRIPE_PRICE_MAX_MONTHLY].includes(priceId)) return "month";
+  if ([env.STRIPE_PRICE_PRO_YEARLY, env.STRIPE_PRICE_MAX_YEARLY].includes(priceId)) return "year";
+  return null;
 }
 
 function tierForPriceId(env: Env, priceId: string): "pro" | "max" | null {
@@ -232,7 +241,8 @@ billing.post("/iap/activate", async (c) => {
   }
 
   try {
-    const entitlement = await reconcileRevenueCatUser(database, user, c.env);
+    const { entitlement, change } = await reconcileRevenueCatUser(database, user, c.env);
+    trackTierChange(c, change);
     if (!entitlement) {
       return c.json({ error: "No active App Store subscription was found.", code: "no_active_entitlement" }, 422);
     }
@@ -263,7 +273,8 @@ billing.post("/iap/webhook", async (c) => {
   const [user] = await database.select().from(schema.users).where(eq(schema.users.id, appUserId)).limit(1);
   if (!user) return c.json({ received: true });
   try {
-    await reconcileRevenueCatUser(database, user, c.env);
+    const { change } = await reconcileRevenueCatUser(database, user, c.env);
+    trackTierChange(c, change);
   } catch (error) {
     console.error("[billing] RevenueCat webhook reconciliation failed", error);
     return c.json({ error: "Webhook handler failed." }, 500);
@@ -313,7 +324,7 @@ billing.post("/webhook", async (c) => {
         const subscriptionId = session.subscription;
         if (!userId || !subscriptionId) break;
         const subscription = await retrieveSubscription(c.env, subscriptionId);
-        await reconcileSubscription(database, userId, subscription, c.env);
+        trackTierChange(c, await reconcileSubscription(database, userId, subscription, c.env));
         break;
       }
 
@@ -324,7 +335,7 @@ billing.post("/webhook", async (c) => {
         };
         const userId = await resolveUserId(database, subscription);
         if (!userId) break;
-        await reconcileSubscription(database, userId, subscription, c.env);
+        trackTierChange(c, await reconcileSubscription(database, userId, subscription, c.env));
         break;
       }
 
@@ -345,6 +356,7 @@ billing.post("/webhook", async (c) => {
               subscriptionCurrentPeriodEnd: subscription.current_period_end * 1000,
             })
             .where(eq(schema.users.id, userId));
+          trackTierChange(c, { userId, from: user?.tier ?? "free", to: "free", provider: "stripe", status: "canceled" });
         }
         break;
       }
@@ -387,25 +399,26 @@ async function reconcileSubscription(
   userId: string,
   subscription: StripeSubscription,
   env: Env,
-): Promise<void> {
+): Promise<TierChange | null> {
   const [existing] = await database
-    .select({ billingProvider: schema.users.billingProvider, subscriptionStatus: schema.users.subscriptionStatus })
+    .select({ tier: schema.users.tier, billingProvider: schema.users.billingProvider, subscriptionStatus: schema.users.subscriptionStatus })
     .from(schema.users)
     .where(eq(schema.users.id, userId))
     .limit(1);
   // Stripe can retry an older event after the person moved to an App Store
   // subscription. Never let that stale event replace RevenueCat's active tier.
-  if (existing?.billingProvider === "app_store" && existing.subscriptionStatus === "active") return;
+  if (existing?.billingProvider === "app_store" && existing.subscriptionStatus === "active") return null;
 
   const priceId = subscription.items.data[0]?.price.id;
   const tier = priceId ? tierForPriceId(env, priceId) : null;
   // Stripe considers "trialing" and "active" as paid; everything else
   // (past_due, incomplete, unpaid, canceled) should drop back to free.
   const isPaid = subscription.status === "active" || subscription.status === "trialing";
+  const nextTier = isPaid && tier ? tier : "free";
   await database
     .update(schema.users)
     .set({
-      tier: isPaid && tier ? tier : "free",
+      tier: nextTier,
       billingProvider: "stripe",
       stripeCustomerId: subscription.customer,
       stripeSubscriptionId: subscription.id,
@@ -413,13 +426,21 @@ async function reconcileSubscription(
       subscriptionCurrentPeriodEnd: subscription.current_period_end * 1000,
     })
     .where(eq(schema.users.id, userId));
+  return {
+    userId,
+    from: existing?.tier ?? "free",
+    to: nextTier,
+    provider: "stripe",
+    status: subscription.status,
+    interval: priceId ? intervalForPriceId(env, priceId) : null,
+  };
 }
 
 async function reconcileRevenueCatUser(
   database: ReturnType<typeof db>,
   user: typeof schema.users.$inferSelect,
   env: Env,
-) {
+): Promise<{ entitlement: ReturnType<typeof activeRevenueCatEntitlement>; change: TierChange | null }> {
   const subscriber = await fetchRevenueCatSubscriber(env, user.id);
   const entitlement = activeRevenueCatEntitlement(env, subscriber);
 
@@ -436,7 +457,10 @@ async function reconcileRevenueCatUser(
         subscriptionCurrentPeriodEnd: entitlement.expiresAt,
       })
       .where(eq(schema.users.id, user.id));
-    return entitlement;
+    return {
+      entitlement,
+      change: { userId: user.id, from: user.tier, to: entitlement.tier, provider: "app_store", status: "active", productId: entitlement.productId },
+    };
   }
 
   // A RevenueCat expiration must never remove an active Stripe plan.
@@ -452,8 +476,44 @@ async function reconcileRevenueCatUser(
         revenuecatProductId: null,
       })
       .where(eq(schema.users.id, user.id));
+    return { entitlement: null, change: { userId: user.id, from: user.tier, to: "free", provider: "app_store", status: "expired" } };
   }
-  return null;
+  return { entitlement: null, change: null };
+}
+
+interface TierChange {
+  userId: string;
+  from: string;
+  to: string;
+  provider: "stripe" | "app_store";
+  status: string;
+  interval?: Interval | null;
+  productId?: string | null;
+}
+
+/**
+ * Payment events for PostHog. They're sent from here because the webhooks
+ * are the source of truth: the browser misses a purchase when the tab closes
+ * before the welcome page loads. Stripe and RevenueCat repeat events, so only
+ * a real change of tier is sent, never the same state twice.
+ */
+function trackTierChange(c: Ctx, change: TierChange | null): void {
+  if (!change || change.from === change.to) return;
+  const paid = (tier: string) => tier === "pro" || tier === "max";
+  const event = !paid(change.from)
+    ? "subscription_activated"
+    : !paid(change.to)
+      ? "subscription_ended"
+      : "subscription_changed";
+  track(c, change.userId, event, {
+    tier: change.to,
+    previousTier: change.from,
+    provider: change.provider,
+    status: change.status,
+    ...(change.interval ? { interval: change.interval } : {}),
+    ...(change.productId ? { productId: change.productId } : {}),
+    $set: { tier: change.to },
+  });
 }
 
 export default billing;

@@ -55,13 +55,22 @@ import { DAY, MINUTE, localDateKey, parseClock, startOfLocalDay } from "./time";
 const REPAIR_ROUNDS = 2;
 /**
  * A layout refresh that's been going this long is assumed dead and retried.
- * Three calls to the paid model at high effort can take several minutes.
+ * Three calls to the paid model at high effort can take several minutes,
+ * more on the flex tier (lib/openai.ts caps how long flex gets).
  */
 const STALE_WORK_MS = 15 * MINUTE;
 /** Blocks shouldn't end closer to bedtime than this. */
 const BED_BUFFER = 30 * MINUTE;
 /** Layouts the cron makes at once. */
 const CRON_BATCH = 10;
+/**
+ * How long the week has to sit unchanged before Arcad lays it out again.
+ * Setting up a week is a run of edits (five deadlines, a new shift), and
+ * each one would otherwise cost a layout, and a paid student one of the
+ * day's premium ones, for a week that's about to change again. The
+ * scheduler's own placement covers the gap. A first layout doesn't wait.
+ */
+const QUIET_MS = 3 * MINUTE;
 
 type Subject = typeof schema.subjects.$inferSelect;
 type Task = typeof schema.tasks.$inferSelect;
@@ -652,7 +661,14 @@ async function askArcad(
           messages,
           LAYOUT_SCHEMA,
           replyBudget(isReasoningModel(model), premium),
-          { model, reasoningEffort: premium ? effort.reasoningEffort : "medium" },
+          {
+            model,
+            reasoningEffort: premium ? effort.reasoningEffort : "medium",
+            // Layouts are made in the background while the scheduler's own
+            // placement covers the week, so nobody is waiting: half price.
+            serviceTier: "flex",
+            usage: { feature: "day_layout", userId: ctx.inputs.profile.userId },
+          },
         );
         return { reply, model };
       } catch (err) {
@@ -695,6 +711,27 @@ async function askArcad(
 }
 
 /**
+ * What a layout is planned from, minus the work done on tasks since. Two
+ * weeks with the same basis differ only by work the student has logged.
+ */
+function layoutBasis(ctx: Context): string {
+  return layoutKey({ ...ctx.inputs, tasks: ctx.inputs.tasks.map((task) => ({ ...task, completedMinutes: 0 })) }, ctx.g);
+}
+
+/**
+ * The last layout, if it can stand. Ticking off a deadline block lowers the
+ * work left, which changes the key, but usually leaves the rest of the week
+ * exactly right. If that's all that changed and the check still finds
+ * nothing to fix, asking Arcad again would cost a call for the same week.
+ */
+function stillHolding(ctx: Context, previous: DayLayout | null, basis: string): DayLayout | null {
+  if (!previous || previous.basis !== basis) return null;
+  if (!ctx.g.days.every((day) => previous.dates.includes(day.date))) return null;
+  const check = review(ctx, previous, []);
+  return check.broken.length === 0 && check.weak.length === 0 ? { ...previous, gaps: 0 } : null;
+}
+
+/**
  * Makes a fresh layout for the next week and saves it. Returns it, or null
  * when Arcad isn't available or has nothing to plan (the scheduler's rules
  * then cover the week on their own).
@@ -706,16 +743,23 @@ export async function makeLayout(env: Env, database: Database, userId: string): 
   const [row] = await database.select().from(schema.dayLayouts).where(eq(schema.dayLayouts.userId, userId)).limit(1);
   const previous = readLayout(row?.layout);
   const nothingToPlan = ctx.tasks.length === 0 && ctx.asks.every((ask) => ask.minutes <= 0);
+  const basis = layoutBasis(ctx);
   let layout: DayLayout | null = null;
   if (aiConfigured(env) && !nothingToPlan) {
-    // Paid students get a few layouts a day on the stronger model.
-    const today = localDateKey(ctx.g.now, ctx.inputs.profile.timezone);
-    const premiumToday = previous?.premium?.day === today ? previous.premium.count : 0;
-    const effort = layoutEffort(env, ctx.tier, premiumToday);
-    layout = await askArcad(env, ctx, previous, effort);
-    if (!layout) throw new Error("Arcad didn't send a usable layout.");
-    const usedPremium = effort.premium && layout.model === effort.models[0];
-    layout.premium = { day: today, count: premiumToday + (usedPremium ? 1 : 0) };
+    layout = stillHolding(ctx, previous, basis);
+    if (layout) {
+      console.log("[day-plan] last layout still holds", userId);
+    } else {
+      // Paid students get a few layouts a day on the stronger model.
+      const today = localDateKey(ctx.g.now, ctx.inputs.profile.timezone);
+      const premiumToday = previous?.premium?.day === today ? previous.premium.count : 0;
+      const effort = layoutEffort(env, ctx.tier, premiumToday);
+      layout = await askArcad(env, ctx, previous, effort);
+      if (!layout) throw new Error("Arcad didn't send a usable layout.");
+      const usedPremium = effort.premium && layout.model === effort.models[0];
+      layout.premium = { day: today, count: premiumToday + (usedPremium ? 1 : 0) };
+      layout.basis = basis;
+    }
   }
 
   // Clears any pending request too: if the inputs moved on while Arcad was
@@ -742,6 +786,7 @@ export async function refreshWantedLayouts(env: Env): Promise<void> {
   if (!aiConfigured(env)) return;
   const database = db(env.DB);
   const cutoff = Date.now() - STALE_WORK_MS;
+  const settled = Date.now() - QUIET_MS;
   const rows = await database
     .select()
     .from(schema.dayLayouts)
@@ -749,6 +794,12 @@ export async function refreshWantedLayouts(env: Env): Promise<void> {
       and(
         isNotNull(schema.dayLayouts.wantedKey),
         or(isNull(schema.dayLayouts.workingAt), lt(schema.dayLayouts.workingAt, cutoff)),
+        // Unchanged for QUIET_MS, or their first layout.
+        or(
+          isNull(schema.dayLayouts.wantedAt),
+          lt(schema.dayLayouts.wantedAt, settled),
+          isNull(schema.dayLayouts.inputsKey),
+        ),
       ),
     )
     .limit(CRON_BATCH);

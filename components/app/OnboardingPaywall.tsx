@@ -371,8 +371,7 @@ function NativeOnboardingPaywall({
     try {
       analytics.checkoutStarted("pro", "month");
       await purchaseIosOption(data.user.id, "pro", "month");
-      const res = await api<{ tier: string }>("/api/billing/iap/activate", { method: "POST" });
-      analytics.subscriptionActivated(res.tier);
+      await api<{ tier: string }>("/api/billing/iap/activate", { method: "POST" });
       onPurchaseCompleted?.();
       await reload();
     } catch (cause) {

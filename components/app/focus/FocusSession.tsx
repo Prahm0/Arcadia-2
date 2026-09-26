@@ -537,6 +537,9 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
 
   useEffect(() => {
     if (remaining !== 0) return;
+    // This phase's deadline has passed. Drop it so whatever runs next (the
+    // break, straight away) counts from its own length.
+    timerEndsAtRef.current = null;
     // A scheduled session ends in a check-out rather than a break.
     if (phase === "focus" && linkedEvent && !linkedEvent.checkout) {
       void logSession("focus", preset.focus);
@@ -721,6 +724,7 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
       setPhase("focus");
       setRemaining(preset.focus);
     }
+    timerEndsAtRef.current = null;
     setRunning(false);
     setComplete(false);
   }

@@ -46,6 +46,7 @@ export default function IosPricingView({ tiers }: { tiers: IosTier[] }) {
   const [loadingOffers, setLoadingOffers] = useState(true);
   const [busy, setBusy] = useState<"purchase" | "restore" | "manage" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -81,10 +82,11 @@ export default function IosPricingView({ tiers }: { tiers: IosTier[] }) {
     [options],
   );
 
-  async function activateTier() {
+  async function activateTier(): Promise<RevenueCatTier> {
     const response = await api<{ tier: RevenueCatTier }>("/api/billing/iap/activate", { method: "POST" });
     analytics.subscriptionActivated(response.tier);
     await reload();
+    return response.tier;
   }
 
   async function startPurchase(tier: RevenueCatTier) {
@@ -98,10 +100,12 @@ export default function IosPricingView({ tiers }: { tiers: IosTier[] }) {
     }
     setBusy("purchase");
     setError(null);
+    setNotice(null);
     try {
       analytics.checkoutStarted(tier, interval);
       await purchaseIosOption(data.user.id, tier, interval);
-      await activateTier();
+      const active = await activateTier();
+      setNotice(`You're on ${active === "max" ? "Max" : "Pro"}. Thanks for supporting Arcadia.`);
     } catch (cause) {
       console.warn("[revenuecat] purchase failed", cause);
       setError(cause instanceof Error ? cause.message : "Could not complete that purchase.");
@@ -117,9 +121,11 @@ export default function IosPricingView({ tiers }: { tiers: IosTier[] }) {
     }
     setBusy("restore");
     setError(null);
+    setNotice(null);
     try {
       await restoreIosPurchases(data.user.id);
-      await activateTier();
+      const tier = await activateTier();
+      setNotice(`Purchases restored. You're on ${tier === "max" ? "Max" : "Pro"}.`);
     } catch (cause) {
       console.warn("[revenuecat] restore failed", cause);
       setError(cause instanceof Error ? cause.message : "No active App Store purchase was found.");
@@ -217,6 +223,20 @@ export default function IosPricingView({ tiers }: { tiers: IosTier[] }) {
           {" · "}
           <a href="/privacy" className="underline underline-offset-2">Privacy Policy</a>
         </p>
+
+        {notice && !error ? (
+          <div
+            role="status"
+            className="rounded-md px-4 py-3 text-[13.5px]"
+            style={{
+              background: "color-mix(in oklab, var(--app-success) 12%, var(--app-surface))",
+              color: "var(--app-success)",
+              boxShadow: "var(--elev-1)",
+            }}
+          >
+            {notice}
+          </div>
+        ) : null}
 
         {error ? (
           <div

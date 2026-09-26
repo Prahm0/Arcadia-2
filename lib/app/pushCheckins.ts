@@ -1,5 +1,6 @@
 "use client";
 
+import { Capacitor } from "@capacitor/core";
 import { api } from "@/lib/api/client";
 import { isNativeIOS } from "@/lib/capacitor/platform";
 import {
@@ -36,7 +37,9 @@ interface StoredSubscription {
  * lib/capacitor/nativePush.ts). In the app, "endpoint" below is the device token.
  */
 export function pushCheckinsSupported(): boolean {
-  if (isNativeIOS()) return true;
+  // Only app builds that ship the push plugin can register; older iOS builds
+  // load this same site, so check the plugin instead of the platform.
+  if (isNativeIOS()) return Capacitor.isPluginAvailable("PushNotifications");
   return typeof window !== "undefined" &&
     "serviceWorker" in navigator &&
     "PushManager" in window &&

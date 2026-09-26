@@ -212,8 +212,18 @@ function RegisterInner({
               <p className="text-[15px]" style={{ color: "var(--app-text)" }}>
                 Check your email to verify.
               </p>
-              <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
-                {result.message}
+              <p className="break-words text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
+                {/* A new sending domain lands in junk at iCloud and friends
+                    until people rescue it, so say where to look. */}
+                {result.verificationToken ? (
+                  result.message
+                ) : (
+                  <>
+                    We sent a link to {email}. Can&rsquo;t see it after a
+                    minute? Check your junk or spam folder, and mark it as not
+                    junk so the next one lands in your inbox.
+                  </>
+                )}
               </p>
               {error ? (
                 <p className="text-[13px]" style={{ color: "var(--app-danger)" }}>

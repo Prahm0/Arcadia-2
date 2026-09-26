@@ -28,8 +28,8 @@ import { useDocumentPip } from "./useDocumentPip";
 /**
  * The focus timer lives here, in the app layout, rather than on the Focus
  * page. Pages unmount when the student moves around the app; the timer, its
- * pop-out window and the session's to-dos keep going. The Focus page is a
- * view onto this session. Nothing runs until the Focus page is first opened.
+ * pop-out window and the session's to-dos keep going. The Sessions page is a
+ * view onto this session. Nothing runs until the Sessions page is first opened.
  */
 
 export const BUILT_IN_PRESETS = [
@@ -251,7 +251,7 @@ interface FocusSessionContext {
 
 const Context = createContext<FocusSessionContext | null>(null);
 
-/** The running focus session (null until the Focus page first opens one), and a way to switch it. */
+/** The running focus session (null until the Sessions page first opens one), and a way to switch it. */
 export function useFocusSession() {
   const context = useContext(Context);
   if (!context) throw new Error("useFocusSession needs a FocusSessionProvider");
@@ -261,7 +261,7 @@ export function useFocusSession() {
 
 export function FocusSessionProvider({ children }: { children: ReactNode }) {
   const [store] = useState(createStore);
-  // undefined: the Focus page hasn't been opened yet, so no timer runs.
+  // undefined: the Sessions page hasn't been opened yet, so no timer runs.
   const [eventId, setEventId] = useState<string | null | undefined>(undefined);
   const select = useCallback((next: string | null) => setEventId(next), []);
   const context = useMemo(() => ({ store, select }), [store, select]);
@@ -757,7 +757,7 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
     pip,
   };
 
-  // Hand the latest state to the Focus page, if it's open.
+  // Hand the latest state to the Sessions page, if it's open.
   useLayoutEffect(() => {
     store.set(session);
   });

@@ -198,7 +198,7 @@ export function buildProactiveCards(
         eyebrow: "Check-in",
         title: "Zero focus time so far. One short session is enough to reset it.",
         actions: [
-          { label: "Start a session", href: "/app/focus", variant: "primary" },
+          { label: "Start a session", href: "/app/sessions", variant: "primary" },
         ],
       });
     }

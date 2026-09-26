@@ -52,8 +52,8 @@ export default function TodayView() {
   const [openEventId, setOpenEventId] = useState<string | null>(null);
   const [openEventMode, setOpenEventMode] = useState<EventSheetMode>("details");
 
-  // Handoff from the mobile bottom nav's +Add slot: ?new=1 auto-opens the
-  // New Task sheet, then strips the query so a refresh doesn't repeat.
+  // ?new=1 (links from elsewhere) auto-opens the New Task sheet, then strips
+  // the query so a refresh doesn't repeat.
   const handledNewParam = useRef(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -442,7 +442,7 @@ function FocusRow({
   const isActionable = !isDone && !isMissed;
   const minutes = Math.round((Date.parse(event.endAt) - Date.parse(event.startAt)) / 60000);
   const startClock = formatClock(event.startAt, timezone);
-  const focusHref = `/app/focus?eventId=${encodeURIComponent(event.id)}`;
+  const focusHref = `/app/sessions?eventId=${encodeURIComponent(event.id)}`;
   const colour = subjectColour(subjects, event.subject) ?? CATEGORY_BAR[event.category] ?? "";
   // Arcad's topic once it's set up; a deadline's own name; otherwise the
   // subject label above says it all until Arcad sets the session up.
@@ -500,7 +500,7 @@ function FocusRow({
         showContextMenu(
           e,
           [
-            isActionable && { kind: "item", label: "Start focus", onSelect: () => router.push(focusHref) },
+            isActionable && { kind: "item", label: "Start session", onSelect: () => router.push(focusHref) },
             isActionable && { kind: "item", label: "Open in new tab", onSelect: () => window.open(focusHref, "_blank", "noopener") },
             { kind: "item", label: "Session details", onSelect: () => onOpen("details") },
             { kind: "separator" },

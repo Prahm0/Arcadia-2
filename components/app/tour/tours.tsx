@@ -121,7 +121,7 @@ export const TOURS: Record<TourId, Tour> = {
       },
       {
         title: "Focus lights the sky",
-        body: "Start a focus session from your next block. Study days build your streak, focus minutes light stars and stars complete the cards you collect.",
+        body: "Start a session from your next block. Study days build your streak, focus minutes light stars and stars complete the cards you collect.",
         visual: (
           <Window width={280} title="Focus">
             <div className="flex items-center justify-center py-2"><TimerRing time="45:00" label="Chemistry" progress={0.45} size={112} /></div>
@@ -281,7 +281,7 @@ export const TOURS: Record<TourId, Tour> = {
       },
       {
         title: "Open any block",
-        body: "Click a block to see what it's for, start a focus session on it, or mark it done or missed.",
+        body: "Click a block to see what it's for, start a session on it, or mark it done or missed.",
         visual: (
           <div className="relative flex items-start gap-3">
             <div
@@ -299,7 +299,7 @@ export const TOURS: Record<TourId, Tour> = {
               <p className="px-1 text-[11px] font-semibold" style={{ color: "var(--app-text)" }}>Physics · Kinematics</p>
               <p className="mb-2 px-1 text-[9.5px]" style={{ color: "var(--app-text-muted)" }}>Mon 4:00 – 5:00pm · Part of: Prac report</p>
               <div className="flex flex-wrap gap-1.5 px-1">
-                <MockButton size="sm" variant="primary">Start focus</MockButton>
+                <MockButton size="sm" variant="primary">Start session</MockButton>
                 <MockButton size="sm">Done</MockButton>
                 <MockButton size="sm">Missed</MockButton>
               </div>
@@ -394,7 +394,7 @@ export const TOURS: Record<TourId, Tour> = {
   },
 
   focus: {
-    title: "Focus",
+    title: "Sessions",
     steps: [
       {
         title: "Pick a rhythm",
@@ -452,7 +452,7 @@ export const TOURS: Record<TourId, Tour> = {
         title: "Pop it out",
         body: "Pop out floats a small timer over your other windows. Drag it anywhere, then click the clock to open this session's to-do list.",
         visual: (
-          <Window width={230} title="Focus · Chemistry">
+          <Window width={230} title="Session · Chemistry">
             <div className="flex items-center justify-between px-1 pb-1">
               <span className="text-[22px] font-medium tabular-nums" style={{ color: "var(--app-text)" }}>24:13</span>
               <Mono>1/3</Mono>
@@ -520,7 +520,7 @@ export const TOURS: Record<TourId, Tour> = {
       },
       {
         title: "Start here, or join in",
-        body: "Start a session from the room, or join someone's and finish together. A timer on the Focus page shows here too.",
+        body: "Start a session from the room, or join someone's and finish together. A timer on the Sessions page shows here too.",
         visual: (
           <div className="flex items-center gap-3">
             <TimerRing time="32:14" label="Focus" progress={0.3} size={96} />

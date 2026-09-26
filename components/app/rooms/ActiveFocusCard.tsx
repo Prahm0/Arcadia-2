@@ -110,9 +110,9 @@ export function ElsewhereFocusCard({ member, elapsed }: { member: StudyRoomMembe
         {formatClock(elapsed)}
       </p>
       <p className="mt-2 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-        A timer is running on the Focus page or another device{member.subject ? ` · ${member.subject}` : ""}. The room sees it.
+        A timer is running on the Sessions page or another device{member.subject ? ` · ${member.subject}` : ""}. The room sees it.
       </p>
-      <Link href="/app/focus" className="mt-3 inline-block text-[12.5px] font-medium underline underline-offset-4" style={{ color: "var(--app-text)" }}>
+      <Link href="/app/sessions" className="mt-3 inline-block text-[12.5px] font-medium underline underline-offset-4" style={{ color: "var(--app-text)" }}>
         Open the timer →
       </Link>
     </section>

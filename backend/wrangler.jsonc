@@ -21,6 +21,9 @@
     // (lib/plan-tier.ts). Max also thinks harder with it.
     "OPENAI_PLAN_MODEL_PRO": "gpt-5",
     "OPENAI_PLAN_MODEL_MAX": "gpt-5",
+    // Reading students' files (course outlines, resources) and writing cards
+    // and sheets from them. gpt-4o-mini bills each PDF page like gpt-4o does.
+    "OPENAI_DOCUMENT_MODEL": "gpt-5-mini",
     // Stripe price IDs — not secret. Live-mode ids, copied over from the
     // sandbox products after the account was activated. Amounts match the
     // sandbox: Pro $4.95/$12.82/$49.40, Max $9.95/$34.54/$205.40 (AUD).

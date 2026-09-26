@@ -80,7 +80,7 @@ admin.get("/metrics", async (c) => {
   const d1 = c.env.DB;
 
   const usageKeys = Object.keys(USAGE) as Array<keyof typeof USAGE>;
-  const [usersRow, developersRow, activeRow, funnelRow, activeDays, signupDays, focusDays, cohortUsers, cohortActivity, aiTable, ...usageRows] =
+  const [usersRow, developersRow, activeRow, funnelRow, activeDays, signupDays, focusDays, cohortUsers, cohortActivity, ...usageRows] =
     await d1.batch<Record<string, unknown>>([
       d1.prepare(`SELECT
           COUNT(*) AS total,
@@ -126,7 +126,6 @@ admin.get("/metrics", async (c) => {
         WHERE ${STUDENT} AND ${NOT_GUEST} AND u.created_at >= ?1`).bind(cohortStart),
       d1.prepare(`SELECT a.user_id, a.day FROM user_active_days a JOIN users u ON u.id = a.user_id
         WHERE ${STUDENT} AND ${NOT_GUEST} AND u.created_at >= ?1 AND a.day >= ?2`).bind(cohortStart, utcDay(cohortStart)),
-      d1.prepare("SELECT 1 AS present FROM sqlite_master WHERE type = 'table' AND name = 'ai_usage'"),
       ...usageKeys.map((key) => d1.prepare(usageSql(USAGE[key])).bind(since, previousSince)),
     ]);
 
@@ -188,7 +187,7 @@ admin.get("/metrics", async (c) => {
       cohortStart,
       dayMs(today),
     ),
-    ai: aiTable.results.length ? await aiSpend(d1, since, previousSince, firstDay) : null,
+    ai: await aiSpend(d1, since, previousSince, firstDay),
   };
 
   c.header("cache-control", "private, no-store");

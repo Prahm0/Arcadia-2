@@ -78,12 +78,12 @@ export interface AdminMetrics {
   };
   series: AdminDay[];
   retention: RetentionCohort[];
-  /** Null until the ai_usage table exists (PR #217). Includes developers: it's real spend. */
+  /** From ai_usage. Includes developers: it's real spend. */
   ai: {
     costMicros: PeriodCount;
     calls: number;
     byFeature: AiSpendRow[];
     byTier: AiSpendRow[];
     series: Array<{ day: string; costMicros: number }>;
-  } | null;
+  };
 }

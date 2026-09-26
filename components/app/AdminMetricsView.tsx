@@ -537,13 +537,6 @@ function AiSpend({ ai, activeMonth, days, periodDays }: {
   days: MetricPeriod;
   periodDays: string[];
 }) {
-  if (!ai) {
-    return (
-      <Panel title="AI spend">
-        <Muted>This starts once the AI cost PR (#217) is merged. It adds the ai_usage table these numbers come from.</Muted>
-      </Panel>
-    );
-  }
   const spendByDay = new Map(ai.series.map((point) => [point.day, point.costMicros]));
   return (
     <div className="flex flex-col gap-4">

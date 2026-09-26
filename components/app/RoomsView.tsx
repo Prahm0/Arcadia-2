@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createRoom, joinRoom, listRooms, type StudyRoom } from "@/lib/api/rooms";
 import { ROOM_COLOURS, roomColour } from "@/lib/app/roomColours";
 import PageHeader from "./PageHeader";
+import SessionsSwitch from "./focus/SessionsSwitch";
 import AppButton from "./AppButton";
 import { copyText, showContextMenu } from "./ContextMenu";
 import EmptyState, { ExampleRow } from "./EmptyState";
@@ -54,7 +55,7 @@ export default function RoomsView() {
       const room = await createRoom(name, createDescription, createColour);
       setCreateName("");
       setCreateDescription("");
-      router.push(`/app/rooms/${room.code}`);
+      router.push(`/app/sessions/rooms/${room.code}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't create the room.");
     } finally {
@@ -71,7 +72,7 @@ export default function RoomsView() {
     try {
       const joined = await joinRoom(code);
       setJoinCode("");
-      router.push(`/app/rooms/${joined.room.code}`);
+      router.push(`/app/sessions/rooms/${joined.room.code}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't join that room.");
     } finally {
@@ -81,14 +82,15 @@ export default function RoomsView() {
 
   return (
     <>
-      <PageHeader width={860}
-        eyebrow="Study"
-        title="Rooms"
+      {/* Same width as Solo so switching between them doesn't jump. */}
+      <PageHeader width={960}
+        title="Sessions"
         meta={loading ? undefined : `${rooms.length} ${rooms.length === 1 ? "room" : "rooms"}`}
         tour="rooms"
+        action={<SessionsSwitch />}
       />
 
-      <div className="mx-auto flex w-full max-w-[860px] flex-col gap-6 px-6 py-8 sm:px-10">
+      <div className="mx-auto flex w-full max-w-[960px] flex-col gap-6 px-6 py-8 sm:px-10">
         <div className="grid gap-4 sm:grid-cols-2">
           <form
             onSubmit={submitCreate}
@@ -204,7 +206,7 @@ export default function RoomsView() {
                 <li
                   key={room.id}
                   onContextMenu={(event) => {
-                    const href = `/app/rooms/${room.code}`;
+                    const href = `/app/sessions/rooms/${room.code}`;
                     showContextMenu(
                       event,
                       [
@@ -219,7 +221,7 @@ export default function RoomsView() {
                   }}
                 >
                   <Link
-                    href={`/app/rooms/${room.code}`}
+                    href={`/app/sessions/rooms/${room.code}`}
                     className="group flex items-center gap-4 rounded-md px-4 py-4 transition-colors ui-hover"
                     style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)", borderLeft: `4px solid ${roomColour(room.colour)}` }}
                   >

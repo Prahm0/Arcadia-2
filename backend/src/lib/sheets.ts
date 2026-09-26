@@ -1,4 +1,4 @@
-import { completeJson, type ContentPart } from "./openai";
+import { completeJson, documentCall, type ContentPart } from "./openai";
 import { SHEET_SECTIONS_MAX, type SheetSection } from "../../../shared/sheets";
 import type { Env } from "../types";
 
@@ -40,8 +40,10 @@ const DRAFT_SCHEMA = {
  */
 export async function draftSheet(
   env: Env,
+  userId: string,
   source: { label: string; content: ContentPart[] },
 ): Promise<DraftReply | null> {
+  const call = documentCall(env, { feature: "sheet", userId }, 2000);
   return completeJson<DraftReply>(
     env,
     [
@@ -63,6 +65,7 @@ export async function draftSheet(
       },
     ],
     DRAFT_SCHEMA,
-    2000,
+    call.maxTokens,
+    call.options,
   );
 }

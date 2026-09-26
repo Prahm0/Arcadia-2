@@ -198,11 +198,11 @@ function FirstRunAnalytics() {
             Each focus block reveals your best study times, your strongest days, and the progress you are building.
           </p>
           <Link
-            href="/app/focus"
+            href="/app/sessions"
             className="mt-6 inline-flex h-10 items-center justify-center gap-2 rounded-md px-4 text-[13px] font-semibold transition-opacity hover:opacity-90"
             style={{ background: "var(--app-arcad)", color: "var(--app-arcad-on)" }}
           >
-            Start a focus session
+            Start a session
             <span aria-hidden="true">→</span>
           </Link>
         </div>

@@ -6,7 +6,7 @@ import { useStudySessionSave } from "@/lib/app/useStudySessionSave";
 
 /**
  * A focus session started from inside a study room. Deliberately simpler than
- * the Focus page's timer: one block of focus, no breaks, finished by hand or
+ * the Sessions page's timer: one block of focus, no breaks, finished by hand or
  * when the clock runs out. It publishes presence the same way, so every room
  * sees it, and it logs to the same study sessions, so streaks and cards count it.
  */
@@ -14,7 +14,7 @@ import { useStudySessionSave } from "@/lib/app/useStudySessionSave";
 const STORAGE_KEY = "arcadia:room-focus:";
 // The server treats a timer quiet for 150s as gone; one missed beat is fine.
 const KEEPALIVE_MS = 60_000;
-// Misclicks and instant finishes stay out of the log, as on the Focus page.
+// Misclicks and instant finishes stay out of the log, as on the Sessions page.
 const MIN_LOGGED_SECONDS = 30;
 
 export interface RoomFocusSession {
@@ -152,7 +152,7 @@ export function useRoomFocus(userId: string, onFinished?: (finished: FinishedFoc
   }, [session]);
 
   // Presence: on start, then a keepalive. Leaving the page reads as idle
-  // (as it does on the Focus page); coming back picks the session up again.
+  // (as it does on the Sessions page); coming back picks the session up again.
   useEffect(() => {
     if (!session) return;
     publish(session);

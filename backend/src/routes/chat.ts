@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNotNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../db";
 import { newId } from "../lib/ids";
@@ -203,12 +203,17 @@ chat.post("/", async (c) => {
       };
 
       try {
-        const history = await database
-          .select()
-          .from(schema.messages)
-          .where(eq(schema.messages.conversationId, conversationId))
-          .orderBy(asc(schema.messages.createdAt))
-          .limit(30);
+        // The latest 30, oldest first; rowid breaks ties within a second.
+        // Taking the first 30 left Arcad answering an old message once a
+        // chat ran past that.
+        const history = (
+          await database
+            .select()
+            .from(schema.messages)
+            .where(eq(schema.messages.conversationId, conversationId))
+            .orderBy(desc(schema.messages.createdAt), desc(sql`rowid`))
+            .limit(30)
+        ).reverse();
 
         const context = await buildContext(c.env, userId);
         const prompt: ChatMessage[] = [
@@ -223,6 +228,7 @@ chat.post("/", async (c) => {
           c.env,
           prompt,
           context.memoryEnabled ? [PROPOSE_TOOL, REMEMBER_TOOL] : [PROPOSE_TOOL],
+          { feature: "chat", userId },
         );
         if (!result.content.trim() && result.toolCalls.length === 0) {
           throw new Error("Arcad couldn't respond.");

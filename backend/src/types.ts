@@ -13,6 +13,8 @@ export interface Env {
   // What Pro and Max students plan with (see lib/plan-tier.ts). Max falls back to Pro's.
   OPENAI_PLAN_MODEL_PRO?: string;
   OPENAI_PLAN_MODEL_MAX?: string;
+  // What reads students' files and writes cards and sheets from them. Defaults to gpt-5-mini.
+  OPENAI_DOCUMENT_MODEL?: string;
   // Local dev only: point Arcad at a stand-in server instead of OpenAI.
   OPENAI_BASE_URL?: string;
   STRIPE_PRICE_PRO_WEEKLY: string;

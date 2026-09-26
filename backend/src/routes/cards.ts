@@ -303,7 +303,7 @@ decks.post("/generate", async (c) => {
 
   let generated: Awaited<ReturnType<typeof generateFlashcards>>;
   try {
-    generated = await generateFlashcards(c.env, { label: sourceLabel, content: sourceContent });
+    generated = await generateFlashcards(c.env, userId, { label: sourceLabel, content: sourceContent });
   } catch (error) {
     console.error("[cards] generation failed", error);
     return c.json({ error: "Arcad couldn't make a deck right now. Try again in a moment." }, 502);

@@ -2,13 +2,34 @@ import Button from "./ui/Button";
 import { cn } from "@/lib/cn";
 
 /**
- * The App Store listing, once Arcadia is live there. While it's null the
- * iPhone option reads "coming soon" and isn't a link. When it goes live, set
- * this and swap the iPhone button for Apple's official "Download on the App
- * Store" badge (Apple's marketing rules reserve that badge, and the Apple
- * logo, for apps that are actually available).
+ * Arcadia's App Store ID (App Store Connect → App Information → Apple ID).
+ * Leave it null until the app is released: while it's null the iPhone option
+ * reads "coming soon", because Apple's marketing rules reserve the "Download
+ * on the App Store" badge for apps that are actually available.
  */
-export const APP_STORE_URL: string | null = null;
+const APP_STORE_ID: string | null = null;
+
+export const APP_STORE_URL: string | null = APP_STORE_ID ? `https://apps.apple.com/app/id${APP_STORE_ID}` : null;
+
+/**
+ * Apple's official badge, served by Apple's marketing tools so it's always
+ * the current, unmodified artwork. The black badge has the light outline
+ * Apple specifies for dark backgrounds.
+ */
+function AppStoreBadge({ href }: { href: string }) {
+  return (
+    <a href={href} className="inline-flex h-12 items-center justify-center transition-opacity duration-200 hover:opacity-85" aria-label="Download Arcadia on the App Store">
+      {/* eslint-disable-next-line @next/next/no-img-element -- Apple-hosted badge, not a local asset */}
+      <img
+        src="https://toolbox.marketingtools.apple.com/api/v2/badges/download-on-the-app-store/black/en-us"
+        alt="Download on the App Store"
+        width={145}
+        height={48}
+        className="h-12 w-auto"
+      />
+    </a>
+  );
+}
 
 function GlobeIcon() {
   return (
@@ -60,10 +81,7 @@ export function PlatformChoice({ className }: { className?: string }) {
         Use it on the web
       </Button>
       {APP_STORE_URL ? (
-        <Button tone="dark" variant="secondary" href={APP_STORE_URL} className="sm:min-w-[200px]">
-          <PhoneIcon />
-          Download for iPhone
-        </Button>
+        <AppStoreBadge href={APP_STORE_URL} />
       ) : (
         <span
           aria-disabled="true"

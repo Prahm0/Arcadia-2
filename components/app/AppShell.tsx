@@ -30,6 +30,7 @@ import SessionStartModal from "./SessionStartModal";
 import SleepStartPrompt from "./SleepStartPrompt";
 import Kbd from "./Kbd";
 import Logo from "@/components/ui/Logo";
+import { useNativeIOS } from "@/lib/capacitor/platform";
 import { Avatar } from "./profile/ui";
 import { isGuestEmail } from "@/lib/auth/guest";
 import { initialiseRevenueCat, logOutRevenueCat } from "@/lib/capacitor/revenuecat";
@@ -896,9 +897,16 @@ function writeSidebarPref(open: boolean) {
 }
 
 function BrandMark() {
+  // The wordmark is for the website; the iOS app keeps the icon on its own.
+  const nativeIOS = useNativeIOS();
   return (
-    <Link href="/app" aria-label="Arcadia, go to Today" title="Arcadia" className="grid h-8 w-8 place-items-center rounded-md">
+    <Link href="/app" aria-label="Arcadia, go to Today" title="Arcadia" className="flex h-8 items-center gap-2 rounded-md">
       <Logo size={28} />
+      {nativeIOS ? null : (
+        <span className="text-[19px] font-bold tracking-[-0.02em]" style={{ color: "var(--app-text)" }}>
+          Arcadia
+        </span>
+      )}
     </Link>
   );
 }

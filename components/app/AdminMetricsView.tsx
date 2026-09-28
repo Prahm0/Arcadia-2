@@ -6,7 +6,9 @@ import { formatMinutes } from "@/lib/api/time";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import {
   METRIC_PERIODS,
+  type AdminBusiness,
   type AdminDay,
+  type AdminTrafficSource,
   type AdminMetrics,
   type AiSpendRow,
   type MetricPeriod,
@@ -19,9 +21,9 @@ const WIDTH = 1140;
 const POSTHOG_URL = "https://eu.posthog.com";
 
 /**
- * Developers' view of how Arcadia is doing: accounts, actives, plans, the
- * signup funnel, feature use, retention and AI spend, straight from D1.
- * What people click and where they get stuck lives in PostHog.
+ * Developers' view of how Arcadia is doing, on one page: money (Stripe and
+ * RevenueCat), visitors and where they came from (PostHog), then accounts,
+ * actives, the signup funnel, feature use, retention and AI spend (D1).
  */
 export default function AdminMetricsView() {
   const { data } = useDashboardData();
@@ -30,12 +32,30 @@ export default function AdminMetricsView() {
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [business, setBusiness] = useState<AdminBusiness | null>(null);
+  const [businessLoading, setBusinessLoading] = useState(true);
   const request = useRef(0);
 
   const load = useCallback(async () => {
     const id = ++request.current;
     setLoading(true);
+    setBusinessLoading(true);
     setError(null);
+    // Money and visitors come from outside services and can be slower; they
+    // fill in on their own without holding up the D1 numbers.
+    void api<AdminBusiness>(`/api/admin/business?days=${days}`)
+      .then((response) => { if (request.current === id) setBusiness(response); })
+      .catch((err: unknown) => {
+        if (request.current !== id) return;
+        setBusiness({
+          generatedAt: new Date().toISOString(),
+          days,
+          money: null,
+          traffic: null,
+          errors: [err instanceof Error ? err.message : "Couldn't load money and visitors."],
+        });
+      })
+      .finally(() => { if (request.current === id) setBusinessLoading(false); });
     try {
       const response = await api<AdminMetrics>(`/api/admin/metrics?days=${days}`);
       if (request.current === id) setMetrics(response);
@@ -64,6 +84,7 @@ export default function AdminMetricsView() {
   }
 
   const m = metrics;
+  const b = business;
   const periodLabel = `last ${days} days`;
   const updated = m ? new Date(m.generatedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : null;
 
@@ -98,12 +119,9 @@ export default function AdminMetricsView() {
       ) : (
         // Hold the last numbers, dimmed, while a new period loads.
         <div className="pb-16 transition-opacity" style={{ opacity: loading ? 0.55 : 1 }} aria-busy={loading}>
+          <Business business={b} loading={businessLoading} days={days} signups={m.users.signups.current} />
+
           <div className="mx-auto grid w-full grid-cols-2 gap-3 px-6 pt-4 sm:px-10 @3xl/main:grid-cols-4 @3xl/main:gap-4" style={{ maxWidth: WIDTH }}>
-            <StatTile
-              label="Accounts"
-              value={count(m.users.total)}
-              detail={`${count(m.users.verified)} verified · ${count(m.users.guests)} guests`}
-            />
             <StatTile
               label="Signups"
               value={count(m.users.signups.current)}
@@ -116,9 +134,14 @@ export default function AdminMetricsView() {
               detail={`${count(m.active.today)} today · ${count(m.active.month)} in 30 days`}
             />
             <StatTile
-              label="Paying"
-              value={count(m.plans.pro + m.plans.max)}
-              detail={`${percent(m.plans.pro + m.plans.max, m.users.verified)} of verified`}
+              label="Accounts"
+              value={count(m.users.total)}
+              detail={`${count(m.users.verified)} verified · ${count(m.users.guests)} guests`}
+            />
+            <StatTile
+              label="Visitor to signup"
+              value={b?.traffic ? percent(m.users.signups.current, b.traffic.visitors) : "–"}
+              detail={b?.traffic ? `${count(b.traffic.visitors)} visitors, ${periodLabel}` : "Needs PostHog connected"}
             />
           </div>
 
@@ -133,9 +156,9 @@ export default function AdminMetricsView() {
 
           <div className="mx-auto grid w-full gap-4 px-6 pt-4 sm:px-10 @3xl/main:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]" style={{ maxWidth: WIDTH }}>
             <Panel title="Signup funnel" note={`${count(m.funnel.signedUp)} accounts made, ${periodLabel}`}>
-              <Funnel funnel={m.funnel} />
+              <Funnel funnel={m.funnel} paid={b?.money ? b.money.paying.newThisPeriod : null} />
             </Panel>
-            <Panel title="Plans" note="Everyone, now">
+            <Panel title="Plan access" note="Everyone, now. Includes tests">
               <Plans metrics={m} />
             </Panel>
           </div>
@@ -159,6 +182,210 @@ export default function AdminMetricsView() {
       )}
     </>
   );
+}
+
+// ────────── Money and visitors ──────────
+
+/** Everything from Stripe, RevenueCat and PostHog: the top of the page. */
+function Business({ business, loading, days, signups }: {
+  business: AdminBusiness | null;
+  loading: boolean;
+  days: MetricPeriod;
+  signups: number;
+}) {
+  const money = business?.money ?? null;
+  const traffic = business?.traffic ?? null;
+  const waiting = loading && !business;
+  const dash = waiting ? "…" : "–";
+  return (
+    <>
+      <div className="mx-auto grid w-full grid-cols-2 gap-3 px-6 pt-4 sm:px-10 @3xl/main:grid-cols-4 @3xl/main:gap-4" style={{ maxWidth: WIDTH }}>
+        <StatTile
+          label="MRR"
+          value={money ? aud(money.mrrCents) : dash}
+          detail={money ? `${aud(money.mrrStripeCents)} web · ${aud(money.mrrAppStoreCents)} App Store` : "A$ a month, after discounts"}
+        />
+        <StatTile
+          label="Paying"
+          value={money ? count(money.paying.total) : dash}
+          detail={money
+            ? `${count(money.paying.newThisPeriod)} new · ${count(money.paying.cancelling)} cancelling`
+            : "Real customers, no tests"}
+        />
+        <StatTile
+          label={`Net revenue, ${days} days`}
+          value={money ? aud(money.stripeCash.netCents) : dash}
+          detail={money ? `Web only · ${aud(money.stripeCash.grossCents)} before fees and tax` : "Stripe, what reaches the bank"}
+        />
+        <StatTile
+          label="Visitors"
+          value={traffic ? count(traffic.visitors) : dash}
+          detail={traffic ? `${count(traffic.pageviews)} page views · floor, ad blockers hide some` : "From PostHog"}
+        />
+      </div>
+
+      {business?.errors.length ? (
+        <Section>
+          <ul className="flex flex-col gap-1 text-[12.5px]" role="status" style={{ color: "var(--app-danger)" }}>
+            {business.errors.map((line) => <li key={line}>{line}</li>)}
+          </ul>
+        </Section>
+      ) : null}
+
+      {money ? (
+        <div className="mx-auto grid w-full gap-4 px-6 pt-4 sm:px-10 @3xl/main:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]" style={{ maxWidth: WIDTH }}>
+          <DailyBars
+            title="Net revenue per day (web)"
+            series={money.stripeCash.series.map(({ day, netCents }) => ({ day, value: netCents }))}
+            format={aud}
+          />
+          <Panel title="Money" note="Stripe and RevenueCat, now">
+            <MoneyBreakdown money={money} />
+          </Panel>
+        </div>
+      ) : null}
+
+      {traffic ? (
+        <>
+          <div className="mx-auto grid w-full gap-4 px-6 pt-4 sm:px-10 @3xl/main:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]" style={{ maxWidth: WIDTH }}>
+            <DailyBars
+              title="Visitors"
+              series={traffic.series.map(({ day, visitors }) => ({ day, value: visitors }))}
+              format={count}
+              summary="average"
+            />
+            <Panel title="Where visitors are" note="PostHog">
+              <div className="flex flex-col gap-4">
+                <List rows={traffic.countries.map((row) => [countryLabel(row.key), row.visitors])} />
+                <div className="border-t pt-4" style={{ borderColor: "var(--app-border)" }}>
+                  <List rows={traffic.platforms.map((row) => [row.key === "ios" ? "iPhone app" : row.key === "web" ? "Website" : label(row.key), row.visitors])} />
+                </div>
+              </div>
+            </Panel>
+          </div>
+          <Section>
+            <Panel title="Sources and creators" note={`${count(signups)} signups in D1 this period; PostHog sees fewer`}>
+              <SourcesTable sources={traffic.sources} />
+            </Panel>
+          </Section>
+        </>
+      ) : business && !business.errors.some((line) => line.startsWith("Visitors")) ? (
+        <Section>
+          <Panel title="Visitors and creators" note="Not connected">
+            <ConnectPostHog />
+          </Panel>
+        </Section>
+      ) : null}
+    </>
+  );
+}
+
+function MoneyBreakdown({ money }: { money: NonNullable<AdminBusiness["money"]> }) {
+  const cash = money.stripeCash;
+  return (
+    <div className="flex flex-col gap-4">
+      {money.plans.length ? (
+        <dl className="flex flex-col gap-2 text-[13.5px]">
+          {money.plans.map((plan) => (
+            <div key={plan.key} className="flex items-baseline justify-between gap-3">
+              <dt style={{ color: "var(--app-text-soft)" }}>{label(plan.key)}</dt>
+              <dd className="tabular-nums" style={{ color: "var(--app-text)" }}>
+                {count(plan.count)}
+                <span className="ml-2 inline-block w-20 text-right" style={{ color: "var(--app-text-muted)" }}>{aud(plan.mrrCents)}/mo</span>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : <Muted>No paying customers yet.</Muted>}
+      <div className="border-t pt-4" style={{ borderColor: "var(--app-border)" }}>
+        <dl className="flex flex-col gap-2 text-[13.5px]">
+          {([
+            ["Web sales this period", aud(cash.grossCents)],
+            ["Stripe fees and tax", `−${aud(Math.max(0, cash.feesCents))}`],
+            ["Refunds", cash.refundsCents ? `−${aud(cash.refundsCents)}` : aud(0)],
+            ["Net to the bank", aud(cash.netCents)],
+          ] as const).map(([name, value]) => (
+            <div key={name} className="flex items-baseline justify-between gap-3">
+              <dt style={{ color: "var(--app-text-soft)" }}>{name}</dt>
+              <dd className="tabular-nums" style={{ color: "var(--app-text)" }}>{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+      <p className="text-[12px]" style={{ color: "var(--app-text-faint)" }}>
+        {money.paying.pastDue ? `${count(money.paying.pastDue)} payment overdue. ` : ""}
+        {money.sandbox ? `${count(money.sandbox)} App Store test purchase${money.sandbox === 1 ? "" : "s"} left out. ` : ""}
+        App Store MRR is before Apple&apos;s 15%. Developers are left out.
+      </p>
+    </div>
+  );
+}
+
+/** Creators are whatever utm_source their link carries; everything else is a referring site. */
+function SourcesTable({ sources }: { sources: AdminTrafficSource[] }) {
+  if (sources.length === 0) return <Muted>No visitors in this period.</Muted>;
+  return (
+    <>
+      <div className="max-h-[420px] overflow-auto">
+        <table className="w-full min-w-[480px] text-[13.5px] tabular-nums">
+          <thead>
+            <tr style={{ color: "var(--app-text-muted)" }}>
+              <Th align="left">Source</Th>
+              <Th>Visitors</Th>
+              <Th>Signups</Th>
+              <Th>Paid</Th>
+              <Th>Visit to signup</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {sources.map((row) => (
+              <tr key={row.source} className="border-t" style={{ borderColor: "var(--app-border)" }}>
+                <Td align="left">
+                  <span style={{ color: "var(--app-text)", fontWeight: row.paid || row.signups ? 500 : 400 }}>{sourceLabel(row.source)}</span>
+                </Td>
+                <Td><span style={{ color: "var(--app-text)" }}>{count(row.visitors)}</span></Td>
+                <Td><span style={{ color: "var(--app-text)" }}>{count(row.signups)}</span></Td>
+                <Td><span style={{ color: row.paid ? "var(--app-success)" : "var(--app-text-muted)" }}>{count(row.paid)}</span></Td>
+                <Td><span style={{ color: "var(--app-text-muted)" }}>{row.visitors ? percent(row.signups, row.visitors) : "–"}</span></Td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-3 text-[12px]" style={{ color: "var(--app-text-faint)" }}>
+        Visitors count by where their visit started; signups and payments by where the person first came from. A creator&apos;s row is their link&apos;s utm_source. People who search for Arcadia after a video show up as Direct.
+      </p>
+    </>
+  );
+}
+
+function ConnectPostHog() {
+  return (
+    <div className="flex flex-col gap-2 text-[13.5px]" style={{ color: "var(--app-text-soft)" }}>
+      <p>Visitors and the creators table need a read-only PostHog key on the Worker:</p>
+      <ol className="list-decimal pl-5">
+        <li>PostHog, Settings, Personal API keys: create one with only the <code>query:read</code> scope, for this project.</li>
+        <li>In <code>backend/</code>: <code>npx wrangler secret put POSTHOG_PERSONAL_API_KEY</code> and paste it at the prompt.</li>
+        <li>Also run <code>npx wrangler secret put POSTHOG_PROJECT_ID</code> with the number in the project&apos;s URL.</li>
+      </ol>
+    </div>
+  );
+}
+
+function sourceLabel(source: string): string {
+  if (source === "$direct") return "Direct or search";
+  if (source === "ig") return "Instagram (bio link)";
+  return source.replace(/^www\./, "");
+}
+
+const regionNames = typeof Intl !== "undefined" && "DisplayNames" in Intl ? new Intl.DisplayNames(["en-AU"], { type: "region" }) : null;
+function countryLabel(code: string): string {
+  if (!/^[A-Z]{2}$/.test(code)) return "Unknown";
+  try {
+    return regionNames?.of(code) ?? code;
+  } catch {
+    return code;
+  }
 }
 
 // ────────── Pieces ──────────
@@ -358,14 +585,15 @@ function DailyTable({ series }: { series: AdminDay[] }) {
   );
 }
 
-function Funnel({ funnel }: { funnel: AdminMetrics["funnel"] }) {
+/** `paid` is from Stripe and RevenueCat; D1's own count includes test purchases. */
+function Funnel({ funnel, paid }: { funnel: AdminMetrics["funnel"]; paid: number | null }) {
   const steps: Array<[string, number]> = [
     ["Made an account", funnel.signedUp],
     ["Verified their email", funnel.verified],
     ["Finished onboarding", funnel.onboarded],
     ["Did a focus session", funnel.focused],
     ["Came back another day", funnel.returned],
-    ["Paying now", funnel.paid],
+    [paid === null ? "Has a paid plan (incl. tests)" : "Paying now", paid ?? funnel.paid],
   ];
   if (funnel.signedUp === 0) return <Muted>No new accounts in this period.</Muted>;
   return (
@@ -395,11 +623,10 @@ function Plans({ metrics }: { metrics: AdminMetrics }) {
     ["Pro", plans.pro],
     ["Max", plans.max],
   ];
+  // Who has access, not who pays: test purchases and old test accounts
+  // count here. Real paying customers are in Money, from Stripe and RevenueCat.
   const billing: Array<[string, number, string?]> = [
-    ["Paying through Stripe", plans.stripe],
-    ["Paying through the App Store", plans.appStore],
-    ["Payment overdue", plans.pastDue, "Stripe past_due: still on their plan while Stripe retries"],
-    ["Free with Pro from invites", plans.referralPro],
+    ["Free with bonus Pro (invites, creators)", plans.referralPro],
     ["Developers (not counted)", users.developers],
   ];
   return (
@@ -626,6 +853,11 @@ function money(micros: number): string {
   return `$${dollars.toFixed(2)}`;
 }
 
+/** A$ from cents. */
+function aud(cents: number): string {
+  return `$${(cents / 100).toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 function label(key: string): string {
   const text = key.replace(/[_-]+/g, " ");
   return text.charAt(0).toUpperCase() + text.slice(1);
@@ -642,6 +874,7 @@ function niceCeil(value: number): number {
 function compact(value: number, format: (value: number) => string): string {
   if (format === formatMinutes) return value >= 60 ? `${Math.round(value / 60)}h` : `${value}m`;
   if (format === money) return value ? money(value) : "$0";
+  if (format === aud) return value ? aud(value).replace(/\.00$/, "") : "$0";
   return value >= 1000 ? `${(value / 1000).toFixed(value >= 10_000 ? 0 : 1)}k` : String(value);
 }
 

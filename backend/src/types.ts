@@ -35,6 +35,9 @@ export interface Env {
   // The key is the same public one the browser ships with.
   POSTHOG_KEY?: string;
   POSTHOG_HOST?: string;
+  // The PostHog project /app/admin reads visitors from (the number in the
+  // project's URL). Non-secret; the personal API key below is the secret.
+  POSTHOG_PROJECT_ID?: string;
 
   // secrets (wrangler secret put)
   OPENAI_API_KEY?: string;
@@ -51,6 +54,8 @@ export interface Env {
   STRIPE_WEBHOOK_SECRET?: string;
   REVENUECAT_SECRET_API_KEY?: string;
   REVENUECAT_WEBHOOK_AUTHORIZATION?: string;
+  // A PostHog personal API key with only the query:read scope, for /app/admin.
+  POSTHOG_PERSONAL_API_KEY?: string;
   VAPID_PUBLIC_KEY?: string;
   VAPID_PRIVATE_KEY?: string;
   // iPhone check-ins. An APNs auth key (.p8) from the Apple Developer portal;

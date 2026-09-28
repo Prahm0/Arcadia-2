@@ -7,7 +7,7 @@ import { replan } from "../lib/replan";
 import { subjectKey } from "../lib/scheduler";
 import { serialiseCommitment, serialiseSubject } from "../lib/serialise";
 import { currentTopic } from "../lib/syllabus";
-import { DAY, iso, localDateKey, parseClock, startOfLocalWeek } from "../lib/time";
+import { DAY, iso, localDateKey, parseClock, startOfLocalWeek, timeZoneOrNull } from "../lib/time";
 import { serialiseAssessment, serialiseFile, serialiseTopic } from "./syllabus";
 import type { Env, Variables } from "../types";
 
@@ -190,6 +190,8 @@ interface ProfileBody {
   arcadAbout?: string;
   arcadStyle?: string;
   memoryEnabled?: boolean;
+  /** IANA zone, e.g. "America/New_York". */
+  timezone?: string;
   wakeTime?: string;
   bedtime?: string;
   maxDailyStudyMinutes?: number;
@@ -258,6 +260,11 @@ profile.patch("/", async (c) => {
   if (body.arcadAbout !== undefined) patch.arcadAbout = String(body.arcadAbout).slice(0, TEXT_LIMIT);
   if (body.arcadStyle !== undefined) patch.arcadStyle = String(body.arcadStyle).slice(0, TEXT_LIMIT);
   if (body.memoryEnabled !== undefined) patch.memoryEnabled = Boolean(body.memoryEnabled);
+  if (body.timezone !== undefined) {
+    const timezone = timeZoneOrNull(body.timezone);
+    if (!timezone) return c.json({ error: "Unknown timezone." }, 422);
+    patch.timezone = timezone;
+  }
 
   if (body.wakeTime !== undefined) {
     if (parseClock(body.wakeTime) === null) return c.json({ error: "Use HH:MM for wake time." }, 422);
@@ -293,6 +300,7 @@ profile.patch("/", async (c) => {
   // Year level sets the default weekly targets; the routine bounds the plan.
   const planInputs: (keyof ProfileBody)[] = [
     "grade",
+    "timezone",
     "wakeTime",
     "bedtime",
     "maxDailyStudyMinutes",

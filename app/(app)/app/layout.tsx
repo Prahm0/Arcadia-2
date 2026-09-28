@@ -11,6 +11,7 @@ import { isOnboardingOfferPending, setOnboardingOfferPending } from "@/lib/app/o
 import OnboardingPaywall from "@/components/app/OnboardingPaywall";
 import { FocusSessionProvider } from "@/components/app/focus/FocusSession";
 import UploadProvider from "@/components/app/files/UploadProvider";
+import { DEFAULT_TIMEZONE, deviceTimezone, useDeviceTimezoneSync } from "@/lib/app/timezone";
 
 // ThemeProvider is mounted one level up in app/(app)/layout.tsx so the auth
 // and legal pages share the dashboard's theme.
@@ -23,6 +24,12 @@ function Gate({ children }: { children: ReactNode }) {
   const { state, reload, patch } = useDashboard();
   const isOnboarding = state.status === "ready" && !state.data.user.onboardingComplete;
   useDashboardAutoRefresh(reload, !isOnboarding);
+  const ready = state.status === "ready";
+  useDeviceTimezoneSync(
+    ready ? state.data.profile?.timezone : undefined,
+    ready && Boolean(state.data.user.onboardingComplete),
+    reload,
+  );
 
   useEffect(() => {
     if (state.status === "unauthenticated") router.replace("/login");
@@ -101,12 +108,8 @@ function Gate({ children }: { children: ReactNode }) {
         <Onboarding
           userId={user.id}
           defaultName={user.name}
-          defaultTimezone={
-            profile?.timezone ||
-            (typeof Intl !== "undefined"
-              ? Intl.DateTimeFormat().resolvedOptions().timeZone
-              : "Australia/Sydney")
-          }
+          // The device's zone first: the saved one is only sign-up's default.
+          defaultTimezone={deviceTimezone() ?? profile?.timezone ?? DEFAULT_TIMEZONE}
           onComplete={finishOnboarding}
         />
       )}

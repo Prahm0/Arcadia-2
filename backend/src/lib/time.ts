@@ -17,6 +17,16 @@ export function parseClock(value: string | null | undefined): number | null {
   return hours * 60 + minutes;
 }
 
+/** The IANA zone ("America/New_York") if Intl knows it, otherwise null. */
+export function timeZoneOrNull(value: unknown): string | null {
+  if (typeof value !== "string" || !value.trim() || value.length > 64) return null;
+  try {
+    return new Intl.DateTimeFormat("en-US", { timeZone: value.trim() }).resolvedOptions().timeZone;
+  } catch {
+    return null;
+  }
+}
+
 // Building a DateTimeFormat costs far more than using one, and the scheduler
 // asks for offsets hundreds of times per plan, so keep one per zone.
 const formatters = new Map<string, Intl.DateTimeFormat>();

@@ -87,3 +87,66 @@ export interface AdminMetrics {
     series: Array<{ day: string; costMicros: number }>;
   };
 }
+
+/**
+ * Money and traffic for /app/admin, from the services that own them: Stripe
+ * and RevenueCat for who is actually paying (no test or sandbox purchases),
+ * PostHog for visitors and where they came from. Each part is null when its
+ * service isn't connected or didn't answer, with the reason in `errors`.
+ */
+export interface AdminBusiness {
+  generatedAt: string;
+  days: MetricPeriod;
+  money: AdminMoney | null;
+  traffic: AdminTraffic | null;
+  errors: string[];
+}
+
+export interface AdminMoney {
+  /** Monthly recurring revenue at today's prices after discounts, A$ cents. */
+  mrrCents: number;
+  /** MRR from web (Stripe) and App Store subscribers, A$ cents, before fees. */
+  mrrStripeCents: number;
+  mrrAppStoreCents: number;
+  paying: {
+    total: number;
+    stripe: number;
+    appStore: number;
+    pro: number;
+    max: number;
+    /** Will not renew: cancelled at period end, or auto-renew off. */
+    cancelling: number;
+    pastDue: number;
+    /** Accounts made this period that pay now. */
+    newThisPeriod: number;
+  };
+  /** App Store test purchases (sandbox, TestFlight), left out of the above. */
+  sandbox: number;
+  /** Stripe money that moved this period, A$ cents. */
+  stripeCash: {
+    grossCents: number;
+    feesCents: number;
+    refundsCents: number;
+    netCents: number;
+    series: Array<{ day: string; netCents: number }>;
+  };
+  /** Paying subscriptions by plan and billing period. */
+  plans: Array<{ key: string; count: number; mrrCents: number }>;
+}
+
+export interface AdminTrafficSource {
+  source: string;
+  visitors: number;
+  signups: number;
+  paid: number;
+}
+
+export interface AdminTraffic {
+  visitors: number;
+  pageviews: number;
+  sessions: number;
+  series: Array<{ day: string; visitors: number }>;
+  sources: AdminTrafficSource[];
+  countries: Array<{ key: string; visitors: number }>;
+  platforms: Array<{ key: string; visitors: number }>;
+}

@@ -4,6 +4,7 @@ import { db, schema } from "../db";
 import { DAY } from "../lib/time";
 import {
   METRIC_PERIODS,
+  type AdminBusiness,
   type AdminDay,
   type AdminMetrics,
   type AiSpendRow,
@@ -11,6 +12,7 @@ import {
   type PeriodCount,
   type RetentionCohort,
 } from "../../../shared/adminMetrics";
+import { adminMoney, adminTraffic, posthogConnected } from "../lib/admin-business";
 import type { Env, Variables } from "../types";
 
 /**
@@ -190,6 +192,48 @@ admin.get("/metrics", async (c) => {
     ai: await aiSpend(d1, since, previousSince, firstDay),
   };
 
+  c.header("cache-control", "private, no-store");
+  return c.json(body);
+});
+
+/**
+ * Money and visitors, from Stripe, RevenueCat and PostHog. Separate from
+ * /metrics so a slow or missing service never holds up the D1 numbers.
+ */
+admin.get("/business", async (c) => {
+  const requested = Number(c.req.query("days") ?? 30);
+  const days: MetricPeriod = (METRIC_PERIODS as readonly number[]).includes(requested) ? (requested as MetricPeriod) : 30;
+  const now = Date.now();
+  const since = dayMs(utcDay(now)) - (days - 1) * DAY;
+  const errors: string[] = [];
+
+  const { results } = await c.env.DB.prepare(`SELECT id, created_at, developer_access, stripe_customer_id, billing_provider
+      FROM users WHERE stripe_customer_id IS NOT NULL OR billing_provider = 'app_store'`)
+    .all<{ id: string; created_at: number; developer_access: number; stripe_customer_id: string | null; billing_provider: string | null }>();
+  const users = results.map((row) => ({
+    id: row.id,
+    createdAt: Number(row.created_at),
+    developer: Boolean(row.developer_access),
+    stripeCustomerId: row.stripe_customer_id,
+    appStore: row.billing_provider === "app_store",
+  }));
+
+  const [money, traffic] = await Promise.all([
+    c.env.STRIPE_SECRET_KEY
+      ? adminMoney(c.env, users, since, now).catch((err: unknown) => {
+          errors.push(`Money: ${err instanceof Error ? err.message : "Stripe or RevenueCat didn't answer."}`);
+          return null;
+        })
+      : (errors.push("Money: STRIPE_SECRET_KEY isn't set on the Worker."), null),
+    posthogConnected(c.env)
+      ? adminTraffic(c.env, since).catch((err: unknown) => {
+          errors.push(`Visitors: ${err instanceof Error ? err.message : "PostHog didn't answer."}`);
+          return null;
+        })
+      : null,
+  ]);
+
+  const body: AdminBusiness = { generatedAt: new Date(now).toISOString(), days, money, traffic, errors };
   c.header("cache-control", "private, no-store");
   return c.json(body);
 });

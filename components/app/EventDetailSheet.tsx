@@ -504,7 +504,8 @@ export default function EventDetailSheet({
               )}
             </div>
           )}
-          <div className="flex items-center gap-2">
+          {/* Up to four actions: on a phone they wrap onto a second line instead of running off the sheet. */}
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
             {isSleep && !rescheduling ? (
               <AppButton type="button" variant="secondary" onClick={onClose}>Close</AppButton>
             ) : null}

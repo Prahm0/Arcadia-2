@@ -333,7 +333,7 @@ function SourcesTable({ sources }: { sources: AdminTrafficSource[] }) {
               <Th align="left">Source</Th>
               <Th>Visitors</Th>
               <Th>Signups</Th>
-              <Th>Paid</Th>
+              <Th>Paying now</Th>
               <Th>Visit to signup</Th>
             </tr>
           </thead>
@@ -353,7 +353,7 @@ function SourcesTable({ sources }: { sources: AdminTrafficSource[] }) {
         </table>
       </div>
       <p className="mt-3 text-[12px]" style={{ color: "var(--app-text-faint)" }}>
-        Visitors count by where their visit started; signups and payments by where the person first came from. A creator&apos;s row is their link&apos;s utm_source. People who search for Arcadia after a video show up as Direct.
+        Visitors count by where their visit started; signups and paying customers by where the person first came from. Paying now is real Stripe and App Store customers only, no tests. A creator&apos;s row is their link&apos;s utm_source. People who search for Arcadia after a video show up as Direct.
       </p>
     </>
   );
@@ -375,6 +375,7 @@ function ConnectPostHog() {
 function sourceLabel(source: string): string {
   if (source === "$direct") return "Direct or search";
   if (source === "ig") return "Instagram (bio link)";
+  if (source === "$untracked") return "Not tracked (ad blocker)";
   return source.replace(/^www\./, "");
 }
 

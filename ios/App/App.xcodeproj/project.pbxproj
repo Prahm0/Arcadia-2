@@ -18,6 +18,7 @@
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
 		A11E00010000000000000001 /* AppleSignInPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11E00020000000000000001 /* AppleSignInPlugin.swift */; };
 		F0C500010000000000000001 /* FocusGuardPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0C500010000000000000002 /* FocusGuardPlugin.swift */; };
+		F0C500010000000000000011 /* RatingPromptPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0C500010000000000000012 /* RatingPromptPlugin.swift */; };
 		F0C500020000000000000004 /* FocusMonitorExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0C500020000000000000002 /* FocusMonitorExtension.swift */; };
 		F0C500020000000000000005 /* FocusMonitor.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F0C500020000000000000001 /* FocusMonitor.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -60,6 +61,7 @@
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		A11E00020000000000000001 /* AppleSignInPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInPlugin.swift; sourceTree = "<group>"; };
 		F0C500010000000000000002 /* FocusGuardPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusGuardPlugin.swift; sourceTree = "<group>"; };
+		F0C500010000000000000012 /* RatingPromptPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingPromptPlugin.swift; sourceTree = "<group>"; };
 		F0C500010000000000000003 /* AppScreenTime.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AppScreenTime.entitlements; sourceTree = "<group>"; };
 		F0C500020000000000000001 /* FocusMonitor.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FocusMonitor.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		F0C500020000000000000002 /* FocusMonitorExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusMonitorExtension.swift; sourceTree = "<group>"; };
@@ -121,6 +123,7 @@
 				9582B6822FE993A50072D4E8 /* SceneDelegate.swift */,
 				A11E00020000000000000001 /* AppleSignInPlugin.swift */,
 				F0C500010000000000000002 /* FocusGuardPlugin.swift */,
+				F0C500010000000000000012 /* RatingPromptPlugin.swift */,
 				F0C500010000000000000003 /* AppScreenTime.entitlements */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
@@ -274,6 +277,7 @@
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
 				A11E00010000000000000001 /* AppleSignInPlugin.swift in Sources */,
 				F0C500010000000000000001 /* FocusGuardPlugin.swift in Sources */,
+				F0C500010000000000000011 /* RatingPromptPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

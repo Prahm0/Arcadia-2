@@ -7,7 +7,7 @@ import { cn } from "@/lib/cn";
  * reads "coming soon", because Apple's marketing rules reserve the "Download
  * on the App Store" badge for apps that are actually available.
  */
-const APP_STORE_ID: string | null = null;
+const APP_STORE_ID: string | null = "6815586867";
 
 export const APP_STORE_URL: string | null = APP_STORE_ID ? `https://apps.apple.com/app/id${APP_STORE_ID}` : null;
 

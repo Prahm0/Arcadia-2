@@ -5,6 +5,7 @@ import { DAY } from "../lib/time";
 import {
   METRIC_PERIODS,
   type AdminBusiness,
+  type AdminMoney,
   type AdminDay,
   type AdminMetrics,
   type AiSpendRow,
@@ -218,22 +219,29 @@ admin.get("/business", async (c) => {
     appStore: row.billing_provider === "app_store",
   }));
 
-  const [money, traffic] = await Promise.all([
-    c.env.STRIPE_SECRET_KEY
-      ? adminMoney(c.env, users, since, now).catch((err: unknown) => {
-          errors.push(`Money: ${err instanceof Error ? err.message : "Stripe or RevenueCat didn't answer."}`);
-          return null;
-        })
-      : (errors.push("Money: STRIPE_SECRET_KEY isn't set on the Worker."), null),
-    posthogConnected(c.env)
-      ? adminTraffic(c.env, since).catch((err: unknown) => {
-          errors.push(`Visitors: ${err instanceof Error ? err.message : "PostHog didn't answer."}`);
-          return null;
-        })
-      : null,
-  ]);
+  // Money first: its list of real paying accounts is what "Paying now" in
+  // the sources table counts.
+  const moneyWithIds = c.env.STRIPE_SECRET_KEY
+    ? await adminMoney(c.env, users, since, now).catch((err: unknown) => {
+        errors.push(`Money: ${err instanceof Error ? err.message : "Stripe or RevenueCat didn't answer."}`);
+        return null;
+      })
+    : (errors.push("Money: STRIPE_SECRET_KEY isn't set on the Worker."), null);
+  const { payingUserIds, ...money } = moneyWithIds ?? { payingUserIds: null };
+  const traffic = posthogConnected(c.env)
+    ? await adminTraffic(c.env, since, payingUserIds).catch((err: unknown) => {
+        errors.push(`Visitors: ${err instanceof Error ? err.message : "PostHog didn't answer."}`);
+        return null;
+      })
+    : null;
 
-  const body: AdminBusiness = { generatedAt: new Date(now).toISOString(), days, money, traffic, errors };
+  const body: AdminBusiness = {
+    generatedAt: new Date(now).toISOString(),
+    days,
+    money: moneyWithIds ? (money as AdminMoney) : null,
+    traffic,
+    errors,
+  };
   c.header("cache-control", "private, no-store");
   return c.json(body);
 });

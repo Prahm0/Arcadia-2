@@ -165,7 +165,12 @@ export interface MoneyUser {
  * on the page. `users` maps Stripe customers and App Store subscribers back
  * to accounts, for "new this period".
  */
-export async function adminMoney(env: Env, users: MoneyUser[], since: number, now = Date.now()): Promise<AdminMoney> {
+export async function adminMoney(
+  env: Env,
+  users: MoneyUser[],
+  since: number,
+  now = Date.now(),
+): Promise<AdminMoney & { payingUserIds: string[] }> {
   const byCustomer = new Map(users.filter((u) => u.stripeCustomerId).map((u) => [u.stripeCustomerId as string, u]));
   const plans = new Map<string, { count: number; mrrCents: number }>();
   const addPlan = (key: string, mrrCents: number) => {
@@ -178,6 +183,8 @@ export async function adminMoney(env: Env, users: MoneyUser[], since: number, no
   let mrrStripe = 0;
   let mrrAppStore = 0;
   let sandbox = 0;
+  // Accounts that really pay now, for crediting payments to a source.
+  const payingUserIds: string[] = [];
 
   const [subscriptions, transactions] = await Promise.all([
     stripeSubscriptions(env),
@@ -198,6 +205,7 @@ export async function adminMoney(env: Env, users: MoneyUser[], since: number, no
     if (sub.status === "past_due") paying.pastDue += 1;
     if (sub.cancel_at_period_end || sub.cancel_at) paying.cancelling += 1;
     if (user && user.createdAt >= since) paying.newThisPeriod += 1;
+    if (user) payingUserIds.push(user.id);
     mrrStripe += mrr;
     addPlan(`${tier} ${interval} · web`, mrr);
   }
@@ -233,6 +241,7 @@ export async function adminMoney(env: Env, users: MoneyUser[], since: number, no
       if (sub.unsubscribe_detected_at) paying.cancelling += 1;
       if (sub.billing_issues_detected_at) paying.pastDue += 1;
       if (user.createdAt >= since) paying.newThisPeriod += 1;
+      payingUserIds.push(user.id);
       mrrAppStore += mrr;
       addPlan(`${plan.tier} ${plan.interval} · App Store`, mrr);
     });
@@ -266,6 +275,7 @@ export async function adminMoney(env: Env, users: MoneyUser[], since: number, no
     plans: [...plans.entries()]
       .map(([key, row]) => ({ key, count: row.count, mrrCents: Math.round(row.mrrCents) }))
       .sort((a, b) => b.mrrCents - a.mrrCents),
+    payingUserIds,
   };
 }
 
@@ -299,6 +309,34 @@ async function hogql(env: Env, query: string): Promise<unknown[][]> {
   return body.results ?? [];
 }
 
+/** Our own site as a "referrer" is someone coming back (from checkout, another tab), not a source. */
+const SELF_REFERRERS = new Set(["arcadiahq.app", "checkout.stripe.com", "billing.stripe.com"]);
+
+/**
+ * One key per source: trimmed and lowercased (a creator's link pasted with a
+ * stray space was splitting their row in two), app-subdomain prefixes dropped
+ * so l.instagram.com and instagram.com meet, and our own domain folded into
+ * direct.
+ */
+export function sourceKey(raw: unknown): string {
+  let text = String(raw ?? "");
+  try {
+    text = decodeURIComponent(text);
+  } catch {
+    /* not encoded */
+  }
+  const key = text
+    .trim()
+    .toLowerCase()
+    .replace(/^[^a-z0-9$]+|[^a-z0-9]+$/g, "")
+    .replace(/^(www|m|l|lm|mobile)\./, "");
+  if (!key || key === "$direct" || SELF_REFERRERS.has(key) || key.endsWith(".arcadiahq.app")) return "$direct";
+  return key;
+}
+
+/** Placeholder source for paying accounts PostHog never saw (ad blockers). */
+export const UNTRACKED_SOURCE = "$untracked";
+
 export function posthogConnected(env: Env): boolean {
   return Boolean(env.POSTHOG_PERSONAL_API_KEY && env.POSTHOG_PROJECT_ID);
 }
@@ -306,32 +344,39 @@ export function posthogConnected(env: Env): boolean {
 /**
  * Visitors, and where they came from. Visitors are credited to the source
  * their session started from (the utm_source on a creator's link, else the
- * referring site). Signups and payments are credited to the person's first
- * ever source, which PostHog keeps once they're identified. PostHog misses
- * visitors with ad blockers, so these are floors, not totals.
+ * referring site). Signups are credited to the person's first ever source,
+ * which PostHog keeps once they're identified. "Paying now" counts the real
+ * paying accounts from Stripe and RevenueCat (`payingUserIds`), by that same
+ * first source, so test purchases never show. PostHog misses visitors with
+ * ad blockers, so visitors and signups are floors, not totals.
  */
-export async function adminTraffic(env: Env, since: number): Promise<AdminTraffic> {
+export async function adminTraffic(env: Env, since: number, payingUserIds: string[] | null): Promise<AdminTraffic> {
   const from = `timestamp >= toDateTime('${new Date(since).toISOString().slice(0, 19).replace("T", " ")}')`;
   const pageviews = `event = '$pageview' AND ${from}`;
   const sessionSource = "lower(coalesce(nullIf(session.$entry_utm_source, ''), nullIf(session.$entry_referring_domain, ''), '$direct'))";
   const personSource =
     "lower(coalesce(nullIf(person.properties.$initial_utm_source, ''), nullIf(person.properties.$initial_referring_domain, ''), '$direct'))";
 
-  const [totals, days, visits, conversions, countries, platforms] = await Promise.all([
+  // Only our own ids go into the query; they're checked, not escaped.
+  const ids = (payingUserIds ?? []).filter((id) => /^usr_[a-z0-9]+$/.test(id));
+  const [totals, days, visits, conversions, payers, countries, platforms] = await Promise.all([
     hogql(env, `SELECT count(DISTINCT person_id), count(), count(DISTINCT $session_id) FROM events WHERE ${pageviews}`),
     hogql(env, `SELECT toString(toDate(timestamp)) AS day, count(DISTINCT person_id) FROM events WHERE ${pageviews} GROUP BY day ORDER BY day`),
     hogql(env, `SELECT ${sessionSource} AS source, count(DISTINCT person_id) AS visitors FROM events WHERE ${pageviews} GROUP BY source ORDER BY visitors DESC LIMIT 40`),
-    hogql(env, `SELECT ${personSource} AS source,
-        count(DISTINCT if(event = 'signup_completed', person_id, NULL)),
-        count(DISTINCT if(event = 'subscription_activated', person_id, NULL))
-      FROM events WHERE event IN ('signup_completed', 'subscription_activated') AND ${from} GROUP BY source`),
+    hogql(env, `SELECT ${personSource} AS source, count(DISTINCT person_id)
+      FROM events WHERE event = 'signup_completed' AND ${from} GROUP BY source`),
+    ids.length
+      ? hogql(env, `SELECT distinct_id, ${personSource} AS source FROM events
+          WHERE distinct_id IN (${ids.map((id) => `'${id}'`).join(", ")})
+          ORDER BY timestamp DESC LIMIT 1 BY distinct_id`).catch(() => null)
+      : Promise.resolve([] as unknown[][]),
     hogql(env, `SELECT coalesce(properties.$geoip_country_code, '?') AS c, count(DISTINCT person_id) AS n FROM events WHERE ${pageviews} GROUP BY c ORDER BY n DESC LIMIT 12`),
     hogql(env, `SELECT coalesce(properties.platform, 'web') AS p, count(DISTINCT person_id) AS n FROM events WHERE ${pageviews} GROUP BY p ORDER BY n DESC`),
   ]);
 
   const sources = new Map<string, AdminTrafficSource>();
   const source = (key: unknown) => {
-    const name = String(key ?? "$direct") || "$direct";
+    const name = key === UNTRACKED_SOURCE ? UNTRACKED_SOURCE : sourceKey(key);
     let row = sources.get(name);
     if (!row) {
       row = { source: name, visitors: 0, signups: 0, paid: 0 };
@@ -339,12 +384,18 @@ export async function adminTraffic(env: Env, since: number): Promise<AdminTraffi
     }
     return row;
   };
-  for (const [key, visitors] of visits) source(key).visitors = Number(visitors ?? 0);
-  for (const [key, signups, paid] of conversions) {
-    const row = source(key);
-    row.signups = Number(signups ?? 0);
-    row.paid = Number(paid ?? 0);
+  // Several raw keys can land on one source now, so these add up.
+  for (const [key, visitors] of visits) source(key).visitors += Number(visitors ?? 0);
+  for (const [key, signups] of conversions) source(key).signups += Number(signups ?? 0);
+  // If that one query failed, payers stay unattributed rather than the table
+  // failing: they all count as not tracked.
+  const seen = new Set<string>();
+  for (const [id, key] of payers ?? []) {
+    seen.add(String(id));
+    source(key).paid += 1;
   }
+  const untracked = ids.filter((id) => !seen.has(id)).length;
+  if (untracked) source(UNTRACKED_SOURCE).paid += untracked;
 
   const visitorsByDay = new Map(days.map(([day, n]) => [String(day), Number(n ?? 0)]));
   const series: AdminTraffic["series"] = [];

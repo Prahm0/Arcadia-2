@@ -27,8 +27,8 @@ export function useCardLight<T extends HTMLElement>(showcase = false, enabled = 
     const write = () => {
       if (tilt) {
         const amount = hovering ? 1 : .6;
-        card.style.setProperty("--rx", `${((.5 - current.y) * 11 * amount).toFixed(2)}deg`);
-        card.style.setProperty("--ry", `${((current.x - .5) * 13 * amount).toFixed(2)}deg`);
+        card.style.setProperty("--rx", `${((.5 - current.y) * 14 * amount).toFixed(2)}deg`);
+        card.style.setProperty("--ry", `${((current.x - .5) * 16 * amount).toFixed(2)}deg`);
       }
       card.style.setProperty("--mx", `${(current.x * 100).toFixed(1)}%`);
       card.style.setProperty("--my", `${(current.y * 100).toFixed(1)}%`);

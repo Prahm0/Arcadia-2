@@ -263,7 +263,7 @@ export default function YourSky({
                   key={card.id}
                   type="button"
                   className={styles.cardButton}
-                  aria-label={`View ${constellationById(card.id)!.name}${card.earnedAt ? ", collected" : ", forming"}`}
+                  aria-label={`View ${constellationById(card.id)!.name}${card.earnedAt ? ", collected" : ", locked"}`}
                   onClick={() => open(card)}
                 >
                   <ConstellationCard card={card} featured={sky.preferences.featured === card.id} following={sky.preferences.followed === card.id} />

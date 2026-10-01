@@ -95,6 +95,8 @@ export interface PlannerProfile {
   onboardingComplete?: boolean;
   wakeTime?: string;
   bedtime?: string;
+  /** The daily study-plan email. On unless the student turned it off. */
+  emailReminders?: boolean;
 }
 
 export type CompanionForm = "orb" | "comet" | "nebula";

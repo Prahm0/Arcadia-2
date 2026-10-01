@@ -153,6 +153,7 @@ export function serialiseProfile(profile: ProfileRow | null) {
     onboardingComplete: profile.onboardingComplete,
     wakeTime: profile.wakeTime,
     bedtime: profile.bedtime,
+    emailReminders: profile.emailRemindersEnabled,
   };
 }
 

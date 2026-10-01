@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, inArray, lt } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, lt, ne } from "drizzle-orm";
 import { schema, type Database } from "../db";
 import { subjectKey } from "./scheduler";
 import { summariseHabits, type Habits } from "./study-habits";
@@ -24,6 +24,8 @@ export async function studyHabits(database: Database, userId: string, timeZone: 
         eq(schema.events.userId, userId),
         eq(schema.events.category, "study"),
         inArray(schema.events.outcome, ["completed", "missed"]),
+        // A block they took off the schedule ahead of time wasn't skipped.
+        ne(schema.events.status, "cancelled"),
         gte(schema.events.startAt, now - HABIT_DAYS * DAY),
         lt(schema.events.startAt, now),
       ),

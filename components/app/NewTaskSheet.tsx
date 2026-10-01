@@ -58,7 +58,7 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
         setTitle("");
         setSubject(initialSubject ?? null);
         setTaskType("homework");
-        setDueDate(initialDue || defaultDueDate());
+        setDueDate(initialDue || defaultDueDate(data.user?.timezone ?? "Australia/Brisbane"));
         setDueTime("");
         setMinutes(60);
       }
@@ -312,10 +312,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function defaultDueDate(): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 3);
-  return d.toISOString().slice(0, 10);
+/** Three days from the student's today, in their timezone (UTC lags a day in Australian mornings). */
+function defaultDueDate(timezone = "Australia/Brisbane"): string {
+  return dateKey(new Date(Date.now() + 3 * 86_400_000).toISOString(), timezone);
 }
 
 function formatMinutes(m: number): string {

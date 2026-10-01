@@ -349,6 +349,8 @@ export const events = sqliteTable(
     source: text("source").notNull().default("auto"),
     editable: integer("editable", { mode: "boolean" }).notNull().default(true),
     pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
+    // Where a moved block started before its first move (migration 0037).
+    movedFrom: integer("moved_from"),
     // Session plan and check-out, both JSON (see migration 0008).
     plan: text("plan"),
     checkout: text("checkout"),

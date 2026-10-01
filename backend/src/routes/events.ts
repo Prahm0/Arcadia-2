@@ -7,6 +7,8 @@ import { planIsCurrent, planSession, type Checkout, type SessionPlan } from "../
 import { effectiveTier, isPaidTier } from "../lib/tiers";
 import { DAY, MINUTE } from "../lib/time";
 import { awardXp } from "../lib/rewards";
+import { replan } from "../lib/replan";
+import { releaseFromLayout } from "../lib/scheduler";
 import { clearLog, findSubject, replaceLog } from "../lib/study-log";
 import { blockEntries, type CheckoutAnswers } from "../lib/study-record";
 import { XP } from "../../../shared/progress";
@@ -234,8 +236,24 @@ events.patch("/:id", async (c) => {
     return c.json({ error: "Give it a start and an end." }, 422);
   }
   if (endAt - startAt > 6 * 60 * MINUTE) return c.json({ error: "That's longer than a block can be." }, 422);
+  if (event.category === "study" && endAt <= Date.now()) {
+    return c.json({ error: "That time's already gone. Pick a time from now on." }, 422);
+  }
 
-  await database.update(schema.events).set({ startAt, endAt, pinned: true }).where(eq(schema.events.id, event.id));
+  const [profile] = await database
+    .select({ timezone: schema.profiles.timezone })
+    .from(schema.profiles)
+    .where(eq(schema.profiles.userId, userId))
+    .limit(1);
+  await releaseFromLayout(database, event, profile?.timezone ?? "Australia/Brisbane");
+  await database
+    .update(schema.events)
+    // Where it first came from, so re-planning keeps that subject off that day.
+    .set({ startAt, endAt, pinned: true, movedFrom: event.movedFrom ?? event.startAt })
+    .where(eq(schema.events.id, event.id));
+  // The whole planned window, not just the dashboard's week, so a block
+  // moved into a later week doesn't sit on top of what's there.
+  await replan(database, userId);
   return c.json({ ok: true, event: await reread(database, event.id) });
 });
 
@@ -308,6 +326,7 @@ events.delete("/:id", async (c) => {
   } else {
     await database.delete(schema.events).where(eq(schema.events.id, event.id));
   }
+  await replan(database, userId);
   return c.json({ ok: true });
 });
 

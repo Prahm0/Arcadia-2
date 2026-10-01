@@ -44,8 +44,16 @@ export const PROPOSE_TOOL = {
   type: "function" as const,
   function: {
     name: "propose_changes",
-    description:
-      "Propose changes to the student's plan. The student reviews and approves them before anything is applied. Use for adding, editing or removing tasks and commitments.",
+    description: [
+      "Propose changes to the student's schedule and plan. Nothing changes until they tap Apply.",
+      "move_block: id of a block from their schedule, date, startTime, and endTime (leave endTime out to keep its length).",
+      "remove_block: id of a block. Its subject time gets planned elsewhere in the week.",
+      "add_block: a study block at a set time. date, startTime, endTime, and subject or taskId. Its subject's other blocks shrink to keep the weekly total.",
+      "create_commitment: time they're busy, so no study goes there. title, category, startTime, endTime, and either a date (one-off), recurrence weekly with weekday (0 = Sunday), daily or weekdays.",
+      "delete_commitment: id.",
+      "update_subject: subject and weeklyMinutes, for more or less time on a subject every week.",
+      "create_task, update_task, delete_task: deadlines and homework. Arcadia plans study blocks for them.",
+    ].join("\n"),
     parameters: {
       type: "object",
       properties: {
@@ -62,25 +70,32 @@ export const PROPOSE_TOOL = {
               op: {
                 type: "string",
                 enum: [
+                  "move_block",
+                  "remove_block",
+                  "add_block",
+                  "create_commitment",
+                  "delete_commitment",
+                  "update_subject",
                   "create_task",
                   "update_task",
                   "delete_task",
-                  "create_commitment",
-                  "delete_commitment",
                 ],
               },
-              id: { type: "string", description: "Existing record id, for update and delete." },
+              id: { type: "string", description: "Existing block, task or commitment id, for move, remove, update and delete." },
               title: { type: "string" },
               subject: { type: "string" },
+              taskId: { type: "string", description: "For add_block: the task the block is for." },
               taskType: { type: "string" },
               dueAt: { type: "string", description: "ISO 8601 timestamp." },
               estimatedMinutes: { type: "number" },
               priority: { type: "number" },
-              category: { type: "string" },
+              weeklyMinutes: { type: "number" },
+              category: { type: "string", enum: ["school", "sport", "extracurricular", "other"] },
               recurrence: { type: "string", enum: ["none", "daily", "weekly", "weekdays"] },
               weekday: { type: "number" },
-              startTime: { type: "string", description: "HH:MM" },
-              endTime: { type: "string", description: "HH:MM" },
+              date: { type: "string", description: "YYYY-MM-DD, their local date." },
+              startTime: { type: "string", description: "HH:MM, their local time." },
+              endTime: { type: "string", description: "HH:MM, their local time." },
             },
             required: ["op"],
           },
@@ -330,6 +345,7 @@ async function request(env: Env, messages: ChatMessage[], options: RequestOption
 
   const data = (await response.json()) as {
     choices?: Array<{
+      finish_reason?: string;
       message?: {
         content?: string | null;
         tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }>;
@@ -339,8 +355,12 @@ async function request(env: Env, messages: ChatMessage[], options: RequestOption
     service_tier?: string;
   };
   await recordUsage(env, options.usage, model, data.service_tier ?? null, data.usage);
-  return data.choices?.[0]?.message;
+  const choice = data.choices?.[0];
+  return { ...choice?.message, cutOff: choice?.finish_reason === "length" };
 }
+
+/** Room for a reply that changes the plan: the change itself counts toward the cap. */
+const TOOL_REPLY_TOKENS = 1200;
 
 export async function complete(
   env: Env,
@@ -348,10 +368,15 @@ export async function complete(
   tools: Tool[],
   usage: UsageTag,
 ): Promise<Completion> {
-  const message = await request(env, messages, { tools, maxTokens: 250, usage });
+  let message = await request(env, messages, { tools, maxTokens: 250, usage });
+  // The 250 cap keeps Arcad brief, but a plan change cut off half-written
+  // can't be read and is lost. Ask again with room for it.
+  if (message.cutOff && message.tool_calls?.length) {
+    message = await request(env, messages, { tools, maxTokens: TOOL_REPLY_TOKENS, usage });
+  }
   return {
-    content: message?.content ?? "",
-    toolCalls: (message?.tool_calls ?? []).map((call) => ({
+    content: message.content ?? "",
+    toolCalls: (message.tool_calls ?? []).map((call) => ({
       id: call.id,
       name: call.function.name,
       arguments: call.function.arguments,
@@ -372,7 +397,7 @@ export async function completeJson<T>(
 ): Promise<T | null> {
   const message = await request(env, messages, { schema, maxTokens, temperature: 0.3, ...options });
   try {
-    return JSON.parse(message?.content ?? "") as T;
+    return JSON.parse(message.content ?? "") as T;
   } catch {
     console.error("[openai] unparseable structured reply");
     return null;

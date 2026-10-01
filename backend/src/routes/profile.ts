@@ -190,6 +190,7 @@ interface ProfileBody {
   arcadAbout?: string;
   arcadStyle?: string;
   memoryEnabled?: boolean;
+  emailReminders?: boolean;
   /** IANA zone, e.g. "America/New_York". */
   timezone?: string;
   wakeTime?: string;
@@ -260,6 +261,7 @@ profile.patch("/", async (c) => {
   if (body.arcadAbout !== undefined) patch.arcadAbout = String(body.arcadAbout).slice(0, TEXT_LIMIT);
   if (body.arcadStyle !== undefined) patch.arcadStyle = String(body.arcadStyle).slice(0, TEXT_LIMIT);
   if (body.memoryEnabled !== undefined) patch.memoryEnabled = Boolean(body.memoryEnabled);
+  if (body.emailReminders !== undefined) patch.emailRemindersEnabled = Boolean(body.emailReminders);
   if (body.timezone !== undefined) {
     const timezone = timeZoneOrNull(body.timezone);
     if (!timezone) return c.json({ error: "Unknown timezone." }, 422);

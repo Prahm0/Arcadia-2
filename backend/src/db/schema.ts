@@ -225,6 +225,8 @@ export const profiles = sqliteTable("profiles", {
   arcadAbout: text("arcad_about").notNull().default(""),
   arcadStyle: text("arcad_style").notNull().default(""),
   memoryEnabled: integer("memory_enabled", { mode: "boolean" }).notNull().default(true),
+  // The daily study-plan email (lib/email-reminders.ts). Off via Settings or the email's unsubscribe link.
+  emailRemindersEnabled: integer("email_reminders_enabled", { mode: "boolean" }).notNull().default(true),
 });
 
 export const goals = sqliteTable(

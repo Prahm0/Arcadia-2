@@ -5,6 +5,7 @@ import { api } from "@/lib/api/client";
 import type { DashboardResponse, PlannerEvent, PlannerTask } from "@/lib/api/types";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { playCompletionTick } from "@/lib/app/completion";
+import { success } from "@/lib/capacitor/haptics";
 import { addDays, startOfDayMs } from "./calendar";
 
 interface Override<T> {
@@ -185,6 +186,7 @@ export function usePlanner(period: { start: string; end: string }, timezone: str
           method: "POST",
           body: JSON.stringify({ outcome }),
         });
+        if (done) void success();
         confirm("event", event.id);
       } catch (err) {
         overrideEvent(event.id, null);
@@ -226,6 +228,7 @@ export function usePlanner(period: { start: string; end: string }, timezone: str
           method: "PATCH",
           body: JSON.stringify({ status }),
         });
+        if (done) void success();
         confirm("task", task.id);
       } catch (err) {
         overrideTask(task.id, null);

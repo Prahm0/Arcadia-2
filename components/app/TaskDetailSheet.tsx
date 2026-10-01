@@ -6,6 +6,7 @@ import { useDashboardData } from "@/lib/app/DashboardProvider";
 import type { DashboardResponse, PlannerTask } from "@/lib/api/types";
 import { formatDueSoon, formatDurationMinutes } from "@/lib/api/time";
 import { playCompletionTick } from "@/lib/app/completion";
+import { success, warning } from "@/lib/capacitor/haptics";
 import AppButton from "./AppButton";
 
 interface TaskDetailSheetProps {
@@ -122,6 +123,7 @@ export default function TaskDetailSheet({ task, timezone, onClose, onEdit }: Tas
         method: "PATCH",
         body: JSON.stringify({ status: "complete" }),
       });
+      void success();
       patch((prev: DashboardResponse) => ({
         ...prev,
         tasks: prev.tasks.map((existing) =>
@@ -155,6 +157,7 @@ export default function TaskDetailSheet({ task, timezone, onClose, onEdit }: Tas
 
   async function remove() {
     if (!confirm(`Delete "${task!.title}"? This also removes its scheduled study blocks.`)) return;
+    void warning();
     setBusy("delete");
     setError(null);
     try {

@@ -5,6 +5,7 @@ import { api } from "@/lib/api/client";
 import type { DashboardResponse, PlannerEvent, PlannerTask } from "@/lib/api/types";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { playCompletionTick } from "@/lib/app/completion";
+import { noteWin } from "@/lib/capacitor/ratingPrompt";
 import { addDays, startOfDayMs } from "./calendar";
 
 interface Override<T> {
@@ -178,7 +179,10 @@ export function usePlanner(period: { start: string; end: string }, timezone: str
   const setEventDone = useCallback(
     async (event: PlannerEvent, done: boolean) => {
       const outcome = done ? "completed" : "planned";
-      if (done) playCompletionTick();
+      if (done) {
+        playCompletionTick();
+        noteWin();
+      }
       overrideEvent(event.id, { outcome, status: outcome });
       try {
         await api(`/api/events/${encodeURIComponent(event.id)}/outcome`, {
@@ -219,7 +223,10 @@ export function usePlanner(period: { start: string; end: string }, timezone: str
   const setTaskDone = useCallback(
     async (task: PlannerTask, done: boolean) => {
       const status = done ? "complete" : "pending";
-      if (done) playCompletionTick();
+      if (done) {
+        playCompletionTick();
+        noteWin();
+      }
       overrideTask(task.id, { status });
       try {
         await api(`/api/tasks/${encodeURIComponent(task.id)}`, {

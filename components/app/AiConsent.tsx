@@ -14,7 +14,7 @@ export const AI_SHARED = [
   "Your first name, year level, school and state",
   "Your subjects, goals and ATAR target",
   "Your schedule, tasks and deadlines",
-  "Your messages to Arcad and what it remembers for you",
+  "Your messages to Arcad (typed or spoken) and what it remembers for you",
   "Notes or files you upload to make flashcards or summaries",
 ];
 
@@ -61,7 +61,8 @@ export default function AiConsent({ onDone }: { onDone: () => void }) {
           </ul>
           <p className="mt-4 text-[13px] font-semibold">Never shared</p>
           <p className="mt-1 text-[14px] leading-5" style={{ color: "var(--app-text-soft)" }}>
-            Your email, password, phone number or payment details.
+            Your email, password, phone number or payment details. Voice input is turned into text by
+            Apple on your phone; your voice recording is never sent to us or to OpenAI.
           </p>
         </div>
 

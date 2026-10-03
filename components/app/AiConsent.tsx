@@ -62,7 +62,7 @@ export default function AiConsent({ onDone }: { onDone: () => void }) {
           <p className="mt-4 text-[13px] font-semibold">Never shared</p>
           <p className="mt-1 text-[14px] leading-5" style={{ color: "var(--app-text-soft)" }}>
             Your email, password, phone number or payment details. Voice input is turned into text by
-            Apple on your phone; your voice recording is never sent to us or to OpenAI.
+            Apple&apos;s speech recognition; your voice recording is never sent to us or to OpenAI.
           </p>
         </div>
 

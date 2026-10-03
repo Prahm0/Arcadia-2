@@ -73,9 +73,15 @@ export default function PrivacyPage() {
         <li><strong>Apple and RevenueCat</strong>, subscriptions bought in the iOS
           app. Apple processes the payment; RevenueCat tells us which plan is
           active. Apple also handles Sign in with Apple if you use it.</li>
-        <li><strong>OpenAI</strong>, Arcad&rsquo;s language model. We send the chat
-          history and a compact snapshot of your plan so Arcad can answer
-          contextually. OpenAI does not train on data sent through their API.</li>
+        <li><strong>OpenAI</strong>, the AI that builds your study plan and powers
+          Arcad. <strong>Only if you allow it</strong> (we ask before anything is
+          sent, and you can change it in Settings), we send your first name, year
+          level, school and state, your subjects, goals and ATAR target, your
+          schedule, tasks and deadlines, your messages to Arcad and what it
+          remembers, and notes or files you upload to make flashcards or
+          summaries. We never send your email, password, phone number or payment
+          details. OpenAI does not train on data sent through their API. If you
+          don&rsquo;t allow it, Arcadia builds a basic plan without AI.</li>
         <li><strong>Resend</strong>, transactional email delivery.</li>
         <li><strong>Google</strong>, if you sign in with Google or connect Google
           Calendar. Calendar tokens are stored encrypted and used solely to read

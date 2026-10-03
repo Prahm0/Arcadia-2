@@ -225,6 +225,10 @@ export const profiles = sqliteTable("profiles", {
   arcadAbout: text("arcad_about").notNull().default(""),
   arcadStyle: text("arcad_style").notNull().default(""),
   memoryEnabled: integer("memory_enabled", { mode: "boolean" }).notNull().default(true),
+  // Permission to send their study details to OpenAI (App Store 5.1.2).
+  // Null until asked. Nothing goes to the model unless it is "granted".
+  aiConsent: text("ai_consent", { enum: ["granted", "declined"] }),
+  aiConsentAt: integer("ai_consent_at"),
 });
 
 export const goals = sqliteTable(

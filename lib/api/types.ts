@@ -95,6 +95,8 @@ export interface PlannerProfile {
   onboardingComplete?: boolean;
   wakeTime?: string;
   bedtime?: string;
+  /** Permission to send study details to OpenAI; null until asked. */
+  aiConsent?: "granted" | "declined" | null;
 }
 
 export type CompanionForm = "orb" | "comet" | "nebula";

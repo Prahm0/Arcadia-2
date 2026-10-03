@@ -190,6 +190,8 @@ interface ProfileBody {
   arcadAbout?: string;
   arcadStyle?: string;
   memoryEnabled?: boolean;
+  /** Permission to send study details to OpenAI. */
+  aiConsent?: "granted" | "declined";
   /** IANA zone, e.g. "America/New_York". */
   timezone?: string;
   wakeTime?: string;
@@ -260,6 +262,13 @@ profile.patch("/", async (c) => {
   if (body.arcadAbout !== undefined) patch.arcadAbout = String(body.arcadAbout).slice(0, TEXT_LIMIT);
   if (body.arcadStyle !== undefined) patch.arcadStyle = String(body.arcadStyle).slice(0, TEXT_LIMIT);
   if (body.memoryEnabled !== undefined) patch.memoryEnabled = Boolean(body.memoryEnabled);
+  if (body.aiConsent !== undefined) {
+    if (body.aiConsent !== "granted" && body.aiConsent !== "declined") {
+      return c.json({ error: "Choose allow or don't allow." }, 422);
+    }
+    patch.aiConsent = body.aiConsent;
+    patch.aiConsentAt = Date.now();
+  }
   if (body.timezone !== undefined) {
     const timezone = timeZoneOrNull(body.timezone);
     if (!timezone) return c.json({ error: "Unknown timezone." }, 422);

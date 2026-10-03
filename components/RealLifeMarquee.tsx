@@ -1,6 +1,5 @@
 import { marqueeRows, type LifeEvent, type LifeKind } from "@/lib/real-life";
 import { cn } from "@/lib/cn";
-import ArcadiaMark from "@/components/ui/ArcadiaMark";
 
 const kindTone: Record<LifeKind, string> = {
   sport: "text-white/70",
@@ -35,8 +34,8 @@ export default function RealLifeMarquee({ className }: { className?: string }) {
       ))}
       <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 px-[12%]" aria-label="Legend">
         {(Object.keys(kindLabel) as LifeKind[]).map((k) => (
-          <li key={k} className="type-mono-label flex items-center gap-2 text-white/45">
-            <ArcadiaMark size={9} className={kindTone[k]} />
+          <li key={k} className="flex items-center gap-2 text-[13px] text-white/45">
+            <Dot className={kindTone[k]} />
             {kindLabel[k]}
           </li>
         ))}
@@ -60,13 +59,18 @@ function Row({ items, reverse }: { items: LifeEvent[]; reverse: boolean }) {
           <li
             key={`${e.label}-${i}`}
             aria-hidden={i >= items.length || undefined}
-            className="flex shrink-0 items-center gap-2.5 rounded-full border border-white/[0.09] bg-white/[0.03] px-4 py-2.5 font-mono text-[13px] text-white/80 backdrop-blur-sm"
+            className="flex shrink-0 items-center gap-2.5 rounded-full border border-white/[0.09] bg-white/[0.03] px-4 py-2.5 text-[14px] text-white/80 backdrop-blur-sm"
           >
-            <ArcadiaMark size={9} className={kindTone[e.kind]} />
+            <Dot className={kindTone[e.kind]} />
             {e.label}
           </li>
         ))}
       </ul>
     </div>
   );
+}
+
+/** A small solid dot, tinted by the kind's text colour. */
+function Dot({ className }: { className?: string }) {
+  return <span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full bg-current", className)} />;
 }

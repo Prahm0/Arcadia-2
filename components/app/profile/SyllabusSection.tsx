@@ -5,6 +5,7 @@ import { api } from "@/lib/api/client";
 import type { AssessmentKind, ProfileSubject, SubjectAssessment, SubjectTopic } from "@/lib/api/profile";
 import { formatDateSpan } from "@/lib/api/subjectMaterials";
 import AppButton from "../AppButton";
+import CatalogSuggestions from "./CatalogSuggestions";
 import DropArea from "../files/DropArea";
 import { PendingRow } from "../files/FileRows";
 import { useUploads } from "../files/UploadProvider";
@@ -99,6 +100,7 @@ export default function SyllabusSection({
       title="Syllabus"
       meta="Your unit outline or assessment schedule. Arcad pulls out what's taught when and what's assessed."
     >
+      <CatalogSuggestions subjectId={subject.id} hasSyllabus={Boolean(subject.syllabus)} onAdded={refresh} />
       {inFlight.length ? (
         <ul className="rounded-md px-4" style={{ background: "var(--app-surface-soft)" }}>
           {inFlight.map((item) => (

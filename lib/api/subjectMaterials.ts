@@ -87,7 +87,7 @@ export function uploadMaterial(
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", `/api/subjects/${encodeURIComponent(subjectId)}/files?${params}`);
+    xhr.open("POST", `${kind === "syllabus" ? "/api/profile/subjects" : "/api/subjects"}/${encodeURIComponent(subjectId)}/files?${params}`);
     xhr.withCredentials = true;
     xhr.responseType = "json";
     xhr.setRequestHeader("content-type", file.type || "application/octet-stream");

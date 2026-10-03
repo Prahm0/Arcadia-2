@@ -143,6 +143,7 @@ export type ProfilePatch = Partial<{
   arcadStyle: string;
   memoryEnabled: boolean;
   timezone: string;
+  aiConsent: "granted" | "declined";
 }> &
   Partial<ProfileRoutine>;
 

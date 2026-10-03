@@ -278,10 +278,32 @@ async function recordUsage(
   }
 }
 
+/** The student hasn't allowed their details to be sent to OpenAI. */
+export class AiConsentRequiredError extends Error {
+  constructor() {
+    super("Arcad needs your permission to use AI. Turn on AI in Settings to chat with Arcad.");
+    this.name = "AiConsentRequiredError";
+  }
+}
+
+/**
+ * Nothing about a student reaches OpenAI unless they said yes. Every caller
+ * already falls back to a plan built without the model when a request
+ * throws, so a "no" (or not asked yet) quietly uses those fallbacks.
+ */
+async function assertAiConsent(env: Env, userId: string | null | undefined): Promise<void> {
+  if (!userId) return;
+  const row = await env.DB.prepare("SELECT ai_consent FROM profiles WHERE user_id = ?1")
+    .bind(userId)
+    .first<{ ai_consent: string | null }>();
+  if (row?.ai_consent !== "granted") throw new AiConsentRequiredError();
+}
+
 async function request(env: Env, messages: ChatMessage[], options: RequestOptions) {
   if (!env.OPENAI_API_KEY) {
     throw new Error("Arcad isn't set up yet.");
   }
+  await assertAiConsent(env, options.usage.userId);
 
   // OPENAI_BASE_URL only exists so local dev can point at a stand-in server.
   const base = (env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "");

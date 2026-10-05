@@ -11,6 +11,7 @@ import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
 import { formatWeekly, suggestedWeeklyMinutes } from "@/lib/app/studyTargets";
 import AppButton from "../AppButton";
 import { useRefreshOnUpload, useUploadPage } from "../files/UploadProvider";
+import MasterySection from "./MasterySection";
 import ResourcesSection from "./ResourcesSection";
 import SubjectSheets from "../sheets/SubjectSheets";
 import SyllabusSection from "./SyllabusSection";
@@ -195,6 +196,7 @@ function SubjectEditor({
       </Section>
 
       <SyllabusSection subject={subject} refresh={refresh} replanned={async () => void (await Promise.all([refresh(), reload()]))} />
+      <MasterySection subject={subject} />
       <ResourcesSection subject={subject} refresh={refresh} />
       <SubjectSheets subjectId={subject.id} subjectName={subject.name} />
 

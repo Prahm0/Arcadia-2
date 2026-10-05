@@ -76,3 +76,39 @@ Also confirmed live: the daylight-saving defect from 4 Oct. Seed 1, Hobart, 4 Ap
 
 - **AUSSEF replied about the category.** They suggested Engineering Technology: Industrial Engineering (ETSD/IND) or Software Design: Algorithms (SFTD/ALG). **Decision: SFTD, Algorithms.** The project's contribution is a repair algorithm and its evaluation, which matches their definition of ALG ("the study or creation of algorithms").
 - **AUSSEF replied about naming.** The anonymity rule exists to prevent judging bias, and publicly released names (the app, the video) can stay. **Decision:** use the name "Arcadia" throughout. Still keep school, teachers and state out of the report, since they aren't needed.
+
+## 5 October 2026 (night): first version of M4 and the pilot
+
+**Objective:** build the stability-budgeted repair (M4) and the infeasibility certificate, and run the pilot.
+
+**First attempt failed.** In a 24-scenario smoke test, M4 reached 98.3% coverage, about the same as simple insertion (M1). With bumping turned off it scored the same, so bumping was never working.
+- **Cause, from a trace of seed 2:** every day before the deadline was already at its study cap with *other deadline work*, so there was no subject time to bump. Bumped work had to find a new home, but the first version only searched the 4 nearest days, which were also full.
+- **Fix: displacement chains.** A bumped deadline block now searches every day up to its own due time. If it still can't fit, it may bump work due even later (a chain of at most 2 bumps). Deadline work is never dropped.
+
+**Pilot results** (seeds 1 to 240, exploratory, results/2026-10-05-pilot):
+
+| Method | Plans breaking a rule | Coverage | Blocks unchanged | Disruption cost (median) |
+|---|---|---|---|---|
+| M1 insert | 0% | 97.9% | 97.4% | 0.60 |
+| M2 Arcadia | 13.8% | 99.3% | 69.1% | 5.85 |
+| M3 rebuild | 0% | 99.7% | 2.0% | 23.51 |
+| **M4 repair** | **0%** | **99.4%** | **95.2%** | **1.25** |
+
+- **Paired against Arcadia (M2):** M4 caused less disruption in 187 of 240 scenarios and more in 17. Coverage was about the same: higher in 26, lower in 18.
+- **The frontier** (budgets 0.5 to 8) rises smoothly, from 95.0% to 99.3% coverage.
+- **Ablations:**
+  - without bumping, coverage falls to 97.9%;
+  - with a fixed 1-day window, it falls to 97.2%;
+  - without near-term weighting, coverage is the same but mean cost is 20% higher (4.46 against 3.71), and it is slower.
+- **The certificate was never wrong:** no valid plan from any method beat its minimum. It flagged 18 of 240 scenarios as short of time. In several of them, the full rebuild hit the certificate's minimum exactly, so the bound is tight.
+- **Weakness:** in overloaded weeks M4 leaves more work unbooked than the full rebuild (seed 94: 240 minutes against a minimum of 15). Global reordering beats local repair when the week is overloaded.
+- **Run time:** M4's 95th percentile is 0.3 s and its maximum 1.1 s, under the 2 s limit.
+
+**Pilot review (protocol section 10):** M4 meets criterion 1 (about equal coverage, much less disruption than M2 and M3) and criterion 4 (the certificates are correct). **Decision: continue.**
+
+**Before the confirmatory run, to fix:**
+1. Overloaded weeks: when the certificate shows a shortfall, fall back to a global reorder of the work in the short window.
+2. Speed up the ablation without near-term weighting.
+3. Add the exact optimiser (OR) for small instances.
+
+**Assistance:** the algorithm and harness code were written with Claude Code under my direction. I reviewed the trace and chose the fix.

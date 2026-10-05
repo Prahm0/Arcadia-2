@@ -155,4 +155,11 @@ All of these go to `results/YYYY-MM-DD-<name>/`, and each run gets an entry in A
 
 ## Amendments
 
-(none yet)
+### Amendment 1 (5 October 2026, before any experiment)
+
+1. **Research question, simpler wording.** Can a disrupted study plan be repaired so that deadline preparation is preserved while moving as few existing study blocks as possible? The question in section 1 stays as the technical form. The infeasibility certificate is a design criterion and a separate result, not part of the question.
+2. **Time resolution.** The repair algorithm (M4) and the exact optimiser (OR) work on 15-minute slots. The validator and all measures work on exact intervals, so no method gains from rounding.
+3. **Release times** are added as hard constraint 7: no work on a task is booked before the task exists. For D5, that means before the moment the disruption happens.
+4. **Disruption severity.** Each disruption is tagged light, medium or heavy, by the minutes of planned study it invalidates (under 60, 60 to 180, over 180). Results are also reported by severity.
+5. **Equal time limits.** Every method gets the same limit per scenario: 2 seconds, or 60 seconds for OR. A method that runs over counts as a failure for that scenario and is reported.
+6. **Contribution boundary.** Arcadia work before 5 October 2026 is pre-existing product development. The research contribution is the work on this branch from 5 October onwards.

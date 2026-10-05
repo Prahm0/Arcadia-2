@@ -17,13 +17,17 @@ export function stillValid(state: RepairState): Block[] {
   const { instance } = state;
   const dates = horizonDates(instance);
   const busy = [...commitmentIntervals(state.commitments, dates, instance.tz), ...sleepIntervals(instance, dates)];
-  const taskIds = new Set(state.tasks.map((t) => t.id));
-  return state.current.filter(
-    (b) =>
+  const tasks = new Map(state.tasks.map((t) => [t.id, t]));
+  // Also drops blocks the starting plan already had wrong (deadline work
+  // booked after its due time), so baselines don't inherit Arcadia's defects.
+  return state.current.filter((b) => {
+    const t = b.taskId ? tasks.get(b.taskId) : null;
+    return (
       b.start >= state.now &&
       !busy.some((x) => overlaps(x, b)) &&
-      (!b.taskId || taskIds.has(b.taskId)),
-  );
+      (!b.taskId || (t !== undefined && t !== null && b.end <= t.dueAt))
+    );
+  });
 }
 
 /** Minutes of each task still to place, given what's done and what's kept. */

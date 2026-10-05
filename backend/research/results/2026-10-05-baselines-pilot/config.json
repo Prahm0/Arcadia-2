@@ -1,0 +1,18 @@
+{
+  "name": "baselines-pilot",
+  "seeds": [
+    1,
+    240
+  ],
+  "methods": [
+    "M0",
+    "M1",
+    "M2",
+    "M3"
+  ],
+  "commit": "74c7bda148436ee67aa833941d60c59c62b1bb4e",
+  "uncommittedChanges": true,
+  "node": "v26.8.1",
+  "date": "2026-10-05T01:59:19.430Z",
+  "seconds": 4.748
+}

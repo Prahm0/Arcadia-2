@@ -25,3 +25,49 @@ Dated record of what was done, what was found and what was decided. It feeds the
 - **Protocol amendment 1** (before any experiment): simpler research question wording, 15-minute slots for M4 and OR only, release times added as a hard constraint, disruption severity tags, equal time limits per method, and the contribution boundary set at 5 Oct.
 - **Provenance worksheet** created (provenance/git-worksheet.csv): 227 merged PRs, 27 of which touch the scheduling engine. To verify: my role in each core PR.
 - **Logbook format from today:** objective, action, decision and reason, evidence, what failed, next step, and who or what helped.
+
+## 5 October 2026 (afternoon): the harness is built, and the first baseline numbers
+
+**Objective:** build the test harness and get real numbers for the four baseline methods.
+
+**Action:**
+- Split `planStudy()` out of `rebuildSchedule()`, a pure move with no logic change, so the real scheduler can run without a database.
+- Changed `StudyCredit` to a plain field, because Node 26 dropped the flag the old tests used.
+- Built:
+  - a seeded scenario generator;
+  - an independent rule checker, with its own time code;
+  - baselines M0 (no repair), M1 (greedy EDF insertion) and M3 (coverage-first rebuild);
+  - an adapter that runs the live Arcadia algorithm (M2);
+  - the measures and the runner.
+
+**Amendment 2** (made after a 12-scenario smoke test, before the pilot):
+- The v1 disruption cost made moving a block 1 day cost about 98, but deleting it only 4, which would reward deleting. Every term is now bounded.
+- Subject error now counts shortfall only.
+
+**Fairness fix:** M0 and M1 now drop any starting-plan block that is already invalid, so they don't inherit Arcadia's defects.
+
+**Results.** Baseline pilot, seeds 1 to 240, exploratory only (results/2026-10-05-baselines-pilot):
+
+| Method | Plans breaking a rule | Coverage (mean) | Blocks unchanged (median) | Disruption cost (median) |
+|---|---|---|---|---|
+| M0 no repair | 0% | 94.0% | 100% | 0.00 |
+| M1 EDF insert | 0% | 97.9% | 100% | 0.60 |
+| M2 Arcadia | **13.8%** | 99.3% | 76.5% | 5.85 |
+| M3 full rebuild | 0% | 99.7% | 0% | 23.51 |
+
+**What this shows.** There is a clear trade-off between coverage and change. Insertion barely changes the plan but loses about 2 points of coverage. A full rebuild gets the coverage but changes every block. Arcadia sits in between, and breaks a hard rule in 1 of every 7 disrupted weeks. **Target for M4:** coverage close to M3 with change close to M1, and zero violations.
+
+**Defects found** by the independent rule checker (all in the live code, all on the scheduler's own output):
+
+4. **Deadline work booked after it's due.** When a task is due before school, `pickSpot()` falls back to the end of the morning gap and ignores the due time. Seed 9: due Thu 8:30am, and the last block was booked 8:45 to 9:00am.
+5. **No break next to blocks it keeps.** A new block can start the minute an under-way block ends, because kept blocks are subtracted as busy time without the break around them.
+6. **One-off commitments land a day early west of Greenwich.** `commitmentSlots()` compares the date's UTC midnight with local days. Confirmed in America/Los_Angeles and America/New_York: a Thursday 4pm one-off lands on Wednesday at 4pm. The Recovery Loop's "Busy" and "Time off" are one-offs for today, so for students in the Americas they protect yesterday instead.
+
+Also confirmed live: the daylight-saving defect from 4 Oct. Seed 1, Hobart, 4 Apr 2027: study booked 30 minutes over a work shift.
+
+**Next:**
+- Design and build M4 (the stability-budgeted repair).
+- Pilot it against these baselines.
+- Run the continue-or-change review by 16 Oct.
+
+**Assistance:** harness code was written with Claude Code under my direction. The design decisions and the review of each finding were mine.

@@ -22,7 +22,7 @@ const args = Object.fromEntries(
 const name = args.name ?? "run";
 const from = Number(args.from ?? 1);
 const to = Number(args.to ?? 20);
-const methods: RepairMethod[] = [
+const allMethods: RepairMethod[] = [
   noRepair, edfInsert, arcadiaRebuild, coverageFirst,
   stabilityRepairMethod("M4"),
   // The frontier: the same repair at increasing disruption budgets.
@@ -33,6 +33,9 @@ const methods: RepairMethod[] = [
   stabilityRepairMethod("M4-fixedWindow", { widening: false }),
   stabilityRepairMethod("M4-noEscalate", { escalation: false }),
 ];
+// --methods M1,M3 runs a subset (e.g. re-running a corrected baseline).
+const only = args.methods ? new Set(String(args.methods).split(",")) : null;
+const methods = only ? allMethods.filter((m) => only.has(m.code)) : allMethods;
 
 const columns = [
   "seed", "method", "label", "severity", "severity_min", "tz", "start_date", "clock_change", "utilisation_target",
@@ -79,7 +82,9 @@ const dir = join(import.meta.dirname, "..", "results", `${date}-${name}`);
 mkdirSync(dir, { recursive: true });
 writeFileSync(join(dir, "results.csv"), rows.join("\n") + "\n");
 const commit = execSync("git rev-parse HEAD").toString().trim();
-const dirty = execSync("git status --porcelain").toString().trim().length > 0;
+// Tracked files only: the results folder this run just wrote is untracked and
+// would otherwise mark every run as uncommitted (amendment 4).
+const dirty = execSync("git status --porcelain --untracked-files=no").toString().trim().length > 0;
 writeFileSync(
   join(dir, "config.json"),
   JSON.stringify(

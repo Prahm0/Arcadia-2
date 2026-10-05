@@ -11,6 +11,7 @@ import { arcadiaRebuild } from "./arcadia.ts";
 import { coverageFirst, edfInsert, noRepair } from "./baselines.ts";
 import { utilisationOf } from "./generate.ts";
 import { measure } from "./metrics.ts";
+import { certificate, stabilityRepairMethod } from "./repair.ts";
 import { buildScenario, repairState } from "./scenario.ts";
 import type { RepairMethod } from "./types.ts";
 import { validate } from "./validator.ts";
@@ -21,14 +22,24 @@ const args = Object.fromEntries(
 const name = args.name ?? "run";
 const from = Number(args.from ?? 1);
 const to = Number(args.to ?? 20);
-const methods: RepairMethod[] = [noRepair, edfInsert, arcadiaRebuild, coverageFirst];
+const methods: RepairMethod[] = [
+  noRepair, edfInsert, arcadiaRebuild, coverageFirst,
+  stabilityRepairMethod("M4"),
+  // The frontier: the same repair at increasing disruption budgets.
+  ...[0.5, 1, 2, 4, 8].map((budget) => stabilityRepairMethod(`M4-b${budget}`, { budget })),
+  // Ablations (PROTOCOL.md section 6).
+  stabilityRepairMethod("M4-noNear", { nearTermWeighting: false }),
+  stabilityRepairMethod("M4-noEject", { ejection: false }),
+  stabilityRepairMethod("M4-fixedWindow", { widening: false }),
+];
 
 const columns = [
   "seed", "method", "label", "severity", "severity_min", "tz", "start_date", "clock_change", "utilisation_target",
   "utilisation", "clustered", "cap", "tasks", "start_violations",
   "violations", "v_commitment", "v_sleep", "v_overlap", "v_break", "v_cap", "v_late", "v_release", "v_short", "v_past",
   "violation_min", "coverage", "unmet_weighted", "unmet", "fully_prepared", "unchanged", "moved", "removed", "added",
-  "displacement", "day_changes", "cost", "subject_error", "starved", "runtime_ms", "first_violation",
+  "displacement", "day_changes", "cost", "subject_error", "starved", "runtime_ms", "cert_short", "cert_tasks",
+  "first_violation",
 ];
 const rows: string[] = [columns.join(",")];
 const csv = (x: unknown) => (typeof x === "string" && /[",\n]/.test(x) ? `"${x.replace(/"/g, '""')}"` : String(x));
@@ -39,6 +50,7 @@ for (let seed = from; seed <= to; seed++) {
   const { instance } = scenario;
   const startCheck = validate(instance, instance.commitments, instance.tasks, [], scenario.startPlan, instance.start, null);
   const util = utilisationOf(instance);
+  const cert = certificate(repairState(scenario));
   for (const method of methods) {
     const state = repairState(scenario);
     const t0 = performance.now();
@@ -52,7 +64,8 @@ for (let seed = from; seed <= to; seed++) {
       startCheck.total, v.total, v.commitment, v.sleep, v.studyOverlap, v.break, v.cap, v.late, v.release, v.short, v.past,
       v.minutes.toFixed(1), m.coverage.toFixed(4), m.unmetWeighted.toFixed(1), m.unmet.toFixed(1), m.fullyPrepared.toFixed(4),
       m.unchanged.toFixed(4), m.moved.toFixed(4), m.removed.toFixed(4), m.added, m.displacement.toFixed(1), m.dayChanges,
-      m.cost.toFixed(3), m.subjectError.toFixed(4), m.starved.toFixed(4), runtime.toFixed(2), v.notes[0] ?? "",
+      m.cost.toFixed(3), m.subjectError.toFixed(4), m.starved.toFixed(4), runtime.toFixed(2), cert.shortMinutes,
+      cert.tasks.length, v.notes[0] ?? "",
     ];
     rows.push(row.map(csv).join(","));
   }

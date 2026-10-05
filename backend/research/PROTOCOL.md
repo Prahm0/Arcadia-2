@@ -177,3 +177,14 @@ The smoke test (results/2026-10-05-smoke) was run only to check that the harness
    r(b) = 1 / (1 + days from now until b), unchanged.
 2. **Subject-target error is now shortfall only:** the mean of max(0, target - booked) / target. Deadline work in a subject counts toward that subject (as in Arcadia), so booking more than the target is not a failure. Under v1, deadline-heavy subjects showed errors above 100% for every method.
 3. **The rest-of-horizon target** is the weekly target x (horizon end - now) / 7 days.
+
+### Amendment 3 (5 October 2026, after the pilot, before any confirmatory seed was run)
+
+The pilot (seeds 1 to 240) was used to develop M4, as section 10 intends. The confirmatory seeds (1000 to 5999) and the held-out seeds (9000 to 9499) have not been run. M4 is now frozen as version 2. Changes since the pilot:
+
+1. **Split re-homing.** Bumped deadline work may be split into pieces of at least 15 minutes when no single gap fits before its due time.
+2. **Deeper chains.** The chain may now be 3 bumps deep. Fewer candidates are tried at each deeper level (60, then 25, then 12) to keep run time under the 2 s limit.
+3. **Escalation with a growing window,** for weeks local repair can't fix. A "sticky" deadline-order rebuild runs from now until the last deadline still missing work. Each task first takes back its own original slots, then the earliest free time. If that pushes other work past its own deadline, the window widens to that deadline and the rebuild repeats (up to 8 rounds). The result is kept only if it books more weighted deadline work than local repair. It is used only when the budget is unlimited. Ablation: M4-noEscalate.
+4. **The exact optimiser (OR) is replaced by an exact coverage bound computed for every scenario,** not just small ones. Every task's window starts at the moment of the disruption, so the windows are nested. A set of work then fits exactly when, at every deadline, the work due by then fits in the study time before then. Those sets form a matroid, so taking work in priority order (as much as still fits) gives the maximum weighted coverage. Only breaks and minimum block lengths are ignored, so no valid plan can beat the bound. This answers "how close to the best possible" for all scenarios, which a solver could only do for small ones.
+
+Smoke check (seeds 1 to 40, part of the pilot): M4 v2 reached 99.69% coverage with 93.4% of blocks unchanged, against 99.70% and 1.7% for the full rebuild. No valid plan beat the bound.

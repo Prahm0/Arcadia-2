@@ -9,10 +9,11 @@ import { DAY, MINUTE } from "../lib/time";
 import { awardXp } from "../lib/rewards";
 import { replan } from "../lib/replan";
 import { releaseFromLayout } from "../lib/scheduler";
+import { recordSessionPractice } from "../lib/mastery";
 import { clearLog, findSubject, replaceLog } from "../lib/study-log";
 import { blockEntries, type CheckoutAnswers } from "../lib/study-record";
 import { XP } from "../../../shared/progress";
-import { isConfidence, overallFeeling, type Confidence } from "../../../shared/studyLog";
+import { isConfidence, overallFeeling, sessionTopics, type Confidence } from "../../../shared/studyLog";
 import type { Env, Variables } from "../types";
 
 type EventRow = typeof schema.events.$inferSelect;
@@ -433,6 +434,21 @@ events.post("/:id/checkout", async (c) => {
   const subject = await findSubject(database, userId, event.subject);
   // Logged as of now, the end of the session, so this rating is the latest.
   await replaceLog(database, userId, { eventId: event.id, source: "checkout" }, { id: subject?.id ?? null, name: event.subject }, entries, Date.now());
+
+  // Steps aimed at syllabus dot points feed those points' mastery.
+  const plan = event.plan ? (JSON.parse(event.plan) as SessionPlan) : null;
+  if (subject?.syllabus && plan?.steps.some((step) => step.pointId)) {
+    const keyOf = new Map<number, string>();
+    for (const topic of sessionTopics(plan, { topic: event.title })) for (const index of topic.steps) keyOf.set(index, topic.key);
+    const practised = plan.steps.flatMap((step, index) =>
+      step.pointId && done.includes(index)
+        ? [{ pointId: step.pointId, rating: ratings.get(keyOf.get(index) ?? "") ?? checkout.feeling }]
+        : [],
+    );
+    await recordSessionPractice(database, userId, subject, { eventId: event.id, title: plan.topic }, practised).catch((error) =>
+      console.error("[checkout] couldn't update mastery", error),
+    );
+  }
   return c.json({ event: await reread(database, event.id) });
 });
 

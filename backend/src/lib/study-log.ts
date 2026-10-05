@@ -20,10 +20,10 @@ export async function findSubject(
   database: Database,
   userId: string,
   name: string | null | undefined,
-): Promise<{ id: string; name: string } | null> {
+): Promise<{ id: string; name: string; syllabus: string | null } | null> {
   if (!name) return null;
   const subjects = await database
-    .select({ id: schema.subjects.id, name: schema.subjects.name })
+    .select({ id: schema.subjects.id, name: schema.subjects.name, syllabus: schema.subjects.syllabus })
     .from(schema.subjects)
     .where(eq(schema.subjects.userId, userId));
   return subjects.find((row) => subjectKey(row.name) === subjectKey(name)) ?? null;

@@ -96,8 +96,11 @@ export async function subjectMastery(
       results.set(pointId, list);
     }
   }
-  // A unit counts as taught once any of its points has work or a mark.
-  const startedUnits = new Set(points.filter((point) => tags.has(point.id) || results.has(point.id)).map((point) => point.unit));
+  // A topic counts as taught once any of its dot points has work or a mark:
+  // its untouched points are then the gaps. (A whole unit was too coarse,
+  // turning most of the map red after one upload.)
+  const topicKey = (point: PointRow) => `${point.unit}.${point.topic}`;
+  const startedTopics = new Set(points.filter((point) => tags.has(point.id) || results.has(point.id)).map(topicKey));
   const snoozes = new Map(cached.map((row) => [row.pointId, row]));
 
   return points.map((point) => {
@@ -105,7 +108,7 @@ export async function subjectMastery(
     return {
       point,
       mastery: computeMastery(
-        { tags: tags.get(point.id) ?? [], results: results.get(point.id) ?? [], minutes: 0, taught: startedUnits.has(point.unit) },
+        { tags: tags.get(point.id) ?? [], results: results.get(point.id) ?? [], minutes: 0, taught: startedTopics.has(topicKey(point)) },
         now,
       ),
       snoozedUntil: cache?.snoozedUntil ?? null,
@@ -169,4 +172,49 @@ export async function refreshMasteryCache(database: Database, userId: string, ma
     const batch = writes.slice(i, i + 50);
     if (batch.length) await database.batch(batch as unknown as Parameters<Database["batch"]>[0]);
   }
+}
+
+const RATING: Record<string, number> = { got_it: 4, shaky: 2, lost: 1, good: 4, ok: 3, rough: 2 };
+
+/**
+ * A checked-out session that worked on dot points counts as practice on
+ * them: coverage, plus how it left the student (no marking, so no quality).
+ * One row per session, redone if the check-out is.
+ */
+export async function recordSessionPractice(
+  database: Database,
+  userId: string,
+  subject: { id: string; syllabus: string | null },
+  session: { eventId: string; title: string },
+  points: Array<{ pointId: string; rating: string | null }>,
+) {
+  if (!subject.syllabus) return;
+  const id = `wrk_ses_${session.eventId}`;
+  const known = new Set((await syllabusPoints(database, subject.syllabus)).map((point) => point.id));
+  const unique = new Map(points.filter((point) => known.has(point.pointId)).map((point) => [point.pointId, point.rating]));
+  await database.delete(schema.workItems).where(and(eq(schema.workItems.id, id), eq(schema.workItems.userId, userId)));
+  if (unique.size > 0) {
+    await database.insert(schema.workItems).values({
+      id,
+      userId,
+      subjectId: subject.id,
+      source: "session",
+      filename: session.title.slice(0, 200) || "Study session",
+      contentType: "text/plain",
+      status: "checked",
+      promptVersion: "session",
+    });
+    await database.insert(schema.workTags).values(
+      [...unique].map(([pointId, rating]) => ({
+        workItemId: id,
+        pointId,
+        userId,
+        quality: null,
+        confidence: rating ? RATING[rating] ?? null : null,
+        state: "confirmed",
+        promptVersion: "session",
+      })),
+    );
+  }
+  await refreshMasteryCache(database, userId, await subjectMastery(database, userId, subject.id, subject.syllabus));
 }

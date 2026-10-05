@@ -195,3 +195,16 @@ Smoke check (seeds 1 to 40, part of the pilot): M4 v2 reached 99.69% coverage wi
 
 1. **A baseline defect at midnight.** The independent validator found missing breaks in 6 of the 5,000 confirmatory full-rebuild (M3) repairs. All six were students whose bedtime is after midnight. The baselines' `book()` updated only the day a block was booked on, so a block ending at 12:00am did not reserve its break at the start of the next day. M1 shares the code. Fix: a booked block's break is subtracted from every day. M4, M2 and the validator are unaffected (M4 checks neighbouring days). M1 and M3 were re-run on the same confirmatory seeds with the fix (results/2026-10-05-confirmatory-baselines-fixed). The original results file is kept unchanged. The reported confirmatory table uses the corrected M1 and M3 rows; the original rows are reported alongside.
 2. **The runner's "uncommitted changes" flag** counted the run's own new results folder as uncommitted, so every run so far was flagged. `git status` showed no modified tracked files for the confirmatory run (code at commit aba9d14). The flag now ignores untracked files.
+
+### Amendment 5 (5 October 2026, after the confirmatory results; post-hoc robustness analyses)
+
+These analyses were added after seeing the confirmatory results, in response to an external review. They are reported as robustness checks, not as part of the frozen confirmatory test. M4 v2 is unchanged; with default settings it gives identical results row for row (checked on seeds 1 to 30).
+
+1. **Sensitivity to the cost weights.** The change costs were a design choice and were revised in amendment 2. M4 is re-run on the confirmatory seeds with three alternative weight sets:
+   - **flat:** remove 2, other day 2, within-day 1 per hour up to 2, add 1;
+   - **steep:** near-term weight 1 / (1 + days)²;
+   - **add-heavy:** adding a block costs 3.
+
+   They are judged on measures that don't depend on the weights: rule breaks, coverage and the share of blocks unchanged.
+2. **Arcadia after the six fixes.** The corrected scheduler (branch `aussef/fixes`) is run on the confirmatory and held-out seeds, with M1, M3 and M4 recomputed on its starting plans. In the confirmatory results, the original M2 is labelled "Arcadia before this project (commit f179689)".
+3. **Wording.** The predictions H1 to H5 and the 0.5-point threshold were written down while the confirmatory run was in progress and before its results were seen. They were not part of the frozen protocol, so they are reported as evaluation criteria, not pre-registered hypotheses.

@@ -32,10 +32,16 @@ const allMethods: RepairMethod[] = [
   stabilityRepairMethod("M4-noEject", { ejection: false }),
   stabilityRepairMethod("M4-fixedWindow", { widening: false }),
   stabilityRepairMethod("M4-noEscalate", { escalation: false }),
+  // Sensitivity to the cost weights (amendment 5). Run only with --methods.
+];
+const sensitivity: RepairMethod[] = [
+  stabilityRepairMethod("M4-wFlat", { costs: { remove: 2, otherDay: 2, sameDayPerHour: 1, sameDayCap: 2, add: 1 } }),
+  stabilityRepairMethod("M4-wSteep", { nearTermPower: 2 }),
+  stabilityRepairMethod("M4-wAddHeavy", { costs: { remove: 4, otherDay: 3, sameDayPerHour: 1, sameDayCap: 2, add: 3 } }),
 ];
 // --methods M1,M3 runs a subset (e.g. re-running a corrected baseline).
 const only = args.methods ? new Set(String(args.methods).split(",")) : null;
-const methods = only ? allMethods.filter((m) => only.has(m.code)) : allMethods;
+const methods = only ? [...allMethods, ...sensitivity].filter((m) => only.has(m.code)) : allMethods;
 
 const columns = [
   "seed", "method", "label", "severity", "severity_min", "tz", "start_date", "clock_change", "utilisation_target",

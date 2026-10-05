@@ -39,10 +39,16 @@ export interface RepairOptions {
    * keep that only if it books more. Only with an unlimited budget.
    */
   escalation: boolean;
+  /** Change costs (sensitivity analysis, amendment 5). Defaults: 4, 3, 1 per hour up to 2, 1. */
+  costs: { remove: number; otherDay: number; sameDayPerHour: number; sameDayCap: number; add: number };
+  /** Near-term weight is 1 / (1 + days)^power. Default 1. */
+  nearTermPower: number;
 }
 
 export const DEFAULTS: RepairOptions = {
   budget: Infinity, nearTermWeighting: true, ejection: true, widening: true, escalation: true,
+  costs: { remove: 4, otherDay: 3, sameDayPerHour: 1, sameDayCap: 2, add: 1 },
+  nearTermPower: 1,
 };
 
 const FIXED_WINDOW_DAYS = 1;
@@ -77,17 +83,19 @@ const ceil5 = (t: number) => Math.ceil(t / (5 * MINUTE)) * 5 * MINUTE;
 
 function weight(ctx: Ctx, at: number): number {
   if (!ctx.opts.nearTermWeighting) return 1;
-  return 1 / (1 + Math.max(0, (at - ctx.state.now) / DAY));
+  return 1 / Math.pow(1 + Math.max(0, (at - ctx.state.now) / DAY), ctx.opts.nearTermPower);
 }
 
 /** What a block's position costs against where it started (same scale as metrics.ts). */
 function positionCost(ctx: Ctx, b: Block | null, original: Block | undefined): number {
-  if (!original) return b ? weight(ctx, b.start) : 0; // a new block
-  if (!b) return 4 * weight(ctx, original.start); // removed
+  const c = ctx.opts.costs;
+  if (!original) return b ? c.add * weight(ctx, b.start) : 0; // a new block
+  if (!b) return c.remove * weight(ctx, original.start); // removed
   if (b.start === original.start && b.end === original.end) return 0;
   const tz = ctx.state.instance.tz;
-  if (localDate(b.start, tz) !== localDate(original.start, tz)) return 3 * weight(ctx, original.start);
-  return (Math.min(Math.abs(b.start - original.start) / MINUTE, 120) / 60) * weight(ctx, original.start);
+  if (localDate(b.start, tz) !== localDate(original.start, tz)) return c.otherDay * weight(ctx, original.start);
+  const hours = Math.abs(b.start - original.start) / MINUTE / 60;
+  return Math.min(hours * c.sameDayPerHour, c.sameDayCap) * weight(ctx, original.start);
 }
 
 function makeCtx(state: RepairState, opts: RepairOptions): Ctx {
@@ -178,7 +186,7 @@ function place(ctx: Ctx, plan: Block[], task: TaskSpec, want: number, left: numb
     const spot = spotOn(ctx, date, plan, want, after, task.dueAt, Math.max(anchor, after), left);
     if (!spot) continue;
     const block: Block = { id: `r${++ctx.counter}`, ...spot, taskId: task.id, subject: task.subject, fixed: false };
-    return { plan: [...plan, block], cost: weight(ctx, spot.start), placed: (spot.end - spot.start) / MINUTE };
+    return { plan: [...plan, block], cost: ctx.opts.costs.add * weight(ctx, spot.start), placed: (spot.end - spot.start) / MINUTE };
   }
   return null;
 }
@@ -261,7 +269,7 @@ function eject(
       : { id: `r${++ctx.counter}`, ...spot, taskId: task.id, subject: task.subject, fixed: false };
     const home = rehome(ctx, [...without, block], x, depth);
     if (!home) continue;
-    const cost = weight(ctx, spot.start) + home.cost;
+    const cost = ctx.opts.costs.add * weight(ctx, spot.start) + home.cost;
     if (!best || cost < best.cost) best = { plan: home.plan, cost, placed: (spot.end - spot.start) / MINUTE };
   }
   return best;

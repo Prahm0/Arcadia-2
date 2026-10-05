@@ -108,7 +108,7 @@ out["proven_short_scenarios"] = int((col("M3", "cert_short") > 0).sum())
 
 # ---- paired tests: M4 against each baseline ----
 tests = []
-for base in ["M0", "M1", "M2", "M3"]:
+for base in [b for b in ["M0", "M1", "M2", "M3"] if b in by]:
     for key, label in [("coverage", "coverage"), ("unchanged", "unchanged"), ("cost", "disruption cost")]:
         a, b = col("M4", key), col(base, key)
         p, rbc = wilcoxon(a, b)
@@ -172,7 +172,7 @@ def save(fig, name):
 # Fig 1: the frontier. x = share of the existing plan changed (log), y = coverage.
 fig, ax = plt.subplots(figsize=(7.2, 4.6))
 changed = lambda m: 100 - out["methods"][m]["unchanged_mean"]
-budgets = ["M4-b0.5", "M4-b1", "M4-b2", "M4-b4", "M4-b8", "M4"]
+budgets = [m for m in ["M4-b0.5", "M4-b1", "M4-b2", "M4-b4", "M4-b8", "M4"] if m in by]
 xs = [changed(m) for m in budgets]
 ys = [out["methods"][m]["coverage_mean"] for m in budgets]
 for m, x in zip(budgets, xs):
@@ -182,7 +182,7 @@ ax.plot(xs, ys, color=BLUE, lw=2, marker="o", ms=7, mec=SURF, mew=2, zorder=4)
 ax.annotate("Repair, budget 0.5", (xs[0], ys[0]), textcoords="offset points", xytext=(10, -4), fontsize=8.5, color=INK)
 ax.annotate("Repair, unlimited budget", (xs[-1], ys[-1]), textcoords="offset points", xytext=(8, -14), fontsize=8.5, color=INK, fontweight="bold")
 offsets = {"M0": (-9, -4), "M1": (-9, -4), "M2": (0, -34), "M3": (-8, -16)}
-for m in ["M0", "M1", "M2", "M3"]:
+for m in [b for b in ["M0", "M1", "M2", "M3"] if b in by]:
     s_ = out["methods"][m]
     x, y = changed(m), s_["coverage_mean"]
     lo, hi = s_["coverage_ci"]
@@ -206,7 +206,7 @@ save(fig, "fig1_frontier.png")
 
 # Fig 2: plans breaking a hard rule.
 fig, ax = plt.subplots(figsize=(7.2, 2.8))
-order = ["M0", "M1", "M3", "M4", "M2"]
+order = [m for m in ["M0", "M1", "M3", "M4", "M2"] if m in by]
 vals = [out["methods"][m]["invalid_pct"] for m in order]
 ax.barh([NAMES[m] for m in order], vals, color=[ORANGE if m == "M2" else MUTED for m in order], height=0.55)
 for i, v in enumerate(vals):
@@ -290,7 +290,7 @@ save(fig, "fig6_runtime.png")
 L = [f"# Results: {RUN.name} ({N} scenarios)", ""]
 L += ["| Method | Plans breaking a rule | Coverage (95% CI) | Tasks fully prepared | Blocks unchanged (95% CI) | Disruption cost, mean (median) | Run time p95 / max |",
       "|---|---|---|---|---|---|---|"]
-for m in MAIN + [x for x in by if x not in MAIN]:
+for m in [x for x in MAIN if x in by] + [x for x in by if x not in MAIN]:
     s = out["methods"][m]
     L.append(f"| {NAMES.get(m, m)} | {s['invalid_pct']:.1f}% | {s['coverage_mean']:.2f}% ({s['coverage_ci'][0]:.2f} to {s['coverage_ci'][1]:.2f}) | "
              f"{s['fully_prepared_pct']:.1f}% | {s['unchanged_mean']:.1f}% ({s['unchanged_ci'][0]:.1f} to {s['unchanged_ci'][1]:.1f}) | "

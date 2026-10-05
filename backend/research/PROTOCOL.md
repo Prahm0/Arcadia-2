@@ -163,3 +163,17 @@ All of these go to `results/YYYY-MM-DD-<name>/`, and each run gets an entry in A
 4. **Disruption severity.** Each disruption is tagged light, medium or heavy, by the minutes of planned study it invalidates (under 60, 60 to 180, over 180). Results are also reported by severity.
 5. **Equal time limits.** Every method gets the same limit per scenario: 2 seconds, or 60 seconds for OR. A method that runs over counts as a failure for that scenario and is reported.
 6. **Contribution boundary.** Arcadia work before 5 October 2026 is pre-existing product development. The research contribution is the work on this branch from 5 October onwards.
+
+### Amendment 2 (5 October 2026, after a 12-scenario smoke test of the baselines, before the pilot)
+
+The smoke test (results/2026-10-05-smoke) was run only to check that the harness works. Two measures were found to be wrong and are corrected before any pilot run.
+
+1. **Disruption cost, corrected.** In v1, moving a block by one day cost about 98 (1,440 minutes divided by 15), but removing it cost only 4. A method could score better by deleting blocks than by moving them. Every term is now bounded:
+   - removed: 4 x r(b);
+   - moved to another day: 3 x r(b);
+   - moved within the day: min(|shift in minutes|, 120) / 60 x r(b), at most 2 x r(b);
+   - each new block: 1 x r(new block).
+
+   r(b) = 1 / (1 + days from now until b), unchanged.
+2. **Subject-target error is now shortfall only:** the mean of max(0, target - booked) / target. Deadline work in a subject counts toward that subject (as in Arcadia), so booking more than the target is not a failure. Under v1, deadline-heavy subjects showed errors above 100% for every method.
+3. **The rest-of-horizon target** is the weekly target x (horizon end - now) / 7 days.

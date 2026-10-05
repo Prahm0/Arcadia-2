@@ -830,8 +830,13 @@ export function layoutKey(inputs: ScheduleInputs, g: Groundwork): string {
 /** Minutes of study each subject has had (or has booked) in one week, by subjectKey. */
 export class StudyCredit {
   private entries = new Map<string, { done: number; focused: number; planned: number }>();
+  private readonly tz: string;
 
-  constructor(private readonly tz: string) {}
+  // A plain field, not a parameter property, so Node can run this file
+  // with type stripping alone (the research harness and the tests).
+  constructor(tz: string) {
+    this.tz = tz;
+  }
 
   private entry(at: number, subject: string | null | undefined) {
     const key = `${startOfLocalWeek(at, this.tz)}|${subjectKey(subject)}`;
@@ -941,9 +946,25 @@ export async function rebuildSchedule(
   const inputs = await loadScheduleInputs(database, userId, from, to);
   if (!inputs) return { created: 0, removed: 0 };
 
-  const { profile } = inputs;
-  const tz = profile.timezone;
   const g = groundwork(userId, inputs, from, to);
+  const { planned, key, current } = planStudy(userId, inputs, g);
+  return writePlan(database, userId, inputs, g, planned, key, current);
+}
+
+export interface StudyPlan {
+  /** Every row the window should hold: commitments, sleep and study. */
+  planned: EventRow[];
+  /** layoutKey for these inputs. */
+  key: string;
+  /** Whether the stored layout was made from these inputs. */
+  current: boolean;
+}
+
+/**
+ * The placement half of rebuildSchedule: no database, so the research
+ * harness can run the real algorithm on synthetic weeks. Mutates g.days.
+ */
+export function planStudy(userId: string, inputs: ScheduleInputs, g: Groundwork): StudyPlan {
   const { days, breakLength, sessionLength } = g;
   const planned: EventRow[] = [...g.fixed];
 
@@ -1152,6 +1173,18 @@ export async function rebuildSchedule(
     }
   }
 
+  return { planned, key, current };
+}
+
+async function writePlan(
+  database: Database,
+  userId: string,
+  inputs: ScheduleInputs,
+  g: Groundwork,
+  planned: EventRow[],
+  key: string,
+  current: boolean,
+): Promise<RebuildResult> {
   // 4. Write only the difference, and flag an out-of-date layout for the cron.
   const reusable = new Map<string, EventSelect[]>();
   for (const event of g.disposable) {

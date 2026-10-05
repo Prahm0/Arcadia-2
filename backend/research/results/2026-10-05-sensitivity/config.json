@@ -1,0 +1,17 @@
+{
+  "name": "sensitivity",
+  "seeds": [
+    1000,
+    5999
+  ],
+  "methods": [
+    "M4-wFlat",
+    "M4-wSteep",
+    "M4-wAddHeavy"
+  ],
+  "commit": "03c1596bc6dc63d561b36827023dc7404cd7c79e",
+  "uncommittedChanges": false,
+  "node": "v26.8.1",
+  "date": "2026-10-05T05:43:54.463Z",
+  "seconds": 566.755
+}

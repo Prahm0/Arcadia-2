@@ -211,3 +211,25 @@ Also confirmed live: the daylight-saving defect from 4 Oct. Seed 1, Hobart, 4 Ap
 - clock-change horizons are 793 of 5,000 (about 16%);
 - H1 to H5 are predictions written during the confirmatory run, not pre-registered;
 - criteria are "met within the synthetic benchmark".
+
+## 5 October 2026 (late night): sensitivity to the cost weights (amendment 5)
+
+**Why:** the change costs were my design choice and were revised once (amendment 2). An external review asked whether M4 only wins because of those particular weights.
+
+**Run:** M4 on all 5,000 confirmatory seeds with three alternative weight sets (results/2026-10-05-sensitivity, commit 03c1596):
+- **flat:** remove 2, other day 2;
+- **steep:** near-term weight 1 / (1 + days)²;
+- **add-heavy:** a new block costs 3.
+
+**Results**, judged on weight-free measures:
+
+| Weights | Rule breaks | Coverage | Blocks unchanged | Scenarios identical to the default |
+|---|---|---|---|---|
+| Default | 0% | 99.49% | 92.9% | 5,000 |
+| Flat | 0% | 99.49% | 92.8% | 4,829 |
+| Steep | 0% | 99.49% | 92.9% | 4,894 |
+| Add-heavy | 0% | 99.49% | 92.8% | 4,934 |
+
+Each variant was more stable than Arcadia before this project in 3,923 to 3,924 of 5,000 scenarios. The slowest repair took 0.87 s, still under the 2 s limit.
+
+**Conclusion:** the result does not depend on the exact weights. Most repairs never face a choice where the weights matter, because local repair finds a nearby gap.

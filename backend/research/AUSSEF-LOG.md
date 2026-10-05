@@ -72,7 +72,7 @@ Also confirmed live: the daylight-saving defect from 4 Oct. Seed 1, Hobart, 4 Ap
 
 **Assistance:** harness code was written with Claude Code under my direction. The design decisions and the review of each finding were mine.
 
-## 6 October 2026
+## 5 October 2026 (evening)
 
 - **AUSSEF replied about the category.** They suggested Engineering Technology: Industrial Engineering (ETSD/IND) or Software Design: Algorithms (SFTD/ALG). **Decision: SFTD, Algorithms.** The project's contribution is a repair algorithm and its evaluation, which matches their definition of ALG ("the study or creation of algorithms").
 - **AUSSEF replied about naming.** The anonymity rule exists to prevent judging bias, and publicly released names (the app, the video) can stay. **Decision:** use the name "Arcadia" throughout. Still keep school, teachers and state out of the report, since they aren't needed.

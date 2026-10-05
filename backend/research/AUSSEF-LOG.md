@@ -112,3 +112,43 @@ Also confirmed live: the daylight-saving defect from 4 Oct. Seed 1, Hobart, 4 Ap
 3. Add the exact optimiser (OR) for small instances.
 
 **Assistance:** the algorithm and harness code were written with Claude Code under my direction. I reviewed the trace and chose the fix.
+
+## 5 October 2026 (late): M4 version 2, frozen
+
+**Objective:** close M4's coverage gap with the full rebuild in overloaded weeks, then freeze it before the confirmatory run.
+
+**What I tried, in order:**
+1. **A window rebuild in deadline order.** Coverage went up only from 99.30% to 99.37%, and stability dropped from 96.4% to 92.9% of blocks unchanged. Not worth it.
+2. **Split re-homing and deeper chains.** Coverage reached 99.36%. Still short.
+3. **A "sticky" rebuild,** where each task takes back its own slots first. It barely helped. A trace of seeds 28, 38 and 24 showed why: fixing the short window pushed later work past *its* deadline, because the days after the window were locked.
+4. **The fix: a growing window.** If the rebuild pushes work past its deadline, widen the window to that deadline and rebuild again. The ripple then spreads only as far as it has to. On seeds 1 to 40, coverage was 99.69%, against 99.70% for the full rebuild.
+5. **Speed.** 5 of 240 repairs took over 2 s, the slowest 5.4 s. I added a deterministic limit on gap searches (a count, not a clock, so results are the same on any computer) and compared 20,000, 100,000 and 300,000 on the pilot. **Chose 100,000:** 92.8% of blocks unchanged, slowest run 0.4 s.
+
+**Exact coverage bound added.** Because every task's window starts at the same moment, taking work in priority order is provably optimal (a matroid). That gives the most coverage any plan could reach. It replaces the small-instance optimiser and covers every scenario. Protocol amendment 3 records all of this.
+
+**Pilot with the frozen M4 v2** (seeds 1 to 240, results/2026-10-05-pilot-v2):
+
+| Method | Rule breaks | Coverage | Blocks unchanged | Cost (median) | Slowest run (ms) |
+|---|---|---|---|---|---|
+| M0 | 0.0% | 94.01% | 97.4% | 0.00 | 1 |
+| M1 | 0.0% | 97.92% | 97.4% | 0.60 | 2 |
+| M2 | 13.8% | 99.30% | 69.1% | 5.85 | 4 |
+| M3 | 0.0% | 99.66% | 2.0% | 23.51 | 1 |
+| M4 | 0.0% | 99.65% | 92.8% | 1.42 | 464 |
+
+- **Best possible coverage (the bound):** 99.81%. No valid plan from any method exceeded it, and the certificate was never beaten.
+- **M4 against Arcadia, week by week:** less disruption in 181 of 240 weeks (more in 23); higher coverage in 34 (lower in 5).
+- **Ablations:** with escalation, every variant reaches the same coverage, so each part now shows up as *stability*:
+
+| Variant | Blocks unchanged |
+|---|---|
+| Full M4 | 92.8% |
+| Without near-term weighting | 92.0% |
+| Without bumping | 88.9% |
+| Fixed 1-day window | 86.6% |
+
+  Without escalation, coverage falls to 99.34%.
+
+**Decision:** M4 v2 is frozen. **Next:** the confirmatory run on fresh seeds (1000 to 5999) and the held-out seeds, then statistics and charts. Separately: fix the 6 production bugs and re-test M2.
+
+**Assistance:** Claude Code wrote the code under my direction. I chose what to try and when to stop.

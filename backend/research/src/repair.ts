@@ -51,6 +51,12 @@ const MAX_EJECT_CANDIDATES = 60;
 const CHAIN_DEPTH = 3;
 /** Candidates tried at each depth of the chain (first bump, second, third). */
 const CANDIDATES_AT_DEPTH = [6, 12, 25, MAX_EJECT_CANDIDATES];
+/**
+ * Most gap searches the bumping may use in one repair. Past this, bumping
+ * stops and escalation takes over. A count, not a clock, so results are the
+ * same on any computer.
+ */
+const SEARCH_LIMIT = 100_000;
 
 interface Ctx {
   state: RepairState;
@@ -63,6 +69,8 @@ interface Ctx {
   original: Map<string, Block>;
   spent: number;
   counter: number;
+  /** Gap searches so far (see SEARCH_LIMIT). */
+  searches: number;
 }
 
 const ceil5 = (t: number) => Math.ceil(t / (5 * MINUTE)) * 5 * MINUTE;
@@ -102,6 +110,7 @@ function makeCtx(state: RepairState, opts: RepairOptions): Ctx {
     original: new Map(state.current.map((b) => [b.id, b])),
     spent: 0,
     counter: 0,
+    searches: 0,
   };
 }
 
@@ -127,6 +136,7 @@ function dayView(ctx: Ctx, date: string, plan: Block[]) {
 function spotOn(
   ctx: Ctx, date: string, plan: Block[], want: number, after: number, before: number, near: number, left = want,
 ): Interval | null {
+  ctx.searches++;
   const { free, used } = dayView(ctx, date, plan);
   const room = ctx.state.instance.cap - used;
   let best: Interval | null = null;
@@ -242,6 +252,7 @@ function eject(
   let best: Move | null = null;
   const after = Math.max(ctx.state.now, task.releaseAt);
   for (const x of candidates) {
+    if (ctx.searches > SEARCH_LIMIT) break;
     const without = plan.filter((b) => b.id !== x.id);
     const spot = spotOn(ctx, localDate(x.start, tz), without, want, after, task.dueAt, x.start, left);
     if (!spot) continue;

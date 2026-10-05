@@ -1,0 +1,28 @@
+{
+  "name": "pilot-v2",
+  "seeds": [
+    1,
+    240
+  ],
+  "methods": [
+    "M0",
+    "M1",
+    "M2",
+    "M3",
+    "M4",
+    "M4-b0.5",
+    "M4-b1",
+    "M4-b2",
+    "M4-b4",
+    "M4-b8",
+    "M4-noNear",
+    "M4-noEject",
+    "M4-fixedWindow",
+    "M4-noEscalate"
+  ],
+  "commit": "28302f1f62e26acdfbca3787c287042a8df5aa58",
+  "uncommittedChanges": true,
+  "node": "v26.8.1",
+  "date": "2026-10-05T03:36:18.295Z",
+  "seconds": 71.734
+}

@@ -1,0 +1,16 @@
+{
+  "name": "confirmatory-baselines-fixed",
+  "seeds": [
+    1000,
+    5999
+  ],
+  "methods": [
+    "M1",
+    "M3"
+  ],
+  "commit": "22a3c1f6c1e8d88b6d99f56cfd6d0e208b650b30",
+  "uncommittedChanges": false,
+  "node": "v26.8.1",
+  "date": "2026-10-05T04:02:46.560Z",
+  "seconds": 72.562
+}

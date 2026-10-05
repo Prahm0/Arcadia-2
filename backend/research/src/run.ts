@@ -33,7 +33,7 @@ const allMethods: RepairMethod[] = [
   stabilityRepairMethod("M4-fixedWindow", { widening: false }),
   stabilityRepairMethod("M4-noEscalate", { escalation: false }),
 ];
-// --methods M2,M4 runs a subset (e.g. re-testing Arcadia after a fix).
+// --methods M1,M3 runs a subset (e.g. re-running a corrected baseline).
 const only = args.methods ? new Set(String(args.methods).split(",")) : null;
 const methods = only ? allMethods.filter((m) => only.has(m.code)) : allMethods;
 
@@ -82,7 +82,9 @@ const dir = join(import.meta.dirname, "..", "results", `${date}-${name}`);
 mkdirSync(dir, { recursive: true });
 writeFileSync(join(dir, "results.csv"), rows.join("\n") + "\n");
 const commit = execSync("git rev-parse HEAD").toString().trim();
-const dirty = execSync("git status --porcelain").toString().trim().length > 0;
+// Tracked files only: the results folder this run just wrote is untracked and
+// would otherwise mark every run as uncommitted (amendment 4).
+const dirty = execSync("git status --porcelain --untracked-files=no").toString().trim().length > 0;
 writeFileSync(
   join(dir, "config.json"),
   JSON.stringify(

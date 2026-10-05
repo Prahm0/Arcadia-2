@@ -152,3 +152,35 @@ Also confirmed live: the daylight-saving defect from 4 Oct. Seed 1, Hobart, 4 Ap
 **Decision:** M4 v2 is frozen. **Next:** the confirmatory run on fresh seeds (1000 to 5999) and the held-out seeds, then statistics and charts. Separately: fix the 6 production bugs and re-test M2.
 
 **Assistance:** Claude Code wrote the code under my direction. I chose what to try and when to stop.
+
+## 5 October 2026 (evening): confirmatory and held-out results
+
+**Confirmatory run:** 5,000 fresh scenarios (seeds 1000 to 5999) × 14 method variants = 70,000 repairs on the frozen M4 v2 (commit aba9d14), taking 24 minutes.
+- **The validator caught a defect in my own baselines.** 6 of 5,000 full-rebuild repairs had no break after a block ending at midnight, all for students with a bedtime after midnight. The baselines' `book()` only updated the day it booked on. Fixed (amendment 4), and M1 and M3 re-run on the same seeds. The original file is kept.
+- **The runner's "uncommitted" flag** was triggered by its own new results folder. No tracked files had changed. Now fixed.
+
+**Final confirmatory results** (results/2026-10-05-confirmatory-final):
+
+| Method | Rule breaks | Coverage (95% CI) | Blocks unchanged (95% CI) | Slowest run |
+|---|---|---|---|---|
+| No repair | 0% | 93.78% (93.51 to 94.05) | 97.6% | 8 ms |
+| Insert into gaps | 0% | 97.52% (97.38 to 97.66) | 97.6% | 7 ms |
+| Arcadia today | **16.4%** | 99.10% (99.01 to 99.18) | 68.8% (68.0 to 69.5) | 9 ms |
+| Full rebuild | 0% | 99.49% (99.42 to 99.56) | 2.0% (1.9 to 2.1) | 13 ms |
+| **M4 repair** | **0%** | **99.49% (99.42 to 99.56)** | **92.9% (92.5 to 93.2)** | **579 ms** |
+
+- **Best possible coverage:** 99.65%. No valid plan exceeded it, and the certificate was never beaten. 370 scenarios were proven short of time.
+- **M4 against the full rebuild:** coverage difference +0.00 points (−0.01 to +0.01, p = 0.49, no difference), and 90.9 points more of the plan unchanged (better in 5,000 of 5,000 scenarios).
+- **M4 against Arcadia today:** +0.39 points of coverage (p < 10⁻¹⁰⁰), +24.1 points unchanged (better in 3,924 scenarios, worse in 138), and 0% against 16.4% invalid plans.
+- **Hypotheses:** H1 (valid), H2 (coverage within 0.5 points of the rebuild), H3 (stability), H4 (certificate never beaten) and H5 (under 2 s) are **all supported**.
+- **Weak spots:** at 110% workload M4 keeps 86.5% of the plan unchanged (97.7% at 50%). New-task disruptions keep 88.4%.
+
+**Held-out run** (seeds 9000 to 9499, looked at once): M4 had 0% rule breaks, 99.45% coverage (the same as the full rebuild) and 92.5% unchanged. Arcadia today broke a rule in 18.8% of scenarios. The same conclusions hold.
+
+**Assistance:** Claude Code ran and analysed the experiments under my direction.
+
+## 5 October 2026 (night): visual demo
+
+- **Built a demo page** that shows real confirmatory scenarios as a week calendar. It covers 8 seeds, one per disruption type, plus a scenario where Arcadia breaks a rule and one proven impossible. For each, it shows Arcadia's rebuild, a full rebuild and the repair algorithm side by side, highlighting moved, added and removed blocks. It's for understanding the algorithm and for the video.
+- **Export script:** research/src/demo-export.ts. Data: research/demo/scenarios.json. Page template: research/demo/repair-viewer.template.html.
+- **Example (seed 1026, a missed block):** of 36 future blocks, Arcadia changed 19, the full rebuild 36, and the repair 2.

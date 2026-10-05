@@ -8,7 +8,7 @@
  *  M3  Coverage-first rebuild: throw away every movable block and rebuild
  *      from scratch, deadline work first (EDF), then subject time.
  */
-import { book, commitmentIntervals, freeDays, horizonDates, overlaps, sleepIntervals, type Day } from "./calendar.ts";
+import { book, commitmentIntervals, freeDays, horizonDates, overlaps, sleepIntervals, subtract, type Day } from "./calendar.ts";
 import type { Block, RepairMethod, RepairState, TaskSpec } from "./types.ts";
 import { DAY, MINUTE } from "./types.ts";
 
@@ -67,6 +67,13 @@ export function earliest(
       const rounded = Math.floor(length / 5) * 5;
       const block = { start, end: start + rounded * MINUTE };
       book(day, block, breakMinutes);
+      // A block that ends at midnight still needs its break at the start of
+      // the next day (amendment 4: found by the validator in 6 of 5,000 runs).
+      for (const other of days) {
+        if (other === day) continue;
+        other.free = subtract(other.free, { start: block.start - breakMinutes * MINUTE, end: block.end + breakMinutes * MINUTE })
+          .filter((f) => f.end - f.start >= 15 * MINUTE);
+      }
       return block;
     }
   }

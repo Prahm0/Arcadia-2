@@ -1,0 +1,28 @@
+{
+  "name": "mytest",
+  "seeds": [
+    1,
+    20
+  ],
+  "methods": [
+    "M0",
+    "M1",
+    "M2",
+    "M3",
+    "M4",
+    "M4-b0.5",
+    "M4-b1",
+    "M4-b2",
+    "M4-b4",
+    "M4-b8",
+    "M4-noNear",
+    "M4-noEject",
+    "M4-fixedWindow",
+    "M4-noEscalate"
+  ],
+  "commit": "d51dbae6a60219114fc732405d6fe44e695e64cb",
+  "uncommittedChanges": false,
+  "node": "v26.8.1",
+  "date": "2026-10-05T04:46:34.387Z",
+  "seconds": 1.81
+}

@@ -1,0 +1,12 @@
+{
+  "name": "confirmatory-final",
+  "made_from": [
+    "2026-10-05-confirmatory (all methods, commit aba9d14)",
+    "2026-10-05-confirmatory-baselines-fixed (M1 and M3 rows, amendment 4)"
+  ],
+  "seeds": [
+    1000,
+    5999
+  ],
+  "rows": 70000
+}

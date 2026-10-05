@@ -1,0 +1,283 @@
+<title>Arcadia Repair Viewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a planner's week grid as the hero, with the scenario and method controls above it and the plan-wide summary beside them. */
+:root {
+  --bg: #f6f5f2;
+  --surface: #ffffff;
+  --surface-2: #efeee9;
+  --ink: #1d1b22;
+  --ink-2: #57545e;
+  --ink-3: #8b8892;
+  --line: #e2e0da;
+  --accent: #5b47e0;          /* Arcadia violet: controls and selection */
+  --change: #d9822b;          /* anything the repair touched */
+  --change-soft: #fbead6;
+  --critical: #c8423a;        /* rule breaks and disruptions */
+  --critical-soft: #f8dedb;
+  --sleep: #e7e5f0;
+  --commit: #e9e7e1;
+  --s1: #cfe0f6; --s1b: #3f6fb0;
+  --s2: #cdeee0; --s2b: #2f8a61;
+  --s3: #f6d7e4; --s3b: #b04a77;
+  --s4: #e3e9c8; --s4b: #6b7d22;
+  --s5: #d6eef3; --s5b: #2b7d8f;
+  --s6: #ead9cc; --s6b: #8a5a3a;
+  --s7: #dcdcef; --s7b: #4f4f9a;
+  --s8: #e6e4de; --s8b: #5f5c55;
+  --font-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Helvetica Neue", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --hour: 30px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15141a; --surface: #1d1c23; --surface-2: #26252d; --ink: #f1eff5; --ink-2: #b7b4c0; --ink-3: #85828f; --line: #33313b;
+    --accent: #8f80ff; --change: #f0a14c; --change-soft: #3d2c1a; --critical: #f07a70; --critical-soft: #3e2220;
+    --sleep: #22212b; --commit: #2a2930;
+    --s1: #23344d; --s1b: #8db8f2; --s2: #1f3b31; --s2b: #7fd0a8; --s3: #42283a; --s3b: #f0a0c4; --s4: #34391f; --s4b: #c4d27c;
+    --s5: #1d3940; --s5b: #84cfe0; --s6: #3e2f25; --s6b: #e0b08c; --s7: #2c2c48; --s7b: #aeaef0; --s8: #2f2e2b; --s8b: #c4c0b6;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15141a; --surface: #1d1c23; --surface-2: #26252d; --ink: #f1eff5; --ink-2: #b7b4c0; --ink-3: #85828f; --line: #33313b;
+  --accent: #8f80ff; --change: #f0a14c; --change-soft: #3d2c1a; --critical: #f07a70; --critical-soft: #3e2220;
+  --sleep: #22212b; --commit: #2a2930;
+  --s1: #23344d; --s1b: #8db8f2; --s2: #1f3b31; --s2b: #7fd0a8; --s3: #42283a; --s3b: #f0a0c4; --s4: #34391f; --s4b: #c4d27c;
+  --s5: #1d3940; --s5b: #84cfe0; --s6: #3e2f25; --s6b: #e0b08c; --s7: #2c2c48; --s7b: #aeaef0; --s8: #2f2e2b; --s8b: #c4c0b6;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 400 15px/1.5 var(--font-body); margin: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 48px; display: grid; gap: 22px; }
+h1 { font: 700 clamp(1.6rem, 3.2vw, 2.2rem)/1.1 var(--font-display); margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.lede { color: var(--ink-2); max-width: 68ch; margin: 6px 0 0; }
+.eyebrow { font: 500 11px/1 var(--font-data); text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.scenarios { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 12px; cursor: pointer; display: inline-flex; gap: 8px; align-items: baseline; }
+.chip .n { font: 500 12px var(--font-data); color: var(--ink-3); }
+.chip[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+
+.top { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 860px) { .top { grid-template-columns: 1fr; } }
+.story { display: grid; gap: 10px; min-width: 0; }
+.what { font: 600 1.25rem/1.25 var(--font-display); margin: 0; }
+.what .detail { display: block; font: 400 14px/1.4 var(--font-body); color: var(--ink-2); margin-top: 4px; }
+.facts { display: flex; flex-wrap: wrap; gap: 6px 16px; font: 400 13px var(--font-data); color: var(--ink-2); }
+.facts b { font-weight: 500; color: var(--ink); }
+.notice { border-left: 3px solid var(--critical); background: var(--critical-soft); padding: 10px 12px; border-radius: 0 6px 6px 0; font-size: 14px; }
+.notice b { font-weight: 600; }
+
+.summary { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 10px; min-width: 0; }
+.bar-row { display: grid; grid-template-columns: 112px minmax(0, 1fr) 64px; gap: 10px; align-items: center; font-size: 13px; cursor: pointer; border-radius: 6px; padding: 2px 4px; margin-inline: -4px; }
+.bar-row[aria-pressed="true"] { background: var(--surface-2); }
+.bar-row .name { color: var(--ink-2); }
+.bar-row[aria-pressed="true"] .name { color: var(--ink); font-weight: 600; }
+.track { height: 10px; background: var(--surface-2); border-radius: 5px; overflow: hidden; }
+.fill { height: 100%; background: var(--ink-3); border-radius: 5px; }
+.bar-row.mine .fill { background: var(--accent); }
+.bar-row .val { font: 500 13px var(--font-data); text-align: right; font-variant-numeric: tabular-nums; }
+.bad { color: var(--critical); font: 500 11px var(--font-data); }
+
+.controls { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center; justify-content: space-between; }
+.seg { display: inline-flex; flex-wrap: wrap; background: var(--surface-2); padding: 3px; border-radius: 9px; gap: 2px; }
+.seg button { border: 0; background: transparent; padding: 7px 13px; border-radius: 7px; cursor: pointer; color: var(--ink-2); font-weight: 500; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.stats { display: flex; flex-wrap: wrap; gap: 6px 22px; font: 400 13px var(--font-data); color: var(--ink-2); }
+.stats b { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.stats .warn b { color: var(--critical); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 12.5px; color: var(--ink-2); align-items: center; }
+.key { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 18px; height: 12px; border-radius: 3px; display: inline-block; }
+.sw.same { background: var(--s1); border-left: 3px solid var(--s1b); }
+.sw.changed { background: var(--s1); box-shadow: inset 0 0 0 2px var(--change); }
+.sw.ghost { border: 1.5px dashed var(--ink-3); }
+.sw.fresh { background: repeating-linear-gradient(135deg, var(--critical-soft) 0 4px, transparent 4px 8px); border: 1px solid var(--critical); }
+.sw.busy { background: var(--commit); }
+
+.cal-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.cal { display: grid; grid-template-columns: 52px repeat(7, minmax(108px, 1fr)); min-width: 820px; }
+.dayhead { padding: 8px 8px 6px; border-bottom: 1px solid var(--line); border-left: 1px solid var(--line); }
+.dayhead .d { font: 600 14px var(--font-display); }
+.dayhead .sub { font: 400 11px var(--font-data); color: var(--ink-3); }
+.dayhead.today .d { color: var(--accent); }
+.axis { position: relative; }
+.axis span { position: absolute; right: 8px; transform: translateY(-50%); font: 400 10.5px var(--font-data); color: var(--ink-3); }
+.col { position: relative; border-left: 1px solid var(--line); background-image: repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px var(--hour)); }
+.ev { position: absolute; left: 4px; right: 4px; border-radius: 5px; padding: 3px 6px; overflow: hidden; font-size: 11.5px; line-height: 1.25; }
+.ev .t { font-weight: 600; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ev .m { font: 400 10.5px var(--font-data); opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.ev.sleep { background: var(--sleep); left: 0; right: 0; border-radius: 0; color: var(--ink-3); font: 400 10.5px var(--font-data); }
+.ev.busy { background: var(--commit); color: var(--ink-2); }
+.ev.fresh { background: repeating-linear-gradient(135deg, var(--critical-soft) 0 6px, transparent 6px 12px); border: 1.5px solid var(--critical); color: var(--critical); }
+.ev.study { border-left: 3px solid; }
+.ev.study.changed { box-shadow: inset 0 0 0 2px var(--change); }
+.ev .tag { position: absolute; top: 3px; right: 4px; font: 600 9.5px var(--font-data); text-transform: uppercase; letter-spacing: .06em; color: var(--change); background: var(--surface); border-radius: 3px; padding: 0 3px; }
+.ev.ghost { border: 1.5px dashed var(--ink-3); background: transparent; color: var(--ink-3); }
+.ev.ghost .t { text-decoration: line-through; font-weight: 500; }
+.ev.done { opacity: .5; }
+.past { position: absolute; left: 0; right: 0; top: 0; background: var(--bg); opacity: .55; pointer-events: none; }
+.now { position: absolute; left: 0; right: 0; height: 0; border-top: 2px solid var(--accent); z-index: 5; }
+.now::before { content: "now"; position: absolute; left: 2px; top: -16px; font: 600 10px var(--font-data); color: var(--accent); background: var(--surface); padding: 0 3px; border-radius: 3px; }
+.foot { font-size: 12.5px; color: var(--ink-3); max-width: 90ch; }
+@media (prefers-reduced-motion: no-preference) { .ev.study.changed { transition: box-shadow .2s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">AUSSEF 2026 · research demo</div>
+    <h1>When the week breaks, what happens to the plan?</h1>
+    <p class="lede">Real scenarios from the 5,000-scenario experiment. Pick a disrupted week, then compare how Arcadia's current rebuild, a full rebuild and the new repair algorithm fix it. Blocks outlined in orange were moved or added; dashed outlines show where a block used to be.</p>
+  </header>
+
+  <nav class="scenarios" id="scenarios" aria-label="Scenarios"></nav>
+
+  <section class="top">
+    <div class="story" id="story"></div>
+    <div class="summary" id="summary" aria-label="Blocks changed across the 4-week plan"></div>
+  </section>
+
+  <div class="controls">
+    <div class="seg" id="methods" role="group" aria-label="Plan to show"></div>
+    <div class="stats" id="stats"></div>
+  </div>
+
+  <div class="legend">
+    <span class="key"><span class="sw same"></span>Study block, unchanged</span>
+    <span class="key"><span class="sw changed"></span>Moved or added by the repair</span>
+    <span class="key"><span class="sw ghost"></span>Where a block used to be</span>
+    <span class="key"><span class="sw fresh"></span>The disruption</span>
+    <span class="key"><span class="sw busy"></span>School, sport, work</span>
+  </div>
+
+  <div class="cal-scroll"><div class="cal" id="cal"></div></div>
+
+  <p class="foot" id="foot">Shows the first 7 days after the disruption, 6am to midnight. Counts of changed blocks cover the whole 4-week plan. Every scenario was generated from a fixed seed, so it can be reproduced exactly with the project's test harness.</p>
+</div>
+
+<script>
+const DATA = __DATA__;
+const METHODS = [
+  { id: "before", name: "Before" },
+  { id: "M2", name: "Arcadia today" },
+  { id: "M3", name: "Full rebuild" },
+  { id: "M4", name: "Repair algorithm" },
+];
+const START = 6 * 60, END = 24 * 60;
+const HOUR = 30;
+const pxPerMin = HOUR / 60;
+const SHORT = { D1: "Missed block", D2: "Something came up", D3: "Lost the evening", D4: "Commitment moved", D5: "New task", D6: "Two at once" };
+const ZONE = (tz) => tz.split("/").pop().replace(/_/g, " ");
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const fmtDate = (iso) => { const d = new Date(iso + "T12:00:00Z"); return `${DAYS[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`; };
+const clock = (m) => { const h = Math.floor(m / 60) % 24, mm = m % 60; const ap = h < 12 ? "am" : "pm"; const hh = h % 12 || 12; return mm ? `${hh}:${String(mm).padStart(2, "0")}${ap}` : `${hh}${ap}`; };
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+let state = { s: 0, m: "M4" };
+try { const saved = JSON.parse(localStorage.getItem("repair-viewer") || "null"); if (saved && DATA[saved.s]) state = saved; } catch (e) {}
+const save = () => { try { localStorage.setItem("repair-viewer", JSON.stringify(state)); } catch (e) {} };
+
+function subjectIndex(sc, name) { const i = sc.subjects.findIndex((s) => s.toLowerCase() === (name || "").toLowerCase()); return (i < 0 ? 7 : i % 8) + 1; }
+
+function renderScenarios() {
+  const nav = document.getElementById("scenarios");
+  nav.innerHTML = DATA.map((sc, i) => {
+    const flag = sc.plans.M2.metrics.violations ? " · Arcadia breaks a rule" : sc.certificate ? " · impossible week" : "";
+    return `<button class="chip" type="button" data-i="${i}" aria-pressed="${i === state.s}"><span class="n">${i + 1}</span>${esc(SHORT[sc.label] || sc.label)}${esc(flag)}</button>`;
+  }).join("");
+  nav.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { state.s = +b.dataset.i; save(); render(); }));
+}
+
+function renderStory(sc) {
+  const lines = sc.disruption.map((d) => `${esc(d.text)}<span class="detail">${esc(d.detail)}</span>`).join("");
+  const cert = sc.certificate ? `<div class="notice"><b>This week can't fit.</b> The certificate proves at least ${sc.certificate.short} more minutes of study are needed before ${esc(fmtDate(sc.certificate.until.slice(0, 10)))}. Every method leaves that work short; none can do better.</div>` : "";
+  const bug = sc.plans.M2.metrics.violations ? `<div class="notice"><b>Arcadia's current rebuild breaks a rule here.</b> ${esc(sc.plans.M2.metrics.violation || "")}. This is one of the six defects the test harness found.</div>` : "";
+  document.getElementById("story").innerHTML = `
+    <div class="eyebrow">Scenario ${state.s + 1} · seed ${sc.seed}</div>
+    <h2 class="what">${lines}</h2>
+    <div class="facts"><span><b>${esc(ZONE(sc.tz))}</b> time</span><span>workload <b>${Math.round(sc.utilisation * 100)}%</b> of free time</span><span>study cap <b>${sc.cap} min</b>/day</span><span>sleep <b>${esc(sc.bedtime)}–${esc(sc.wake)}</b></span><span><b>${sc.tasks.length}</b> deadlines ahead</span></div>
+    ${cert}${bug}`;
+}
+
+function renderSummary(sc) {
+  const rows = METHODS.slice(1).map((m) => {
+    const x = sc.plans[m.id].metrics;
+    const pct = x.total ? (x.changed / x.total) * 100 : 0;
+    const warn = x.violations ? `<span class="bad">${x.violations} rule break${x.violations > 1 ? "s" : ""}</span>` : "";
+    return `<div class="bar-row${m.id === "M4" ? " mine" : ""}" role="button" tabindex="0" data-m="${m.id}" aria-pressed="${state.m === m.id}">
+      <span class="name">${esc(m.name)}</span>
+      <span><span class="track"><span class="fill" style="display:block;width:${Math.max(pct, 0.8).toFixed(1)}%"></span></span>${warn}</span>
+      <span class="val">${x.changed}/${x.total}</span></div>`;
+  }).join("");
+  const el = document.getElementById("summary");
+  el.innerHTML = `<div class="eyebrow">Blocks changed across the 4-week plan</div>${rows}`;
+  el.querySelectorAll(".bar-row").forEach((r) => {
+    const go = () => { state.m = r.dataset.m; save(); render(); };
+    r.addEventListener("click", go);
+    r.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+  });
+}
+
+function renderMethods(sc) {
+  const el = document.getElementById("methods");
+  el.innerHTML = METHODS.map((m) => `<button type="button" data-m="${m.id}" aria-pressed="${state.m === m.id}">${esc(m.name)}</button>`).join("");
+  el.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { state.m = b.dataset.m; save(); render(); }));
+  const st = document.getElementById("stats");
+  if (state.m === "before") { st.innerHTML = `<span>The plan as it stood before the disruption: <b>${sc.plans.M2.metrics.total}</b> future study blocks</span>`; return; }
+  const x = sc.plans[state.m].metrics;
+  st.innerHTML = `<span>blocks changed <b>${x.changed} of ${x.total}</b></span><span>deadline work covered <b>${(x.coverage * 100).toFixed(1)}%</b></span><span class="${x.violations ? "warn" : ""}">rule breaks <b>${x.violations}</b></span>`;
+}
+
+function evBox(day, start, end) {
+  const s = Math.max(start, START), e = Math.min(end, END);
+  if (e <= s) return null;
+  return { top: (s - START) * pxPerMin, height: Math.max((e - s) * pxPerMin, 14) };
+}
+
+function renderCal(sc) {
+  const cal = document.getElementById("cal");
+  const plan = sc.plans[state.m];
+  let html = `<div></div>` + sc.dates.map((d, i) => `<div class="dayhead${i === 0 ? " today" : ""}"><div class="d">${esc(fmtDate(d))}</div><div class="sub">${i === 0 ? "day of the disruption" : "&nbsp;"}</div></div>`).join("");
+  const height = (END - START) * pxPerMin;
+  let axis = `<div class="axis" style="height:${height}px">`;
+  for (let h = 7; h < 24; h++) axis += `<span style="top:${(h * 60 - START) * pxPerMin}px">${clock(h * 60)}</span>`;
+  html += axis + `</div>`;
+  for (let day = 0; day < 7; day++) {
+    let col = `<div class="col" style="height:${height}px">`;
+    for (const sl of sc.sleep.filter((x) => x.day === day)) { const b = evBox(day, sl.start, sl.end); if (b) col += `<div class="ev sleep" style="top:${b.top}px;height:${b.height}px">${b.height > 24 ? "sleep" : ""}</div>`; }
+    for (const c of sc.commitments.filter((x) => x.day === day)) { const b = evBox(day, c.start, c.end); if (b) col += `<div class="ev ${c.fresh ? "fresh" : "busy"}" style="top:${b.top}px;height:${b.height}px"><span class="t">${esc(c.title)}</span><span class="m">${clock(c.start)}–${clock(c.end)}</span></div>`; }
+    if (day === 0) {
+      const top = Math.max(0, (sc.now.minute - START) * pxPerMin);
+      for (const d of sc.done.filter((x) => x.day === 0)) { const b = evBox(0, d.start, d.end); if (b) col += `<div class="ev study done" style="top:${b.top}px;height:${b.height}px;background:var(--s${subjectIndex(sc, d.subject)});border-left-color:var(--s${subjectIndex(sc, d.subject)}b)"><span class="t">${esc(d.subject)}</span><span class="m">done</span></div>`; }
+      col += `<div class="past" style="height:${top}px"></div><div class="now" style="top:${top}px"></div>`;
+    }
+    if (state.m !== "before") {
+      for (const g of (plan.removed || []).filter((x) => x.day === day)) { const b = evBox(day, g.start, g.end); if (b) col += `<div class="ev ghost" style="top:${b.top}px;height:${b.height}px"><span class="t">${esc(g.subject)}</span><span class="m">removed</span></div>`; }
+      for (const blk of plan.blocks.filter((x) => x.kind === "moved" && x.from && x.from.day === day)) { const b = evBox(day, blk.from.start, blk.from.end); if (b) col += `<div class="ev ghost" style="top:${b.top}px;height:${b.height}px"><span class="t">${esc(blk.subject)}</span><span class="m">was here</span></div>`; }
+    }
+    for (const blk of plan.blocks.filter((x) => x.day === day)) {
+      const b = evBox(day, blk.start, blk.end); if (!b) continue;
+      const k = subjectIndex(sc, blk.subject);
+      const changed = state.m !== "before" && blk.kind !== "same";
+      const what = blk.task ? `${blk.task} · due ${fmtDate(blk.due).slice(4)}` : "subject study";
+      col += `<div class="ev study${changed ? " changed" : ""}" style="top:${b.top}px;height:${b.height}px;background:var(--s${k});border-left-color:var(--s${k}b)" title="${esc(blk.subject)} · ${clock(blk.start)}–${clock(blk.end)}">${changed ? `<span class="tag">${blk.kind === "new" ? "new" : "moved"}</span>` : ""}<span class="t">${esc(blk.subject)}</span><span class="m">${clock(blk.start)} · ${esc(what)}</span></div>`;
+    }
+    html += col + `</div>`;
+  }
+  cal.innerHTML = html;
+}
+
+function render() {
+  const sc = DATA[state.s];
+  renderScenarios(); renderStory(sc); renderSummary(sc); renderMethods(sc); renderCal(sc);
+}
+render();
+</script>

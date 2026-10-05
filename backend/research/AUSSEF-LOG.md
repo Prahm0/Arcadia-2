@@ -22,3 +22,6 @@ Dated record of what was done, what was found and what was decided. It feeds the
 - **Decision:** call them "disruption scenarios", not "simulated students", so the results don't depend on assumed human behaviour.
 - **Found: minimum sleep not enforced.** profiles.minimum_sleep_minutes is stored (default 480) but no scheduler code reads it.
 - **Created** branch `aussef/harness` (a worktree, so production is untouched) and froze PROTOCOL.md v1 before any experiment.
+- **Protocol amendment 1** (before any experiment): simpler research question wording, 15-minute slots for M4 and OR only, release times added as a hard constraint, disruption severity tags, equal time limits per method, and the contribution boundary set at 5 Oct.
+- **Provenance worksheet** created (provenance/git-worksheet.csv): 227 merged PRs, 27 of which touch the scheduling engine. To verify: my role in each core PR.
+- **Logbook format from today:** objective, action, decision and reason, evidence, what failed, next step, and who or what helped.

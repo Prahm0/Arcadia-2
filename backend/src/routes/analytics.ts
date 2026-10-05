@@ -114,7 +114,8 @@ analytics.get("/", async (c) => {
     : [];
   const missReasonCounts = new Map<string, number>();
   for (const row of recentMisses) {
-    if (!row.missReason) continue;
+    // "auto" means nobody logged the block, which isn't a reason.
+    if (!row.missReason || row.missReason === "auto") continue;
     missReasonCounts.set(row.missReason, (missReasonCounts.get(row.missReason) ?? 0) + 1);
   }
 

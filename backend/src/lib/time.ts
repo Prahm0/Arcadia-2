@@ -91,6 +91,19 @@ export function nextLocalDay(day: number, timeZone: string): number {
   return startOfLocalDay(day + DAY + DAY / 2, timeZone);
 }
 
+/**
+ * The instant a local clock time happens on a local day. `day` is that day's
+ * midnight (startOfLocalDay). Adding minutes to midnight is an hour out on the
+ * day the clocks change, so correct for the offset at the target time. A time
+ * inside the spring-forward gap (2:30am that morning) lands just after it.
+ */
+export function atLocalMinutes(day: number, minutes: number, timeZone: string): number {
+  const guess = day + minutes * MINUTE;
+  const midnight = zoneOffsetMinutes(timeZone, day);
+  const first = guess + (midnight - zoneOffsetMinutes(timeZone, guess)) * MINUTE;
+  return guess + (midnight - zoneOffsetMinutes(timeZone, first)) * MINUTE;
+}
+
 /** Midnight of the Monday that starts the local week containing `at`. */
 export function startOfLocalWeek(at: number, timeZone: string): number {
   const day = startOfLocalDay(at, timeZone);

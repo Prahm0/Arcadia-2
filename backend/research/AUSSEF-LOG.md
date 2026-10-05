@@ -178,3 +178,9 @@ Also confirmed live: the daylight-saving defect from 4 Oct. Seed 1, Hobart, 4 Ap
 **Held-out run** (seeds 9000 to 9499, looked at once): M4 had 0% rule breaks, 99.45% coverage (the same as the full rebuild) and 92.5% unchanged. Arcadia today broke a rule in 18.8% of scenarios. The same conclusions hold.
 
 **Assistance:** Claude Code ran and analysed the experiments under my direction.
+
+## 5 October 2026 (night): visual demo
+
+- **Built a demo page** that shows real confirmatory scenarios as a week calendar. It covers 8 seeds, one per disruption type, plus a scenario where Arcadia breaks a rule and one proven impossible. For each, it shows Arcadia's rebuild, a full rebuild and the repair algorithm side by side, highlighting moved, added and removed blocks. It's for understanding the algorithm and for the video.
+- **Export script:** research/src/demo-export.ts. Data: research/demo/scenarios.json. Page template: research/demo/repair-viewer.template.html.
+- **Example (seed 1026, a missed block):** of 36 future blocks, Arcadia changed 19, the full rebuild 36, and the repair 2.

@@ -208,3 +208,28 @@ These analyses were added after seeing the confirmatory results, in response to 
    They are judged on measures that don't depend on the weights: rule breaks, coverage and the share of blocks unchanged.
 2. **Arcadia after the six fixes.** The corrected scheduler (branch `aussef/fixes`) is run on the confirmatory and held-out seeds, with M1, M3 and M4 recomputed on its starting plans. In the confirmatory results, the original M2 is labelled "Arcadia before this project (commit f179689)".
 3. **Wording.** The predictions H1 to H5 and the 0.5-point threshold were written down while the confirmatory run was in progress and before its results were seen. They were not part of the frozen protocol, so they are reported as evaluation criteria, not pre-registered hypotheses.
+
+### Amendment 6 (5 October 2026, written before the run): exact optimal comparison
+
+This replaces the small-instance optimiser (OR) dropped in amendment 3, now that a solver handles full-size scenarios.
+
+**Question:** how close does M4 come to the provably best repair?
+
+**Exact model:** analysis/exact_solve.py, using Google OR-Tools CP-SAT 9.15.
+- Time is cut into 5-minute slots from the disruption to the end of the horizon.
+- The solver decides which original blocks to keep exactly in place, and which free slots get deadline work.
+- It uses the validator's hard rules: free time only; one block at a time; a full break between separate blocks; blocks of at least 15 minutes; nothing across midnight; the daily cap; release and due times.
+- **Objective, lexicographic:** (1) maximise priority-weighted deadline coverage; (2) then maximise the number of original blocks left exactly unchanged.
+- Every optimal plan is checked by the independent validator and scored by the same measures as every method.
+- Limits: 120 s and 8 workers per scenario. Only scenarios proven OPTIMAL count as optimal comparisons; any others are reported separately.
+
+**Sample:** confirmatory seeds 1000 to 1999 (the first 1,000 of the 5,000), at full size (28 days). The frozen M4 is unchanged.
+
+**Measures:**
+1. M4's coverage gap to the optimum (points);
+2. the share of scenarios where M4 reaches optimal coverage;
+3. among those, M4's unchanged-block gap to the optimum (blocks and points);
+4. the share of scenarios where M4 is optimal on both;
+5. solver status and time.
+
+**Pilot (seeds 1000 to 1005, used only to check the pipeline):** all 6 solved to optimality in 0.04 to 6.35 s, and all optimal plans passed the validator. M4 matched the optimum on unchanged blocks in all 6 and on coverage in 5 of 6.

@@ -61,12 +61,20 @@ export function capacity(instance: Instance, commitments: CommitmentSpec[]): num
   return total;
 }
 
-export function generate(seed: number): Instance {
+/** Small instances for the exact-optimiser comparison (amendment 6). Defaults keep the 28-day benchmark unchanged. */
+export interface GenerateOptions {
+  days?: number;
+  maxTasks?: number;
+  minTasks?: number;
+  maxSubjects?: number;
+}
+
+export function generate(seed: number, opts: GenerateOptions = {}): Instance {
   const r = rng(seed);
   const tz = r.pick(ZONES);
   const changeWeek = r.next() < 0.3;
   const startDate = r.pick(changeWeek ? CHANGE_STARTS : NORMAL_STARTS);
-  const days = 28;
+  const days = opts.days ?? 28;
   const start = localToUtc(startDate, 0, tz);
   const end = localToUtc(addDays(startDate, days), 0, tz);
 
@@ -120,7 +128,7 @@ export function generate(seed: number): Instance {
   };
 
   const cap28 = capacity(base, commitments);
-  const subjectCount = r.int(4, 8);
+  const subjectCount = r.int(4, opts.maxSubjects ?? 8);
   const names = [...SUBJECT_NAMES].sort(() => r.next() - 0.5).slice(0, subjectCount);
   // Subjects take about a third of the horizon's room; deadline work fills to the utilisation level.
   const weekly = Math.min(240, Math.max(60, round15((0.35 * cap28) / 4 / subjectCount)));
@@ -128,10 +136,10 @@ export function generate(seed: number): Instance {
   const subjectTotal = weekly * 4 * subjectCount;
 
   const taskTotal = Math.max(6 * 30, utilisation * cap28 - subjectTotal);
-  const taskCount = Math.min(20, Math.max(6, Math.round(taskTotal / 120)));
+  const taskCount = Math.min(opts.maxTasks ?? 20, Math.max(opts.minTasks ?? 6, Math.round(taskTotal / 120)));
   const weights = Array.from({ length: taskCount }, () => 0.3 + r.next());
   const weightSum = weights.reduce((a, b) => a + b, 0);
-  const centres = [r.int(7, 12), r.int(18, 25)];
+  const centres = days >= 28 ? [r.int(7, 12), r.int(18, 25)] : [r.int(2, Math.max(2, Math.floor(days / 2))), r.int(Math.ceil(days / 2), days - 1)];
   const tasks: TaskSpec[] = weights.map((w, i) => {
     const day = clustered
       ? Math.min(days - 1, Math.max(2, r.pick(centres) + r.int(-2, 2)))

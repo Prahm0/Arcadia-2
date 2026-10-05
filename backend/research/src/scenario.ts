@@ -4,7 +4,7 @@
  */
 import { startingPlan } from "./arcadia.ts";
 import { commitmentIntervals, horizonDates, overlaps, type Interval } from "./calendar.ts";
-import { generate, rng, type Rng } from "./generate.ts";
+import { generate, rng, type GenerateOptions, type Rng } from "./generate.ts";
 import { addDays, clock, localDate, localMinutes, localToUtc } from "./localtime.ts";
 import type { Block, CommitmentSpec, Disruption, DisruptionType, Instance, RepairState, Scenario } from "./types.ts";
 import { MINUTE } from "./types.ts";
@@ -104,11 +104,11 @@ export function applyDisruptions(instance: Instance, disruptions: Disruption[]) 
   return { commitments, tasks };
 }
 
-export function buildScenario(seed: number): Scenario {
-  const instance = generate(seed);
+export function buildScenario(seed: number, opts: GenerateOptions = {}): Scenario {
+  const instance = generate(seed, opts);
   const startPlan = startingPlan(instance).filter((b) => b.start < instance.end);
   const r = rng(seed * 7919 + 17);
-  const day = r.int(1, 7);
+  const day = r.int(1, Math.min(7, instance.days - 4));
   const at = localToUtc(addDays(instance.startDate, day), r.int(28, 84) * 15, instance.tz);
 
   const label = LABELS[seed % LABELS.length];

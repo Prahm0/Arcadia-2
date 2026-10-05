@@ -4,7 +4,7 @@
 |---|---|---|---|---|---|---|
 | No repair | 0.0% | 94.42% (93.58 to 95.19) | 89.4% | 97.3% (96.7 to 97.8) | 3.13 (0.00) | 1 / 1 ms |
 | Insert into gaps (EDF) | 0.0% | 97.76% (97.39 to 98.11) | 95.4% | 97.3% (96.7 to 97.8) | 2.74 (0.19) | 2 / 3 ms |
-| Arcadia today | 18.8% | 99.17% (98.88 to 99.43) | 98.0% | 68.5% (66.1 to 70.8) | 11.59 (6.89) | 3 / 4 ms |
+| Arcadia before this project | 18.8% | 99.17% (98.88 to 99.43) | 98.0% | 68.5% (66.1 to 70.8) | 11.59 (6.89) | 3 / 4 ms |
 | Full rebuild | 0.0% | 99.45% (99.20 to 99.66) | 98.8% | 2.0% (1.8 to 2.2) | 26.26 (23.95) | 1 / 2 ms |
 | Stability-budgeted repair | 0.0% | 99.45% (99.22 to 99.65) | 98.7% | 92.5% (91.4 to 93.5) | 4.79 (1.52) | 236 / 430 ms |
 | M4-b0.5 | 0.0% | 95.24% (94.46 to 95.97) | 91.1% | 97.2% (96.5 to 97.7) | 2.84 (0.00) | 179 / 422 ms |
@@ -17,7 +17,7 @@
 | M4-fixedWindow | 0.0% | 99.45% (99.22 to 99.66) | 98.7% | 85.8% (84.4 to 87.3) | 8.67 (3.61) | 36 / 465 ms |
 | M4-noEscalate | 0.0% | 99.10% (98.83 to 99.34) | 97.8% | 95.4% (94.7 to 96.0) | 3.36 (1.09) | 235 / 494 ms |
 
-Best possible coverage (exact bound): 99.64%. Valid plans above it: 0. Certificate beaten: 0. Scenarios proven short of time: 33.
+Upper bound on coverage: 99.64%. Valid plans above it: 0. Certificate beaten: 0. Scenarios proven short of time: 33.
 
 ## M4 against each baseline (paired Wilcoxon, Holm-corrected)
 
@@ -29,9 +29,9 @@ Best possible coverage (exact bound): 99.64%. Valid plans above it: 0. Certifica
 | Insert into gaps (EDF) | coverage | +1.69 pts (+1.42 to +1.99) | 191 / 2 | 2.8e-32 | +0.99 |
 | Insert into gaps (EDF) | unchanged | -4.78 pts (-5.69 to -3.94) | 0 / 193 | 1.4e-32 | -1.00 |
 | Insert into gaps (EDF) | disruption cost | +2.05 (+1.58 to +2.57) | 84 / 174 | 1.3e-17 | +0.62 |
-| Arcadia today | coverage | +0.27 pts (+0.18 to +0.38) | 66 / 12 | 1.5e-09 | +0.81 |
-| Arcadia today | unchanged | +24.03 pts (+22.04 to +25.99) | 387 / 25 | 1.8e-62 | +0.96 |
-| Arcadia today | disruption cost | -6.80 (-7.59 to -6.01) | 381 / 50 | 3.0e-53 | -0.86 |
+| Arcadia before this project | coverage | +0.27 pts (+0.18 to +0.38) | 66 / 12 | 1.5e-09 | +0.81 |
+| Arcadia before this project | unchanged | +24.03 pts (+22.04 to +25.99) | 387 / 25 | 1.8e-62 | +0.96 |
+| Arcadia before this project | disruption cost | -6.80 (-7.59 to -6.01) | 381 / 50 | 3.0e-53 | -0.86 |
 | Full rebuild | coverage | +0.00 pts (-0.02 to +0.03) | 18 / 18 | 7.2e-01 | +0.07 |
 | Full rebuild | unchanged | +90.50 pts (+89.37 to +91.60) | 500 / 0 | 5.8e-83 | +1.00 |
 | Full rebuild | disruption cost | -21.47 (-22.38 to -20.59) | 500 / 0 | 1.4e-82 | -1.00 |

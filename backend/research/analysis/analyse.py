@@ -38,7 +38,8 @@ N = len(seeds)
 NAMES = {
     "M0": "No repair",
     "M1": "Insert into gaps (EDF)",
-    "M2": "Arcadia today",
+    # Override for the post-fix robustness run: M2_NAME="Arcadia after the fixes"
+    "M2": __import__("os").environ.get("M2_NAME", "Arcadia before this project"),
     "M3": "Full rebuild",
     "M4": "Stability-budgeted repair",
 }
@@ -193,7 +194,7 @@ for m in [b for b in ["M0", "M1", "M2", "M3"] if b in by]:
     ax.annotate(tag, (x, y), textcoords="offset points", xytext=(dx, dy), fontsize=8.5, color=INK2,
                 ha="right" if dx < 0 else ("center" if dx == 0 else "left"))
 ax.axhline(out["coverage_bound_mean"], color=INK2, lw=1, ls=(0, (4, 3)), zorder=1)
-ax.annotate(f"Best possible coverage: {out['coverage_bound_mean']:.2f}%", (1.05, out["coverage_bound_mean"]), xytext=(0, 4),
+ax.annotate(f"Upper bound on coverage: {out['coverage_bound_mean']:.2f}%", (1.05, out["coverage_bound_mean"]), xytext=(0, 4),
             textcoords="offset points", fontsize=8.5, color=INK2)
 ax.set_xscale("log")
 ax.set_xlim(0.7, 130)
@@ -295,7 +296,7 @@ for m in [x for x in MAIN if x in by] + [x for x in by if x not in MAIN]:
     L.append(f"| {NAMES.get(m, m)} | {s['invalid_pct']:.1f}% | {s['coverage_mean']:.2f}% ({s['coverage_ci'][0]:.2f} to {s['coverage_ci'][1]:.2f}) | "
              f"{s['fully_prepared_pct']:.1f}% | {s['unchanged_mean']:.1f}% ({s['unchanged_ci'][0]:.1f} to {s['unchanged_ci'][1]:.1f}) | "
              f"{s['cost_mean']:.2f} ({s['cost_median']:.2f}) | {s['runtime_p95_ms']:.0f} / {s['runtime_max_ms']:.0f} ms |")
-L += ["", f"Best possible coverage (exact bound): {out['coverage_bound_mean']:.2f}%. Valid plans above it: {out['valid_plans_above_bound']}. "
+L += ["", f"Upper bound on coverage: {out['coverage_bound_mean']:.2f}%. Valid plans above it: {out['valid_plans_above_bound']}. "
       f"Certificate beaten: {out['certificate_beaten']}. Scenarios proven short of time: {out['proven_short_scenarios']}.", ""]
 L += ["## M4 against each baseline (paired Wilcoxon, Holm-corrected)", "",
       "| Against | Measure | Mean difference (95% CI) | M4 better / worse | p (Holm) | Rank-biserial r |", "|---|---|---|---|---|---|"]

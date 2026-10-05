@@ -8,6 +8,7 @@ import {
   DAY,
   HOUR,
   MINUTE,
+  atLocalMinutes,
   localDateKey,
   localWeekday,
   nextLocalDay,
@@ -79,14 +80,14 @@ function commitmentSlots(
       const weekday = localWeekday(day, tz);
       if (weekday === 0 || weekday === 6) continue;
     } else if (commitment.recurrence === "none") {
-      if (!commitment.startDate) continue;
-      const target = Date.parse(`${commitment.startDate}T00:00:00Z`);
-      if (Math.abs(startOfLocalDay(target, tz) - day) > HALF_DAY) continue;
+      // Compare local dates. Comparing the date's UTC midnight with local
+      // days put one-offs a day early anywhere west of Greenwich.
+      if (!commitment.startDate || localDateKey(day, tz) !== commitment.startDate) continue;
     }
     // "daily" falls through and matches every day
     slots.push({
-      start: day + startMinutes * MINUTE,
-      end: day + endMinutes * MINUTE,
+      start: atLocalMinutes(day, startMinutes, tz),
+      end: atLocalMinutes(day, endMinutes, tz),
     });
   }
   return slots;
@@ -100,10 +101,13 @@ function sleepSlots(profile: Profile, from: number, to: number): Slot[] {
   const slots: Slot[] = [];
   // Start the night before `from` so the early hours of day one are covered.
   const firstNight = startOfLocalDay(startOfLocalDay(from, tz) - HALF_DAY, tz);
+  // Never plan into the student's minimum sleep: a late bedtime with an early
+  // wake time gets an earlier cut-off for study, not less sleep.
+  const minimum = Math.max(0, profile.minimumSleepMinutes ?? 0) * MINUTE;
   for (let day = firstNight; day < to; day = nextLocalDay(day, tz)) {
-    const start = day + bedtime * MINUTE;
     // bedtime after midnight (e.g. 00:30) belongs to the same night
-    const end = day + (wake > bedtime ? wake : wake + 24 * 60) * MINUTE;
+    const end = wake > bedtime ? atLocalMinutes(day, wake, tz) : atLocalMinutes(nextLocalDay(day, tz), wake, tz);
+    const start = Math.min(atLocalMinutes(day, bedtime, tz), end - minimum);
     slots.push({ start, end });
   }
   return slots;
@@ -184,7 +188,8 @@ export interface PlanDay {
  */
 function pickSpot(day: PlanDay, length: number, before = Infinity): Slot | null {
   const midday = day.start + 12 * HOUR;
-  const room = (slot: Slot) => slot.end - slot.start >= length && slot.start < before;
+  // The whole block has to finish before `before`, not just start before it.
+  const room = (slot: Slot) => Math.min(slot.end, before) - slot.start >= length;
 
   const later = day.free
     .map((slot) => ({ start: Math.max(slot.start, midday), end: slot.end }))
@@ -192,7 +197,7 @@ function pickSpot(day: PlanDay, length: number, before = Infinity): Slot | null 
   if (later) return { start: later.start, end: later.start + length };
 
   const mornings = day.free
-    .map((slot) => ({ start: slot.start, end: Math.min(slot.end, midday) }))
+    .map((slot) => ({ start: slot.start, end: Math.min(slot.end, midday, before) }))
     .filter(room);
   const latest = mornings[mornings.length - 1];
   if (latest) return { start: latest.end - length, end: latest.end };
@@ -232,7 +237,7 @@ function carve(
   // Longest block that fits, down to atLeast, in the preferred spot.
   const longest = day.free
     .filter((slot) => slot.start < before)
-    .reduce((max, slot) => Math.max(max, slot.end - slot.start), 0);
+    .reduce((max, slot) => Math.max(max, Math.min(slot.end, before) - slot.start), 0);
   const length = Math.min(budget, longest);
   if (length < atLeast) return null;
   const block = pickSpot(day, length, before);
@@ -488,6 +493,8 @@ export async function loadScheduleInputs(
 /** Everything fixed before any study is placed. */
 export interface Groundwork {
   now: number;
+  /** The student's time zone. */
+  tz: string;
   /** Events the rebuild leaves alone. */
   keep: EventSelect[];
   /** Events the rebuild may replace. */
@@ -584,7 +591,13 @@ export function groundwork(
     });
   }
 
-  for (const event of keep) busy.push({ start: event.startAt, end: event.endAt });
+  // Kept study blocks need a break either side too, or a new block can
+  // start the minute one already under way ends.
+  const keptBreak = Math.max(0, profile.breakMinutes) * MINUTE;
+  for (const event of keep) {
+    const pad = event.category === "study" && event.outcome !== "missed" ? keptBreak : 0;
+    busy.push({ start: event.startAt - pad, end: event.endAt + pad });
+  }
 
   const takenOff = new Map<string, Set<string>>();
   const takeOff = (at: number, subject: string | null) => {
@@ -634,6 +647,7 @@ export function groundwork(
 
   return {
     now,
+    tz,
     keep,
     disposable,
     fixed,
@@ -720,7 +734,7 @@ export function applyLayout(
       if (item.date >= (g.days[0]?.date ?? "")) problems.push(`${label}: not a day or time in the plan`);
       continue;
     }
-    const start = day.start + clock * MINUTE;
+    const start = atLocalMinutes(day.start, clock, g.tz);
     if (start < g.now) continue;
 
     let length = Math.round(Number(item.minutes) / 5) * 5 * MINUTE;
@@ -1007,7 +1021,7 @@ export function planStudy(userId: string, inputs: ScheduleInputs, g: Groundwork)
           .filter((block) => block.date === day.date)
           .reduce((sum, block) => {
             const clock = parseClock(block.start);
-            return clock !== null && day.start + clock * MINUTE >= g.now
+            return clock !== null && atLocalMinutes(day.start, clock, g.tz) >= g.now
               ? sum + Math.round(Number(block.minutes) / 5) * 5 * MINUTE
               : sum;
           }, 0);

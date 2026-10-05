@@ -266,7 +266,8 @@ export async function dispatchPushCheckIns(env: Env, now = Date.now()): Promise<
       // missed outcome and cannot repeat the two-hour follow-up.
       const result = await database
         .update(schema.events)
-        .set({ outcome: "missed", status: "missed", pinned: true })
+        // "auto" marks it as never logged, not skipped (see study-context.ts).
+        .set({ outcome: "missed", status: "missed", pinned: true, missReason: "auto" })
         .where(and(eq(schema.events.id, event.id), eq(schema.events.outcome, "planned")))
         .returning({ id: schema.events.id });
       if (!result.length) return;

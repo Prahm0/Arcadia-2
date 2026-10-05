@@ -2,7 +2,7 @@ import { and, asc, eq, gte, lt } from "drizzle-orm";
 import { schema, type Database } from "../db";
 import { newId } from "./ids";
 import { releaseFromLayout, subjectKey, weeklyTargetMinutes } from "./scheduler";
-import { DAY, MINUTE, iso, localDateKey, parseClock, startOfLocalDay, zoneOffsetMinutes } from "./time";
+import { DAY, MINUTE, atLocalMinutes, iso, localDateKey, parseClock, startOfLocalDay, zoneOffsetMinutes } from "./time";
 
 /**
  * The changes Arcad proposes in chat (propose_changes), checked when it
@@ -35,7 +35,7 @@ export function localInstant(date: string | undefined, minutes: number, timeZone
   const noon = Date.parse(`${date}T12:00:00Z`);
   if (Number.isNaN(noon)) return null;
   const day = startOfLocalDay(noon - zoneOffsetMinutes(timeZone, noon) * MINUTE, timeZone);
-  return localDateKey(day, timeZone) === date ? day + minutes * MINUTE : null;
+  return localDateKey(day, timeZone) === date ? atLocalMinutes(day, minutes, timeZone) : null;
 }
 
 function localClock(at: number, timeZone: string): string {

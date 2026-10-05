@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, inArray, lt, ne } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lt, ne, or } from "drizzle-orm";
 import { schema, type Database } from "../db";
 import { subjectKey } from "./scheduler";
 import { summariseHabits, type Habits } from "./study-habits";
@@ -26,6 +26,9 @@ export async function studyHabits(database: Database, userId: string, timeZone: 
         inArray(schema.events.outcome, ["completed", "missed"]),
         // A block they took off the schedule ahead of time wasn't skipped.
         ne(schema.events.status, "cancelled"),
+        // Nor was one nobody logged: the cron marks those missed with reason
+        // "auto". Only blocks the student marked say anything about habits.
+        or(isNull(schema.events.missReason), ne(schema.events.missReason, "auto")),
         gte(schema.events.startAt, now - HABIT_DAYS * DAY),
         lt(schema.events.startAt, now),
       ),

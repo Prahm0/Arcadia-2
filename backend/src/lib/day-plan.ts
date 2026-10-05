@@ -27,7 +27,7 @@ import {
 import { recentMissReasonContext, studyHabits } from "./study-context";
 import type { Habits } from "./study-habits";
 import { getUserTier, type Tier } from "./tiers";
-import { DAY, MINUTE, localDateKey, parseClock, startOfLocalDay } from "./time";
+import { DAY, MINUTE, atLocalMinutes, localDateKey, parseClock, startOfLocalDay } from "./time";
 
 /**
  * Arcad's day-by-day layout of the next week of study.
@@ -580,7 +580,7 @@ function review(ctx: Context, layout: DayLayout, unknown: string[]): Review {
     // Winding down before bed, where the day had earlier room to use instead.
     // A bedtime after midnight belongs to the next day, so it's left alone.
     if (bed !== null && wake !== null && bed > wake) {
-      const cutoff = day.start + bed * MINUTE - BED_BUFFER;
+      const cutoff = atLocalMinutes(day.start, bed, tz) - BED_BUFFER;
       const late = today.find((item) => item.block.end > cutoff);
       const length = late ? late.block.end - late.block.start : 0;
       if (late && day.free.some((slot) => Math.min(slot.end, cutoff) - slot.start >= length)) {

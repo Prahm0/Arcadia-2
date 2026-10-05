@@ -3,11 +3,11 @@
 | Method | Plans breaking a rule | Coverage (95% CI) | Tasks fully prepared | Blocks unchanged (95% CI) | Disruption cost, mean (median) | Run time p95 / max |
 |---|---|---|---|---|---|---|
 | Insert into gaps (EDF) | 0.0% | 97.53% (97.39 to 97.66) | 95.6% | 97.8% (97.6 to 97.9) | 2.41 (0.13) | 2 / 15 ms |
-| Arcadia today | 0.0% | 99.18% (99.09 to 99.26) | 98.0% | 68.5% (67.7 to 69.3) | 11.42 (7.00) | 4 / 18 ms |
+| Arcadia after the fixes | 0.0% | 99.18% (99.09 to 99.26) | 98.0% | 68.5% (67.7 to 69.3) | 11.42 (7.00) | 4 / 18 ms |
 | Full rebuild | 0.0% | 99.49% (99.42 to 99.56) | 98.9% | 2.0% (1.9 to 2.1) | 25.56 (23.14) | 1 / 4 ms |
 | Stability-budgeted repair | 0.0% | 99.49% (99.42 to 99.56) | 98.8% | 93.0% (92.7 to 93.3) | 4.54 (1.17) | 245 / 613 ms |
 
-Best possible coverage (exact bound): 99.65%. Valid plans above it: 0. Certificate beaten: 0. Scenarios proven short of time: 369.
+Upper bound on coverage: 99.65%. Valid plans above it: 0. Certificate beaten: 0. Scenarios proven short of time: 369.
 
 ## M4 against each baseline (paired Wilcoxon, Holm-corrected)
 
@@ -16,9 +16,9 @@ Best possible coverage (exact bound): 99.65%. Valid plans above it: 0. Certifica
 | Insert into gaps (EDF) | coverage | +1.97 pts (+1.86 to +2.09) | 1795 / 1 | 2.9e-294 | +1.00 |
 | Insert into gaps (EDF) | unchanged | -4.74 pts (-5.04 to -4.46) | 0 / 1796 | 2.9e-294 | -1.00 |
 | Insert into gaps (EDF) | disruption cost | +2.14 (+1.99 to +2.29) | 734 / 1675 | 4.1e-182 | +0.68 |
-| Arcadia today | coverage | +0.32 pts (+0.29 to +0.35) | 713 / 83 | 3.9e-110 | +0.91 |
-| Arcadia today | unchanged | +24.51 pts (+23.91 to +25.14) | 3931 / 84 | 0.0e+00 | +0.98 |
-| Arcadia today | disruption cost | -6.88 (-7.12 to -6.64) | 3911 / 273 | 0.0e+00 | -0.93 |
+| Arcadia after the fixes | coverage | +0.32 pts (+0.29 to +0.35) | 713 / 83 | 3.9e-110 | +0.91 |
+| Arcadia after the fixes | unchanged | +24.51 pts (+23.91 to +25.14) | 3931 / 84 | 0.0e+00 | +0.98 |
+| Arcadia after the fixes | disruption cost | -6.88 (-7.12 to -6.64) | 3911 / 273 | 0.0e+00 | -0.93 |
 | Full rebuild | coverage | +0.00 pts (-0.00 to +0.01) | 188 / 196 | 3.6e-01 | +0.05 |
 | Full rebuild | unchanged | +91.02 pts (+90.67 to +91.36) | 5000 / 0 | 0.0e+00 | +1.00 |
 | Full rebuild | disruption cost | -21.02 (-21.29 to -20.75) | 5000 / 0 | 0.0e+00 | -1.00 |

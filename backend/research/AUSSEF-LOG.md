@@ -233,3 +233,23 @@ Also confirmed live: the daylight-saving defect from 4 Oct. Seed 1, Hobart, 4 Ap
 Each variant was more stable than Arcadia before this project in 3,923 to 3,924 of 5,000 scenarios. The slowest repair took 0.87 s, still under the 2 s limit.
 
 **Conclusion:** the result does not depend on the exact weights. Most repairs never face a choice where the weights matter, because local repair finds a nearby gap.
+
+## 6 October 2026: exact optimal comparison results (amendment 6)
+
+**Run:** all 1,000 seeds (1000 to 1999) at full size, results/2026-10-05-exact-optimal. The first run hit the 2-hour background limit after seed 1399, so I restarted from 1400 as a separate process and kept the Mac awake overnight. Nothing about the model or M4 changed between the two runs.
+
+**Solver:** 941 proven optimal, 53 feasible but not proven, 6 with no plan in time (almost all at the highest workloads). Every solver plan passed the validator, which is a good check that the solver and validator agree on the rules.
+
+**On the 941 proven-optimal scenarios:**
+
+| Method | Reaches optimal coverage | Optimal on both | Extra blocks changed (mean) |
+|---|---|---|---|
+| **M4** | **94.8%** | **76.9%** | **1.28** |
+| Arcadia before this project | 86.6% | 20.2% | 15.27 |
+| Full rebuild | 93.6% | 0% | 53.43 |
+
+M4's mean coverage gap to the optimum is 0.127 points.
+
+**Why M4 sometimes changes too much:** I re-ran M4 with escalation off (src/exact-diagnose.ts). When M4 repairs locally (827 scenarios), it is almost always optimal on stability: 0.18 extra blocks on average, at most 6. All the big outliers (57 of 58 with 5 or more extra) come from escalation in overloaded weeks. Escalation does find coverage that local repair can't (0.33 to 10.21 points), but its windowed rebuild moves more blocks than it needs to.
+
+**What this means:** the local repair is close to provably optimal. Escalation is the weak point and the obvious next improvement. I am not changing the frozen M4 for the report; any new version would be tested on fresh seeds.

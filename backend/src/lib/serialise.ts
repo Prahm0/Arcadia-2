@@ -114,6 +114,8 @@ export function serialiseSubject(subject: SubjectRow, grade: string | null | und
     weeklyMinutesSuggested: subject.weeklyMinutes === null,
     targetGrade: subject.targetGrade,
     notes: subject.notes,
+    /** The shared syllabus its work is tracked against (shared/syllabusPoints.ts). */
+    sharedSyllabus: subject.syllabus ?? null,
   };
 }
 

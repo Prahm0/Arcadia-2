@@ -2,13 +2,15 @@
 
 import { ApiError } from "@/lib/api/client";
 import type { SubjectFile } from "@/lib/api/profile";
+import type { WorkUpload } from "@/lib/api/work";
 
 export const MATERIAL_ACCEPT = "application/pdf,image/png,image/jpeg,image/webp,text/plain,text/markdown,.md,.txt";
 export const MATERIAL_MAX_BYTES = 8 * 1024 * 1024;
 /** What Arcad can read, said the same way everywhere a file can be added. */
 export const MATERIAL_HINT = "PDFs, photos and text files, up to 8 MB each";
 
-export type MaterialKind = "syllabus" | "resource";
+/** work: the student's own work, mapped to syllabus dot points. */
+export type MaterialKind = "syllabus" | "resource" | "work";
 export type MaterialFormat = "pdf" | "image" | "text";
 
 const FORMATS: Record<string, MaterialFormat> = {
@@ -30,7 +32,10 @@ const EXTENSIONS: Record<string, MaterialFormat> = {
 };
 
 export interface UploadResult {
-  file: SubjectFile;
+  /** The stored file, for syllabuses and resources. */
+  file?: SubjectFile;
+  /** What was read from the student's own work. */
+  work?: WorkUpload;
   read: boolean;
   topics: number;
   assessments: number;
@@ -83,11 +88,12 @@ export function uploadMaterial(
 ): Promise<UploadResult> {
   const problem = checkMaterial(file);
   if (problem) return Promise.reject(new ApiError(problem, 422, null));
-  const params = new URLSearchParams({ kind, filename: file.name });
+  const params = new URLSearchParams(kind === "work" ? { subject: subjectId, filename: file.name } : { kind, filename: file.name });
+  const url = kind === "work" ? `/api/work?${params}` : `/api/subjects/${encodeURIComponent(subjectId)}/files?${params}`;
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", `/api/subjects/${encodeURIComponent(subjectId)}/files?${params}`);
+    xhr.open("POST", url);
     xhr.withCredentials = true;
     xhr.responseType = "json";
     xhr.setRequestHeader("content-type", file.type || "application/octet-stream");
@@ -104,6 +110,22 @@ export function uploadMaterial(
     xhr.onload = () => {
       const data: unknown = xhr.response;
       if (xhr.status >= 200 && xhr.status < 300) {
+        if (kind === "work") {
+          const work = data as WorkUpload;
+          const read = work.item.status !== "unread";
+          resolve({
+            work,
+            read,
+            topics: 0,
+            assessments: 0,
+            message: read
+              ? work.tags.length === 0
+                ? "Read it, but couldn't match it to the syllabus."
+                : undefined
+              : "Arcad couldn't read this one. Try a clearer, flatter photo.",
+          });
+          return;
+        }
         resolve(data as UploadResult);
         return;
       }

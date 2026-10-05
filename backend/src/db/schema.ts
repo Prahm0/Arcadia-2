@@ -277,6 +277,8 @@ export const subjects = sqliteTable(
     targetGrade: text("target_grade"),
     // What Arcad should keep in mind for this subject.
     notes: text("notes").notNull().default(""),
+    // The shared syllabus it follows (shared/syllabusPoints.ts), if any.
+    syllabus: text("syllabus"),
     createdAt: integer("created_at").notNull().default(now),
   },
   (t) => [index("subjects_user_idx").on(t.userId)],
@@ -932,4 +934,121 @@ export const userActiveDays = sqliteTable(
     day: text("day").notNull(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.day] }), index("user_active_days_day_idx").on(t.day)],
+);
+
+/** Official syllabus dot points, shared by every student (migration 0039). */
+export const syllabusPoints = sqliteTable(
+  "syllabus_points",
+  {
+    id: text("id").primaryKey(),
+    syllabus: text("syllabus").notNull(),
+    unit: integer("unit").notNull(),
+    unitTitle: text("unit_title").notNull(),
+    topic: integer("topic").notNull(),
+    topicTitle: text("topic_title").notNull(),
+    subtopic: text("subtopic").notNull(),
+    text: text("text").notNull(),
+    hours: real("hours").notNull().default(1),
+    position: integer("position").notNull(),
+  },
+  (t) => [index("syllabus_points_syllabus_idx").on(t.syllabus, t.position)],
+);
+
+/** A piece of the student's own work, read in and tagged to dot points. */
+export const workItems = sqliteTable(
+  "work_items",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    subjectId: text("subject_id")
+      .notNull()
+      .references(() => subjects.id, { onDelete: "cascade" }),
+    source: text("source").notNull().default("upload"),
+    filename: text("filename").notNull(),
+    contentType: text("content_type").notNull(),
+    pages: integer("pages").notNull().default(1),
+    transcript: text("transcript").notNull().default(""),
+    transcriptEdited: integer("transcript_edited", { mode: "boolean" }).notNull().default(false),
+    storageKey: text("storage_key"),
+    status: text("status").notNull().default("read"),
+    promptVersion: text("prompt_version").notNull(),
+    model: text("model"),
+    ms: integer("ms"),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [index("work_items_user_subject_idx").on(t.userId, t.subjectId, t.createdAt)],
+);
+
+export const workTags = sqliteTable(
+  "work_tags",
+  {
+    workItemId: text("work_item_id")
+      .notNull()
+      .references(() => workItems.id, { onDelete: "cascade" }),
+    pointId: text("point_id")
+      .notNull()
+      .references(() => syllabusPoints.id),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    quality: integer("quality"),
+    questions: integer("questions").notNull().default(1),
+    evidence: text("evidence").notNull().default(""),
+    confidence: integer("confidence"),
+    state: text("state").notNull().default("ai"),
+    promptVersion: text("prompt_version").notNull(),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [primaryKey({ columns: [t.workItemId, t.pointId] }), index("work_tags_user_point_idx").on(t.userId, t.pointId)],
+);
+
+/** Real marks on tests and assignments, against the points they covered. */
+export const results = sqliteTable(
+  "results",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    subjectId: text("subject_id")
+      .notNull()
+      .references(() => subjects.id, { onDelete: "cascade" }),
+    assessmentId: text("assessment_id").references(() => subjectAssessments.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    mark: real("mark").notNull(),
+    maxMark: real("max_mark").notNull(),
+    takenOn: text("taken_on").notNull(),
+    pointIds: text("point_ids").notNull().default("[]"),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [index("results_user_subject_idx").on(t.userId, t.subjectId, t.takenOn)],
+);
+
+/** Cached mastery per student per point (shared/mastery.ts computes it). */
+export const mastery = sqliteTable(
+  "mastery",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    pointId: text("point_id")
+      .notNull()
+      .references(() => syllabusPoints.id),
+    score: real("score").notNull().default(0),
+    q: real("q").notNull().default(0),
+    c: real("c").notNull().default(0),
+    r: real("r"),
+    e: real("e").notNull().default(0),
+    decay: real("decay").notNull().default(1),
+    band: text("band").notNull().default("none"),
+    reason: text("reason"),
+    works: integer("works").notNull().default(0),
+    lastWorkAt: integer("last_work_at"),
+    snoozedUntil: integer("snoozed_until"),
+    coveredElsewhere: integer("covered_elsewhere", { mode: "boolean" }).notNull().default(false),
+    updatedAt: integer("updated_at").notNull().default(now),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.pointId] })],
 );

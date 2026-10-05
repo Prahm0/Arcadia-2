@@ -70,8 +70,11 @@ export default function FileRows({
     setRemoving((prev) => prev.filter((entry) => entry.id !== file.id));
   }
 
-  // An upload's row hands over to the real one once the list has it.
-  const uploading = pending.filter((item) => !(item.result && files.some((file) => file.id === item.result!.file.id)));
+  // An upload's row hands over to the real one once the list has it. Work
+  // isn't a file in the list: its row goes once the check-in takes over.
+  const uploading = pending.filter(
+    (item) => !(item.result && (item.kind === "work" || files.some((file) => file.id === item.result!.file?.id))),
+  );
   const removingIds = new Set(removing.map((file) => file.id));
 
   if (files.length === 0 && uploading.length === 0) return <>{empty ?? null}</>;
@@ -252,6 +255,10 @@ function statusText(item: UploadItem): string {
     case "reading":
       return "Arcad's reading it. This takes a few seconds.";
     case "done":
+      if (item.kind === "work" && item.result?.work) {
+        const count = item.result.work.tags.length;
+        return count ? `Mapped to ${count === 1 ? "1 dot point" : `${count} dot points`}` : item.result.message ?? "Read by Arcad";
+      }
       return item.kind === "syllabus" && item.result
         ? `Read: ${item.result.topics} topics, ${item.result.assessments} assessments`
         : "Read by Arcad";

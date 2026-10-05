@@ -14,6 +14,8 @@ import { usePathname } from "next/navigation";
 import { ApiError } from "@/lib/api/client";
 import { MATERIAL_ACCEPT, uploadMaterial, type MaterialKind, type UploadResult } from "@/lib/api/subjectMaterials";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
+import type { WorkUpload } from "@/lib/api/work";
+import CheckinSheet from "../work/CheckinSheet";
 import UploadSheet from "./UploadSheet";
 import UploadTray from "./UploadTray";
 
@@ -59,6 +61,8 @@ interface UploadContextValue {
   openWith: (files: File[], preset?: UploadPreset) => void;
   /** Straight to the queue, for places that already know the subject and kind. */
   start: (files: File[], target: UploadTarget) => number[];
+  /** Opens the camera (on phones) to photograph work for this subject. */
+  scan: (subjectId: string) => void;
   retry: (key: number) => void;
   dismiss: (key: number) => void;
 }
@@ -86,6 +90,10 @@ export default function UploadProvider({ children }: { children: ReactNode }) {
   const [sheet, setSheet] = useState<SheetState>(null);
   const [dragging, setDragging] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const camera = useRef<HTMLInputElement>(null);
+  const scanSubject = useRef<string | null>(null);
+  // Work that's been read and is waiting for the student's quick check-in.
+  const [checkins, setCheckins] = useState<WorkUpload[]>([]);
   const pickPreset = useRef<UploadPreset>({});
   const nextKey = useRef(1);
   const running = useRef(false);
@@ -120,6 +128,10 @@ export default function UploadProvider({ children }: { children: ReactNode }) {
             onProgress: (progress) => update(next.key, { progress }),
             onSent: () => update(next.key, { status: "reading", progress: 1 }),
           });
+          if (result.work && result.work.tags.length > 0) {
+            const work = result.work;
+            setCheckins((prev) => [...prev, work]);
+          }
           update(next.key, {
             status: result.read ? "done" : "unread",
             result,
@@ -182,6 +194,18 @@ export default function UploadProvider({ children }: { children: ReactNode }) {
     void pump();
     return added.map((item) => item.key);
   }, [commit, pump]);
+
+  const scan = useCallback(
+    (subjectId: string) => {
+      if (!canUpload) {
+        setSheet({ locked: true });
+        return;
+      }
+      scanSubject.current = subjectId;
+      camera.current?.click();
+    },
+    [canUpload],
+  );
 
   const retry = useCallback(
     (key: number) => {
@@ -260,8 +284,8 @@ export default function UploadProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<UploadContextValue>(
-    () => ({ canUpload, items, finished, choose, openWith, start, retry, dismiss }),
-    [canUpload, items, finished, choose, openWith, start, retry, dismiss],
+    () => ({ canUpload, items, finished, choose, openWith, start, scan, retry, dismiss }),
+    [canUpload, items, finished, choose, openWith, start, scan, retry, dismiss],
   );
 
   return (
@@ -279,6 +303,30 @@ export default function UploadProvider({ children }: { children: ReactNode }) {
           if (files.length) openWith(files, pickPreset.current);
         }}
       />
+      <input
+        ref={camera}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        multiple
+        className="hidden"
+        onChange={(event) => {
+          const files = Array.from(event.target.files ?? []);
+          event.target.value = "";
+          if (files.length && scanSubject.current) start(files, { subjectId: scanSubject.current, kind: "work" });
+        }}
+      />
+      {checkins.length > 0 ? (
+        <CheckinSheet
+          key={checkins[0].item.id}
+          upload={checkins[0]}
+          remaining={checkins.length - 1}
+          onDone={() => {
+            setCheckins((prev) => prev.slice(1));
+            setFinished((count) => count + 1);
+          }}
+        />
+      ) : null}
       <UploadSheet
         state={sheet}
         onClose={() => setSheet(null)}

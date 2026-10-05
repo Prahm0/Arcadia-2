@@ -1,0 +1,28 @@
+{
+  "name": "confirmatory",
+  "seeds": [
+    1000,
+    5999
+  ],
+  "methods": [
+    "M0",
+    "M1",
+    "M2",
+    "M3",
+    "M4",
+    "M4-b0.5",
+    "M4-b1",
+    "M4-b2",
+    "M4-b4",
+    "M4-b8",
+    "M4-noNear",
+    "M4-noEject",
+    "M4-fixedWindow",
+    "M4-noEscalate"
+  ],
+  "commit": "aba9d1494bd563cdb667bca7afb88cc5fd35d67a",
+  "uncommittedChanges": true,
+  "node": "v26.8.1",
+  "date": "2026-10-05T04:00:24.438Z",
+  "seconds": 1424.429
+}

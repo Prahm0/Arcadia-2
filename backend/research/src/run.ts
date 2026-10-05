@@ -22,7 +22,7 @@ const args = Object.fromEntries(
 const name = args.name ?? "run";
 const from = Number(args.from ?? 1);
 const to = Number(args.to ?? 20);
-const methods: RepairMethod[] = [
+const allMethods: RepairMethod[] = [
   noRepair, edfInsert, arcadiaRebuild, coverageFirst,
   stabilityRepairMethod("M4"),
   // The frontier: the same repair at increasing disruption budgets.
@@ -33,6 +33,9 @@ const methods: RepairMethod[] = [
   stabilityRepairMethod("M4-fixedWindow", { widening: false }),
   stabilityRepairMethod("M4-noEscalate", { escalation: false }),
 ];
+// --methods M2,M4 runs a subset (e.g. re-testing Arcadia after a fix).
+const only = args.methods ? new Set(String(args.methods).split(",")) : null;
+const methods = only ? allMethods.filter((m) => only.has(m.code)) : allMethods;
 
 const columns = [
   "seed", "method", "label", "severity", "severity_min", "tz", "start_date", "clock_change", "utilisation_target",

@@ -1,0 +1,16 @@
+{
+  "name": "m2-fixed-pilot",
+  "seeds": [
+    1,
+    240
+  ],
+  "methods": [
+    "M2",
+    "M4"
+  ],
+  "commit": "65f5d76cfe523892eef1b1697e1236597f51797a",
+  "uncommittedChanges": true,
+  "node": "v26.8.1",
+  "date": "2026-10-05T03:49:21.165Z",
+  "seconds": 16.047
+}

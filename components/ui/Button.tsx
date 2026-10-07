@@ -4,7 +4,7 @@ import { cn } from "@/lib/cn";
 
 type Variant = "primary" | "secondary" | "ghost";
 type Tone = "dark" | "light";
-type Size = "md" | "sm";
+type Size = "lg" | "md" | "sm";
 
 interface BaseProps {
   variant?: Variant;
@@ -28,6 +28,7 @@ const base =
   "hover:-translate-y-px active:translate-y-0 disabled:pointer-events-none disabled:opacity-50";
 
 const sizes: Record<Size, string> = {
+  lg: "h-14 px-7 text-[16px]",
   md: "h-12 px-6 text-[15px]",
   sm: "h-10 px-4 text-[14px]",
 };

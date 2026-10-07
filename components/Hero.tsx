@@ -7,8 +7,7 @@ import { cn } from "@/lib/cn";
 import HeroInterface from "./HeroInterface";
 import LiveNow from "./LiveNow";
 import Starfield from "./Starfield";
-import { PlatformNote } from "./PlatformLinks";
-import Button from "./ui/Button";
+import { HeroPlatforms } from "./PlatformLinks";
 import Container from "./ui/Container";
 
 /**
@@ -133,24 +132,19 @@ export default function Hero() {
               restDelay="0.65s"
               style={reduced ? undefined : { visibility: ctaVisibility, pointerEvents: ctaPointer }}
             >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
-                <Button tone="dark" href="/register" className="sm:min-w-[172px]">
-                  Get started
-                </Button>
-                <a
-                  href="#recovery"
-                  className="group inline-flex h-12 items-center gap-2 px-1 text-[15px] font-medium text-white/80 transition-colors duration-200 hover:text-white"
+              <HeroPlatforms />
+              <a
+                href="#recovery"
+                className="group mt-5 inline-flex items-center gap-2 text-[14px] font-medium text-white/60 transition-colors duration-200 hover:text-white"
+              >
+                Watch the recovery moment
+                <span
+                  aria-hidden="true"
+                  className="inline-block transition-transform duration-300 ease-[var(--ease-out-expo)] group-hover:translate-y-0.5"
                 >
-                  Watch the recovery moment
-                  <span
-                    aria-hidden="true"
-                    className="inline-block transition-transform duration-300 ease-[var(--ease-out-expo)] group-hover:translate-y-0.5"
-                  >
-                    ↓
-                  </span>
-                </a>
-              </div>
-              <PlatformNote className="mt-5" />
+                  ↓
+                </span>
+              </a>
             </CopyItem>
           </motion.div>
         </Container>

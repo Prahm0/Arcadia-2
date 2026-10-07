@@ -14,18 +14,27 @@ export const APP_STORE_URL: string | null = APP_STORE_ID ? `https://apps.apple.c
 /**
  * Apple's official badge, served by Apple's marketing tools so it's always
  * the current, unmodified artwork. The black badge has the light outline
- * Apple specifies for dark backgrounds.
+ * Apple specifies for dark backgrounds. It's the same height as a large
+ * button so it reads as a first-class way in, not a footnote.
  */
-function AppStoreBadge({ href }: { href: string }) {
+export function AppStoreBadge({ className }: { className?: string }) {
+  if (!APP_STORE_URL) return null;
   return (
-    <a href={href} className="inline-flex h-12 items-center justify-center transition-opacity duration-200 hover:opacity-85" aria-label="Download Arcadia on the App Store">
+    <a
+      href={APP_STORE_URL}
+      className={cn(
+        "inline-flex h-14 shrink-0 items-center justify-center transition-[opacity,transform] duration-200 hover:-translate-y-px hover:opacity-90",
+        className,
+      )}
+      aria-label="Download Arcadia on the App Store"
+    >
       {/* eslint-disable-next-line @next/next/no-img-element -- Apple-hosted badge, not a local asset */}
       <img
         src="https://toolbox.marketingtools.apple.com/api/v2/badges/download-on-the-app-store/black/en-us"
         alt="Download on the App Store"
-        width={145}
-        height={48}
-        className="h-12 w-auto"
+        width={169}
+        height={56}
+        className="h-14 w-auto"
       />
     </a>
   );
@@ -49,48 +58,48 @@ function PhoneIcon() {
   );
 }
 
-/** A quiet one-line note for the hero: where Arcadia runs. */
-export function PlatformNote({ className }: { className?: string }) {
+/**
+ * The hero's two ways in: the App Store badge first (most visitors arrive on
+ * an iPhone from a video), then the web app at the same size.
+ */
+export function HeroPlatforms({ className }: { className?: string }) {
   return (
-    <p className={cn("flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-white/50", className)}>
-      <span className="inline-flex items-center gap-1.5">
-        <GlobeIcon />
-        Works in any browser
-      </span>
+    <div className={cn("flex flex-col items-start gap-3 sm:flex-row sm:items-center", className)}>
       {APP_STORE_URL ? (
-        <a href={APP_STORE_URL} className="inline-flex items-center gap-1.5 transition-colors duration-200 hover:text-white">
-          <PhoneIcon />
-          Get the iPhone app
-        </a>
+        <AppStoreBadge />
       ) : (
-        <span className="inline-flex items-center gap-1.5">
+        <span className="inline-flex h-14 items-center gap-1.5 text-[14px] text-white/50">
           <PhoneIcon />
           iPhone app coming soon
         </span>
       )}
-    </p>
+      <Button tone="dark" size="lg" href="/register" className="sm:min-w-[200px]">
+        <GlobeIcon />
+        Start free on the web
+      </Button>
+    </div>
   );
 }
 
-/** Both ways in, side by side, so it's clear there's a web app and an iPhone app. */
+/** Both ways in, side by side, so it's clear there's an iPhone app and a web app. */
 export function PlatformChoice({ className }: { className?: string }) {
   return (
-    <div className={cn("flex w-full flex-col items-stretch gap-3 sm:flex-row sm:justify-center", className)}>
-      <Button tone="dark" href="/register" className="sm:min-w-[200px]">
-        <GlobeIcon />
-        Use it on the web
-      </Button>
+    <div className={cn("flex w-full flex-col items-center gap-3 sm:flex-row sm:justify-center", className)}>
       {APP_STORE_URL ? (
-        <AppStoreBadge href={APP_STORE_URL} />
+        <AppStoreBadge />
       ) : (
         <span
           aria-disabled="true"
-          className="inline-flex h-12 select-none items-center justify-center gap-2 whitespace-nowrap rounded-[10px] border border-dashed border-white/15 px-6 text-[15px] font-medium text-white/50 sm:min-w-[200px]"
+          className="inline-flex h-14 select-none items-center justify-center gap-2 whitespace-nowrap rounded-[10px] border border-dashed border-white/15 px-6 text-[15px] font-medium text-white/50 sm:min-w-[200px]"
         >
           <PhoneIcon />
           iPhone app coming soon
         </span>
       )}
+      <Button tone="dark" size="lg" href="/register" className="sm:min-w-[200px]">
+        <GlobeIcon />
+        Use it on the web
+      </Button>
     </div>
   );
 }

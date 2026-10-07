@@ -95,6 +95,57 @@ export function describeOperations(operations: unknown[], data: DashboardRespons
         });
         break;
       }
+      case "update_commitment": {
+        const title = str("title");
+        if (!title) continue;
+        const details: string[] = [];
+        const start = str("startTime");
+        const end = str("endTime");
+        if (start && end && (start !== str("fromStartTime") || end !== str("fromEndTime"))) {
+          details.push(`${clock(start)}–${clock(end)}`);
+          const was = str("fromStartTime") && str("fromEndTime") ? `${clock(str("fromStartTime")!)}–${clock(str("fromEndTime")!)}` : null;
+          if (was) details.push(`was ${was}`);
+        }
+        const before = num("bufferBefore") ?? 0;
+        const after = num("bufferAfter") ?? 0;
+        if (before !== (num("fromBufferBefore") ?? 0) || after !== (num("fromBufferAfter") ?? 0)) {
+          if (before && after && before === after) details.push(`${formatDurationMinutes(before)} free either side`);
+          else {
+            if (before) details.push(`${formatDurationMinutes(before)} free before`);
+            if (after) details.push(`${formatDurationMinutes(after)} free after`);
+            if (!before && !after) details.push("No gap either side");
+          }
+        }
+        out.push({ kind: "edit", noun: "Commitment", title, subject: null, details });
+        break;
+      }
+      case "skip_commitment": {
+        const title = str("title");
+        const date = str("date");
+        if (!title || !date) continue;
+        out.push({
+          kind: "remove",
+          noun: "Just this day",
+          title,
+          subject: null,
+          details: [formatDay(`${date}T12:00:00Z`, "UTC")],
+        });
+        break;
+      }
+      case "set_bedtime": {
+        const date = str("date");
+        const bedtime = str("bedtime");
+        if (!date || !bedtime) continue;
+        const was = str("fromBedtime");
+        out.push({
+          kind: "edit",
+          noun: "One night",
+          title: `Bedtime ${clock(bedtime)}`,
+          subject: null,
+          details: [formatDay(`${date}T12:00:00Z`, "UTC"), ...(was ? [`usually ${clock(was)}`] : [])],
+        });
+        break;
+      }
       case "delete_commitment": {
         const existing = data.commitments.find((commitment) => commitment.id === str("id"));
         const title = typeof existing?.title === "string" ? existing.title : str("title") ?? "A commitment";

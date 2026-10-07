@@ -50,6 +50,9 @@ export const PROPOSE_TOOL = {
       "remove_block: id of a block. Its subject time gets planned elsewhere in the week.",
       "add_block: a study block at a set time. date, startTime, endTime, and subject or taskId. Its subject's other blocks shrink to keep the weekly total.",
       "create_commitment: time they're busy, so no study goes there. title, category, startTime, endTime, and either a date (one-off), recurrence weekly with weekday (0 = Sunday), daily or weekdays.",
+      "update_commitment: id, plus new startTime/endTime only if it has moved for good, and/or bufferBefore/bufferAfter in minutes to keep that much time free either side (\"keep 2 hours around training\" is bufferBefore 120 and bufferAfter 120, never a new time).",
+      "skip_commitment: id and date, when a repeating commitment isn't on that one day. If it's on at different times that day, also create_commitment with that date and the new times.",
+      "set_bedtime: date and bedtime (HH:MM) for one night, when they'll be up later or go to bed earlier than usual. Their usual bedtime stays the same.",
       "delete_commitment: id.",
       "update_subject: subject and weeklyMinutes, for more or less time on a subject every week.",
       "create_task, update_task, delete_task: deadlines and homework. Arcadia plans study blocks for them.",
@@ -74,6 +77,9 @@ export const PROPOSE_TOOL = {
                   "remove_block",
                   "add_block",
                   "create_commitment",
+                  "update_commitment",
+                  "skip_commitment",
+                  "set_bedtime",
                   "delete_commitment",
                   "update_subject",
                   "create_task",
@@ -84,7 +90,10 @@ export const PROPOSE_TOOL = {
               id: { type: "string", description: "Existing block, task or commitment id, for move, remove, update and delete." },
               title: { type: "string" },
               subject: { type: "string" },
-              taskId: { type: "string", description: "For add_block: the task the block is for." },
+              taskId: { type: "string", description: "For add_block: the id of the open task the block is for. Always use this for deadline work." },
+              bufferBefore: { type: "number", description: "For update_commitment: minutes kept free before it." },
+              bufferAfter: { type: "number", description: "For update_commitment: minutes kept free after it." },
+              bedtime: { type: "string", description: "For set_bedtime: HH:MM, their local time." },
               taskType: { type: "string" },
               dueAt: { type: "string", description: "ISO 8601 timestamp." },
               estimatedMinutes: { type: "number" },
@@ -142,6 +151,7 @@ export function aiConfigured(env: Env): boolean {
 /** Which part of Arcadia made a call, as ai_usage records it. */
 export type AiFeature =
   | "chat"
+  | "chat_changes"
   | "day_layout"
   | "month_plan"
   | "session_plan"
@@ -166,6 +176,8 @@ interface RequestOptions {
   schema?: { name: string; schema: Record<string, unknown> };
   /** Overrides OPENAI_MODEL for this request. */
   model?: string;
+  /** Make the model call this tool rather than choosing (tools only). */
+  forceTool?: string;
   /** How hard a reasoning model thinks. Ignored by other models. */
   reasoningEffort?: "minimal" | "low" | "medium" | "high";
   /**
@@ -319,7 +331,9 @@ async function request(env: Env, messages: ChatMessage[], options: RequestOption
           ...(options.reasoningEffort ? { reasoning_effort: options.reasoningEffort } : {}),
         }
       : { temperature: options.temperature ?? 0.4, max_tokens: options.maxTokens ?? 250 }),
-    ...(tools.length > 0 ? { tools, tool_choice: "auto" } : {}),
+    ...(tools.length > 0
+      ? { tools, tool_choice: options.forceTool ? { type: "function", function: { name: options.forceTool } } : "auto" }
+      : {}),
     ...(options.schema
       ? {
           response_format: {
@@ -404,6 +418,47 @@ export async function complete(
       arguments: call.function.arguments,
     })),
   };
+}
+
+/** What Arcad wants to change: the arguments of a propose_changes call. */
+export interface ProposedChanges {
+  summary: string;
+  operations: unknown[];
+}
+
+/**
+ * Works out the plan changes for the student's last message with the
+ * planning model. Chat replies come from a small fast model, which is fine
+ * for talking but drops half of a request like "uni's 12 to 5 today, then
+ * training, I can study till 11:45, Self Monitoring Report until 9 then the
+ * Lab Report". The planning model reads the same context and is made to
+ * answer with propose_changes. Returns null if it doesn't.
+ */
+export async function proposeChanges(env: Env, messages: ChatMessage[], usage: UsageTag): Promise<ProposedChanges | null> {
+  const model = planModel(env);
+  const reasoning = isReasoningModel(model);
+  const message = await request(env, messages, {
+    tools: [PROPOSE_TOOL],
+    forceTool: PROPOSE_TOOL.function.name,
+    model,
+    // Room to think, then a change list that can run to dozens of operations.
+    maxTokens: reasoning ? 8000 : TOOL_REPLY_TOKENS * 2,
+    reasoningEffort: reasoning ? "low" : undefined,
+    temperature: 0.2,
+    usage,
+  });
+  const call = message.tool_calls?.find((item) => item.function.name === PROPOSE_TOOL.function.name);
+  if (!call) return null;
+  try {
+    const parsed = JSON.parse(call.function.arguments) as { summary?: unknown; operations?: unknown };
+    return {
+      summary: typeof parsed.summary === "string" ? parsed.summary : "",
+      operations: Array.isArray(parsed.operations) ? parsed.operations : [],
+    };
+  } catch {
+    console.error("[openai] unparseable propose_changes from the planning model");
+    return null;
+  }
 }
 
 /**

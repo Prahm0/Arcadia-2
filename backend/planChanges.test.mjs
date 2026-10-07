@@ -1,5 +1,5 @@
-// node --experimental-transform-types --test planChanges.test.mjs
-// (scheduler.ts has syntax that plain type stripping can't run).
+// node --test planChanges.test.mjs
+// (Node strips the types; the Worker code avoids syntax that needs transforming.)
 import test from "node:test";
 import assert from "node:assert/strict";
 import { registerHooks } from "node:module";
@@ -20,8 +20,8 @@ registerHooks({
   },
 });
 
-const { localInstant } = await import("./src/lib/plan-changes.ts");
-const { bookedTaskTime, taskQueue } = await import("./src/lib/scheduler.ts");
+const { findTask, localInstant } = await import("./src/lib/plan-changes.ts");
+const { bookedTaskTime, groundwork, skipDates, taskQueue } = await import("./src/lib/scheduler.ts");
 
 const MINUTE = 60_000;
 
@@ -73,4 +73,90 @@ test("done, skipped and past blocks don't count as booked", () => {
 test("a task fully covered by its booked blocks drops out of the queue", () => {
   const booked = new Map([["tsk_essay", 120 * MINUTE]]);
   assert.deepEqual(taskQueue([task], 50 * MINUTE, booked), []);
+});
+
+// Dev's "SMR until 9, then the Lab Report": Arcad named the tasks instead of
+// passing their ids, and both blocks were dropped as "not one of your subjects".
+const tasks = [
+  { id: "tsk_smr", title: "Self Monitoring Report", subject: "PSYC2050" },
+  { id: "tsk_lab", title: "Lab Report", subject: "BIOM2012" },
+  { id: "tsk_video", title: "Video Assignment", subject: "PSYC3020" },
+];
+
+test("an add_block that names a task instead of giving its id finds the task", () => {
+  assert.equal(findTask(tasks, { subject: "Self Monitoring Report (PSYC2050)" })?.id, "tsk_smr");
+  assert.equal(findTask(tasks, { title: "lab report" })?.id, "tsk_lab");
+  assert.equal(findTask(tasks, { taskId: "tsk_video" })?.id, "tsk_video");
+});
+
+test("a name that matches no task, or more than one, finds nothing", () => {
+  assert.equal(findTask(tasks, { subject: "PSYC2050" }), undefined);
+  assert.equal(findTask(tasks, { title: "Report" }), undefined);
+  assert.equal(findTask(tasks, {}), undefined);
+});
+
+test("skip dates read back, and bad JSON reads as none", () => {
+  assert.deepEqual(skipDates({ skipDates: '["2026-10-13"]' }), ["2026-10-13"]);
+  assert.deepEqual(skipDates({ skipDates: "nope" }), []);
+});
+
+const tz = "Australia/Brisbane";
+// Tuesday 13 Oct 2026, midnight in Brisbane (UTC+10).
+const tuesday = Date.parse("2026-10-12T14:00:00Z");
+const profile = {
+  timezone: tz,
+  bedtime: "22:00",
+  wakeTime: "06:00",
+  maxDailyStudyMinutes: 300,
+  preferredSessionMinutes: 50,
+  breakMinutes: 10,
+};
+const training = {
+  id: "cmt_training",
+  title: "Training",
+  category: "sport",
+  recurrence: "weekly",
+  weekday: 2,
+  startDate: null,
+  startTime: "18:00",
+  endTime: "20:00",
+  bufferBefore: 0,
+  bufferAfter: 0,
+  skipDates: "[]",
+};
+const day = (commitment) =>
+  groundwork("usr_test", { profile, existing: [], commitments: [commitment] }, tuesday, tuesday + 86_400_000, tuesday).days[0];
+const at = (clock) => tuesday + (Number(clock.slice(0, 2)) * 60 + Number(clock.slice(3))) * MINUTE;
+
+test("a gap around a commitment keeps that time free of study, and the commitment keeps its times", () => {
+  const plain = day(training);
+  assert.ok(plain.free.some((slot) => slot.end === at("18:00")));
+
+  const gapped = groundwork(
+    "usr_test",
+    { profile, existing: [], commitments: [{ ...training, bufferBefore: 120, bufferAfter: 60 }] },
+    tuesday,
+    tuesday + 86_400_000,
+    tuesday,
+  );
+  const [free] = gapped.days;
+  assert.ok(free.free.some((slot) => slot.end === at("16:00")), "study stops two hours before training");
+  assert.ok(free.free.every((slot) => slot.end <= at("16:00") || slot.start >= at("21:00")));
+  const event = gapped.fixed.find((row) => row.commitmentId === "cmt_training");
+  assert.equal(event.startAt, at("18:00"));
+  assert.equal(event.endAt, at("20:00"));
+});
+
+test("a skipped day frees that day only", () => {
+  const skipped = groundwork(
+    "usr_test",
+    { profile, existing: [], commitments: [{ ...training, skipDates: '["2026-10-13"]' }] },
+    tuesday,
+    tuesday + 14 * 86_400_000,
+    tuesday,
+  );
+  const trainingDays = skipped.fixed
+    .filter((row) => row.commitmentId === "cmt_training")
+    .map((row) => new Date(row.startAt).toISOString().slice(0, 10));
+  assert.deepEqual(trainingDays, ["2026-10-20"]);
 });

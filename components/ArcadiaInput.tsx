@@ -148,10 +148,10 @@ export default function ArcadiaInput() {
         </div>
 
         <div ref={ref} className="mt-16 grid grid-cols-12 gap-x-6 gap-y-8 lg:mt-24">
-          {/* The student speaking: a serif quote that fills as they type. */}
+          {/* The student speaking: a large quote that fills as they type. */}
           <div className="col-span-12 lg:col-span-5">
             <div className="flex min-h-[160px] flex-col justify-between lg:min-h-[280px]" aria-hidden="true">
-              <p className="font-serif text-[34px] italic leading-[1.05] tracking-[-0.01em] text-day-text sm:text-[44px] lg:text-[52px]">
+              <p className="text-[30px] font-medium leading-[1.1] tracking-[-0.03em] text-day-text sm:text-[40px] lg:text-[46px]">
                 <span className="text-day-text/30">“</span>
                 <span className={cn("transition-opacity duration-500", answered || inFlight ? "opacity-40" : "opacity-100")}>
                   {typed || <span className="text-day-text/25">…</span>}

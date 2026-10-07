@@ -23,7 +23,7 @@ export default function Footer() {
         <div className="flex items-center gap-5">
           <Link href="#top" className="flex items-center gap-2.5">
             <Logo size={20} className="text-accent-200" />
-            <span className="font-serif text-[22px] italic leading-none tracking-[-0.01em]">
+            <span className="text-[18px] font-semibold leading-none tracking-[-0.02em]">
               Arcadia
             </span>
           </Link>

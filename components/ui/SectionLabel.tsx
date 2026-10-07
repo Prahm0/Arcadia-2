@@ -1,5 +1,4 @@
 import { cn } from "@/lib/cn";
-import ArcadiaMark from "@/components/ui/ArcadiaMark";
 
 interface SectionLabelProps {
   children?: React.ReactNode;
@@ -14,7 +13,7 @@ interface SectionLabelProps {
 }
 
 /**
- * Mono eyebrow above a section. Reads as a timestamp on the sample week
+ * Small eyebrow above a section. Reads as a timestamp on the sample week
  * when `time` is given, or as a numbered label otherwise.
  */
 export default function SectionLabel({
@@ -33,7 +32,12 @@ export default function SectionLabel({
         className,
       )}
     >
-      {dot && <ArcadiaMark size={10} className={tone === "dark" ? "text-accent-200" : "text-accent"} />}
+      {dot && (
+        <span
+          aria-hidden="true"
+          className={cn("size-1.5 rounded-full bg-current", tone === "dark" ? "text-accent-200" : "text-accent")}
+        />
+      )}
       {index && <span>{index}</span>}
       {index && (children || time) && <span aria-hidden="true">,</span>}
       {time && (

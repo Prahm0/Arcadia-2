@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import { analytics } from "@/lib/analytics/events";
+import { success } from "@/lib/capacitor/haptics";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { type DailyLimitedRecoveryReason, type RecoveryAvailability, type RecoveryReason, type RecoveryResult } from "@/lib/app/recovery";
 import type { DashboardResponse } from "@/lib/api/types";
@@ -156,6 +157,7 @@ export default function LifeHappened({
       }
       const res = await api<RecoveryResult>("/api/plan/recover", { method: "POST", body: JSON.stringify(body) });
       setResult(res);
+      void success();
       analytics.recoveryUsed(r, res.moved ?? 0);
       void reload();
     } catch (err) {
@@ -391,7 +393,7 @@ function Result({ result, tz, subjects, onDone }: { result: RecoveryResult; tz: 
 
       <div className="mt-6 flex flex-col gap-2.5">
         <Link
-          href="/app/focus"
+          href="/app/sessions"
           onClick={onDone}
           className="flex h-11 w-full items-center justify-center rounded-lg text-[15px] font-semibold transition-opacity hover:opacity-90"
           style={{ background: "var(--app-arcad)", color: "var(--app-arcad-on)" }}

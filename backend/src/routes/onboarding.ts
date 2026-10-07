@@ -4,7 +4,7 @@ import { db, schema } from "../db";
 import { newId } from "../lib/ids";
 import { qualifyReferral } from "../lib/referrals";
 import { subjectKey } from "../lib/scheduler";
-import { parseClock } from "../lib/time";
+import { parseClock, timeZoneOrNull } from "../lib/time";
 import { AU_STATES, countryCode } from "./profile";
 import type { Env, Variables } from "../types";
 
@@ -84,7 +84,7 @@ onboarding.post("/", async (c) => {
 
   const wakeTime = parseClock(preferences.wakeTime) !== null ? preferences.wakeTime! : "07:00";
   const bedtime = parseClock(preferences.bedtime) !== null ? preferences.bedtime! : "22:30";
-  const timezone = (body.timezone || "Australia/Brisbane").slice(0, 64);
+  const timezone = timeZoneOrNull(body.timezone) ?? "Australia/Brisbane";
   const country = countryCode(body.country);
   const state = country === "AU" ? (text(body.state, 8)?.toUpperCase() ?? null) : null;
   const atar = Number(body.atarTarget);

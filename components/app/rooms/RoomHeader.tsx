@@ -33,7 +33,7 @@ export default function RoomHeader({
 }) {
   const studying = members.filter((member) => member.activity === "focus").length;
   const week = members.reduce((sum, member) => sum + periodSeconds(member, "week", now), 0);
-  const link = () => `${window.location.origin}/app/rooms/${room.code}`;
+  const link = () => `${window.location.origin}/app/sessions/rooms/${room.code}`;
 
   const inviteEntries = (): ContextMenuEntry[] => [
     { kind: "label", label: `Code ${room.code}` },
@@ -61,7 +61,7 @@ export default function RoomHeader({
 
   return (
     <header className="mx-auto w-full px-6 pb-2 pt-8 sm:px-10 sm:pt-10" style={{ maxWidth: width }}>
-      <Link href="/app/rooms" className="text-[12.5px] font-medium hover:underline" style={{ color: "var(--app-text-muted)" }}>
+      <Link href="/app/sessions/rooms" className="text-[12.5px] font-medium hover:underline" style={{ color: "var(--app-text-muted)" }}>
         Rooms
       </Link>
       <div className="mt-1 flex flex-wrap items-start justify-between gap-x-6 gap-y-3">

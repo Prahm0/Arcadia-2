@@ -10,6 +10,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import { api, ApiError } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { analytics } from "@/lib/analytics/events";
 import { useStreak } from "@/lib/app/useStreak";
@@ -19,6 +20,8 @@ import { requestDashboardRefresh } from "@/lib/app/useDashboardAutoRefresh";
 import { useMediaQuery } from "@/lib/hooks";
 import ArcadOrb from "./ArcadOrb";
 import MicButton from "./MicButton";
+import ChangeCard, { SKIPPED_NOTICE } from "./arcad/ChangeCard";
+import type { Proposal } from "./arcad/types";
 
 interface SideMessage {
   id: string;
@@ -30,7 +33,8 @@ interface SideMessage {
 interface ChatResponse {
   conversationId: string | null;
   messages: SideMessage[];
-  proposals?: unknown[];
+  /** Every proposal in this conversation, whatever became of it. */
+  conversationProposals?: Proposal[];
 }
 
 /** Wide enough to give both the page and the panel a usable width. */
@@ -60,7 +64,10 @@ export default function ArcadFloatingButton() {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<SideMessage[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [proposalWaiting, setProposalWaiting] = useState(false);
+  // Changes Arcad proposed in this chat: the ones waiting, plus any decided
+  // here, which stay as a record of what happened.
+  const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [notice, setNotice] = useState<string | null>(null);
   const [width, setWidth] = useState<number | null>(readWidthPref);
   const [dragging, setDragging] = useState(false);
   const restored = useRef(false);
@@ -130,7 +137,7 @@ export default function ArcadFloatingButton() {
       const payload = (await response.json()) as ChatResponse;
       setConversationId(payload.conversationId);
       setMessages(payload.messages || []);
-      setProposalWaiting(Boolean(payload.proposals?.length));
+      setProposals((payload.conversationProposals ?? []).filter((proposal) => proposal.status === "pending"));
       setLoaded(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn’t load Arcad.");
@@ -250,7 +257,7 @@ export default function ArcadFloatingButton() {
               type?: string;
               message?: SideMessage;
               conversationId?: string;
-              proposal?: unknown;
+              proposal?: Proposal;
               schedule?: unknown;
               action?: unknown;
               error?: string;
@@ -258,7 +265,10 @@ export default function ArcadFloatingButton() {
             if (event.type === "message" && event.message) {
               setMessages((current) => [...current, event.message as SideMessage]);
               if (event.conversationId) setConversationId(event.conversationId);
-              if (event.proposal) setProposalWaiting(true);
+              if (event.proposal) {
+                const proposal = event.proposal;
+                setProposals((current) => [...current.filter((item) => item.id !== proposal.id), proposal]);
+              }
               if (event.schedule || event.action) scheduleTouched = true;
             } else if (event.type === "error") {
               setError(event.error || "Something went sideways.");
@@ -281,13 +291,38 @@ export default function ArcadFloatingButton() {
     }
   }
 
+  // Applied right here, so a change asked for beside the Schedule lands on it.
+  async function respondToProposal(id: string, action: "apply" | "decline") {
+    setNotice(null);
+    setError(null);
+    try {
+      const result = await api<{ skipped?: number }>(`/api/proposals/${encodeURIComponent(id)}/${action}`, { method: "POST" });
+      setProposals((current) =>
+        current.map((proposal) => (proposal.id === id ? { ...proposal, status: action === "apply" ? "applied" : "declined" } : proposal)),
+      );
+      if (action === "apply") {
+        if (result?.skipped) setNotice(SKIPPED_NOTICE);
+        await reload();
+        requestDashboardRefresh();
+      }
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 410) {
+        setProposals((current) => current.map((proposal) => (proposal.id === id ? { ...proposal, status: "expired" } : proposal)));
+        setNotice("That suggestion expired. Ask Arcad again and it'll redo it with your current plan.");
+      } else {
+        setError(err instanceof Error ? err.message : "Couldn't do that. Try again?");
+      }
+    }
+  }
+
   const launcher = (
     <button
       type="button"
       onClick={mounted ? hidePanel : () => showPanel()}
       aria-label="Open Arcad side panel"
       aria-expanded={open}
-      className="group fixed bottom-[calc(env(safe-area-inset-bottom,0)+88px)] right-4 z-40 flex items-center gap-2.5 rounded-full py-1.5 pl-1.5 pr-3 surface-raised ui-pressable lg:bottom-6 lg:right-6"
+      // Just the orb on phones so it doesn't sit over the page's cards.
+      className="group fixed bottom-[calc(env(safe-area-inset-bottom,0)+88px)] right-4 z-40 flex items-center gap-2.5 rounded-full p-1.5 surface-raised ui-pressable lg:bottom-6 lg:right-6 lg:pr-3"
       style={{
         background: "var(--app-surface)",
         border: "1px solid var(--app-border-strong)",
@@ -304,7 +339,7 @@ export default function ArcadFloatingButton() {
           />
         ) : null}
       </span>
-      <span className="type-mono-label" style={{ color: "var(--app-text-soft)" }}>
+      <span className="type-mono-label max-lg:hidden" style={{ color: "var(--app-text-soft)" }}>
         Ask Arcad
       </span>
     </button>
@@ -410,15 +445,12 @@ export default function ArcadFloatingButton() {
           </ul>
         )}
 
-        {proposalWaiting ? (
-          <Link
-            href="/app/arcad?tab=chat"
-            onClick={hidePanel}
-            className="mt-5 block rounded-md px-3.5 py-3 text-[12.5px] font-medium"
-            style={{ background: "var(--app-arcad-soft)", color: "var(--app-arcad-strong)" }}
-          >
-            Arcad has a plan change ready, review it in full chat
-          </Link>
+        {proposals.map((proposal) => (
+          <ChangeCard key={proposal.id} proposal={proposal} onRespond={respondToProposal} />
+        ))}
+
+        {notice ? (
+          <p className="mt-4 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>{notice}</p>
         ) : null}
 
         {error ? (

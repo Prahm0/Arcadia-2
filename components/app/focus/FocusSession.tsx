@@ -19,6 +19,7 @@ import type { DashboardResponse, PlannerEvent, SessionPlan } from "@/lib/api/typ
 import { subjectColour } from "@/lib/app/subjectColour";
 import { useReplaceEvent, useSessionPlan } from "@/lib/app/useSessionPlan";
 import { useStudySessionSave } from "@/lib/app/useStudySessionSave";
+import { holdFocus } from "@/lib/capacitor/focusGuard";
 import CheckoutSheet from "../CheckoutSheet";
 import EventDetailSheet from "../EventDetailSheet";
 import PipTimer, { PIP_COMPACT_HEIGHT, PIP_WIDTH } from "./PipTimer";
@@ -28,8 +29,8 @@ import { useDocumentPip } from "./useDocumentPip";
 /**
  * The focus timer lives here, in the app layout, rather than on the Focus
  * page. Pages unmount when the student moves around the app; the timer, its
- * pop-out window and the session's to-dos keep going. The Focus page is a
- * view onto this session. Nothing runs until the Focus page is first opened.
+ * pop-out window and the session's to-dos keep going. The Sessions page is a
+ * view onto this session. Nothing runs until the Sessions page is first opened.
  */
 
 export const BUILT_IN_PRESETS = [
@@ -87,6 +88,12 @@ export type Phase = "focus" | "break" | "idle";
 const DONE_KEY = "arcadia:focus:done:";
 const TIMER_KEY = "arcadia:focus:timer:";
 
+/** The syllabus topic a free timer session is on, for the study log. */
+export interface TopicChoice {
+  id: string | null;
+  title: string;
+}
+
 interface SavedTimer {
   eventId: string | null;
   phase: Phase;
@@ -96,6 +103,7 @@ interface SavedTimer {
   presetLabel: string;
   subject: string;
   goal: string;
+  topic?: TopicChoice | null;
   distractions: number;
   activityId: string | null;
 }
@@ -187,6 +195,12 @@ export interface FocusSession {
   goal: string;
   setGoal: (goal: string) => void;
   sessionGoal: string;
+  /** A free timer's topic (blocks log through their plan and check-out). */
+  topic: TopicChoice | null;
+  setTopic: (topic: TopicChoice | null) => void;
+  /** A free session just logged on a topic, waiting to be rated. */
+  rateable: { activityId: string; topic: string } | null;
+  clearRateable: () => void;
   distractions: number;
   addDistraction: () => void;
 
@@ -251,7 +265,7 @@ interface FocusSessionContext {
 
 const Context = createContext<FocusSessionContext | null>(null);
 
-/** The running focus session (null until the Focus page first opens one), and a way to switch it. */
+/** The running focus session (null until the Sessions page first opens one), and a way to switch it. */
 export function useFocusSession() {
   const context = useContext(Context);
   if (!context) throw new Error("useFocusSession needs a FocusSessionProvider");
@@ -261,7 +275,7 @@ export function useFocusSession() {
 
 export function FocusSessionProvider({ children }: { children: ReactNode }) {
   const [store] = useState(createStore);
-  // undefined: the Focus page hasn't been opened yet, so no timer runs.
+  // undefined: the Sessions page hasn't been opened yet, so no timer runs.
   const [eventId, setEventId] = useState<string | null | undefined>(undefined);
   const select = useCallback((next: string | null) => setEventId(next), []);
   const context = useMemo(() => ({ store, select }), [store, select]);
@@ -355,6 +369,8 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
     linkedEvent?.subject || data.subjects[0]?.name || "General",
   );
   const [goal, setGoal] = useState(linkedEvent?.title ?? "");
+  const [topic, setTopic] = useState<TopicChoice | null>(null);
+  const [rateable, setRateable] = useState<{ activityId: string; topic: string } | null>(null);
   const [distractions, setDistractions] = useState(0);
   const [complete, setComplete] = useState(false);
   const [logged, setLogged] = useState(0);
@@ -436,6 +452,7 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
       setPhase(saved.phase);
       setSubject(saved.subject || linkedEvent?.subject || data.subjects[0]?.name || "General");
       setGoal(saved.goal ?? linkedEvent?.title ?? "");
+      setTopic(saved.topic ?? null);
       setDistractions(Number.isInteger(saved.distractions) ? saved.distractions : 0);
       activityId.current = saved.activityId ?? null;
       const left = saved.running && typeof saved.endsAt === "number"
@@ -485,6 +502,20 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
     // Restarts when the phase flips, so a break counts from its own length.
   }, [running, phase]);
 
+  // iOS app: guard the phone (block the picked apps, nudge on leaving) while
+  // a focus phase counts down. Pausing, a break or the end lets it go. Reads
+  // the deadline the countdown above just set; the subject only labels the
+  // nudges, so typing in it doesn't re-send.
+  const guardSubject = useRef(subject);
+  useEffect(() => {
+    guardSubject.current = subject;
+  });
+  useEffect(() => {
+    const endsAt = running && phase === "focus" ? timerEndsAtRef.current : null;
+    holdFocus("timer", endsAt ? { endsAt, subject: guardSubject.current } : null);
+  }, [running, phase]);
+  useEffect(() => () => holdFocus("timer", null), []);
+
   // Persist on session changes and every five seconds while counting down.
   // The absolute deadline keeps elapsed time accurate across a reload.
   useEffect(() => {
@@ -498,13 +529,17 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
       presetLabel: preset.label,
       subject,
       goal,
+      topic,
       distractions,
       activityId: activityId.current,
     });
-  }, [timerRestored, timerStorageKey, phase, running, remaining, preset.label, subject, goal, distractions]);
+  }, [timerRestored, timerStorageKey, phase, running, remaining, preset.label, subject, goal, topic, distractions]);
 
   useEffect(() => {
     if (remaining !== 0) return;
+    // This phase's deadline has passed. Drop it so whatever runs next (the
+    // break, straight away) counts from its own length.
+    timerEndsAtRef.current = null;
     // A scheduled session ends in a check-out rather than a break.
     if (phase === "focus" && linkedEvent && !linkedEvent.checkout) {
       void logSession("focus", preset.focus);
@@ -586,7 +621,21 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
   ) {
     if (seconds > 0) {
       activityId.current ??= crypto.randomUUID();
-      await studySave.save({ activityId: activityId.current, type, seconds, subject, goal: sessionGoal, distractions, endedAt: new Date().toISOString() });
+      const id = activityId.current;
+      // A free focus session on a topic goes in the study log; a block logs
+      // through its plan and check-out instead.
+      const onTopic = !linkedEvent && type === "focus" && topic ? topic : null;
+      await studySave.save({
+        activityId: id,
+        type,
+        seconds,
+        subject,
+        goal: sessionGoal,
+        distractions,
+        endedAt: new Date().toISOString(),
+        ...(onTopic ? { topicId: onTopic.id, topic: onTopic.title } : {}),
+      });
+      if (onTopic && seconds >= 60) setRateable({ activityId: id, topic: onTopic.title });
     }
 
     if (linkedEvent && opts.markEvent) {
@@ -675,6 +724,7 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
       setPhase("focus");
       setRemaining(preset.focus);
     }
+    timerEndsAtRef.current = null;
     setRunning(false);
     setComplete(false);
   }
@@ -731,10 +781,18 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
     phaseColour,
     colour,
     subject,
-    setSubject,
+    // Topics belong to a subject, so a new subject starts without one.
+    setSubject: (next: string) => {
+      setSubject(next);
+      if (next !== subject) setTopic(null);
+    },
     goal,
     setGoal,
     sessionGoal,
+    topic,
+    setTopic,
+    rateable,
+    clearRateable: () => setRateable(null),
     distractions,
     addDistraction: () => setDistractions((d) => d + 1),
     plan,
@@ -757,7 +815,7 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
     pip,
   };
 
-  // Hand the latest state to the Focus page, if it's open.
+  // Hand the latest state to the Sessions page, if it's open.
   useLayoutEffect(() => {
     store.set(session);
   });

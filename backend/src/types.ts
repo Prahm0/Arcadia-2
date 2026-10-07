@@ -13,6 +13,8 @@ export interface Env {
   // What Pro and Max students plan with (see lib/plan-tier.ts). Max falls back to Pro's.
   OPENAI_PLAN_MODEL_PRO?: string;
   OPENAI_PLAN_MODEL_MAX?: string;
+  // What reads students' files and writes cards and sheets from them. Defaults to gpt-5-mini.
+  OPENAI_DOCUMENT_MODEL?: string;
   // Local dev only: point Arcad at a stand-in server instead of OpenAI.
   OPENAI_BASE_URL?: string;
   STRIPE_PRICE_PRO_WEEKLY: string;
@@ -28,6 +30,14 @@ export interface Env {
   REVENUECAT_ENTITLEMENT_PRO: string;
   REVENUECAT_ENTITLEMENT_MAX: string;
   APPLE_BUNDLE_ID: string;
+  APNS_TEAM_ID?: string;
+  // PostHog project key and host for server-side events (lib/posthog.ts).
+  // The key is the same public one the browser ships with.
+  POSTHOG_KEY?: string;
+  POSTHOG_HOST?: string;
+  // The PostHog project /app/admin reads visitors from (the number in the
+  // project's URL). Non-secret; the personal API key below is the secret.
+  POSTHOG_PROJECT_ID?: string;
 
   // secrets (wrangler secret put)
   OPENAI_API_KEY?: string;
@@ -44,8 +54,18 @@ export interface Env {
   STRIPE_WEBHOOK_SECRET?: string;
   REVENUECAT_SECRET_API_KEY?: string;
   REVENUECAT_WEBHOOK_AUTHORIZATION?: string;
+  // A PostHog personal API key with only the query:read scope, for /app/admin.
+  POSTHOG_PERSONAL_API_KEY?: string;
   VAPID_PUBLIC_KEY?: string;
   VAPID_PRIVATE_KEY?: string;
+  // iPhone check-ins. An APNs auth key (.p8) from the Apple Developer portal;
+  // the team is APNS_TEAM_ID and the topic is APPLE_BUNDLE_ID.
+  APNS_KEY_ID?: string;
+  APNS_PRIVATE_KEY?: string;
+  // Local dev only: send check-ins to a stand-in server instead of Apple
+  // (`wrangler dev` can't speak HTTP/2 to APNs). Requests go to
+  // <base>/<production|sandbox>/3/device/<token>.
+  APNS_BASE_URL?: string;
 }
 
 export interface SessionContext {

@@ -16,7 +16,7 @@ export const TIER_COPY = {
     features: [
       "Auto-scheduled daily plan",
       "Tasks & deadlines",
-      "Focus timer (Classic 25/5)",
+      "Session timer (Classic 25/5)",
       "Arcad, 2 messages / day",
       "1 flashcard deck",
       "Weekly review, text summary",

@@ -30,6 +30,8 @@ import SundayReviewInline from "./SundayReviewInline";
 import { subjectColour } from "@/lib/app/subjectColour";
 import { SubjectTag } from "./cards/shared";
 import { playCompletionTick } from "@/lib/app/completion";
+import { noteWin } from "@/lib/capacitor/ratingPrompt";
+import { success } from "@/lib/capacitor/haptics";
 import TodayProgress from "./TodayProgress";
 
 const CATEGORY_BAR = CATEGORY_COLOR;
@@ -52,8 +54,8 @@ export default function TodayView() {
   const [openEventId, setOpenEventId] = useState<string | null>(null);
   const [openEventMode, setOpenEventMode] = useState<EventSheetMode>("details");
 
-  // Handoff from the mobile bottom nav's +Add slot: ?new=1 auto-opens the
-  // New Task sheet, then strips the query so a refresh doesn't repeat.
+  // ?new=1 (links from elsewhere) auto-opens the New Task sheet, then strips
+  // the query so a refresh doesn't repeat.
   const handledNewParam = useRef(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -147,12 +149,14 @@ export default function TodayView() {
     if (outcome === "completed") {
       setCelebrateId({ id: event.id, at: Date.now() });
       playCompletionTick();
+      noteWin();
     }
     try {
       const result = await api<{ rewards?: Array<{ xp: number }> }>(`/api/events/${encodeURIComponent(event.id)}/outcome`, {
         method: "POST",
         body: JSON.stringify({ outcome }),
       });
+      if (outcome === "completed") void success();
       patch((prev) => ({
         ...prev,
         events: prev.events.map((existing) =>
@@ -191,8 +195,10 @@ export default function TodayView() {
             >
               Life happened
             </AppButton>
+            {/* Phones have Add in the tab bar, so this would be a second copy. */}
             <AppButton
               variant="primary"
+              className="max-lg:hidden"
               onClick={() => setShowTaskSheet(true)}
               icon={<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M10 4v12M4 10h12" strokeLinecap="round" /></svg>}
             >
@@ -298,8 +304,9 @@ function TodayCard(props: TodayCardProps) {
       className="w-full rounded-lg surface-card"
       style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
     >
+      {/* The page header already carries the date on phones. */}
       <div
-        className="flex items-center justify-between px-5 py-4 sm:px-6"
+        className="flex items-center justify-between px-5 py-4 max-lg:hidden sm:px-6"
         style={{ borderBottom: "1px solid var(--app-border)" }}
       >
         <p className="text-[13px] font-medium" style={{ color: "var(--app-text-muted)" }}>
@@ -442,7 +449,7 @@ function FocusRow({
   const isActionable = !isDone && !isMissed;
   const minutes = Math.round((Date.parse(event.endAt) - Date.parse(event.startAt)) / 60000);
   const startClock = formatClock(event.startAt, timezone);
-  const focusHref = `/app/focus?eventId=${encodeURIComponent(event.id)}`;
+  const focusHref = `/app/sessions?eventId=${encodeURIComponent(event.id)}`;
   const colour = subjectColour(subjects, event.subject) ?? CATEGORY_BAR[event.category] ?? "";
   // Arcad's topic once it's set up; a deadline's own name; otherwise the
   // subject label above says it all until Arcad sets the session up.
@@ -500,7 +507,7 @@ function FocusRow({
         showContextMenu(
           e,
           [
-            isActionable && { kind: "item", label: "Start focus", onSelect: () => router.push(focusHref) },
+            isActionable && { kind: "item", label: "Start session", onSelect: () => router.push(focusHref) },
             isActionable && { kind: "item", label: "Open in new tab", onSelect: () => window.open(focusHref, "_blank", "noopener") },
             { kind: "item", label: "Session details", onSelect: () => onOpen("details") },
             { kind: "separator" },

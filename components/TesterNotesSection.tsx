@@ -104,7 +104,7 @@ function ReviewCard({ index, featured = false }: { index: number; featured?: boo
       </div>
 
       <blockquote
-        className={`relative z-10 max-w-[660px] font-serif tracking-[-0.025em] text-white ${
+        className={`relative z-10 max-w-[660px] font-medium tracking-[-0.03em] text-white ${
           featured
             ? "mt-12 text-[clamp(32px,4.4vw,58px)] leading-[1.11] lg:mt-auto"
             : "mt-8 text-[clamp(25px,2.6vw,34px)] leading-[1.17]"

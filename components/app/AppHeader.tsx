@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { resetAnalytics } from "@/lib/analytics/events";
 import { api, saveCsrf } from "@/lib/api/client";
 import type { AuthUser } from "@/lib/api/types";
 import Logo from "@/components/ui/Logo";
@@ -24,6 +25,7 @@ export default function AppHeader({ user, streak }: AppHeaderProps) {
       /* still clear locally */
     } finally {
       saveCsrf(null);
+      resetAnalytics();
       router.push("/login");
     }
   }

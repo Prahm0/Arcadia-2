@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { schema, type Database } from "../db";
-import { completeJson, type ContentPart } from "./openai";
+import { completeJson, documentCall, type ContentPart } from "./openai";
 import { DAY, iso, startOfLocalDay } from "./time";
 import type { Env } from "../types";
 
@@ -48,8 +48,10 @@ const GENERATED_CARDS_SCHEMA = {
  */
 export async function generateFlashcards(
   env: Env,
+  userId: string,
   source: { label: string; content: ContentPart[] },
 ): Promise<Array<{ front: string; back: string }> | null> {
+  const call = documentCall(env, { feature: "cards", userId }, 1600);
   const reply = await completeJson<GeneratedCardsReply>(
     env,
     [
@@ -69,7 +71,8 @@ export async function generateFlashcards(
       },
     ],
     GENERATED_CARDS_SCHEMA,
-    1600,
+    call.maxTokens,
+    call.options,
   );
 
   return reply?.cards ?? null;

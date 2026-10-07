@@ -47,6 +47,18 @@ export function startOfDayMs(key: string, timezone: string): number {
   return wall - zoneOffsetMs(timezone, guess);
 }
 
+/**
+ * Where a block lands when dragged `days` days and `minutes` along: the same
+ * clock time on the new day, plus the minutes. Adding whole days in
+ * milliseconds would land an hour off across a daylight-saving change.
+ */
+export function shiftedStart(startMs: number, days: number, minutes: number, timezone: string): number {
+  // The local wall-clock time, written as if it were UTC.
+  const wall = startMs + zoneOffsetMs(timezone, startMs);
+  const key = new Date(wall).toISOString().slice(0, 10);
+  return startOfDayMs(addDays(key, days), timezone) + (wall % DAY_MS) + minutes * 60_000;
+}
+
 export function addDays(key: string, days: number): string {
   const [year, month, day] = key.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, day + days, 12)).toISOString().slice(0, 10);

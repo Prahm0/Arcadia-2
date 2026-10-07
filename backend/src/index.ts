@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import { requireSession } from "./lib/session";
 import account from "./routes/account";
+import admin from "./routes/admin";
 import analytics from "./routes/analytics";
 import auth from "./routes/auth";
 import billing from "./routes/billing";
@@ -16,6 +17,7 @@ import commitments from "./routes/commitments";
 import companion from "./routes/companion";
 import constellations from "./routes/constellations";
 import dashboard from "./routes/dashboard";
+import emailReminders from "./routes/email-reminders";
 import events from "./routes/events";
 import feedback from "./routes/feedback";
 import goals from "./routes/goals";
@@ -29,6 +31,7 @@ import push from "./routes/push";
 import referrals from "./routes/referrals";
 import studyRooms from "./routes/study-rooms";
 import studySessions from "./routes/study-sessions";
+import studyLog from "./routes/study-log";
 import subjects from "./routes/subjects";
 import { assessments, subjectFiles, subjectMaterials, topics } from "./routes/syllabus";
 import tasks from "./routes/tasks";
@@ -36,6 +39,7 @@ import uploads from "./routes/uploads";
 import waitlist from "./routes/waitlist";
 import type { Env, Variables } from "./types";
 import { dispatchPushCheckIns } from "./lib/push";
+import { dispatchEmailReminders } from "./lib/email-reminders";
 import { refreshWantedLayouts } from "./lib/day-plan";
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -78,6 +82,10 @@ const PUBLIC_PREFIXES = [
   // RevenueCat uses the configured authorization header, verified by the
   // billing route before any subscription data is reconciled.
   "/api/billing/iap/webhook",
+  // The unsubscribe link in the daily plan email works without logging in;
+  // its signed token is the credential. Only this path is public: the
+  // developer test route under the same prefix still needs a session.
+  "/api/email-reminders/unsubscribe",
 ];
 
 app.use("/api/*", async (c, next) => {
@@ -91,6 +99,7 @@ app.get("/health", (c) => c.json({ ok: true, service: "arcadia-api" }));
 app.route("/api/auth", auth);
 app.route("/api/waitlist", waitlist);
 app.route("/api/account", account);
+app.route("/api/admin", admin);
 app.route("/api/analytics", analytics);
 app.route("/api/billing", billing);
 app.route("/api/calendar-export", calendarExport);
@@ -103,6 +112,7 @@ app.route("/api/constellations", constellations);
 app.route("/api/conversations", conversations);
 app.route("/api/dashboard", dashboard);
 app.route("/api/decks", decks);
+app.route("/api/email-reminders", emailReminders);
 app.route("/api/events", events);
 app.route("/api/feedback", feedback);
 app.route("/api/goals", goals);
@@ -119,6 +129,7 @@ app.route("/api/proposals", proposals);
 app.route("/api/sheets", sheets);
 app.route("/api/study-rooms", studyRooms);
 app.route("/api/study-sessions", studySessions);
+app.route("/api/study-log", studyLog);
 app.route("/api/subjects", subjects);
 app.route("/api/subjects", subjectMaterials);
 app.route("/api/subject-files", subjectFiles);
@@ -138,6 +149,7 @@ export default {
   fetch: app.fetch,
   async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(dispatchPushCheckIns(env));
+    ctx.waitUntil(dispatchEmailReminders(env).catch((error) => console.error("[email-reminders]", error)));
     ctx.waitUntil(refreshWantedLayouts(env));
   },
 } satisfies ExportedHandler<Env>;

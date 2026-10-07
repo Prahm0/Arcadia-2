@@ -7,6 +7,8 @@ import { useDashboardData } from "@/lib/app/DashboardProvider";
 import type { DashboardResponse, MissReason, PlannerEvent } from "@/lib/api/types";
 import { formatClock, formatDurationMinutes, formatFriendlyDate } from "@/lib/api/time";
 import { playCompletionTick } from "@/lib/app/completion";
+import { noteWin } from "@/lib/capacitor/ratingPrompt";
+import { success, warning } from "@/lib/capacitor/haptics";
 import AppButton from "./AppButton";
 import MissReasonPicker from "./MissReasonPicker";
 
@@ -86,7 +88,10 @@ export default function EventDetailSheet({
     if (!event) return;
     setBusy(outcome === "completed" ? "complete" : "miss");
     setError(null);
-    if (outcome === "completed") playCompletionTick();
+    if (outcome === "completed") {
+      playCompletionTick();
+      noteWin();
+    }
     const previousOutcome = event.outcome;
     const previousMissReason = event.missReason ?? null;
     const previousMissNote = event.missNote ?? null;
@@ -112,6 +117,7 @@ export default function EventDetailSheet({
           missReason ? { outcome, missReason, missNote } : { outcome },
         ),
       });
+      if (outcome === "completed") void success();
       await reload();
       onClose();
     } catch (err) {
@@ -138,6 +144,7 @@ export default function EventDetailSheet({
   async function remove() {
     if (!event) return;
     if (!confirm(`Remove "${event.title}" from your schedule?`)) return;
+    void warning();
     setBusy("delete");
     setError(null);
     try {
@@ -504,7 +511,8 @@ export default function EventDetailSheet({
               )}
             </div>
           )}
-          <div className="flex items-center gap-2">
+          {/* Up to four actions: on a phone they wrap onto a second line instead of running off the sheet. */}
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
             {isSleep && !rescheduling ? (
               <AppButton type="button" variant="secondary" onClick={onClose}>Close</AppButton>
             ) : null}
@@ -519,9 +527,9 @@ export default function EventDetailSheet({
               </AppButton>
             ) : null}
             {isStudy && canAct && !rescheduling && !reasoning ? (
-              <Link href={`/app/focus?eventId=${encodeURIComponent(event.id)}`} onClick={onClose}>
+              <Link href={`/app/sessions?eventId=${encodeURIComponent(event.id)}`} onClick={onClose}>
                 <AppButton type="button" variant="secondary">
-                  Start focus
+                  Start session
                 </AppButton>
               </Link>
             ) : null}

@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { setPresence } from "@/lib/api/presence";
 import { useStudySessionSave } from "@/lib/app/useStudySessionSave";
+import { holdFocus } from "@/lib/capacitor/focusGuard";
 
 /**
  * A focus session started from inside a study room. Deliberately simpler than
- * the Focus page's timer: one block of focus, no breaks, finished by hand or
+ * the Sessions page's timer: one block of focus, no breaks, finished by hand or
  * when the clock runs out. It publishes presence the same way, so every room
  * sees it, and it logs to the same study sessions, so streaks and cards count it.
  */
@@ -14,7 +15,7 @@ import { useStudySessionSave } from "@/lib/app/useStudySessionSave";
 const STORAGE_KEY = "arcadia:room-focus:";
 // The server treats a timer quiet for 150s as gone; one missed beat is fine.
 const KEEPALIVE_MS = 60_000;
-// Misclicks and instant finishes stay out of the log, as on the Focus page.
+// Misclicks and instant finishes stay out of the log, as on the Sessions page.
 const MIN_LOGGED_SECONDS = 30;
 
 export interface RoomFocusSession {
@@ -152,7 +153,7 @@ export function useRoomFocus(userId: string, onFinished?: (finished: FinishedFoc
   }, [session]);
 
   // Presence: on start, then a keepalive. Leaving the page reads as idle
-  // (as it does on the Focus page); coming back picks the session up again.
+  // (as it does on the Sessions page); coming back picks the session up again.
   useEffect(() => {
     if (!session) return;
     publish(session);
@@ -162,6 +163,21 @@ export function useRoomFocus(userId: string, onFinished?: (finished: FinishedFoc
   useEffect(() => () => {
     if (sessionRef.current) publish(null);
   }, []);
+
+  // iOS app: guard the phone (block the picked apps, nudge on leaving) for
+  // the session. Leaving the room page doesn't let go; the phone lifts the
+  // guard itself at the end. Only a session seen ending here releases it, so
+  // the empty first render of a revisit doesn't.
+  const guarding = useRef(false);
+  useEffect(() => {
+    if (session) {
+      guarding.current = true;
+      holdFocus("room", { endsAt: session.endsAt, subject: session.subject });
+    } else if (guarding.current) {
+      guarding.current = false;
+      holdFocus("room", null);
+    }
+  }, [session]);
 
   const start = useCallback((options: StartFocus) => {
     const startedAt = Date.now();

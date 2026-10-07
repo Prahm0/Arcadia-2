@@ -155,10 +155,47 @@ export const pushSubscriptions = sqliteTable(
     checkinsEnabled: integer("checkins_enabled", { mode: "boolean" }).notNull().default(true),
     sessionStartEnabled: integer("session_start_enabled", { mode: "boolean" }).notNull().default(true),
     sessionFollowupEnabled: integer("session_followup_enabled", { mode: "boolean" }).notNull().default(true),
+    lateStartEnabled: integer("late_start_enabled", { mode: "boolean" }).notNull().default(true),
+    streakEnabled: integer("streak_enabled", { mode: "boolean" }).notNull().default(true),
     createdAt: integer("created_at").notNull().default(now),
     updatedAt: integer("updated_at").notNull().default(now),
   },
   (t) => [index("push_subscriptions_user_idx").on(t.userId)],
+);
+
+// The iOS app's APNs device tokens, with the same per-type flags as
+// push_subscriptions. `environment` is the APNs host the token works on.
+export const nativePushTokens = sqliteTable(
+  "native_push_tokens",
+  {
+    token: text("token").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    platform: text("platform", { enum: ["ios"] }).notNull().default("ios"),
+    environment: text("environment", { enum: ["production", "sandbox"] }).notNull().default("production"),
+    checkinsEnabled: integer("checkins_enabled", { mode: "boolean" }).notNull().default(true),
+    sessionStartEnabled: integer("session_start_enabled", { mode: "boolean" }).notNull().default(true),
+    lateStartEnabled: integer("late_start_enabled", { mode: "boolean" }).notNull().default(true),
+    sessionFollowupEnabled: integer("session_followup_enabled", { mode: "boolean" }).notNull().default(true),
+    streakEnabled: integer("streak_enabled", { mode: "boolean" }).notNull().default(true),
+    createdAt: integer("created_at").notNull().default(now),
+    updatedAt: integer("updated_at").notNull().default(now),
+  },
+  (t) => [index("native_push_tokens_user_idx").on(t.userId)],
+);
+
+// One row per check-in sent, so two cron runs can't send the same one.
+export const pushDeliveries = sqliteTable(
+  "push_deliveries",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    dedupeKey: text("dedupe_key").notNull(),
+    sentAt: integer("sent_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.dedupeKey] }), index("push_deliveries_sent_idx").on(t.sentAt)],
 );
 
 export const profiles = sqliteTable("profiles", {
@@ -188,6 +225,12 @@ export const profiles = sqliteTable("profiles", {
   arcadAbout: text("arcad_about").notNull().default(""),
   arcadStyle: text("arcad_style").notNull().default(""),
   memoryEnabled: integer("memory_enabled", { mode: "boolean" }).notNull().default(true),
+  // The daily study-plan email (lib/email-reminders.ts). Off via Settings or the email's unsubscribe link.
+  emailRemindersEnabled: integer("email_reminders_enabled", { mode: "boolean" }).notNull().default(true),
+  // Permission to send their study details to OpenAI (App Store 5.1.2).
+  // Null until asked. Nothing goes to the model unless it is "granted".
+  aiConsent: text("ai_consent", { enum: ["granted", "declined"] }),
+  aiConsentAt: integer("ai_consent_at"),
 });
 
 export const goals = sqliteTable(
@@ -312,6 +355,8 @@ export const events = sqliteTable(
     source: text("source").notNull().default("auto"),
     editable: integer("editable", { mode: "boolean" }).notNull().default(true),
     pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
+    // Where a moved block started before its first move (migration 0037).
+    movedFrom: integer("moved_from"),
     // Session plan and check-out, both JSON (see migration 0008).
     plan: text("plan"),
     checkout: text("checkout"),
@@ -535,6 +580,39 @@ export const subjectTopics = sqliteTable(
     createdAt: integer("created_at").notNull().default(now),
   },
   (t) => [index("subject_topics_subject_idx").on(t.subjectId, t.position)],
+);
+
+/**
+ * What was studied, on which topic, for how long and how it left them: one
+ * row per topic touched in a session (see migration 0030 and lib/study-log).
+ */
+export const studyLog = sqliteTable(
+  "study_log",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    subjectId: text("subject_id").references(() => subjects.id, { onDelete: "set null" }),
+    subject: text("subject"),
+    topicId: text("topic_id").references(() => subjectTopics.id, { onDelete: "set null" }),
+    topic: text("topic").notNull().default(""),
+    eventId: text("event_id"),
+    activityId: text("activity_id"),
+    kind: text("kind").notNull().default("study"),
+    minutes: integer("minutes").notNull(),
+    confidence: text("confidence"),
+    note: text("note").notNull().default(""),
+    source: text("source").notNull().default("checkout"),
+    studiedAt: integer("studied_at").notNull(),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [
+    index("study_log_user_subject_idx").on(t.userId, t.subjectId, t.studiedAt),
+    index("study_log_event_idx").on(t.eventId),
+    index("study_log_activity_idx").on(t.userId, t.activityId),
+    index("study_log_topic_idx").on(t.topicId),
+  ],
 );
 
 export const subjectAssessments = sqliteTable(
@@ -810,9 +888,50 @@ export const dayLayouts = sqliteTable(
     layout: text("layout"),
     inputsKey: text("inputs_key"),
     wantedKey: text("wanted_key"),
+    // When wantedKey last changed, so the cron waits for edits to settle.
+    wantedAt: integer("wanted_at"),
     // When a refresh started, so the cron doesn't run two at once.
     workingAt: integer("working_at"),
     updatedAt: integer("updated_at").notNull().default(now),
   },
   (t) => [index("day_layouts_wanted_idx").on(t.wantedKey)],
+);
+
+/**
+ * Tokens and estimated cost of each call to the AI provider, so spend can be
+ * broken down by feature, model and tier. `costMicros` is millionths of a
+ * US dollar, null for a model lib/openai.ts has no price for.
+ */
+export const aiUsage = sqliteTable(
+  "ai_usage",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+    feature: text("feature").notNull(),
+    model: text("model").notNull(),
+    serviceTier: text("service_tier"),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    cachedTokens: integer("cached_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    reasoningTokens: integer("reasoning_tokens").notNull().default(0),
+    costMicros: integer("cost_micros"),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [
+    index("ai_usage_created_idx").on(t.createdAt),
+    index("ai_usage_feature_created_idx").on(t.feature, t.createdAt),
+    index("ai_usage_user_created_idx").on(t.userId, t.createdAt),
+  ],
+);
+
+/** One row per student per UTC day they opened the app, for actives and retention. */
+export const userActiveDays = sqliteTable(
+  "user_active_days",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    day: text("day").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.day] }), index("user_active_days_day_idx").on(t.day)],
 );

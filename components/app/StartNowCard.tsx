@@ -92,7 +92,7 @@ export default function StartNowCard() {
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link
-              href={`/app/focus?eventId=${encodeURIComponent(target.id)}&start=1`}
+              href={`/app/sessions?eventId=${encodeURIComponent(target.id)}&start=1`}
               className="inline-flex h-10 items-center justify-center gap-2 rounded-md px-5 text-[14px] font-medium transition-colors hover:bg-[var(--app-accent-strong)]"
               style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}
             >
@@ -102,7 +102,7 @@ export default function StartNowCard() {
               {isNow ? (target.startedAt ? "Back to it" : "Start now") : "Start early"}
             </Link>
             <Link
-              href={`/app/focus?eventId=${encodeURIComponent(target.id)}`}
+              href={`/app/sessions?eventId=${encodeURIComponent(target.id)}`}
               className="text-[13px] ui-hover rounded-md px-2 py-1"
               style={{ color: "var(--app-text-muted)" }}
             >

@@ -46,7 +46,7 @@ function encodeStripeForm(body: Record<string, unknown>): string {
   return params.toString();
 }
 
-async function stripeCall<T>(env: Env, path: string, opts: StripeCallOptions = {}): Promise<T> {
+export async function stripeCall<T>(env: Env, path: string, opts: StripeCallOptions = {}): Promise<T> {
   if (!env.STRIPE_SECRET_KEY) throw new Error("STRIPE_SECRET_KEY missing on Worker.");
   const headers: Record<string, string> = {
     authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,

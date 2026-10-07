@@ -33,7 +33,7 @@ export default function SessionStartModal({ event, timezone, onClose }: SessionS
     if (!event) return;
     const selectedEvent = event;
     onClose();
-    router.push(`/app/focus?eventId=${encodeURIComponent(selectedEvent.id)}`);
+    router.push(`/app/sessions?eventId=${encodeURIComponent(selectedEvent.id)}`);
   }
 
   function openReschedule() {
@@ -128,7 +128,7 @@ export default function SessionStartModal({ event, timezone, onClose }: SessionS
         ) : (
           <div className="mt-6 flex flex-col gap-2">
             <AppButton type="button" variant="primary" className="h-10" onClick={startFocus}>
-              Start focus mode
+              Start session
             </AppButton>
             <AppButton type="button" variant="secondary" className="h-10" onClick={openReschedule}>
               Reschedule

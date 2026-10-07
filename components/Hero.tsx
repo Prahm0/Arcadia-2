@@ -105,7 +105,7 @@ export default function Hero() {
                 Your study plan
               </Line>
               <Line progress={scrollYProgress} reduced={reduced} delay={0.03} restDelay="0.27s">
-                survives <em className="accent-serif not-italic text-accent-200">real life.</em>
+                survives <em className="not-italic text-accent-200">real life.</em>
               </Line>
             </h1>
 

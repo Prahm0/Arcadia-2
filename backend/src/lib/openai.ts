@@ -1,4 +1,6 @@
+import { db, schema } from "../db";
 import type { Env } from "../types";
+import { newId } from "./ids";
 
 /** A piece of a multimodal message: text, an image, or a PDF. */
 export type ContentPart =
@@ -42,8 +44,16 @@ export const PROPOSE_TOOL = {
   type: "function" as const,
   function: {
     name: "propose_changes",
-    description:
-      "Propose changes to the student's plan. The student reviews and approves them before anything is applied. Use for adding, editing or removing tasks and commitments.",
+    description: [
+      "Propose changes to the student's schedule and plan. Nothing changes until they tap Apply.",
+      "move_block: id of a block from their schedule, date, startTime, and endTime (leave endTime out to keep its length).",
+      "remove_block: id of a block. Its subject time gets planned elsewhere in the week.",
+      "add_block: a study block at a set time. date, startTime, endTime, and subject or taskId. Its subject's other blocks shrink to keep the weekly total.",
+      "create_commitment: time they're busy, so no study goes there. title, category, startTime, endTime, and either a date (one-off), recurrence weekly with weekday (0 = Sunday), daily or weekdays.",
+      "delete_commitment: id.",
+      "update_subject: subject and weeklyMinutes, for more or less time on a subject every week.",
+      "create_task, update_task, delete_task: deadlines and homework. Arcadia plans study blocks for them.",
+    ].join("\n"),
     parameters: {
       type: "object",
       properties: {
@@ -60,25 +70,32 @@ export const PROPOSE_TOOL = {
               op: {
                 type: "string",
                 enum: [
+                  "move_block",
+                  "remove_block",
+                  "add_block",
+                  "create_commitment",
+                  "delete_commitment",
+                  "update_subject",
                   "create_task",
                   "update_task",
                   "delete_task",
-                  "create_commitment",
-                  "delete_commitment",
                 ],
               },
-              id: { type: "string", description: "Existing record id, for update and delete." },
+              id: { type: "string", description: "Existing block, task or commitment id, for move, remove, update and delete." },
               title: { type: "string" },
               subject: { type: "string" },
+              taskId: { type: "string", description: "For add_block: the task the block is for." },
               taskType: { type: "string" },
               dueAt: { type: "string", description: "ISO 8601 timestamp." },
               estimatedMinutes: { type: "number" },
               priority: { type: "number" },
-              category: { type: "string" },
+              weeklyMinutes: { type: "number" },
+              category: { type: "string", enum: ["school", "sport", "extracurricular", "other"] },
               recurrence: { type: "string", enum: ["none", "daily", "weekly", "weekdays"] },
               weekday: { type: "number" },
-              startTime: { type: "string", description: "HH:MM" },
-              endTime: { type: "string", description: "HH:MM" },
+              date: { type: "string", description: "YYYY-MM-DD, their local date." },
+              startTime: { type: "string", description: "HH:MM, their local time." },
+              endTime: { type: "string", description: "HH:MM, their local time." },
             },
             required: ["op"],
           },
@@ -122,7 +139,25 @@ export function aiConfigured(env: Env): boolean {
   return Boolean(env.OPENAI_API_KEY);
 }
 
+/** Which part of Arcadia made a call, as ai_usage records it. */
+export type AiFeature =
+  | "chat"
+  | "day_layout"
+  | "month_plan"
+  | "session_plan"
+  | "cards"
+  | "sheet"
+  | "syllabus"
+  | "resource_summary";
+
+/** Who a call was for, so its cost can be recorded. */
+export interface UsageTag {
+  feature: AiFeature;
+  userId?: string | null;
+}
+
 interface RequestOptions {
+  usage: UsageTag;
   tools?: Tool[];
   /** Hard cap on reply length. Chat keeps this small so Arcad can't ramble. */
   maxTokens?: number;
@@ -132,7 +167,13 @@ interface RequestOptions {
   /** Overrides OPENAI_MODEL for this request. */
   model?: string;
   /** How hard a reasoning model thinks. Ignored by other models. */
-  reasoningEffort?: "low" | "medium" | "high";
+  reasoningEffort?: "minimal" | "low" | "medium" | "high";
+  /**
+   * "flex" is half price but slower, and only runs when OpenAI has room.
+   * For work nobody is waiting on. A busy flex falls back to the standard
+   * tier, so it never costs the student the reply.
+   */
+  serviceTier?: "flex";
 }
 
 /** Reasoning models take no temperature and count tokens differently. */
@@ -145,42 +186,176 @@ export function planModel(env: Env): string {
   return env.OPENAI_PLAN_MODEL || env.OPENAI_MODEL || "gpt-4o-mini";
 }
 
+/**
+ * The model that reads students' files and writes from them (course maps,
+ * resource notes, cards, sheets). gpt-4o-mini bills every image and PDF page
+ * at about gpt-4o's price; gpt-5-mini reads the same page for a small
+ * fraction of that, and is the stronger reader. Use it at minimal effort.
+ */
+export function documentModel(env: Env): string {
+  return env.OPENAI_DOCUMENT_MODEL || "gpt-5-mini";
+}
+
+/**
+ * Options for a call that reads or writes from a student's material. `reply`
+ * is the longest answer expected; a reasoning model's thinking counts against
+ * the same cap, so it gets room on top.
+ */
+export function documentCall(
+  env: Env,
+  usage: UsageTag,
+  reply: number,
+): { maxTokens: number; options: Pick<RequestOptions, "usage" | "model" | "reasoningEffort"> } {
+  const model = documentModel(env);
+  return isReasoningModel(model)
+    ? { maxTokens: reply + 2000, options: { usage, model, reasoningEffort: "minimal" } }
+    : { maxTokens: reply, options: { usage, model } };
+}
+
+/**
+ * US dollars per million tokens: input, cached input, output. Flex is half.
+ * Only for the ai_usage estimate; OpenAI's invoice is the real figure.
+ */
+const PRICES: Record<string, [number, number, number]> = {
+  "gpt-5": [1.25, 0.125, 10],
+  "gpt-5-mini": [0.25, 0.025, 2],
+  "gpt-5-nano": [0.05, 0.005, 0.4],
+  "gpt-4o-mini": [0.15, 0.075, 0.6],
+  "gpt-4.1-mini": [0.4, 0.1, 1.6],
+};
+
+/**
+ * Flex answers when OpenAI has room, which can mean a wait. Past this the
+ * call goes to the standard tier. With the backoff below, a layout's later
+ * calls then skip flex, so all three still fit in the cron's 15 minutes.
+ */
+const FLEX_TIMEOUT_MS = 5 * 60_000;
+/** After flex turns a call away it's likely still busy, so skip it a while. */
+const FLEX_BACKOFF_MS = 10 * 60_000;
+let flexBusyUntil = 0;
+
+interface ProviderUsage {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  prompt_tokens_details?: { cached_tokens?: number };
+  completion_tokens_details?: { reasoning_tokens?: number };
+}
+
+/** Saves what a call used. Never fails the call it's recording. */
+async function recordUsage(
+  env: Env,
+  tag: UsageTag,
+  model: string,
+  serviceTier: string | null,
+  usage: ProviderUsage | undefined,
+) {
+  if (!usage) return;
+  const input = usage.prompt_tokens ?? 0;
+  const cached = usage.prompt_tokens_details?.cached_tokens ?? 0;
+  const output = usage.completion_tokens ?? 0;
+  const price = PRICES[model.replace(/-\d{4}-\d{2}-\d{2}$/, "")];
+  // Per-million prices times tokens is already millionths of a dollar.
+  const costMicros = price
+    ? Math.round(((input - cached) * price[0] + cached * price[1] + output * price[2]) * (serviceTier === "flex" ? 0.5 : 1))
+    : null;
+  try {
+    await db(env.DB)
+      .insert(schema.aiUsage)
+      .values({
+        id: newId("aiu"),
+        userId: tag.userId ?? null,
+        feature: tag.feature,
+        model,
+        serviceTier,
+        inputTokens: input,
+        cachedTokens: cached,
+        outputTokens: output,
+        reasoningTokens: usage.completion_tokens_details?.reasoning_tokens ?? 0,
+        costMicros,
+      });
+  } catch (err) {
+    console.error("[openai] couldn't record usage", err);
+  }
+}
+
+/** The student hasn't allowed their details to be sent to OpenAI. */
+export class AiConsentRequiredError extends Error {
+  constructor() {
+    super("Arcad needs your permission to use AI. Turn on AI in Settings to chat with Arcad.");
+    this.name = "AiConsentRequiredError";
+  }
+}
+
+/**
+ * Nothing about a student reaches OpenAI unless they said yes. Every caller
+ * already falls back to a plan built without the model when a request
+ * throws, so a "no" (or not asked yet) quietly uses those fallbacks.
+ */
+async function assertAiConsent(env: Env, userId: string | null | undefined): Promise<void> {
+  if (!userId) return;
+  const row = await env.DB.prepare("SELECT ai_consent FROM profiles WHERE user_id = ?1")
+    .bind(userId)
+    .first<{ ai_consent: string | null }>();
+  if (row?.ai_consent !== "granted") throw new AiConsentRequiredError();
+}
+
 async function request(env: Env, messages: ChatMessage[], options: RequestOptions) {
   if (!env.OPENAI_API_KEY) {
     throw new Error("Arcad isn't set up yet.");
   }
+  await assertAiConsent(env, options.usage.userId);
 
   // OPENAI_BASE_URL only exists so local dev can point at a stand-in server.
   const base = (env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "");
   const tools = options.tools ?? [];
   const model = options.model || env.OPENAI_MODEL || "gpt-4o-mini";
   const reasoning = isReasoningModel(model);
-  const response = await fetch(`${base}/chat/completions`, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${env.OPENAI_API_KEY}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      ...(reasoning
-        ? {
-            max_completion_tokens: options.maxTokens ?? 250,
-            ...(options.reasoningEffort ? { reasoning_effort: options.reasoningEffort } : {}),
-          }
-        : { temperature: options.temperature ?? 0.4, max_tokens: options.maxTokens ?? 250 }),
-      ...(tools.length > 0 ? { tools, tool_choice: "auto" } : {}),
-      ...(options.schema
-        ? {
-            response_format: {
-              type: "json_schema",
-              json_schema: { name: options.schema.name, strict: true, schema: options.schema.schema },
-            },
-          }
-        : {}),
-    }),
-  });
+  const body = {
+    model,
+    messages,
+    ...(reasoning
+      ? {
+          max_completion_tokens: options.maxTokens ?? 250,
+          ...(options.reasoningEffort ? { reasoning_effort: options.reasoningEffort } : {}),
+        }
+      : { temperature: options.temperature ?? 0.4, max_tokens: options.maxTokens ?? 250 }),
+    ...(tools.length > 0 ? { tools, tool_choice: "auto" } : {}),
+    ...(options.schema
+      ? {
+          response_format: {
+            type: "json_schema",
+            json_schema: { name: options.schema.name, strict: true, schema: options.schema.schema },
+          },
+        }
+      : {}),
+  };
+  const send = (serviceTier?: "flex") =>
+    fetch(`${base}/chat/completions`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${env.OPENAI_API_KEY}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(serviceTier ? { ...body, service_tier: serviceTier } : body),
+      signal: serviceTier ? AbortSignal.timeout(FLEX_TIMEOUT_MS) : undefined,
+    });
+
+  let response: Response | null = null;
+  if (options.serviceTier && Date.now() >= flexBusyUntil) {
+    try {
+      response = await send(options.serviceTier);
+      if (!response.ok && (response.status === 429 || response.status >= 500)) {
+        const detail = await response.text().catch(() => "");
+        console.warn(`[openai] ${options.serviceTier} unavailable, using the standard tier`, response.status, detail.slice(0, 200));
+        response = null;
+      }
+    } catch (err) {
+      console.warn(`[openai] ${options.serviceTier} didn't answer, using the standard tier`, err);
+      response = null;
+    }
+    if (!response) flexBusyUntil = Date.now() + FLEX_BACKOFF_MS;
+  }
+  response ??= await send();
 
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
@@ -192,24 +367,38 @@ async function request(env: Env, messages: ChatMessage[], options: RequestOption
 
   const data = (await response.json()) as {
     choices?: Array<{
+      finish_reason?: string;
       message?: {
         content?: string | null;
         tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }>;
       };
     }>;
+    usage?: ProviderUsage;
+    service_tier?: string;
   };
-  return data.choices?.[0]?.message;
+  await recordUsage(env, options.usage, model, data.service_tier ?? null, data.usage);
+  const choice = data.choices?.[0];
+  return { ...choice?.message, cutOff: choice?.finish_reason === "length" };
 }
+
+/** Room for a reply that changes the plan: the change itself counts toward the cap. */
+const TOOL_REPLY_TOKENS = 1200;
 
 export async function complete(
   env: Env,
   messages: ChatMessage[],
-  tools: Tool[] = [PROPOSE_TOOL],
+  tools: Tool[],
+  usage: UsageTag,
 ): Promise<Completion> {
-  const message = await request(env, messages, { tools, maxTokens: 250 });
+  let message = await request(env, messages, { tools, maxTokens: 250, usage });
+  // The 250 cap keeps Arcad brief, but a plan change cut off half-written
+  // can't be read and is lost. Ask again with room for it.
+  if (message.cutOff && message.tool_calls?.length) {
+    message = await request(env, messages, { tools, maxTokens: TOOL_REPLY_TOKENS, usage });
+  }
   return {
-    content: message?.content ?? "",
-    toolCalls: (message?.tool_calls ?? []).map((call) => ({
+    content: message.content ?? "",
+    toolCalls: (message.tool_calls ?? []).map((call) => ({
       id: call.id,
       name: call.function.name,
       arguments: call.function.arguments,
@@ -225,12 +414,12 @@ export async function completeJson<T>(
   env: Env,
   messages: ChatMessage[],
   schema: { name: string; schema: Record<string, unknown> },
-  maxTokens = 600,
-  options: Pick<RequestOptions, "model" | "reasoningEffort"> = {},
+  maxTokens: number,
+  options: Pick<RequestOptions, "usage" | "model" | "reasoningEffort" | "serviceTier">,
 ): Promise<T | null> {
   const message = await request(env, messages, { schema, maxTokens, temperature: 0.3, ...options });
   try {
-    return JSON.parse(message?.content ?? "") as T;
+    return JSON.parse(message.content ?? "") as T;
   } catch {
     console.error("[openai] unparseable structured reply");
     return null;

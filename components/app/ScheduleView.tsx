@@ -10,6 +10,7 @@ import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
 import { studyTitle } from "@/lib/app/subjectColour";
 import { useMediaQuery } from "@/lib/hooks";
 import { cn } from "@/lib/cn";
+import { select as hapticSelect } from "@/lib/capacitor/haptics";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import NewTaskSheet from "./NewTaskSheet";
@@ -263,8 +264,8 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
         { kind: "item", label: "Open", onSelect: () => setSelectedEvent(event) },
         study && planned && {
           kind: "item",
-          label: "Start focus",
-          onSelect: () => router.push(`/app/focus?eventId=${encodeURIComponent(event.id)}`),
+          label: "Start session",
+          onSelect: () => router.push(`/app/sessions?eventId=${encodeURIComponent(event.id)}`),
         },
         { kind: "separator" },
         study && event.outcome !== "missed" && {
@@ -595,7 +596,10 @@ function ModeSwitch({ mode, onChange }: { mode: ScheduleMode; onChange: (mode: S
             type="button"
             role="tab"
             aria-selected={active}
-            onClick={() => onChange(option.value)}
+            onClick={() => {
+              if (!active) void hapticSelect();
+              onChange(option.value);
+            }}
             title={`${option.label} (${option.key})`}
             className="h-8 rounded-full px-3.5 text-[13px] font-medium transition-colors"
             style={{

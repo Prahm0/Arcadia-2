@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { db, schema, type Database } from "../db";
 import { newToken } from "../lib/ids";
 import { buildIcs } from "../lib/ics-export";
+import { track } from "../lib/posthog";
 import { DAY, MINUTE, localDateKey } from "../lib/time";
 import type { Env, Variables } from "../types";
 
@@ -74,6 +75,7 @@ calendarExport.post("/", async (c) => {
       target: schema.calendarExports.userId,
       set: { token, createdAt: Date.now(), lastFetchedAt: null },
     });
+  track(c, userId, "calendar_export_linked");
   return c.json(serialise(c.env, await readExport(database, userId)));
 });
 

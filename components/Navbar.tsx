@@ -62,7 +62,7 @@ export default function Navbar() {
             onClick={() => setMenuOpen(false)}
           >
             <Logo size={22} className="text-accent-200" />
-            <span className="font-serif text-[24px] italic leading-none tracking-[-0.01em]">
+            <span className="text-[20px] font-semibold leading-none tracking-[-0.02em]">
               Arcadia
             </span>
           </Link>

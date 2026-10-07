@@ -231,6 +231,9 @@ export const profiles = sqliteTable("profiles", {
   // Null until asked. Nothing goes to the model unless it is "granted".
   aiConsent: text("ai_consent", { enum: ["granted", "declined"] }),
   aiConsentAt: integer("ai_consent_at"),
+  // Onboarding's "How did you hear about Arcadia?" (migration 0043). See shared/heardFrom.ts.
+  heardFrom: text("heard_from"),
+  heardFromDetail: text("heard_from_detail"),
 });
 
 export const goals = sqliteTable(

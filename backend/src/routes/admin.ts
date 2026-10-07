@@ -5,6 +5,7 @@ import { DAY } from "../lib/time";
 import {
   METRIC_PERIODS,
   type AdminBusiness,
+  type AdminHeardFromRow,
   type AdminMoney,
   type AdminDay,
   type AdminMetrics,
@@ -235,11 +236,27 @@ admin.get("/business", async (c) => {
       })
     : null;
 
+  const answers = await c.env.DB.prepare(`SELECT u.id, p.heard_from, p.heard_from_detail
+      FROM users u JOIN profiles p ON p.user_id = u.id
+      WHERE u.created_at >= ?1 AND u.developer_access = 0 AND ${NOT_GUEST}`)
+    .bind(since)
+    .all<{ id: string; heard_from: string | null; heard_from_detail: string | null }>();
+  const paying = payingUserIds ? new Set(payingUserIds) : null;
+  const heardFrom = new Map<string, AdminHeardFromRow>();
+  for (const row of answers.results) {
+    const key = `${row.heard_from ?? ""}|${row.heard_from_detail ?? ""}`;
+    const entry = heardFrom.get(key) ?? { answer: row.heard_from, detail: row.heard_from_detail, signups: 0, paying: paying ? 0 : null };
+    entry.signups += 1;
+    if (paying?.has(row.id)) entry.paying = (entry.paying ?? 0) + 1;
+    heardFrom.set(key, entry);
+  }
+
   const body: AdminBusiness = {
     generatedAt: new Date(now).toISOString(),
     days,
     money: moneyWithIds ? (money as AdminMoney) : null,
     traffic,
+    heardFrom: [...heardFrom.values()].sort((a, b) => (b.paying ?? 0) - (a.paying ?? 0) || b.signups - a.signups),
     errors,
   };
   c.header("cache-control", "private, no-store");

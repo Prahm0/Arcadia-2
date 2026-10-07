@@ -26,8 +26,11 @@ export interface RecoveryInput {
 }
 
 export class RecoveryAlreadyUsedError extends Error {
-  constructor(readonly reason: "less_time" | "tired") {
+  readonly reason: "less_time" | "tired";
+
+  constructor(reason: "less_time" | "tired") {
     super("You've already used this option today.");
+    this.reason = reason;
     this.name = "RecoveryAlreadyUsedError";
   }
 }

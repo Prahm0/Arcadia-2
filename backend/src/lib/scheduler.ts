@@ -71,8 +71,10 @@ function commitmentSlots(
   const endMinutes = parseClock(commitment.endTime);
   if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) return [];
 
+  const skipped = new Set(skipDates(commitment));
   const slots: Slot[] = [];
   for (let day = startOfLocalDay(from, tz); day < to; day = nextLocalDay(day, tz)) {
+    if (skipped.size && skipped.has(localDateKey(day, tz))) continue;
     if (commitment.recurrence === "weekly") {
       if (commitment.weekday === null || localWeekday(day, tz) !== commitment.weekday) continue;
     } else if (commitment.recurrence === "weekdays") {
@@ -90,6 +92,26 @@ function commitmentSlots(
     });
   }
   return slots;
+}
+
+/** The local dates a repeating commitment is off (commitments.skip_dates). */
+export function skipDates(commitment: Pick<Commitment, "skipDates">): string[] {
+  try {
+    const parsed: unknown = JSON.parse(commitment.skipDates || "[]");
+    return Array.isArray(parsed) ? parsed.filter((date): date is string => typeof date === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Longest gap a commitment can keep free either side: 4 hours. */
+export const MAX_COMMITMENT_BUFFER = 240;
+
+/** Minutes kept free before and after a commitment, clamped to something sane. */
+export function commitmentBuffers(commitment: Pick<Commitment, "bufferBefore" | "bufferAfter">): { before: number; after: number } {
+  const clamp = (value: number | null | undefined) =>
+    Math.min(MAX_COMMITMENT_BUFFER, Math.max(0, Math.round(Number(value) || 0)));
+  return { before: clamp(commitment.bufferBefore), after: clamp(commitment.bufferAfter) };
 }
 
 /** Nightly sleep blocks across the range. */
@@ -534,8 +556,10 @@ export function groundwork(
   const busy: Slot[] = [];
 
   for (const commitment of inputs.commitments) {
+    // The gap either side is busy for study, but the commitment shows at its real times.
+    const buffer = commitmentBuffers(commitment);
     for (const slot of commitmentSlots(commitment, from, to, tz)) {
-      busy.push(slot);
+      busy.push({ start: slot.start - buffer.before * MINUTE, end: slot.end + buffer.after * MINUTE });
       fixed.push({
         id: newId("evt"),
         userId,
@@ -831,7 +855,13 @@ export function layoutKey(inputs: ScheduleInputs, g: Groundwork): string {
 export class StudyCredit {
   private entries = new Map<string, { done: number; focused: number; planned: number }>();
 
-  constructor(private readonly tz: string) {}
+  private readonly tz: string;
+
+  // A plain field rather than a parameter property, so Node can run the
+  // tests by stripping types.
+  constructor(tz: string) {
+    this.tz = tz;
+  }
 
   private entry(at: number, subject: string | null | undefined) {
     const key = `${startOfLocalWeek(at, this.tz)}|${subjectKey(subject)}`;

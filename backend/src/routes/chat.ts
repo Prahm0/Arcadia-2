@@ -3,10 +3,10 @@ import { Hono } from "hono";
 import { db, schema } from "../db";
 import { newId } from "../lib/ids";
 import { saveMemories } from "../lib/memories";
-import { ARCAD_VOICE, PROPOSE_TOOL, REMEMBER_TOOL, complete, type ChatMessage } from "../lib/openai";
+import { ARCAD_VOICE, PROPOSE_TOOL, REMEMBER_TOOL, complete, proposeChanges, type ChatMessage, type ProposedChanges } from "../lib/openai";
 import { applyOperations, prepareOperations, scheduleContext } from "../lib/plan-changes";
 import { replan } from "../lib/replan";
-import { subjectKey, weeklyTargetMinutes } from "../lib/scheduler";
+import { commitmentBuffers, skipDates, subjectKey, weeklyTargetMinutes } from "../lib/scheduler";
 import { describeBrief, recentMissReasonContext, subjectBriefs } from "../lib/study-context";
 import { DAILY_MESSAGE_CAP, getMessageUsage, getUserTier, messageUsageSnapshot, refundMessage, tryConsumeMessage } from "../lib/tiers";
 import { DAY, iso, localDateKey } from "../lib/time";
@@ -263,15 +263,10 @@ chat.post("/", async (c) => {
 
         if (toolCall) {
           try {
-            const parsed = JSON.parse(toolCall.arguments) as {
-              summary?: string;
-              operations?: unknown[];
-            };
-            const prepared = await prepareOperations(
-              database,
-              userId,
-              Array.isArray(parsed.operations) ? parsed.operations : [],
-            );
+            send({ type: "status", text: "Working out your changes" });
+            const best = await workOutChanges(c.env, database, userId, prompt, toolCall.arguments);
+            const parsed = best.proposed;
+            const prepared = best.prepared;
             const operations = prepared.operations;
             problems = prepared.problems;
             if (operations.length > 0) {
@@ -281,7 +276,7 @@ chat.post("/", async (c) => {
                 id,
                 userId,
                 conversationId,
-                summary: String(parsed.summary ?? "Update your plan").slice(0, 400),
+                summary: (parsed.summary.trim() || "Update your plan").slice(0, 400),
                 operations: JSON.stringify(operations).slice(0, 20000),
                 expiresAt,
               });
@@ -298,20 +293,21 @@ chat.post("/", async (c) => {
         }
 
         const problem = problems[0] ?? "";
+        const leftOut = problems.length > 1 ? `${problems.slice(0, 3).join("; ")}` : problem;
         const content = toolCall && !proposalPayload
           ? // Arcad's own words would describe a change that isn't coming.
             problem
-            ? `I couldn't set that up: ${problem}. Want to try a different time?`
+            ? `I couldn't set that up: ${leftOut}. Want to try a different time?`
             : "I couldn't set that up. Which block do you mean, and when should it go?"
-          : [
-              result.content.trim() ||
-                (proposalPayload
-                  ? `${proposalPayload.summary} Tap Apply and it goes on your schedule.`
-                  : remembered.length > 0
-                    ? "Sweet, I'll remember that."
-                    : "Not sure what you're after. What do you need to plan?"),
-              ...(proposalPayload && problem ? [`I left one bit out: ${problem}.`] : []),
-            ].join(" ");
+          : proposalPayload
+            ? // The change card lists exactly what Apply does, so the reply
+              // says that and anything left out, not the chat model's guess.
+              [
+                `${proposalPayload.summary} Tap Apply and it goes on your schedule.`,
+                ...(problem ? [`I couldn't do ${problems.length > 1 ? "these bits" : "one bit"}: ${leftOut}.`] : []),
+              ].join(" ")
+            : result.content.trim() ||
+              (remembered.length > 0 ? "Sweet, I'll remember that." : "Not sure what you're after. What do you need to plan?");
 
         const assistantId = newId("msg");
         await database.insert(schema.messages).values({
@@ -433,6 +429,10 @@ async function buildContext(
     ARCAD_VOICE,
     "In this chat you help them plan: what to work on, when, and what's coming up.",
     "When they ask to change their schedule or plan, call propose_changes in the same reply. Use the block ids from their schedule below. To keep time free (busy, going out, work), add a one-off commitment for it rather than removing blocks, or the study just moves elsewhere. For more or less of a subject every week, use update_subject. If you can't tell which block or time they mean, ask.",
+    "When they say what they'll work on and when (\"Self Monitoring Report until 9, then the Lab Report\"), add_block each one at exactly those times with the taskId from Open tasks, and remove_block the study blocks in that time.",
+    "Never change when a class, sport or job happens unless they say it has moved for good. To keep a gap around one, use update_commitment with bufferBefore and bufferAfter. If it's different just today, skip_commitment for today and create_commitment with today's date and the real times.",
+    "If they'll be up later or go to bed earlier one night, set_bedtime for that night.",
+    "One message can need many changes. Put all of them in a single propose_changes call.",
     "A change only happens when they tap Apply, so say it's ready to apply. Never say you've already changed something.",
     ...(memoryEnabled
       ? [
@@ -493,15 +493,30 @@ async function buildContext(
     "",
     ...schedule,
     "",
-    "Commitments:",
-    ...(commitmentRows.length
-      ? commitmentRows.map(
-          (commitment) =>
-            `- [${commitment.id}] ${commitment.title}, ${
-              commitment.recurrence === "none" ? `once on ${commitment.startDate ?? "no date"}` : commitment.recurrence
-            }${commitment.weekday !== null ? ` weekday ${commitment.weekday}` : ""}, ${commitment.startTime}-${commitment.endTime}`,
-        )
-      : ["- none"]),
+    "Commitments (weekday 0 = Sunday):",
+    ...(() => {
+      const today = localDateKey(now, timeZone);
+      // One-offs that have passed (or never had a date) would read as
+      // happening today.
+      const current = commitmentRows.filter(
+        (commitment) => commitment.recurrence !== "none" || (commitment.startDate !== null && commitment.startDate >= today),
+      );
+      return current.length
+        ? current.map((commitment) => {
+            const buffer = commitmentBuffers(commitment);
+            const off = skipDates(commitment).filter((date) => date >= today);
+            return `- [${commitment.id}] ${commitment.title}, ${
+              commitment.recurrence === "none"
+                ? `once on ${commitment.startDate}`
+                : commitment.recurrence === "weekly"
+                  ? `weekly on weekday ${commitment.weekday}`
+                  : commitment.recurrence
+            }, ${commitment.startTime}-${commitment.endTime}${
+              buffer.before || buffer.after ? `, keeps ${buffer.before} min free before and ${buffer.after} min after` : ""
+            }${off.length ? `, off on ${off.join(", ")}` : ""}`;
+          })
+        : ["- none"];
+    })(),
   ];
 
   return { text: lines.join("\n"), memoryEnabled };
@@ -678,3 +693,74 @@ proposals.post("/:id/:action", async (c) => {
 });
 
 export default chat;
+
+/** How many times the planning model gets its problems back to fix. */
+const CHANGE_REPAIR_ROUNDS = 1;
+
+/**
+ * The plan changes to offer for the student's last message. The chat model
+ * decided a change is wanted; the planning model works out the full set,
+ * each attempt is checked against their real schedule, and anything that
+ * can't happen goes back to it once to fix. The attempt that does the most
+ * with the fewest problems wins. If the planning model fails, the chat
+ * model's own proposal is used, as before.
+ */
+async function workOutChanges(
+  env: Env,
+  database: ReturnType<typeof db>,
+  userId: string,
+  prompt: ChatMessage[],
+  chatArguments: string,
+): Promise<{ proposed: ProposedChanges; prepared: Awaited<ReturnType<typeof prepareOperations>> }> {
+  const fromChat = (): ProposedChanges => {
+    try {
+      const parsed = JSON.parse(chatArguments) as { summary?: unknown; operations?: unknown };
+      return {
+        summary: typeof parsed.summary === "string" ? parsed.summary : "",
+        operations: Array.isArray(parsed.operations) ? parsed.operations : [],
+      };
+    } catch {
+      return { summary: "", operations: [] };
+    }
+  };
+  const score = (prepared: Awaited<ReturnType<typeof prepareOperations>>) =>
+    prepared.operations.length * 10 - prepared.problems.length;
+
+  let best: { proposed: ProposedChanges; prepared: Awaited<ReturnType<typeof prepareOperations>> } | null = null;
+  const messages: ChatMessage[] = [
+    ...prompt,
+    {
+      role: "system",
+      content:
+        "Now call propose_changes with every change their last message asks for, in one call. Use the exact times they gave. Use ids from the context. For deadline work, add_block with the taskId of the open task.",
+    },
+  ];
+  for (let round = 0; round <= CHANGE_REPAIR_ROUNDS; round++) {
+    let proposed: ProposedChanges | null = null;
+    try {
+      proposed = await proposeChanges(env, messages, { feature: "chat_changes", userId });
+    } catch (error) {
+      console.error("[chat] planning model failed", error);
+    }
+    if (!proposed) break;
+    const prepared = await prepareOperations(database, userId, proposed.operations);
+    if (!best || score(prepared) > score(best.prepared)) best = { proposed, prepared };
+    if (prepared.problems.length === 0) break;
+    messages.push(
+      { role: "assistant", content: `propose_changes ${JSON.stringify(proposed).slice(0, 6000)}` },
+      {
+        role: "system",
+        content: [
+          "Arcadia checked those changes against their real schedule. These parts can't happen:",
+          ...prepared.problems.map((problem) => `- ${problem}`),
+          "Fix them (a free time, the right id, a taskId from Open tasks, a date that hasn't passed) and call propose_changes again with the complete set, including the parts that worked. Leave out anything that truly can't be done.",
+        ].join("\n"),
+      },
+    );
+  }
+
+  if (best && best.prepared.operations.length > 0) return best;
+  const proposed = fromChat();
+  const prepared = await prepareOperations(database, userId, proposed.operations);
+  return best && score(best.prepared) >= score(prepared) ? best : { proposed, prepared };
+}

@@ -162,7 +162,8 @@ function MessageActions({ message }: { message: ChatMessage }) {
 /** Things Arcad actually does before it answers, shown in turn while it thinks. */
 const THINKING = ["Looking at what's due", "Checking your subjects", "Working it out"];
 
-export function ThinkingRow() {
+/** `label` is what the server says it's doing, e.g. working out plan changes. */
+export function ThinkingRow({ label }: { label?: string | null }) {
   const [step, setStep] = useState(0);
   useEffect(() => {
     const timer = window.setInterval(() => setStep((s) => Math.min(s + 1, THINKING.length - 1)), 1600);
@@ -174,7 +175,7 @@ export function ThinkingRow() {
         <ArcadOrb size={24} state="thinking" />
       </span>
       <span className="arcad-shimmer text-[14px]" style={{ color: "var(--app-text-muted)" }}>
-        {THINKING[step]}…
+        {label || THINKING[step]}…
       </span>
     </li>
   );

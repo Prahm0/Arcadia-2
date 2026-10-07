@@ -325,6 +325,11 @@ export const commitments = sqliteTable(
     startTime: text("start_time").notNull(),
     endTime: text("end_time").notNull(),
     notes: text("notes").notNull().default(""),
+    // Minutes kept free either side, so study isn't packed up against it (migration 0044).
+    bufferBefore: integer("buffer_before").notNull().default(0),
+    bufferAfter: integer("buffer_after").notNull().default(0),
+    // JSON array of local YYYY-MM-DD dates a repeating commitment is off.
+    skipDates: text("skip_dates").notNull().default("[]"),
     createdAt: integer("created_at").notNull().default(now),
   },
   (t) => [index("commitments_user_idx").on(t.userId)],

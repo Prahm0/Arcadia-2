@@ -65,6 +65,8 @@ function ArcadPage() {
   const [draftReady, setDraftReady] = useState(false);
   const [usage, setUsage] = useState<ArcadUsage | null>(null);
   const [sending, setSending] = useState(false);
+  // What Arcad says it's doing while a reply is on its way, if anything.
+  const [status, setStatus] = useState<string | null>(null);
   const [loadingThread, setLoadingThread] = useState(false);
   const [sendError, setSendError] = useState<SendError | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -317,13 +319,16 @@ function ArcadPage() {
               schedule?: unknown;
               action?: unknown;
               usage?: ArcadUsage;
+              text?: string;
             };
             try {
               event = JSON.parse(line);
             } catch {
               continue;
             }
-            if (event.type === "message" && event.message) {
+            if (event.type === "status") {
+              if (key === threadKey.current) setStatus(typeof event.text === "string" ? event.text : null);
+            } else if (event.type === "message" && event.message) {
               if (event.schedule || event.action) planTouched = true;
               if (key !== threadKey.current) continue;
               const reply: ChatMessage = {
@@ -354,6 +359,7 @@ function ArcadPage() {
         markFailed({ message: err instanceof Error ? err.message : "Couldn't reach Arcad. Check your connection?" });
       } finally {
         setSending(false);
+        setStatus(null);
       }
     },
     [limitReached, loadConversations, reload, sending, setConversationId, setUrl],
@@ -639,7 +645,7 @@ function ArcadPage() {
                         </MessageRow>
                       );
                     })}
-                    {sending ? <ThinkingRow /> : null}
+                    {sending ? <ThinkingRow label={status} /> : null}
                   </ul>
                 )}
 

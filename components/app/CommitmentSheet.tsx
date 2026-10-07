@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { api } from "@/lib/api/client";
 import type { ProfileCommitment } from "@/lib/api/profile";
+import { dateKey } from "@/lib/api/time";
 import { categoryColor } from "@/lib/app/categoryColors";
+import { useDashboardData } from "@/lib/app/DashboardProvider";
 import AppButton from "./AppButton";
 import { Label, Select, Sheet, TextInput } from "./profile/ui";
 
@@ -71,14 +73,19 @@ function CommitmentForm({
   onSaved,
 }: {
   editing: ProfileCommitment | null;
-  initial: Pick<ProfileCommitment, "title" | "category" | "recurrence" | "weekday" | "startTime" | "endTime">;
+  initial: Pick<ProfileCommitment, "title" | "category" | "recurrence" | "weekday" | "startTime" | "endTime"> &
+    Partial<Pick<ProfileCommitment, "startDate">>;
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
+  const { data } = useDashboardData();
+  // The student's own today, not UTC's: before 10am in Brisbane UTC is still yesterday.
+  const today = dateKey(new Date().toISOString(), data.profile?.timezone || data.user.timezone || "Australia/Brisbane");
   const [title, setTitle] = useState(initial.title);
   const [category, setCategory] = useState(initial.category);
   const [recurrence, setRecurrence] = useState(initial.recurrence);
   const [weekday, setWeekday] = useState(initial.weekday ?? 1);
+  const [date, setDate] = useState(initial.startDate ?? today);
   const [startTime, setStartTime] = useState(initial.startTime);
   const [endTime, setEndTime] = useState(initial.endTime);
   const [loading, setLoading] = useState(false);
@@ -95,7 +102,7 @@ function CommitmentForm({
         category,
         recurrence,
         weekday: recurrence === "weekly" ? weekday : null,
-        startDate: recurrence === "none" ? new Date().toISOString().slice(0, 10) : null,
+        startDate: recurrence === "none" ? date : null,
         startTime,
         endTime,
         notes: editing?.notes ?? "",
@@ -163,7 +170,7 @@ function CommitmentForm({
             <option value="weekly">Every week</option>
             <option value="weekdays">Weekdays (Mon–Fri)</option>
             <option value="daily">Every day</option>
-            <option value="none">Just once, today</option>
+            <option value="none">Just once</option>
           </Select>
         </Label>
       </div>
@@ -188,6 +195,10 @@ function CommitmentForm({
               </button>
             ))}
           </div>
+        </Label>
+      ) : recurrence === "none" ? (
+        <Label text="On">
+          <TextInput required type="date" value={date} onChange={setDate} min={editing?.startDate && editing.startDate < today ? editing.startDate : today} />
         </Label>
       ) : null}
 
@@ -233,7 +244,11 @@ export function describeRecurrence(commitment: ProfileCommitment): string {
   if (commitment.recurrence === "weekly" && commitment.weekday !== null) {
     return `Every ${WEEKDAYS[commitment.weekday]}`;
   }
-  if (commitment.recurrence === "none" && commitment.startDate) return commitment.startDate;
+  if (commitment.recurrence === "none" && commitment.startDate) {
+    return new Intl.DateTimeFormat("en-AU", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(
+      new Date(`${commitment.startDate}T12:00:00Z`),
+    );
+  }
   return "Once";
 }
 

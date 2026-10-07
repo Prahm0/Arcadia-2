@@ -168,6 +168,11 @@ export interface PlanDay {
   used: number;
   /** Most study the day takes: the daily limit, or Arcad's total for the day. */
   cap: number;
+  /**
+   * Subjects (by subjectKey) the student took off this day themselves, by
+   * moving a block to another day or removing it. Nothing puts them back.
+   */
+  takenOff: Set<string>;
 }
 
 /**
@@ -343,6 +348,8 @@ export interface DayLayout {
   createdAt: string;
   /** Layouts made on the paid tier's stronger model on `day`, the student's local date. */
   premium?: { day: string; count: number };
+  /** What it was planned from, less work logged since (see day-plan.ts layoutBasis). */
+  basis?: string;
 }
 
 export function readLayout(raw: string | null | undefined): DayLayout | null {
@@ -353,6 +360,37 @@ export function readLayout(raw: string | null | undefined): DayLayout | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Takes the block a moved study block came from out of Arcad's layout.
+ * Otherwise the layout books it again in the spot it just left, and the week
+ * shows it twice until the cron replaces the layout.
+ */
+export async function releaseFromLayout(database: Database, event: EventSelect, timeZone: string): Promise<void> {
+  if (event.source !== "auto" || event.category !== "study") return;
+  const [row] = await database
+    .select()
+    .from(schema.dayLayouts)
+    .where(eq(schema.dayLayouts.userId, event.userId))
+    .limit(1);
+  const layout = readLayout(row?.layout);
+  if (!layout) return;
+
+  const date = localDateKey(event.startAt, timeZone);
+  const at = Math.round((event.startAt - startOfLocalDay(event.startAt, timeZone)) / MINUTE);
+  const index = layout.blocks.findIndex((block) => {
+    const start = parseClock(block.start);
+    if (block.date !== date || start === null || at < start || at > start + NUDGE / MINUTE) return false;
+    return event.taskId ? block.taskId === event.taskId : !block.taskId && subjectKey(block.subject) === subjectKey(event.subject);
+  });
+  if (index < 0) return;
+
+  layout.blocks.splice(index, 1);
+  await database
+    .update(schema.dayLayouts)
+    .set({ layout: JSON.stringify(layout) })
+    .where(eq(schema.dayLayouts.userId, event.userId));
 }
 
 export interface ScheduleInputs {
@@ -548,6 +586,21 @@ export function groundwork(
 
   for (const event of keep) busy.push({ start: event.startAt, end: event.endAt });
 
+  const takenOff = new Map<string, Set<string>>();
+  const takeOff = (at: number, subject: string | null) => {
+    if (!subject) return;
+    const date = localDateKey(at, tz);
+    takenOff.set(date, (takenOff.get(date) ?? new Set<string>()).add(subjectKey(subject)));
+  };
+  for (const event of inputs.existing) {
+    // Deadline work still has to get done, so only subject time stays away.
+    if (event.category !== "study" || event.taskId) continue;
+    if (event.status === "cancelled") takeOff(event.startAt, event.subject);
+    else if (event.movedFrom !== null && localDateKey(event.movedFrom, tz) !== localDateKey(event.startAt, tz)) {
+      takeOff(event.movedFrom, event.subject);
+    }
+  }
+
   // Whatever is left is study time, day by day. Nothing starts at an odd
   // minute like 2:28pm: today's free time begins on the next five minutes.
   const dailyCap = Math.max(0, profile.maxDailyStudyMinutes) * MINUTE;
@@ -575,6 +628,7 @@ export function groundwork(
         )
         .reduce((sum, event) => sum + (event.endAt - event.startAt), 0),
       cap: dailyCap,
+      takenOff: takenOff.get(localDateKey(day, tz)) ?? new Set<string>(),
     });
   }
 
@@ -596,11 +650,28 @@ export interface QueueEntry {
   unit: number;
 }
 
+/**
+ * Deadline work already sitting in blocks a rebuild keeps: ones the student
+ * (or Arcad, on their say-so) moved or added, and the one under way. Without
+ * this a moved block's time gets booked a second time somewhere else.
+ */
+export function bookedTaskTime(keep: EventSelect[], now: number): Map<string, number> {
+  const booked = new Map<string, number>();
+  for (const event of keep) {
+    if (!event.taskId || event.category !== "study" || event.outcome !== "planned" || event.endAt <= now) continue;
+    booked.set(event.taskId, (booked.get(event.taskId) ?? 0) + (event.endAt - event.startAt));
+  }
+  return booked;
+}
+
 /** Pending deadline work with time left, most urgent first, then highest priority. */
-export function taskQueue(tasks: Task[], sessionLength: number): QueueEntry[] {
+export function taskQueue(tasks: Task[], sessionLength: number, booked = new Map<string, number>()): QueueEntry[] {
   return tasks
     .map((task) => {
-      const remaining = Math.max(0, task.estimatedMinutes - task.completedMinutes) * MINUTE;
+      const remaining = Math.max(
+        0,
+        Math.max(0, task.estimatedMinutes - task.completedMinutes) * MINUTE - (booked.get(task.id) ?? 0),
+      );
       return { task, remaining, unit: evenSession(remaining, sessionLength, MIN_BLOCK) };
     })
     .filter((entry) => entry.remaining > 0)
@@ -683,6 +754,10 @@ export function applyLayout(
       const subject = byKey.get(subjectKey(item.subject));
       if (!subject) {
         problems.push(`${label}: "${item.subject}" isn't one of their subjects`);
+        continue;
+      }
+      if (day.takenOff.has(subjectKey(subject.name))) {
+        problems.push(`${label} (${subject.name}): they took ${subject.name} off this day themselves`);
         continue;
       }
       const spot = placeAt(day, start, length, g.breakLength);
@@ -889,7 +964,7 @@ export async function rebuildSchedule(
     pinned: false,
   });
 
-  const queue = taskQueue(inputs.tasks, sessionLength);
+  const queue = taskQueue(inputs.tasks, sessionLength, bookedTaskTime(g.keep, g.now));
 
   // 1. Arcad's layout.
   const key = layoutKey(inputs, g);
@@ -1005,6 +1080,7 @@ export async function rebuildSchedule(
       const placedToday = new Set<Need>();
 
       const place = (entry: Need) => {
+        if (day.takenOff.has(subjectKey(entry.subject.name))) return;
         // A tail too short to be its own session rides along with this one.
         const want =
           entry.remaining - entry.unit < MIN_SUBJECT_BLOCK ? entry.remaining : entry.unit;
@@ -1125,8 +1201,8 @@ export async function rebuildSchedule(
     writes.push(
       database
         .insert(schema.dayLayouts)
-        .values({ userId, wantedKey: key })
-        .onConflictDoUpdate({ target: schema.dayLayouts.userId, set: { wantedKey: key } }),
+        .values({ userId, wantedKey: key, wantedAt: Date.now() })
+        .onConflictDoUpdate({ target: schema.dayLayouts.userId, set: { wantedKey: key, wantedAt: Date.now() } }),
     );
   }
   if (writes.length > 0) {

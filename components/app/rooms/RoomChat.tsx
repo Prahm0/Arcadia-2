@@ -276,7 +276,9 @@ function MessageLine({ message, continued, member, isMember, onMemberClick, onMe
       <button
         type="button"
         onClick={onMenu}
-        className="self-start rounded px-1.5 text-[13px] opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+        // Touch screens have no hover, so the menu stays visible there; with a
+        // mouse it appears on hover. The larger box makes it easy to hit.
+        className="-mr-1 grid min-h-8 min-w-8 place-items-center self-start rounded text-[13px] transition-opacity focus-visible:opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
         style={{ color: "var(--app-text-muted)" }}
         aria-label={`Actions for ${message.displayName}'s message`}
       >

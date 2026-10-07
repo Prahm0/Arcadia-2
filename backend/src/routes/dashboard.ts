@@ -32,6 +32,16 @@ dashboard.get("/", async (c) => {
     .limit(1);
   if (!user) return c.json({ error: "Not signed in." }, 401);
 
+  // Opening the app counts the student active today (UTC), for actives and
+  // retention on the developer metrics page. Repeat loads change nothing.
+  c.executionCtx.waitUntil(
+    database
+      .insert(schema.userActiveDays)
+      .values({ userId, day: new Date().toISOString().slice(0, 10) })
+      .onConflictDoNothing()
+      .then(() => undefined, (error) => console.warn("[dashboard] active day not saved", error)),
+  );
+
   const [profile] = await database
     .select()
     .from(schema.profiles)

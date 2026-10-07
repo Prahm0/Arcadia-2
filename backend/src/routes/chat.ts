@@ -1,14 +1,15 @@
-import { and, asc, desc, eq, isNotNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../db";
 import { newId } from "../lib/ids";
 import { saveMemories } from "../lib/memories";
 import { ARCAD_VOICE, PROPOSE_TOOL, REMEMBER_TOOL, complete, type ChatMessage } from "../lib/openai";
+import { applyOperations, prepareOperations, scheduleContext } from "../lib/plan-changes";
 import { replan } from "../lib/replan";
 import { subjectKey, weeklyTargetMinutes } from "../lib/scheduler";
 import { describeBrief, recentMissReasonContext, subjectBriefs } from "../lib/study-context";
 import { DAILY_MESSAGE_CAP, getMessageUsage, getUserTier, messageUsageSnapshot, refundMessage, tryConsumeMessage } from "../lib/tiers";
-import { DAY, iso, parseClock } from "../lib/time";
+import { DAY, iso, localDateKey } from "../lib/time";
 import type { Env, Variables } from "../types";
 
 const chat = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -203,12 +204,17 @@ chat.post("/", async (c) => {
       };
 
       try {
-        const history = await database
-          .select()
-          .from(schema.messages)
-          .where(eq(schema.messages.conversationId, conversationId))
-          .orderBy(asc(schema.messages.createdAt))
-          .limit(30);
+        // The latest 30, oldest first; rowid breaks ties within a second.
+        // Taking the first 30 left Arcad answering an old message once a
+        // chat ran past that.
+        const history = (
+          await database
+            .select()
+            .from(schema.messages)
+            .where(eq(schema.messages.conversationId, conversationId))
+            .orderBy(desc(schema.messages.createdAt), desc(sql`rowid`))
+            .limit(30)
+        ).reverse();
 
         const context = await buildContext(c.env, userId);
         const prompt: ChatMessage[] = [
@@ -223,6 +229,7 @@ chat.post("/", async (c) => {
           c.env,
           prompt,
           context.memoryEnabled ? [PROPOSE_TOOL, REMEMBER_TOOL] : [PROPOSE_TOOL],
+          { feature: "chat", userId },
         );
         if (!result.content.trim() && result.toolCalls.length === 0) {
           throw new Error("Arcad couldn't respond.");
@@ -249,6 +256,9 @@ chat.post("/", async (c) => {
         }
 
         let proposalPayload: ReturnType<typeof serialiseProposal> | undefined;
+        // Changes Arcad wanted that don't fit the schedule, said plainly
+        // rather than left for Apply to quietly skip.
+        let problems: string[] = [];
         const toolCall = result.toolCalls.find((call) => call.name === "propose_changes");
 
         if (toolCall) {
@@ -257,7 +267,13 @@ chat.post("/", async (c) => {
               summary?: string;
               operations?: unknown[];
             };
-            const operations = Array.isArray(parsed.operations) ? parsed.operations : [];
+            const prepared = await prepareOperations(
+              database,
+              userId,
+              Array.isArray(parsed.operations) ? parsed.operations : [],
+            );
+            const operations = prepared.operations;
+            problems = prepared.problems;
             if (operations.length > 0) {
               const id = newId("prp");
               const expiresAt = Date.now() + PROPOSAL_TTL;
@@ -281,13 +297,21 @@ chat.post("/", async (c) => {
           }
         }
 
-        const content =
-          result.content.trim() ||
-          (proposalPayload
-            ? `${proposalPayload.summary} Hit Apply and I'll update your plan.`
-            : remembered.length > 0
-              ? "Sweet, I'll remember that."
-              : "Not sure what you're after. What do you need to plan?");
+        const problem = problems[0] ?? "";
+        const content = toolCall && !proposalPayload
+          ? // Arcad's own words would describe a change that isn't coming.
+            problem
+            ? `I couldn't set that up: ${problem}. Want to try a different time?`
+            : "I couldn't set that up. Which block do you mean, and when should it go?"
+          : [
+              result.content.trim() ||
+                (proposalPayload
+                  ? `${proposalPayload.summary} Tap Apply and it goes on your schedule.`
+                  : remembered.length > 0
+                    ? "Sweet, I'll remember that."
+                    : "Not sure what you're after. What do you need to plan?"),
+              ...(proposalPayload && problem ? [`I left one bit out: ${problem}.`] : []),
+            ].join(" ");
 
         const assistantId = newId("msg");
         await database.insert(schema.messages).values({
@@ -393,17 +417,30 @@ async function buildContext(
   ].filter(Boolean);
   const openGoals = goalRows.filter((goal) => !goal.done);
 
+  const timeZone = profile?.timezone ?? "Australia/Brisbane";
+  const now = Date.now();
+  const schedule = await scheduleContext(database, userId, timeZone, now);
+  const localNow = new Intl.DateTimeFormat("en-AU", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone,
+  }).format(now);
+
   const lines = [
     ARCAD_VOICE,
-    "In this chat you help them plan: what to work on, when, and what's coming up. To change the plan, call propose_changes. Never claim you've changed something without it.",
+    "In this chat you help them plan: what to work on, when, and what's coming up.",
+    "When they ask to change their schedule or plan, call propose_changes in the same reply. Use the block ids from their schedule below. To keep time free (busy, going out, work), add a one-off commitment for it rather than removing blocks, or the study just moves elsewhere. For more or less of a subject every week, use update_subject. If you can't tell which block or time they mean, ask.",
+    "A change only happens when they tap Apply, so say it's ready to apply. Never say you've already changed something.",
     ...(memoryEnabled
       ? [
           "When the student tells you something about themselves that will still matter later (how they study, what they find hard, goals, how their week works), call remember as well as replying.",
         ]
       : []),
     "",
-    `Now: ${new Date().toISOString()}`,
-    `Timezone: ${profile?.timezone ?? "Australia/Brisbane"}`,
+    `Now: ${localNow} their time (${localDateKey(now, timeZone)}), timezone ${timeZone}`,
     `Wake ${profile?.wakeTime ?? "07:00"}, bed ${profile?.bedtime ?? "22:30"}, up to ${
       profile?.maxDailyStudyMinutes ?? 180
     } minutes of study a day in ${profile?.preferredSessionMinutes ?? 50} minute sessions.`,
@@ -454,13 +491,15 @@ async function buildContext(
         )
       : ["- none"]),
     "",
-    "Recurring commitments:",
+    ...schedule,
+    "",
+    "Commitments:",
     ...(commitmentRows.length
       ? commitmentRows.map(
           (commitment) =>
-            `- [${commitment.id}] ${commitment.title}, ${commitment.recurrence}${
-              commitment.weekday !== null ? ` weekday ${commitment.weekday}` : ""
-            }, ${commitment.startTime}-${commitment.endTime}`,
+            `- [${commitment.id}] ${commitment.title}, ${
+              commitment.recurrence === "none" ? `once on ${commitment.startDate ?? "no date"}` : commitment.recurrence
+            }${commitment.weekday !== null ? ` weekday ${commitment.weekday}` : ""}, ${commitment.startTime}-${commitment.endTime}`,
         )
       : ["- none"]),
   ];
@@ -627,7 +666,7 @@ proposals.post("/:id/:action", async (c) => {
   }
 
   const operations = JSON.parse(proposal.operations) as Array<Record<string, unknown>>;
-  const applied = await applyOperations(c.env, userId, operations);
+  const { applied, skipped } = await applyOperations(database, userId, operations);
 
   await database
     .update(schema.proposals)
@@ -635,100 +674,7 @@ proposals.post("/:id/:action", async (c) => {
     .where(eq(schema.proposals.id, id));
 
   await replan(database, userId);
-  return c.json({ ok: true, applied });
+  return c.json({ ok: true, applied, skipped });
 });
-
-async function applyOperations(
-  env: Env,
-  userId: string,
-  operations: Array<Record<string, unknown>>,
-): Promise<number> {
-  const database = db(env.DB);
-  let applied = 0;
-
-  for (const operation of operations.slice(0, 50)) {
-    const op = String(operation.op ?? "");
-    const str = (key: string) =>
-      typeof operation[key] === "string" ? (operation[key] as string) : undefined;
-    const num = (key: string) =>
-      Number.isFinite(Number(operation[key])) ? Number(operation[key]) : undefined;
-
-    if (op === "create_task") {
-      const title = str("title")?.trim();
-      const dueAt = Date.parse(str("dueAt") ?? "");
-      if (!title || Number.isNaN(dueAt)) continue;
-      await database.insert(schema.tasks).values({
-        id: newId("tsk"),
-        userId,
-        title: title.slice(0, 200),
-        subject: str("subject") ?? null,
-        taskType: str("taskType") ?? "study",
-        dueAt,
-        estimatedMinutes: Math.min(1200, Math.max(15, num("estimatedMinutes") ?? 60)),
-        priority: Math.min(5, Math.max(1, num("priority") ?? 2)),
-      });
-      applied += 1;
-    } else if (op === "update_task") {
-      const taskId = str("id");
-      if (!taskId) continue;
-      const patch: Partial<typeof schema.tasks.$inferInsert> = {};
-      if (str("title")) patch.title = str("title")!.slice(0, 200);
-      if (str("subject") !== undefined) patch.subject = str("subject") ?? null;
-      const dueAt = Date.parse(str("dueAt") ?? "");
-      if (!Number.isNaN(dueAt)) patch.dueAt = dueAt;
-      if (num("estimatedMinutes") !== undefined) {
-        patch.estimatedMinutes = Math.min(1200, Math.max(15, num("estimatedMinutes")!));
-      }
-      if (Object.keys(patch).length === 0) continue;
-      await database
-        .update(schema.tasks)
-        .set(patch)
-        .where(and(eq(schema.tasks.id, taskId), eq(schema.tasks.userId, userId)));
-      applied += 1;
-    } else if (op === "delete_task") {
-      const taskId = str("id");
-      if (!taskId) continue;
-      await database
-        .delete(schema.events)
-        .where(and(eq(schema.events.userId, userId), eq(schema.events.taskId, taskId)));
-      await database
-        .delete(schema.tasks)
-        .where(and(eq(schema.tasks.id, taskId), eq(schema.tasks.userId, userId)));
-      applied += 1;
-    } else if (op === "create_commitment") {
-      const title = str("title")?.trim();
-      const startTime = str("startTime");
-      const endTime = str("endTime");
-      if (!title || parseClock(startTime) === null || parseClock(endTime) === null) continue;
-      await database.insert(schema.commitments).values({
-        id: newId("cmt"),
-        userId,
-        title: title.slice(0, 200),
-        category: str("category") ?? "other",
-        recurrence: str("recurrence") ?? "weekly",
-        weekday: num("weekday") ?? null,
-        startTime: startTime!,
-        endTime: endTime!,
-      });
-      applied += 1;
-    } else if (op === "delete_commitment") {
-      const commitmentId = str("id");
-      if (!commitmentId) continue;
-      await database
-        .delete(schema.events)
-        .where(
-          and(eq(schema.events.userId, userId), eq(schema.events.commitmentId, commitmentId)),
-        );
-      await database
-        .delete(schema.commitments)
-        .where(
-          and(eq(schema.commitments.id, commitmentId), eq(schema.commitments.userId, userId)),
-        );
-      applied += 1;
-    }
-  }
-
-  return applied;
-}
 
 export default chat;

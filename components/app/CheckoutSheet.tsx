@@ -1,17 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { api } from "@/lib/api/client";
-import type { PlannerEvent, SessionCheckout } from "@/lib/api/types";
+import type { PlannerEvent } from "@/lib/api/types";
+import { blockTopics, type Confidence } from "@/shared/studyLog";
 import AppButton from "./AppButton";
+import ConfidencePicker from "./focus/ConfidencePicker";
 import { Label, Sheet, TextInput } from "./profile/ui";
-
-const FEELINGS: Array<{ value: NonNullable<SessionCheckout["feeling"]>; label: string }> = [
-  { value: "good", label: "Went well" },
-  { value: "ok", label: "Okay" },
-  { value: "rough", label: "Rough" },
-];
 
 interface CheckoutProps {
   event: PlannerEvent;
@@ -24,8 +20,9 @@ interface CheckoutProps {
 }
 
 /**
- * The end of a session: what got done, what's left, how it went. What's left
- * is where Arcad starts next time.
+ * The end of a session: what got done, what's left, and how each topic it
+ * covered is sitting. That goes in the study log, and what's left is where
+ * Arcad starts next time.
  */
 export default function CheckoutSheet({ open, ...props }: CheckoutProps & { open: boolean }) {
   return (
@@ -40,7 +37,12 @@ function CheckoutForm({ event, initialDone, minutes, onClose, onSaved }: Checkou
   const steps = event.plan?.steps ?? [];
   const [done, setDone] = useState<number[]>(initialDone);
   const [leftover, setLeftover] = useState("");
-  const [feeling, setFeeling] = useState<SessionCheckout["feeling"]>(null);
+  // The same topics the API logs this session under, keyed the same way.
+  const topics = useMemo(
+    () => blockTopics({ plan: event.plan, title: event.title, taskId: event.taskId ?? null }),
+    [event.plan, event.title, event.taskId],
+  );
+  const [ratings, setRatings] = useState<Record<string, Confidence>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -52,7 +54,12 @@ function CheckoutForm({ event, initialDone, minutes, onClose, onSaved }: Checkou
     try {
       const response = await api<{ event: PlannerEvent }>(`/api/events/${encodeURIComponent(event.id)}/checkout`, {
         method: "POST",
-        body: JSON.stringify({ done, leftover, feeling, minutes }),
+        body: JSON.stringify({
+          done,
+          leftover,
+          minutes,
+          topics: Object.entries(ratings).map(([key, confidence]) => ({ key, confidence })),
+        }),
       });
       await onSaved(response.event);
       setSaved(true);
@@ -119,30 +126,33 @@ function CheckoutForm({ event, initialDone, minutes, onClose, onSaved }: Checkou
         <TextInput value={leftover} onChange={setLeftover} maxLength={200} placeholder="e.g. Q6-8, and the yield calcs" />
       </Label>
 
-      <div>
-        <p className="mb-2 text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>
-          How&apos;d it go?
-        </p>
-        <div className="flex gap-2" role="radiogroup" aria-label="How it went">
-          {FEELINGS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              role="radio"
-              aria-checked={feeling === option.value}
-              onClick={() => setFeeling(feeling === option.value ? null : option.value)}
-              className="flex-1 rounded-md py-2 text-[13px] font-medium transition-colors"
-              style={{
-                background: feeling === option.value ? "var(--app-accent-soft)" : "var(--app-surface-soft)",
-                color: feeling === option.value ? "var(--app-accent-strong)" : "var(--app-text-soft)",
-                border: `1px solid ${feeling === option.value ? "var(--app-accent)" : "var(--app-border)"}`,
-              }}
-            >
-              {option.label}
-            </button>
+      <fieldset>
+        <legend className="mb-2 text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>
+          {topics.length > 1 ? "How's each one sitting?" : "How's it sitting?"}
+        </legend>
+        <div className="flex flex-col gap-3">
+          {topics.map((topic) => (
+            <ConfidencePicker
+              key={topic.key}
+              label={topic.topic || "This session"}
+              // One topic is the sheet's title already.
+              showLabel={topics.length > 1}
+              value={ratings[topic.key] ?? null}
+              onChange={(value) =>
+                setRatings((prev) => {
+                  const next = { ...prev };
+                  if (value) next[topic.key] = value;
+                  else delete next[topic.key];
+                  return next;
+                })
+              }
+            />
           ))}
         </div>
-      </div>
+        <p className="mt-2 text-[12px]" style={{ color: "var(--app-text-muted)" }}>
+          Arcad plans your next sessions from this.
+        </p>
+      </fieldset>
 
       {error ? (
         <p role="alert" className="text-[13.5px]" style={{ color: "var(--app-danger)" }}>

@@ -263,8 +263,8 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
         { kind: "item", label: "Open", onSelect: () => setSelectedEvent(event) },
         study && planned && {
           kind: "item",
-          label: "Start focus",
-          onSelect: () => router.push(`/app/focus?eventId=${encodeURIComponent(event.id)}`),
+          label: "Start session",
+          onSelect: () => router.push(`/app/sessions?eventId=${encodeURIComponent(event.id)}`),
         },
         { kind: "separator" },
         study && event.outcome !== "missed" && {

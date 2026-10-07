@@ -391,7 +391,7 @@ function Result({ result, tz, subjects, onDone }: { result: RecoveryResult; tz: 
 
       <div className="mt-6 flex flex-col gap-2.5">
         <Link
-          href="/app/focus"
+          href="/app/sessions"
           onClick={onDone}
           className="flex h-11 w-full items-center justify-center rounded-lg text-[15px] font-semibold transition-opacity hover:opacity-90"
           style={{ background: "var(--app-arcad)", color: "var(--app-arcad-on)" }}

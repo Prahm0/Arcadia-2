@@ -101,7 +101,7 @@ export default function MentorSection() {
                     className="relative"
                   >
                     <p className="type-mono-label text-ui-muted">You asked</p>
-                    <p className="mt-1.5 font-serif text-[24px] italic leading-tight text-ui-text sm:text-[28px]">
+                    <p className="mt-1.5 text-[22px] font-medium leading-tight tracking-[-0.02em] text-ui-text sm:text-[26px]">
                       {active.prompt}
                     </p>
 

@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import type { Env } from "../types";
-import { completeJson, type ContentPart } from "./openai";
+import { completeJson, documentCall, type ContentPart } from "./openai";
 import { hasTermDates, termWeek } from "./terms";
 
 export const MATERIAL_TYPES: Record<string, "pdf" | "image" | "text"> = {
@@ -132,10 +132,12 @@ const clip = (value: unknown, max: number) => String(value ?? "").replace(/\s+/g
  */
 export async function readSyllabus(
   env: Env,
+  userId: string,
   file: { bytes: ArrayBuffer; contentType: string; filename: string },
   context: { subject: string; state: string | null; today: string },
 ): Promise<{ topics: TopicRow[]; assessments: AssessmentRow[] } | null> {
   const thisYear = Number(context.today.slice(0, 4));
+  const call = documentCall(env, { feature: "syllabus", userId }, 3000);
   const reply = await completeJson<SyllabusReply>(
     env,
     [
@@ -159,7 +161,8 @@ export async function readSyllabus(
       },
     ],
     SYLLABUS_SCHEMA,
-    3000,
+    call.maxTokens,
+    call.options,
   );
   if (!reply) return null;
 
@@ -207,9 +210,11 @@ export async function readSyllabus(
 /** What a textbook, handout or set of notes covers, in a couple of lines. */
 export async function readResource(
   env: Env,
+  userId: string,
   file: { bytes: ArrayBuffer; contentType: string; filename: string },
   subject: string,
 ): Promise<string | null> {
+  const call = documentCall(env, { feature: "resource_summary", userId }, 300);
   const reply = await completeJson<{ summary: string }>(
     env,
     [
@@ -224,7 +229,8 @@ export async function readResource(
       },
     ],
     RESOURCE_SCHEMA,
-    300,
+    call.maxTokens,
+    call.options,
   );
   return reply?.summary ? clip(reply.summary, 500) : null;
 }

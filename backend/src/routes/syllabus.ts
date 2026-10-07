@@ -3,7 +3,9 @@ import { Hono } from "hono";
 import { db, schema, type Database } from "../db";
 import { newId } from "../lib/ids";
 import { aiConfigured } from "../lib/openai";
+import { track } from "../lib/posthog";
 import { replan } from "../lib/replan";
+import { relinkTopics } from "../lib/study-log";
 import {
   ASSESSMENT_KINDS,
   MATERIAL_MAX_BYTES,
@@ -146,7 +148,7 @@ subjectMaterials.post("/:id/files", async (c) => {
   if (aiConfigured(c.env)) {
     try {
       if (kind === "syllabus") {
-        map = await readSyllabus(c.env, { bytes, contentType, filename }, {
+        map = await readSyllabus(c.env, userId, { bytes, contentType, filename }, {
           subject: subject.name,
           state: profile?.state ?? null,
           today,
@@ -154,7 +156,7 @@ subjectMaterials.post("/:id/files", async (c) => {
         read = Boolean(map && (map.topics.length > 0 || map.assessments.length > 0));
         if (map) summary = `${map.topics.length} topics, ${map.assessments.length} assessments`;
       } else {
-        const outline = await readResource(c.env, { bytes, contentType, filename }, subject.name);
+        const outline = await readResource(c.env, userId, { bytes, contentType, filename }, subject.name);
         read = Boolean(outline);
         summary = outline ?? "";
       }
@@ -263,9 +265,19 @@ subjectMaterials.post("/:id/files", async (c) => {
   }
 
   await runBatch(database, writes);
+  // The new topics are new rows; the study log finds its topics again by name.
+  if (read && map) await relinkTopics(database, userId, subjectId);
   for (const old of replaced) if (old.storageKey) await c.env.UPLOADS?.delete(old.storageKey);
 
   const [row] = await database.select().from(schema.subjectFiles).where(eq(schema.subjectFiles.id, id)).limit(1);
+  track(c, userId, "file_added", {
+    place: "subject",
+    kind,
+    contentType,
+    read,
+    topics: map?.topics.length ?? 0,
+    assessments: map?.assessments.length ?? 0,
+  });
   return c.json(
     {
       file: serialiseFile(row),
@@ -311,6 +323,8 @@ subjectMaterials.post("/:id/topics", async (c) => {
     position: existing.reduce((max, row) => Math.max(max, row.position + 1), 0),
     source: "manual",
   });
+  // Sessions already logged under this name file under the new topic.
+  await relinkTopics(database, userId, subjectId);
   return c.json({ ok: true, id }, 201);
 });
 

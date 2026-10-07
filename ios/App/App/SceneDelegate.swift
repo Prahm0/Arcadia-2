@@ -29,5 +29,6 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 class MainViewController: CAPBridgeViewController {
     override open func capacitorDidLoad() {
         bridge?.registerPluginInstance(AppleSignInPlugin())
+        bridge?.registerPluginInstance(FocusGuardPlugin())
     }
 }

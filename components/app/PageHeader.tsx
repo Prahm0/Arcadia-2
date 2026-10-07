@@ -49,10 +49,11 @@ export default function PageHeader({ eyebrow, title, meta, action, tour, width =
         ) : null}
       </div>
       {action || tour ? (
-        // Full width on mobile so the actions wrap within the screen instead
-        // of expanding past the right edge (a flex-shrink-0 row would grow to
-        // max-content and clip). Inline and non-shrinking from lg up.
-        <div className="flex w-full flex-wrap items-center justify-end gap-2 lg:w-auto lg:flex-shrink-0">
+        // On mobile the row may shrink (capped at the screen width) so the
+        // actions wrap instead of clipping; it shares the title's line when it
+        // fits and sits right-aligned below it when not. Inline and
+        // non-shrinking from lg up.
+        <div className="flex flex-wrap items-center justify-end gap-2 max-lg:ml-auto max-lg:max-w-full lg:w-auto lg:flex-shrink-0">
           {tour ? <PageTour id={tour} /> : null}
           {action}
         </div>

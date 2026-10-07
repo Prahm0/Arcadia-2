@@ -8,6 +8,9 @@ export interface PendingStudySession {
   goal: string;
   distractions: number;
   endedAt: string;
+  /** A free timer session's topic, for the study log. */
+  topicId?: string | null;
+  topic?: string | null;
 }
 const memory = new Map<string, PendingStudySession[]>();
 type Reward = { xp: number; source: string };

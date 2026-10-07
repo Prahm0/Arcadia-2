@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
-import { analytics } from "@/lib/analytics/events";
 
 type Tier = "free" | "pro" | "max";
 
@@ -26,7 +25,6 @@ export default function WelcomePage() {
   const { data, reload } = useDashboardData();
   const tier = (data?.user?.tier ?? "free") as Tier;
   const firstName = (data?.user?.name ?? "").trim().split(" ")[0];
-  const tracked = useRef(false);
 
   // The subscription webhook flips the tier a beat after checkout completes.
   // We land here from a full page load, so the tier is usually already live,
@@ -52,13 +50,6 @@ export default function WelcomePage() {
       window.clearTimeout(timer);
     };
   }, [tier, reload]);
-
-  // Fire the activation event once, when we can see a paid tier.
-  useEffect(() => {
-    if (tier === "free" || tracked.current) return;
-    tracked.current = true;
-    analytics.subscriptionActivated(tier);
-  }, [tier]);
 
   const planName = tier === "max" ? "Max" : "Pro";
   const perks = tier === "max" ? UNLOCKED.max : UNLOCKED.pro;

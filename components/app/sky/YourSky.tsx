@@ -177,7 +177,7 @@ export default function YourSky({
                   {followed.earnedAt ? (
                     <AppButton variant="primary" onClick={() => open(followed)}>View your card</AppButton>
                   ) : (
-                    <Link href="/app/focus" className={appButtonClass("primary")}>Start focus</Link>
+                    <Link href="/app/sessions" className={appButtonClass("primary")}>Start session</Link>
                   )}
                   <AppButton onClick={browse}>Change card</AppButton>
                 </div>
@@ -191,7 +191,7 @@ export default function YourSky({
 
             <div className="border-t px-6 py-5 sm:px-8" style={{ borderColor: "var(--app-border)" }}>
               <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
-                <Stat label="Focus sessions" value={totalsLoading ? "–" : String(totals.sessions)} />
+                <Stat label="Sessions" value={totalsLoading ? "–" : String(totals.sessions)} />
                 <Stat label="Time focused" value={totalsLoading ? "–" : formatMinutes(totals.minutes)} />
                 <Stat label="Stars lit" value={String(starsLit)} />
                 <Stat label="Cards collected" value={`${owned.length} of ${cards.length}`} />
@@ -263,7 +263,7 @@ export default function YourSky({
                   key={card.id}
                   type="button"
                   className={styles.cardButton}
-                  aria-label={`View ${constellationById(card.id)!.name}${card.earnedAt ? ", collected" : ", forming"}`}
+                  aria-label={`View ${constellationById(card.id)!.name}${card.earnedAt ? ", collected" : ", locked"}`}
                   onClick={() => open(card)}
                 >
                   <ConstellationCard card={card} featured={sky.preferences.featured === card.id} following={sky.preferences.followed === card.id} />

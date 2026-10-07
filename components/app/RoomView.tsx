@@ -177,7 +177,7 @@ export default function RoomView({ code }: { code: string }) {
     setActionError(null);
     try {
       await leaveRoom(code);
-      router.push("/app/rooms");
+      router.push("/app/sessions/rooms");
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Couldn't leave the room.");
     }
@@ -256,7 +256,7 @@ export default function RoomView({ code }: { code: string }) {
           <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
             It may have been closed when the last person left. Double-check the code, or start a new room.
           </p>
-          <Link href="/app/rooms" className="mt-4 inline-block text-[12.5px] font-medium underline underline-offset-4" style={{ color: "var(--app-text-muted)" }}>
+          <Link href="/app/sessions/rooms" className="mt-4 inline-block text-[12.5px] font-medium underline underline-offset-4" style={{ color: "var(--app-text-muted)" }}>
             ← All rooms
           </Link>
         </div>
@@ -305,7 +305,7 @@ export default function RoomView({ code }: { code: string }) {
               </div>
             </form>
           ) : null}
-          <Link href="/app/rooms" className="text-[12.5px] font-medium underline underline-offset-4" style={{ color: "var(--app-text-muted)" }}>
+          <Link href="/app/sessions/rooms" className="text-[12.5px] font-medium underline underline-offset-4" style={{ color: "var(--app-text-muted)" }}>
             ← All rooms
           </Link>
         </div>
@@ -401,7 +401,7 @@ export default function RoomView({ code }: { code: string }) {
         />
 
         <div className="flex flex-wrap items-center justify-between gap-3 text-[12px]">
-          <Link href="/app/rooms" className="font-medium underline underline-offset-4" style={{ color: "var(--app-text-muted)" }}>
+          <Link href="/app/sessions/rooms" className="font-medium underline underline-offset-4" style={{ color: "var(--app-text-muted)" }}>
             ← All rooms
           </Link>
           <p style={{ color: reconnecting ? "var(--app-danger)" : "var(--app-text-faint)" }}>

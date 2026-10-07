@@ -1,23 +1,57 @@
 "use client";
 
+import { Capacitor } from "@capacitor/core";
 import { api } from "@/lib/api/client";
+import { isNativeIOS } from "@/lib/capacitor/platform";
+import {
+  enableNativePush,
+  nativePushPermission,
+  nativePushStatus,
+  unlinkNativePush,
+  updateNativePushPreferences,
+} from "@/lib/capacitor/nativePush";
 
 export interface PushPreferences {
   checkinsEnabled: boolean;
   sessionStartEnabled: boolean;
+  lateStartEnabled: boolean;
   sessionFollowupEnabled: boolean;
+  streakEnabled: boolean;
 }
+
+export const DEFAULT_PUSH_PREFERENCES: PushPreferences = {
+  checkinsEnabled: true,
+  sessionStartEnabled: true,
+  lateStartEnabled: true,
+  sessionFollowupEnabled: true,
+  streakEnabled: true,
+};
 
 interface StoredSubscription {
   endpoint: string;
   keys: { p256dh: string; auth: string };
 }
 
+/**
+ * Browsers with Web Push, and the iOS app, which uses APNs instead (see
+ * lib/capacitor/nativePush.ts). In the app, "endpoint" below is the device token.
+ */
 export function pushCheckinsSupported(): boolean {
+  // Only app builds that ship the push plugin can register; older iOS builds
+  // load this same site, so check the plugin instead of the platform.
+  if (isNativeIOS()) return Capacitor.isPluginAvailable("PushNotifications");
   return typeof window !== "undefined" &&
     "serviceWorker" in navigator &&
     "PushManager" in window &&
     "Notification" in window;
+}
+
+/** Whether asking for permission would still show a prompt. */
+export async function pushPermission(): Promise<"prompt" | "granted" | "denied"> {
+  if (isNativeIOS()) return nativePushPermission();
+  if (!("Notification" in window)) return "denied";
+  const permission = Notification.permission;
+  return permission === "default" ? "prompt" : permission;
 }
 
 function toApplicationServerKey(base64: string): Uint8Array<ArrayBuffer> {
@@ -50,6 +84,10 @@ export async function getPushEndpoint(): Promise<string | null> {
 }
 
 export async function getPushSubscriptionStatus(): Promise<{ endpoint: string; preferences: PushPreferences } | null> {
+  if (isNativeIOS()) {
+    const status = await nativePushStatus();
+    return status ? { endpoint: status.token, preferences: status.preferences } : null;
+  }
   const endpoint = await getPushEndpoint();
   if (!endpoint) return null;
   const response = await api<{ subscription: PushPreferences | null }>("/api/push/subscription/status", {
@@ -60,7 +98,11 @@ export async function getPushSubscriptionStatus(): Promise<{ endpoint: string; p
 }
 
 /** Requests permission only from an explicit user action, after the visit prompt is eligible. */
-export async function enablePushCheckins(): Promise<string> {
+export async function enablePushCheckins(): Promise<{ endpoint: string; preferences: PushPreferences }> {
+  if (isNativeIOS()) {
+    const { token, preferences } = await enableNativePush();
+    return { endpoint: token, preferences };
+  }
   const serviceWorker = await registration();
   if (Notification.permission === "denied") throw new Error("Notifications are blocked in this browser's site settings.");
   const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
@@ -76,10 +118,15 @@ export async function enablePushCheckins(): Promise<string> {
   }
   const value = serialise(subscription);
   await api("/api/push/subscription", { method: "POST", body: JSON.stringify(value) });
-  return value.endpoint;
+  // Subscribing (again) turns every check-in type back on.
+  return { endpoint: value.endpoint, preferences: DEFAULT_PUSH_PREFERENCES };
 }
 
 export async function updatePushPreferences(endpoint: string, preferences: PushPreferences): Promise<void> {
+  if (isNativeIOS()) {
+    await updateNativePushPreferences(endpoint, preferences);
+    return;
+  }
   await api("/api/push/subscription", {
     method: "PATCH",
     body: JSON.stringify({ endpoint, ...preferences }),
@@ -87,6 +134,10 @@ export async function updatePushPreferences(endpoint: string, preferences: PushP
 }
 
 export async function disablePushCheckins(): Promise<void> {
+  if (isNativeIOS()) {
+    await unlinkNativePush();
+    return;
+  }
   const serviceWorker = await registration();
   const subscription = await serviceWorker.pushManager.getSubscription();
   if (!subscription) return;

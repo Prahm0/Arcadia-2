@@ -4,6 +4,7 @@ import { db, schema, type Database } from "../db";
 import { roomReportEmail, sendEmail } from "../lib/email";
 import { newId } from "../lib/ids";
 import { containsRoomContactInfo, isObjectionableRoomMessage } from "../lib/moderation";
+import { track } from "../lib/posthog";
 import { livePresence } from "../lib/presence";
 import { currentTerm } from "../lib/terms";
 import { effectiveTier, getUserTier, type Tier } from "../lib/tiers";
@@ -498,6 +499,7 @@ studyRooms.post("/", async (c) => {
       if (String(error).includes("UNIQUE")) continue;
       throw error;
     }
+    track(c, userId, "room_created");
     return c.json(
       { room: serialiseRoom(room, { joinedAt: iso(room.createdAt), memberCount: 1, studyingCount: 0, capacity: ROOM_CAPACITY[await getUserTier(database, userId)], todaySeconds: 0, weekSeconds: 0 }) },
       201,
@@ -891,6 +893,7 @@ studyRooms.post("/:code/join", async (c) => {
       ON CONFLICT(room_id, user_id) DO NOTHING
     `).bind(room.id, userId, displayName, Date.now(), room.id, capacity, userId, MAX_MEMBERSHIPS).run();
     if (!inserted.meta.changes) return c.json({ error: "This room is full, or you've joined your maximum number of rooms." }, 409);
+    track(c, userId, "room_joined");
   }
 
   return c.json(await dashboard(database, room, userId));

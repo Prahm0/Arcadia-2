@@ -23,11 +23,12 @@ function icon(path: ReactNode) {
 }
 
 /**
- * Fixed bottom navigation for mobile. Five slots, Today, Schedule, Add, Arcad,
- * More, sized to the platform tap target (56 px column, min 44 px control).
- * Respects the iOS home-indicator safe area via env(safe-area-inset-bottom).
+ * Fixed bottom navigation for mobile. Five slots, Today, Schedule, Add,
+ * Sessions, More, sized to the platform tap target (56 px column, min 44 px
+ * control). Arcad lives in the floating orb and in More. Respects the iOS
+ * home-indicator safe area via env(safe-area-inset-bottom).
  */
-export default function MobileBottomNav() {
+export default function MobileBottomNav({ onAdd }: { onAdd: () => void }) {
   const pathname = usePathname() ?? "/app";
   const router = useRouter();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -58,11 +59,11 @@ export default function MobileBottomNav() {
       icon: icon(<><circle cx="12" cy="12" r="9" /><path d="M12 8v8M8 12h8" /></>),
     },
     {
-      key: "arcad",
-      label: "Arcad",
-      href: "/app/arcad",
-      icon: icon(<path d="M4 6h16v10H8l-4 4V6z" />),
-      matcher: (p) => p.startsWith("/app/arcad"),
+      key: "sessions",
+      label: "Sessions",
+      href: "/app/sessions",
+      icon: icon(<><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="3.5" /></>),
+      matcher: (p) => p.startsWith("/app/sessions"),
     },
     {
       key: "more",
@@ -73,8 +74,9 @@ export default function MobileBottomNav() {
 
   function trigger(slot: Slot) {
     if (slot.key === "add") {
-      // Handoff to Today, TodayView reads ?new=1 and opens New Task on mount.
-      router.push("/app?new=1");
+      // Opens over the current page. Pushing /app?new=1 did nothing on Today
+      // itself, since Today only reads the param when it mounts.
+      onAdd();
       return;
     }
     if (slot.key === "more") {

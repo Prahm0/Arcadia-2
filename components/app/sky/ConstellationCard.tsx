@@ -20,10 +20,12 @@ export default function ConstellationCard({ card, preview = false, featured = fa
   const lit = (index: number) => preview || card.milestones[index]?.earnedAt != null;
   const count = card.milestones.filter((star) => star.earnedAt !== null).length;
   const collected = !preview && card.earnedAt !== null;
+  // Grey until its last star is lit, the reward preview included.
+  const locked = card.earnedAt === null;
   const status = featured ? "Featured" : collected && !card.seen ? "New ✦" : following && !card.earnedAt ? "Following" : definition.atlas ? `Nº ${String(definition.atlas.order + 1).padStart(2, "0")}` : "✦";
   const detail = definition.atlas ? `${definition.atlas.brightest} · ${HEMISPHERE[definition.atlas.hemisphere]}` : `${total} stars · Arcadia original`;
   return (
-    <article ref={light} className={styles.card} data-preview={preview} data-collected={collected} style={{ "--sky-colour": definition.colour } as CSSProperties}>
+    <article ref={light} className={styles.card} data-preview={preview} data-collected={collected} data-locked={locked} style={{ "--sky-colour": definition.colour } as CSSProperties}>
       <div className={styles.cardBackdrop} aria-hidden="true">
         {(["tl", "tr", "bl", "br"] as const).map((corner) => (
           <svg key={corner} className={styles.corner} data-corner={corner} viewBox="0 0 18 18" fill="none">
@@ -35,7 +37,7 @@ export default function ConstellationCard({ card, preview = false, featured = fa
         <span className={styles.notch} data-edge="top" /><span className={styles.notch} data-edge="bottom" />
       </div>
 
-      <div className={styles.cardTop}><span className="truncate">{definition.family}</span><span className="shrink-0 tabular-nums" style={{ color: definition.colour }}>{status}</span></div>
+      <div className={styles.cardTop}><span className="truncate">{definition.family}</span><span className={`${styles.status} shrink-0 tabular-nums`} style={{ color: definition.colour }}>{locked ? <LockGlyph /> : null}{status}</span></div>
       <div className={styles.cardArtwork}>
         <CardSky definition={definition} lit={lit} collected={collected || preview} />
       </div>
@@ -58,5 +60,14 @@ export default function ConstellationCard({ card, preview = false, featured = fa
       {/* Glass over everything: a light that follows the pointer, a laminate sheen, and a sweep of light. */}
       <div className={styles.gloss} aria-hidden="true"><span className={styles.sweep} /></div>
     </article>
+  );
+}
+
+function LockGlyph() {
+  return (
+    <svg className={styles.lock} viewBox="0 0 10 12" fill="none" aria-label="Locked" role="img">
+      <path d="M2.8 5.2V3.6a2.2 2.2 0 0 1 4.4 0v1.6" stroke="currentColor" strokeWidth="1.1" />
+      <rect x=".9" y="5.2" width="8.2" height="6" rx="1.2" fill="currentColor" />
+    </svg>
   );
 }

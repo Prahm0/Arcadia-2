@@ -149,7 +149,7 @@ export default function StreakChain({ streak, today }: { streak: StreakSummary; 
           shown.state === "rest" ? (
             <Link href="/app/schedule" className={`${BUTTON} bg-[#ffffff14] text-[#f1f3f6] hover:bg-[#ffffff24]`}>Plan today</Link>
           ) : (
-            <Link href="/app/focus" className={`${BUTTON} bg-[#f1f3f6] text-[#0c1017] hover:bg-white`}>Start focus</Link>
+            <Link href="/app/sessions" className={`${BUTTON} bg-[#f1f3f6] text-[#0c1017] hover:bg-white`}>Start session</Link>
           )
         ) : null}
       </div>

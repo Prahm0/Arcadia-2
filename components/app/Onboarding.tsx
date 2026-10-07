@@ -11,6 +11,8 @@ import { WEEKDAYS } from "./CommitmentSheet";
 import OnboardingBuild from "./OnboardingBuild";
 import OnboardingPaywall from "./OnboardingPaywall";
 import { setOnboardingOfferPending } from "@/lib/app/onboarding-offer";
+import { SOURCE_COOKIE } from "@/lib/appStore";
+import { HEARD_FROM, HEARD_FROM_DETAIL, type HeardFrom } from "@/shared/heardFrom";
 import OnboardingWow from "./OnboardingWow";
 import { Label, Select, TextArea, TextInput, WeeklyStepper } from "./profile/ui";
 
@@ -187,6 +189,10 @@ export default function Onboarding({ userId, defaultName, defaultTimezone, onCom
   const [state, setState] = useState("");
   const countries = useMemo(() => countryOptions(), []);
   const [school, setSchool] = useState("");
+  // A creator's /get link leaves their handle in a cookie, so their name is
+  // already filled in; the student can still change the answer.
+  const [heardFrom, setHeardFrom] = useState<HeardFrom | "">(() => (linkedCreator() ? "creator" : ""));
+  const [heardDetail, setHeardDetail] = useState(() => linkedCreator() ?? "");
 
   // Subjects
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
@@ -402,6 +408,8 @@ export default function Onboarding({ userId, defaultName, defaultTimezone, onCom
         breakMinutes,
       },
       arcad: { about: about.trim(), style: style.trim(), memoryEnabled },
+      heardFrom: heardFrom || null,
+      heardFromDetail: heardFrom && heardDetail.trim() ? heardDetail.trim() : null,
     };
   }
 
@@ -535,6 +543,35 @@ export default function Onboarding({ userId, defaultName, defaultTimezone, onCom
             <Label text="School (optional)">
               <TextInput value={school} onChange={setSchool} placeholder="Your school's name" maxLength={120} />
             </Label>
+            <Field label="How did you hear about Arcadia?">
+              <div className="flex flex-wrap gap-2">
+                {HEARD_FROM.map((option) => (
+                  <Chip
+                    key={option.key}
+                    role="radio"
+                    active={heardFrom === option.key}
+                    onClick={() => {
+                      setHeardFrom(heardFrom === option.key ? "" : option.key);
+                      if (option.key !== heardFrom) setHeardDetail(option.key === "creator" ? linkedCreator() ?? "" : "");
+                    }}
+                  >
+                    {option.label}
+                  </Chip>
+                ))}
+              </div>
+              {heardFrom && HEARD_FROM_DETAIL[heardFrom] ? (
+                <div className="mt-3">
+                  <Label text={HEARD_FROM_DETAIL[heardFrom].label}>
+                    <TextInput
+                      value={heardDetail}
+                      onChange={setHeardDetail}
+                      placeholder={HEARD_FROM_DETAIL[heardFrom].placeholder}
+                      maxLength={80}
+                    />
+                  </Label>
+                </div>
+              ) : null}
+            </Field>
           </div>
         ) : null}
 
@@ -1059,6 +1096,14 @@ function Hint({ children }: { children: React.ReactNode }) {
       {children}
     </p>
   );
+}
+
+/** The creator whose arcadiahq.app/get link brought this student here, if any. */
+function linkedCreator(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp(`(?:^|; )${SOURCE_COOKIE}=([^;]*)`));
+  const value = match ? decodeURIComponent(match[1]) : "";
+  return value && value !== "bio" ? value : null;
 }
 
 function Chip({

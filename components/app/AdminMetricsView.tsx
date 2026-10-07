@@ -8,12 +8,14 @@ import {
   METRIC_PERIODS,
   type AdminBusiness,
   type AdminDay,
+  type AdminHeardFromRow,
   type AdminTrafficSource,
   type AdminMetrics,
   type AiSpendRow,
   type MetricPeriod,
   type PeriodCount,
 } from "@/shared/adminMetrics";
+import { heardFromLabel } from "@/shared/heardFrom";
 import AppButton, { appButtonClass } from "./AppButton";
 import PageHeader from "./PageHeader";
 
@@ -52,6 +54,7 @@ export default function AdminMetricsView() {
           days,
           money: null,
           traffic: null,
+          heardFrom: [],
           errors: [err instanceof Error ? err.message : "Couldn't load money and visitors."],
         });
       })
@@ -276,6 +279,53 @@ function Business({ business, loading, days, signups }: {
           </Panel>
         </Section>
       ) : null}
+      {business ? (
+        <Section>
+          <Panel title="How they heard about Arcadia" note="Onboarding answer, iPhone and web">
+            <HeardFromTable rows={business.heardFrom ?? []} />
+          </Panel>
+        </Section>
+      ) : null}
+    </>
+  );
+}
+
+function HeardFromTable({ rows }: { rows: AdminHeardFromRow[] }) {
+  if (rows.length === 0) return <Muted>No signups in this period.</Muted>;
+  return (
+    <>
+      <div className="max-h-[420px] overflow-auto">
+        <table className="w-full min-w-[420px] text-[13.5px] tabular-nums">
+          <thead>
+            <tr style={{ color: "var(--app-text-muted)" }}>
+              <Th align="left">Answer</Th>
+              <Th>Signups</Th>
+              <Th>Paying now</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={`${row.answer}|${row.detail}`} className="border-t" style={{ borderColor: "var(--app-border)" }}>
+                <Td align="left">
+                  <span style={{ color: row.answer ? "var(--app-text)" : "var(--app-text-muted)", fontWeight: row.paying ? 500 : 400 }}>
+                    {heardFromLabel(row.answer)}
+                    {row.detail ? <span style={{ color: "var(--app-text-muted)" }}> · {row.answer === "other" ? row.detail : `@${row.detail}`}</span> : null}
+                  </span>
+                </Td>
+                <Td><span style={{ color: "var(--app-text)" }}>{count(row.signups)}</span></Td>
+                <Td>
+                  <span style={{ color: row.paying ? "var(--app-success)" : "var(--app-text-muted)" }}>
+                    {row.paying === null ? "–" : count(row.paying)}
+                  </span>
+                </Td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-3 text-[12px]" style={{ color: "var(--app-text-faint)" }}>
+        What each student picked in onboarding, for accounts made this period. Unlike the sources table it covers the iPhone app and people who searched for Arcadia after a video. Paying now is real Stripe and App Store customers only.
+      </p>
     </>
   );
 }

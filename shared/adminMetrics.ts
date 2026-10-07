@@ -99,7 +99,19 @@ export interface AdminBusiness {
   days: MetricPeriod;
   money: AdminMoney | null;
   traffic: AdminTraffic | null;
+  /** Onboarding's "How did you hear about Arcadia?" for accounts made this period. */
+  heardFrom: AdminHeardFromRow[];
   errors: string[];
+}
+
+export interface AdminHeardFromRow {
+  /** shared/heardFrom.ts key, or null for accounts made before the question. */
+  answer: string | null;
+  /** The creator's handle or the student's words; null when they gave none. */
+  detail: string | null;
+  signups: number;
+  /** Real paying customers now; null when Stripe and RevenueCat couldn't be read. */
+  paying: number | null;
 }
 
 export interface AdminMoney {

@@ -7,6 +7,7 @@ import { useDashboardData } from "@/lib/app/DashboardProvider";
 import type { PlannerTask } from "@/lib/api/types";
 import { dateKey, formatDurationMinutes, formatDueSoon } from "@/lib/api/time";
 import { playCompletionTick } from "@/lib/app/completion";
+import { noteWin } from "@/lib/capacitor/ratingPrompt";
 import { success, warning } from "@/lib/capacitor/haptics";
 import { cn } from "@/lib/cn";
 import { flashMenuNotice, showContextMenu } from "./ContextMenu";
@@ -84,6 +85,7 @@ export default function DeadlinesView() {
   // The right-click menu's versions of the detail sheet's buttons.
   async function complete(task: PlannerTask) {
     playCompletionTick();
+    noteWin();
     patch((prev) => ({
       ...prev,
       tasks: prev.tasks.map((existing) =>

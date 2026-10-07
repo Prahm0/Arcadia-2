@@ -7,6 +7,7 @@ import { useDashboardData } from "@/lib/app/DashboardProvider";
 import type { DashboardResponse, MissReason, PlannerEvent } from "@/lib/api/types";
 import { formatClock, formatDurationMinutes, formatFriendlyDate } from "@/lib/api/time";
 import { playCompletionTick } from "@/lib/app/completion";
+import { noteWin } from "@/lib/capacitor/ratingPrompt";
 import { success, warning } from "@/lib/capacitor/haptics";
 import AppButton from "./AppButton";
 import MissReasonPicker from "./MissReasonPicker";
@@ -87,7 +88,10 @@ export default function EventDetailSheet({
     if (!event) return;
     setBusy(outcome === "completed" ? "complete" : "miss");
     setError(null);
-    if (outcome === "completed") playCompletionTick();
+    if (outcome === "completed") {
+      playCompletionTick();
+      noteWin();
+    }
     const previousOutcome = event.outcome;
     const previousMissReason = event.missReason ?? null;
     const previousMissNote = event.missNote ?? null;

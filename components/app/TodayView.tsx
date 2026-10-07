@@ -30,6 +30,7 @@ import SundayReviewInline from "./SundayReviewInline";
 import { subjectColour } from "@/lib/app/subjectColour";
 import { SubjectTag } from "./cards/shared";
 import { playCompletionTick } from "@/lib/app/completion";
+import { noteWin } from "@/lib/capacitor/ratingPrompt";
 import { success } from "@/lib/capacitor/haptics";
 import TodayProgress from "./TodayProgress";
 
@@ -148,6 +149,7 @@ export default function TodayView() {
     if (outcome === "completed") {
       setCelebrateId({ id: event.id, at: Date.now() });
       playCompletionTick();
+      noteWin();
     }
     try {
       const result = await api<{ rewards?: Array<{ xp: number }> }>(`/api/events/${encodeURIComponent(event.id)}/outcome`, {

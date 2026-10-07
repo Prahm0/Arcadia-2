@@ -67,6 +67,16 @@ interface BlockedPerson {
 export default function SettingsView() {
   const router = useRouter();
   const { data, patch, reload } = useDashboardData();
+  const [aiBusy, setAiBusy] = useState(false);
+  async function saveAiConsent(allow: boolean) {
+    setAiBusy(true);
+    try {
+      await updateProfile({ aiConsent: allow ? "granted" : "declined" });
+      await reload();
+    } finally {
+      setAiBusy(false);
+    }
+  }
   const { mode, setMode } = useTheme();
 
   useEffect(() => {
@@ -822,6 +832,17 @@ export default function SettingsView() {
               {feedNotice.text}
             </p>
           ) : null}
+        </Card>
+
+        <Card>
+          <SectionHeader label="AI" />
+          <PreferenceToggle
+            label="Let Arcadia use AI"
+            detail="Sends your first name, year level, school, subjects, schedule, tasks, messages to Arcad and uploaded notes to OpenAI to build your plan and power Arcad. Never your email, password or payment details. OpenAI doesn't train on it. Off: you get a basic plan without Arcad."
+            checked={data.profile?.aiConsent === "granted"}
+            disabled={aiBusy}
+            onChange={(next) => void saveAiConsent(next)}
+          />
         </Card>
 
         <Card>

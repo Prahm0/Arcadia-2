@@ -1,5 +1,5 @@
 import type { DashboardResponse } from "@/lib/api/types";
-import { formatDurationMinutes } from "@/lib/api/time";
+import { formatDurationMinutes, formatRange } from "@/lib/api/time";
 
 export type ChangeKind = "add" | "edit" | "remove";
 
@@ -17,9 +17,10 @@ export interface DescribedChange {
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 /**
- * Turns propose_changes operations (create_task, update_task, delete_task,
- * create_commitment, delete_commitment) into plain rows. Unknown shapes are
- * skipped rather than shown half-parsed.
+ * Turns propose_changes operations (tasks, commitments, subject time and
+ * removed blocks) into plain rows. Moved and added blocks are left to
+ * ProposalPreview's before/after view. Unknown shapes are skipped rather
+ * than shown half-parsed.
  */
 export function describeOperations(operations: unknown[], data: DashboardResponse): DescribedChange[] {
   const timezone = data.profile?.timezone || data.user.timezone || "Australia/Sydney";
@@ -70,13 +71,16 @@ export function describeOperations(operations: unknown[], data: DashboardRespons
         if (!title) continue;
         const recurrence = str("recurrence") ?? "weekly";
         const weekday = num("weekday");
+        const date = str("date");
         const when =
           recurrence === "daily"
             ? "Every day"
             : recurrence === "weekdays"
               ? "Weekdays"
               : recurrence === "none"
-                ? "Once"
+                ? date
+                  ? formatDay(`${date}T12:00:00Z`, "UTC")
+                  : "Once"
                 : weekday !== null && WEEKDAYS[weekday]
                   ? `Every ${WEEKDAYS[weekday]}`
                   : "Weekly";
@@ -95,6 +99,38 @@ export function describeOperations(operations: unknown[], data: DashboardRespons
         const existing = data.commitments.find((commitment) => commitment.id === str("id"));
         const title = typeof existing?.title === "string" ? existing.title : str("title") ?? "A commitment";
         out.push({ kind: "remove", noun: "Commitment", title, subject: null, details: [] });
+        break;
+      }
+      case "remove_block": {
+        const start = str("fromStartAt");
+        const end = str("fromEndAt");
+        out.push({
+          kind: "remove",
+          noun: "Study block",
+          title: str("title") ?? "A study block",
+          subject: str("subject"),
+          details:
+            start && end
+              ? [`${formatDay(start, timezone)} ${formatRange(start, end, timezone)}`]
+              : [],
+        });
+        break;
+      }
+      case "update_subject": {
+        const subject = str("subject");
+        const minutes = num("weeklyMinutes");
+        if (!subject || minutes === null) continue;
+        const before = num("fromWeeklyMinutes");
+        out.push({
+          kind: "edit",
+          noun: "Subject",
+          title: "Weekly study time",
+          subject,
+          details: [
+            `${formatDurationMinutes(minutes)} a week`,
+            ...(before !== null ? [`was ${formatDurationMinutes(before)}`] : []),
+          ],
+        });
         break;
       }
       default:

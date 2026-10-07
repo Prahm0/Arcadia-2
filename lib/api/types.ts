@@ -97,6 +97,8 @@ export interface PlannerProfile {
   bedtime?: string;
   /** The daily study-plan email. On unless the student turned it off. */
   emailReminders?: boolean;
+  /** Permission to send study details to OpenAI; null until asked. */
+  aiConsent?: "granted" | "declined" | null;
 }
 
 export type CompanionForm = "orb" | "comet" | "nebula";

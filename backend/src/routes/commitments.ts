@@ -44,6 +44,10 @@ function validate(body: CommitmentBody): string | null {
   if (body.recurrence === "weekly" && (body.weekday === null || body.weekday === undefined)) {
     return "Pick a day of the week.";
   }
+  // Without a date a one-off lands on no day at all.
+  if (body.recurrence === "none" && !/^\d{4}-\d{2}-\d{2}$/.test(String(body.startDate ?? ""))) {
+    return "Pick the day it's on.";
+  }
   return null;
 }
 

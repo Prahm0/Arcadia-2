@@ -144,6 +144,7 @@ export type ProfilePatch = Partial<{
   memoryEnabled: boolean;
   emailReminders: boolean;
   timezone: string;
+  aiConsent: "granted" | "declined";
 }> &
   Partial<ProfileRoutine>;
 

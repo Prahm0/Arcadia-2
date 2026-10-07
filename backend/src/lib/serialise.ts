@@ -154,6 +154,7 @@ export function serialiseProfile(profile: ProfileRow | null) {
     wakeTime: profile.wakeTime,
     bedtime: profile.bedtime,
     emailReminders: profile.emailRemindersEnabled,
+    aiConsent: profile.aiConsent ?? null,
   };
 }
 

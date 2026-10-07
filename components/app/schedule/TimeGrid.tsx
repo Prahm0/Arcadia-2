@@ -9,11 +9,11 @@ import {
   allDayEvents,
   blockStyle,
   CATEGORY_LABEL,
-  DAY_MS,
   hourLabel,
   isDraggable,
   isExam,
   placeBlocks,
+  shiftedStart,
   type DayColumn,
   type PlacedBlock,
 } from "./calendar";
@@ -161,7 +161,7 @@ export default function TimeGrid({
         justDragged.current = false;
       }, 0);
       if (offset.minutes || offset.days) {
-        void onReschedule(state.eventId, state.startMs + offset.days * DAY_MS + offset.minutes * 60_000);
+        void onReschedule(state.eventId, shiftedStart(state.startMs, offset.days, offset.minutes, timezone));
       }
     }
     window.addEventListener("pointermove", onMove);
@@ -172,7 +172,7 @@ export default function TimeGrid({
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
     };
-  }, [days.length, single, onReschedule]);
+  }, [days.length, single, onReschedule, timezone]);
 
   const eventMenu = (event: PlannerEvent) =>
     menus ? (e: React.MouseEvent) => showContextMenu(e, menus.event(event), event.category === "study" ? studyTitle(event) : event.title) : undefined;

@@ -36,6 +36,7 @@ import { assessments, subjectFiles, subjectMaterials, topics } from "./routes/sy
 import tasks from "./routes/tasks";
 import uploads from "./routes/uploads";
 import waitlist from "./routes/waitlist";
+import { masteryRoutes, resultsRoutes, work } from "./routes/work";
 import type { Env, Variables } from "./types";
 import { dispatchPushCheckIns } from "./lib/push";
 import { refreshWantedLayouts } from "./lib/day-plan";
@@ -130,6 +131,9 @@ app.route("/api/topics", topics);
 app.route("/api/assessments", assessments);
 app.route("/api/tasks", tasks);
 app.route("/api/uploads", uploads);
+app.route("/api/work", work);
+app.route("/api/mastery", masteryRoutes);
+app.route("/api/results", resultsRoutes);
 
 app.notFound((c) => c.json({ error: "Not found." }, 404));
 

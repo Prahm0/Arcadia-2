@@ -148,7 +148,9 @@ export type AiFeature =
   | "cards"
   | "sheet"
   | "syllabus"
-  | "resource_summary";
+  | "resource_summary"
+  | "work_read"
+  | "work_tag";
 
 /** Who a call was for, so its cost can be recorded. */
 export interface UsageTag {

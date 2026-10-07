@@ -1,0 +1,517 @@
+{
+  "id": "qcaa-methods-2025",
+  "prefix": "MM",
+  "subject": "Mathematical Methods",
+  "aliases": ["methods", "maths methods", "math methods", "mathematical methods"],
+  "source": "Mathematical Methods 2025 v1.3 General senior syllabus (January 2026), subject matter, Units 1-4",
+  "attribution": "© State of Queensland (QCAA) 2026 www.qcaa.qld.edu.au/copyright. Licensed CC BY 4.0. Worked examples trimmed from some dot points.",
+  "units": [
+    {
+      "unit": 1,
+      "title": "Surds, algebra, functions and probability",
+      "topics": [
+        {
+          "title": "Surds and quadratic functions",
+          "subtopics": [
+            {
+              "title": "Surds",
+              "hours": 4,
+              "points": [
+                "Understand the concept of a surd as an irrational number represented using a square root or a radical sign.",
+                "Simplify square roots of natural numbers which contain perfect square factors.",
+                "Rationalise the denominator of fractional expressions involving square roots.",
+                "Use the four operations to simplify surds."
+              ]
+            },
+            {
+              "title": "Quadratic functions",
+              "hours": 7,
+              "points": [
+                "Recognise and determine features of the graphs of y = x², y = ax² + bx + c, y = a(x − h)² + k and y = a(x − x₁)(x − x₂), including their parabolic nature, turning points, axes of symmetry and intercepts.",
+                "Solve quadratic equations algebraically using factorisation, the quadratic formula (both exact and approximate solutions), completing the square and using technology.",
+                "Sketch the graphs of quadratic functions, with or without technology.",
+                "Use the discriminant to determine the number of solutions to a quadratic equation.",
+                "Determine turning points and zeros of quadratic functions, with and without technology.",
+                "Model and solve problems that involve quadratic functions, with and without technology."
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Binomial expansion and cubic functions",
+          "subtopics": [
+            {
+              "title": "Binomial expansion",
+              "hours": 3,
+              "points": [
+                "Understand the notion of a combination as an unordered set of r objects taken from a set of n distinct objects.",
+                "Recognise and use the link between Pascal's triangle and the notation (n r).",
+                "Use the binomial theorem (x + y)ⁿ to expand expressions, e.g. (2x − 1)³."
+              ]
+            },
+            {
+              "title": "Cubic functions",
+              "hours": 9,
+              "points": [
+                "Identify the coefficients and the degree of a polynomial.",
+                "Expand quadratic and cubic polynomials from factors.",
+                "Recognise and determine features of the graphs of y = x³, y = a(x − h)³ + k and y = a(x − x₁)(x − x₂)(x − x₃), including shape, intercepts, and behaviour as x → ∞ and x → −∞.",
+                "Solve cubic equations using technology, and algebraically in cases where the equation is factorised.",
+                "Sketch the graphs of cubic functions, with and without technology.",
+                "Model and solve problems that involve cubic functions, with and without technology."
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Functions and relations",
+          "subtopics": [
+            {
+              "title": "Introduction to functions and relations",
+              "hours": 5,
+              "points": [
+                "Understand the concept of a relation as a mapping between sets, a graph and as a rule or a formula that defines one variable quantity in terms of another.",
+                "Recognise the distinction between functions and relations and use the vertical line test to determine whether a relation is a function.",
+                "Recognise and use function notation, domain and range, and independent and dependent variables.",
+                "Recognise and use piece-wise functions as a combination of multiple sub-functions with restricted domains.",
+                "Model and solve problems that involve piece-wise functions with and without technology."
+              ]
+            },
+            {
+              "title": "Graphs of relations",
+              "hours": 4,
+              "points": [
+                "Recognise and determine features of the graphs of x² + y² = r² and (x − h)² + (y − k)² = r², including their circular shapes, centres and radii.",
+                "Recognise and determine features of the graph of y² = x, including its parabolic shape and axis of symmetry.",
+                "Recognise and determine features of the graphs of y = a√(x − h) + k, including their shape, intercepts, and behaviour as x → ∞ and x → −∞.",
+                "Sketch the graphs of relations, with and without technology.",
+                "Model and solve problems that involve relations, with and without technology."
+              ]
+            },
+            {
+              "title": "Reciprocal functions",
+              "hours": 2,
+              "points": [
+                "Recognise features of the graphs of y = 1/x and y = a/(x − h) + k, including their hyperbolic shape, intercepts, asymptotes, and behaviour as x → ∞ and x → −∞.",
+                "Model and solve problems that involve reciprocal functions, with and without technology.",
+                "Sketch the graphs of reciprocal functions, with and without technology."
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Trigonometric functions",
+          "subtopics": [
+            {
+              "title": "Circular measure and radian measure",
+              "hours": 2,
+              "points": [
+                "Define and use radian measure and understand its relationship with degree measure.",
+                "Calculate lengths of arcs and areas of sectors in circles."
+              ]
+            },
+            {
+              "title": "Introduction to trigonometric functions",
+              "hours": 8,
+              "points": [
+                "Understand the unit circle definition of cos(θ), sin(θ) and tan(θ) and periodicity using radians.",
+                "Understand and use the exact values of cos(θ), sin(θ) and tan(θ) at integer multiples of π/6 and π/4.",
+                "Sketch the graphs of y = sin(x), y = cos(x) and y = tan(x) on extended domains.",
+                "Recognise and determine the effect of the parameters a, b, h and k on the graphs of y = a sin(b(x − h)) + k and y = a cos(b(x − h)) + k, with and without technology.",
+                "Sketch the graphs of y = a sin(b(x − h)) + k and y = a cos(b(x − h)) + k, with and without technology.",
+                "Solve trigonometric equations, with and without technology, including the use of the Pythagorean identity sin²(A) + cos²(A) = 1.",
+                "Model and solve problems that involve trigonometric functions, with and without technology."
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Probability",
+          "subtopics": [
+            {
+              "title": "Language of events and sets",
+              "hours": 4,
+              "points": [
+                "Use the concepts and language of outcomes, sample spaces and events as sets of outcomes.",
+                "Use set language and notation for events, including A′ for the complement of an event A, A ∩ B for intersection and A ∪ B for union, and recognise mutually exclusive events.",
+                "Use everyday occurrences to illustrate set descriptions and representations of events, and set operations, including the use of Venn diagrams."
+              ]
+            },
+            {
+              "title": "Conditional probability and independence",
+              "hours": 7,
+              "points": [
+                "Use the rules P(A′) = 1 − P(A) and P(A ∪ B) = P(A) + P(B) − P(A ∩ B).",
+                "Understand the notion of a conditional probability and recognise and use language that indicates conditionality.",
+                "Use the notation P(A|B) and the formula P(A ∩ B) = P(A|B)P(B) to solve problems.",
+                "Understand and use the notion of independence of an event A from an event B, as defined by P(A|B) = P(A).",
+                "Use the formula P(A ∩ B) = P(A)P(B) for independent events A and B.",
+                "Use relative frequencies obtained from data as point estimates of conditional probabilities and as indications of possible independence of events.",
+                "Model and solve problems that involve probability, with and without technology."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "unit": 2,
+      "title": "Calculus and further functions",
+      "topics": [
+        {
+          "title": "Exponential functions",
+          "subtopics": [
+            {
+              "title": "Indices and index laws",
+              "hours": 4,
+              "points": [
+                "Use indices (including negative and fractional indices) and the index laws.",
+                "Convert radicals to and from fractional indices.",
+                "Understand and use scientific notation."
+              ]
+            },
+            {
+              "title": "Introduction to exponential functions",
+              "hours": 6,
+              "points": [
+                "Recognise and determine the qualitative features of the graph of y = rˣ (where r > 0), including asymptote and intercept.",
+                "Recognise and determine the effect of the parameters h, k and r on the graph of y = r^(x − h) + k (where r > 0), with and without technology.",
+                "Sketch the graphs of exponential functions, with and without technology.",
+                "Solve equations involving exponential functions, with and without technology.",
+                "Model and solve problems that involve exponential functions, with and without technology."
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Logarithms and logarithmic functions",
+          "subtopics": [
+            {
+              "title": "Logarithms and logarithmic laws",
+              "hours": 5,
+              "points": [
+                "Define logarithms as indices, where aˣ = b is equivalent to x = logₐ(b), and convert between both forms.",
+                "Use logarithmic laws and definitions, including the product, quotient, power and change-of-base laws, logₐ(a) = 1 and logₐ(1) = 0.",
+                "Solve equations involving indices using logarithms, with and without technology."
+              ]
+            },
+            {
+              "title": "Logarithmic functions",
+              "hours": 7,
+              "points": [
+                "Recognise and determine the qualitative features of the graph of y = logₐ(x) (where a > 1), including asymptote and intercept.",
+                "Recognise and determine the effect of the parameters a, h and k on the graph of y = logₐ(x − h) + k (where a > 1), with and without technology.",
+                "Sketch graphs of logarithmic functions, with and without technology.",
+                "Solve equations involving logarithmic functions with and without technology.",
+                "Model and solve problems that involve logarithmic functions, e.g. decibels in acoustics and the Richter scale for earthquake magnitude, with and without technology."
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Introduction to differential calculus",
+          "subtopics": [
+            {
+              "title": "Rates of change and the concept of derivatives",
+              "hours": 10,
+              "points": [
+                "Determine average rate of change in a variety of practical contexts.",
+                "Use the rule f′(x) = lim(h→0) (f(x + h) − f(x))/h to determine the derivative of simple power functions and polynomial functions from first principles.",
+                "Interpret the derivative as the instantaneous rate of change.",
+                "Interpret the derivative as the gradient of a tangent line of the graph of y = f(x).",
+                "Use the rule d/dx xⁿ = nxⁿ⁻¹ for positive integers.",
+                "Understand the concept of the derivative as a function.",
+                "Recognise and use properties of the derivative d/dx (f(x) + g(x)) = d/dx f(x) + d/dx g(x).",
+                "Calculate derivatives of power and polynomial functions."
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Applications of differential calculus",
+          "subtopics": [
+            {
+              "title": "Graphical applications of derivatives",
+              "hours": 12,
+              "points": [
+                "Determine instantaneous rates of change.",
+                "Determine the equation of a tangent and a normal of the graph of y = f(x).",
+                "Construct and interpret displacement-time graphs, with velocity as the slope of the tangent.",
+                "Recognise that velocity is the instantaneous rate of change of displacement with respect to time.",
+                "Use the first derivative of a function to determine and identify the nature of stationary points.",
+                "Sketch curves associated with power functions and polynomials up to degree 4; find stationary points and local and global maxima and minima with and without technology; and examine behaviour as x → ∞ and x → −∞."
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Further differentiation",
+          "subtopics": [
+            {
+              "title": "Differentiation rules",
+              "hours": 11,
+              "points": [
+                "Use the chain rule to determine the derivative of composite functions involving power and polynomial functions.",
+                "Use the product rule to determine the derivative of products of functions involving power and polynomial functions.",
+                "Use the quotient rule to determine the derivative of quotients of functions involving power and polynomial functions.",
+                "Solve problems that involve combinations of the chain rule, product rule and quotient rule to differentiate functions involving power and polynomial functions, expressing derivatives in simplest and factorised form."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "unit": 3,
+      "title": "Further calculus and introduction to statistics",
+      "topics": [
+        {
+          "title": "Differentiation of exponential and logarithmic functions",
+          "subtopics": [
+            {
+              "title": "Calculus of exponential functions",
+              "hours": 6,
+              "points": [
+                "Estimate the limit of (aʰ − 1)/h as h → 0, using technology, for various values of a > 0.",
+                "Recognise that e is the unique number a for which the above limit is 1.",
+                "Recognise and determine the qualitative features of the graph of y = eˣ, including asymptote and intercept.",
+                "Use the rules d/dx eˣ = eˣ and d/dx e^f(x) = f′(x)e^f(x)."
+              ]
+            },
+            {
+              "title": "Calculus of logarithmic functions",
+              "hours": 8,
+              "points": [
+                "Recognise and determine the qualitative features of the graph of y = ln(x) = logₑ(x), including asymptote and intercept.",
+                "Recognise and use the inverse relationship of the functions y = eˣ and y = ln(x).",
+                "Solve equations involving exponential and logarithmic functions with base e, with and without technology.",
+                "Use the rules d/dx ln(x) = 1/x and d/dx ln(f(x)) = f′(x)/f(x).",
+                "Model and solve problems that involve derivatives of exponential and logarithmic functions, with and without technology."
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Differentiation of trigonometric functions and differentiation rules",
+          "subtopics": [
+            {
+              "title": "Calculus of trigonometric functions",
+              "hours": 5,
+              "points": [
+                "Use the rules d/dx sin(x) = cos(x) and d/dx sin(f(x)) = f′(x)cos(f(x)).",
+                "Use the rules d/dx cos(x) = −sin(x) and d/dx cos(f(x)) = −f′(x)sin(f(x)).",
+                "Model and solve problems that involve derivatives of trigonometric functions, with and without technology."
+              ]
+            },
+            {
+              "title": "Differentiation rules",
+              "hours": 5,
+              "points": [
+                "Use the chain rule to determine the derivative of composite functions involving exponential, logarithmic and trigonometric functions, expressing derivatives in simplest and factorised form.",
+                "Use the product rule to determine the derivative of exponential, logarithmic and trigonometric functions, expressing derivatives in simplest and factorised form.",
+                "Use the quotient rule to determine the derivative of exponential, logarithmic and trigonometric functions, expressing derivatives in simplest and factorised form.",
+                "Solve problems that involve combinations of the chain rule, product rule and quotient rule to differentiate exponential, logarithmic and trigonometric functions."
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Further applications of differentiation",
+          "subtopics": [
+            {
+              "title": "The second derivative and applications of differentiation",
+              "hours": 10,
+              "points": [
+                "Understand the concept of the second derivative as the rate of change of the first derivative function.",
+                "Recognise acceleration as the second derivative of displacement with respect to time.",
+                "Understand the concepts of concavity and points of inflection and their relationship with the second derivative.",
+                "Understand and use the second derivative test for finding local maxima and minima.",
+                "Sketch the graph of a function using first and second derivatives to locate stationary points and points of inflection.",
+                "Model and solve optimisation problems from a wide variety of fields using first and second derivatives, where the function to be optimised is either given or to be developed."
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Introduction to integration",
+          "subtopics": [
+            {
+              "title": "Anti-differentiation",
+              "hours": 9,
+              "points": [
+                "Recognise anti-differentiation as the reverse of differentiation.",
+                "Use the notation ∫f(x)dx for anti-derivatives or indefinite integrals.",
+                "Use the formula ∫xⁿdx = xⁿ⁺¹/(n + 1) + c for n ≠ −1.",
+                "Use the formula ∫eˣdx = eˣ + c.",
+                "Use the formula ∫(1/x)dx = ln(x) + c, for x > 0.",
+                "Use the formulas ∫sin(x)dx = −cos(x) + c and ∫cos(x)dx = sin(x) + c.",
+                "Understand and use the formulas ∫(f(x) + g(x))dx = ∫f(x)dx + ∫g(x)dx and ∫kf(x)dx = k∫f(x)dx.",
+                "Determine indefinite integrals of the form ∫f(ax + b)dx.",
+                "Determine f(x) given f′(x) and an initial condition f(a) = b.",
+                "Determine displacement given velocity and the initial value of displacement.",
+                "Determine displacement given acceleration and initial values of displacement and velocity.",
+                "Model and solve problems that involve indefinite integrals, with and without technology."
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Discrete random variables",
+          "subtopics": [
+            {
+              "title": "General discrete random variables",
+              "hours": 5,
+              "points": [
+                "Understand the concepts of a discrete random variable and its associated probability function, and its use in modelling data.",
+                "Use relative frequencies obtained from data to determine point estimates of probabilities associated with a discrete random variable.",
+                "Recognise uniform discrete random variables and use them to model random phenomena with equally likely outcomes.",
+                "Recognise non-uniform discrete random variables and use them to model random phenomena.",
+                "Determine and use the mean (expected value) of a discrete random variable, E(X) = μ = Σpᵢxᵢ, as a measurement of centre.",
+                "Determine and use the variance of a discrete random variable, Var(X) = Σpᵢ(xᵢ − μ)², as a measure of spread.",
+                "Determine and use the standard deviation of a discrete random variable, √Var(X), as a measure of spread.",
+                "Model and solve problems that involve discrete random variables and associated probabilities, with and without technology."
+              ]
+            },
+            {
+              "title": "Bernoulli distributions",
+              "hours": 2,
+              "points": [
+                "Use a Bernoulli random variable as a model for two-outcome situations.",
+                "Identify contexts suitable for modelling by Bernoulli random variables.",
+                "Recognise and determine the mean p and variance p(1 − p) of the Bernoulli distribution with parameter p.",
+                "Model and solve problems that involve Bernoulli random variables and associated probabilities, with and without technology."
+              ]
+            },
+            {
+              "title": "Binomial distributions",
+              "hours": 5,
+              "points": [
+                "Understand the concepts of Bernoulli trials and the concept of a binomial random variable as the number of 'successes', r, in n independent Bernoulli trials, with the same probability of success p in each trial.",
+                "Identify contexts suitable for modelling by binomial random variables.",
+                "Determine and use the probabilities P(X = r) = (n r)pʳ(1 − p)ⁿ⁻ʳ associated with the binomial distribution with parameters n and p.",
+                "Calculate the mean np and variance np(1 − p) of a binomial distribution using technology and algebraic methods.",
+                "Use the language of probability, including at most, at least, no more than, no less than, inclusive and between.",
+                "Model and solve problems that involve binomial distributions and associated probabilities with and without technology."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "unit": 4,
+      "title": "Further calculus, trigonometry and statistics",
+      "topics": [
+        {
+          "title": "Further integration",
+          "subtopics": [
+            {
+              "title": "Fundamental theorem of calculus and definite integrals",
+              "hours": 3,
+              "points": [
+                "Use sums of the form Σf(xᵢ)δxᵢ to estimate the area under the curve y = f(x).",
+                "Recognise the definite integral ∫ₐᵇf(x)dx as a limit of sums of the form Σf(xᵢ)δxᵢ.",
+                "Understand the fundamental theorem of calculus, ∫ₐᵇf(x)dx = F(b) − F(a), and use it to calculate definite integrals.",
+                "Use the definite integral ∫ₐᵇf(x)dx to determine the area under the curve y = f(x) between x = a and x = b if f(x) > 0 over this interval."
+              ]
+            },
+            {
+              "title": "Applications of integration",
+              "hours": 8,
+              "points": [
+                "Calculate the area enclosed by a curve and the x-axis over a given domain, with and without technology.",
+                "Calculate the area between curves, with and without technology.",
+                "Use the trapezoidal rule to approximate an area and the value of a definite integral, with and without technology.",
+                "Calculate total change by integrating instantaneous or marginal rates of change, with and without technology.",
+                "Model and solve problems that involve definite integrals, including motion problems, with and without technology."
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Trigonometry",
+          "subtopics": [
+            {
+              "title": "Cosine and sine rules",
+              "hours": 10,
+              "points": [
+                "Use the sine rule (ambiguous case is required), a/sin(A) = b/sin(B) = c/sin(C).",
+                "Use the cosine rule, c² = a² + b² − 2ab cos(C).",
+                "Use the formula area = ½bc sin(A) to calculate the area of a triangle.",
+                "Model and solve problems that involve the sine rule, cosine rule and the area formula in two- and three-dimensional contexts (including bearings, directions and angles of elevation and depression), with and without technology."
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Continuous random variables and the normal distribution",
+          "subtopics": [
+            {
+              "title": "General continuous random variables",
+              "hours": 6,
+              "points": [
+                "Use relative frequencies and histograms obtained from data to estimate probabilities associated with a continuous random variable.",
+                "Understand the concepts of a probability density function, cumulative distribution function, and probabilities associated with a continuous random variable given by integrals; examine simple types of continuous random variables and use them in appropriate contexts.",
+                "Calculate the expected value, E(X) = μ = ∫xp(x)dx, of a continuous random variable where p(x) is the probability density function.",
+                "Calculate the variance, Var(X) = σ² = ∫(x − μ)²p(x)dx, and standard deviation σ, of a continuous random variable.",
+                "Understand standardised normal variables (z-values, z-scores) and use these to compare samples."
+              ]
+            },
+            {
+              "title": "Normal distributions",
+              "hours": 6,
+              "points": [
+                "Identify contexts, e.g. naturally occurring variations, that are suitable for modelling by normal random variables.",
+                "Recognise features of the graph of the probability density function of the normal distribution with mean μ and standard deviation σ and the use of the standard normal distribution.",
+                "Recognise and use the link between the normal distribution and the notation X ∼ N(μ, σ²).",
+                "Calculate probabilities and quantiles associated with a given normal distribution, using technology.",
+                "Model and solve problems that involve normal distributions, with and without technology."
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Sampling and proportions",
+          "subtopics": [
+            {
+              "title": "Random sampling",
+              "hours": 3,
+              "points": [
+                "Understand the concept of a random sample.",
+                "Understand sources of bias in samples, and procedures to ensure randomness.",
+                "Identify and use procedures to ensure randomness.",
+                "Recognise and use graphical displays of real and simulated data of random samples from various types of distributions, including uniform, Bernoulli, binomial and normal."
+              ]
+            },
+            {
+              "title": "Sample proportions",
+              "hours": 8,
+              "points": [
+                "Understand the concept of the sample proportion p̂ as a random variable whose value varies between samples, and the formulas for the mean p and standard deviation √(p(1 − p)/n) of the sample proportion p̂.",
+                "Recognise and use the approximate normality of the distribution of p̂ for large samples.",
+                "Use repeated random sampling data, for a variety of values of p and a range of sample sizes, to examine the distribution of p̂ and the approximate standard normality of (p̂ − p)/√(p̂(1 − p̂)/n), where the closeness of the approximation depends on both n and p."
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Interval estimates for proportions",
+          "subtopics": [
+            {
+              "title": "Confidence intervals for proportions",
+              "hours": 11,
+              "points": [
+                "Understand the concept of an interval estimate for a parameter associated with a random variable.",
+                "Understand and use the approximate confidence interval p̂ ± z√(p̂(1 − p̂)/n) as an interval estimate for p, the population proportion, where z is the appropriate quantile for the standard normal distribution.",
+                "Understand and use the approximate margin of error, z√(p̂(1 − p̂)/n).",
+                "Understand and use the relationship between margin of error, level of confidence and sample size.",
+                "Understand that there are variations in confidence intervals between samples and that most, but not all, confidence intervals contain p.",
+                "Model and solve problems that involve interval estimates for proportions, with and without technology."
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

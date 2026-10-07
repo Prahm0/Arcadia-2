@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useState } from "react";
 import { checkMaterial, formatBytes, materialFormat, MATERIAL_HINT, type MaterialKind } from "@/lib/api/subjectMaterials";
+import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { cn } from "@/lib/cn";
+import { suggestSyllabus } from "@/shared/syllabusPoints";
 import AppButton, { appButtonClass } from "../AppButton";
 import { useSubjects } from "../cards/shared";
 import { Label, Select, Sheet } from "../profile/ui";
@@ -60,6 +62,7 @@ function UploadForm({
   onUpload: (files: File[], target: UploadTarget) => void;
 }) {
   const { subjects } = useSubjects();
+  const { data } = useDashboardData();
   const [subjectId, setSubjectId] = useState(
     preset.subjectId && subjects.some((subject) => subject.id === preset.subjectId)
       ? preset.subjectId
@@ -74,7 +77,11 @@ function UploadForm({
   const skipped = checked.length - ready.length;
   // A subject has one syllabus, so it takes one file.
   const syllabusBlocked = ready.length > 1;
-  const effectiveKind: MaterialKind = kind === "syllabus" && syllabusBlocked ? "resource" : kind;
+  // Work is mapped to an official syllabus, which only some subjects have.
+  const linked = data.subjects.find((subject) => subject.id === subjectId);
+  const workable = Boolean(linked && (linked.sharedSyllabus || suggestSyllabus(linked.name)));
+  const effectiveKind: MaterialKind =
+    kind === "syllabus" && syllabusBlocked ? "resource" : kind === "work" && !workable ? "resource" : kind;
   const replacing = effectiveKind === "syllabus" && subjectId ? preset.syllabi?.[subjectId] : undefined;
   const canSubmit = ready.length > 0 && Boolean(subjectId);
 
@@ -167,7 +174,15 @@ function UploadForm({
           <p className="mb-2 text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>
             What is it?
           </p>
-          <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="What kind of file">
+          <div className={cn("grid gap-2", workable ? "sm:grid-cols-3" : "sm:grid-cols-2")} role="radiogroup" aria-label="What kind of file">
+            {workable ? (
+              <KindOption
+                selected={effectiveKind === "work"}
+                onSelect={() => setKind("work")}
+                title="Your work"
+                body="Tests, homework, practice. Arcad maps it to the syllabus dot points."
+              />
+            ) : null}
             <KindOption
               selected={effectiveKind === "resource"}
               onSelect={() => setKind("resource")}

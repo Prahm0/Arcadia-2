@@ -4,6 +4,7 @@ import { db, schema } from "../db";
 import { newId } from "../lib/ids";
 import { replan } from "../lib/replan";
 import { subjectKey } from "../lib/scheduler";
+import { isSyllabusId } from "../../../shared/syllabusPoints.ts";
 import type { Env, Variables } from "../types";
 
 const MAX_SUBJECTS = 20;
@@ -17,6 +18,8 @@ interface SubjectBody {
   weeklyMinutes?: number | null;
   targetGrade?: string | null;
   notes?: string;
+  /** A shared syllabus id (shared/syllabusPoints.ts), or null to unlink. */
+  syllabus?: string | null;
 }
 
 const subjects = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -118,6 +121,10 @@ subjects.patch("/:id", async (c) => {
     patch.targetGrade = body.targetGrade ? String(body.targetGrade).trim().slice(0, 16) || null : null;
   }
   if (body.notes !== undefined) patch.notes = String(body.notes).slice(0, NOTES_LIMIT);
+  if (body.syllabus !== undefined) {
+    if (body.syllabus !== null && !isSyllabusId(body.syllabus)) return c.json({ error: "Unknown syllabus." }, 422);
+    patch.syllabus = body.syllabus;
+  }
 
   if (Object.keys(patch).length === 0) return c.json({ ok: true });
 

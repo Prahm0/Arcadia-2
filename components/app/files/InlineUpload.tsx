@@ -32,7 +32,7 @@ export default function InlineUpload({
   });
   useEffect(() => {
     for (const item of mine) {
-      if (item.status === "done" && item.result && !handled.current.has(item.key)) {
+      if (item.status === "done" && item.result?.file && !handled.current.has(item.key)) {
         handled.current.add(item.key);
         onReadRef.current(item.result.file.id);
       }

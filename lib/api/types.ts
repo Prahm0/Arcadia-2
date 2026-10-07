@@ -122,6 +122,8 @@ export interface DashboardResponse {
     weeklyMinutes?: number;
     /** True when weeklyMinutes is the year-level default, not the student's pick. */
     weeklyMinutesSuggested?: boolean;
+    /** The shared syllabus its work is tracked against, e.g. "qcaa-methods-2025". */
+    sharedSyllabus?: string | null;
     /** The grade the student is aiming for, as they wrote it. */
     targetGrade?: string | null;
     /** The student's note for Arcad about this subject. */

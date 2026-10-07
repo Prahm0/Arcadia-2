@@ -49,6 +49,7 @@ export interface ProfileSubject {
   colour?: string | null;
   weeklyMinutes: number;
   weeklyMinutesSuggested: boolean;
+  sharedSyllabus?: string | null;
   targetGrade?: string | null;
   notes: string;
   weekDoneMinutes: number;

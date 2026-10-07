@@ -6,9 +6,11 @@ import { subjectKey } from "./scheduler";
 import { describeBrief, subjectBriefs, type SubjectBrief } from "./study-context";
 import { subjectLog } from "./study-log";
 import { describeRecords, summariseLog, topicMenu, untouchedTopics, type MenuTopic, type TopicRecord } from "./study-record";
+import { priorities, subjectMastery } from "./mastery";
 import { getUserTier, isPaidTier } from "./tiers";
 import { MINUTE, localDateKey } from "./time";
 import { LOG_KINDS, isLogKind, type LogKind } from "../../../shared/studyLog";
+import { REASON_TIPS, type Reason } from "../../../shared/mastery.ts";
 
 type EventRow = typeof schema.events.$inferSelect;
 
@@ -20,13 +22,16 @@ export interface PlanStep {
   topic?: string | null;
   /** learn | practice | review | assignment | study, for the study log. */
   kind?: LogKind;
+  /** The syllabus dot point the step works on, so the check-out can feed its mastery. */
+  pointId?: string | null;
 }
 
 /**
  * Bumped when plans made by an older planner shouldn't be shown any more.
  * v2: plans no longer invent topics for subjects with no syllabus.
+ * v3: sessions in subjects with a syllabus map aim at the weakest dot points.
  */
-export const PLAN_VERSION = 2;
+export const PLAN_VERSION = 3;
 
 /** What Arcad sets a study block up as. */
 export interface SessionPlan {
@@ -82,11 +87,12 @@ const PLAN_SCHEMA = {
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["minutes", "text", "tag", "kind"],
+          required: ["minutes", "text", "tag", "point", "kind"],
           properties: {
             minutes: { type: "integer" },
             text: { type: "string" },
             tag: { type: "string" },
+            point: { type: "string" },
             kind: { type: "string", enum: [...LOG_KINDS] },
           },
         },
@@ -136,6 +142,16 @@ export function fitSteps(steps: PlanStep[], total: number): PlanStep[] {
   return scaled;
 }
 
+/** A dot point the session should work on, and why it's weak. */
+export interface WeakPoint {
+  tag: string;
+  pointId: string;
+  text: string;
+  subtopic: string;
+  score: number;
+  reason: Reason;
+}
+
 interface PlanInputs {
   event: EventRow;
   minutes: number;
@@ -149,6 +165,8 @@ interface PlanInputs {
   untouched: Array<typeof schema.subjectTopics.$inferSelect>;
   /** Pro and Max: Arcad plans from the record and steers into gaps. */
   paid: boolean;
+  /** The weakest dot points from the student's own work (subjects with a syllabus map), D1 first. */
+  weakPoints: WeakPoint[];
   profile: typeof schema.profiles.$inferSelect | undefined;
   goals: string[];
   memories: string[];
@@ -200,6 +218,8 @@ async function gatherInputs(database: Database, userId: string, event: EventRow)
   ]);
   const record = summariseLog(log);
   const paid = isPaidTier(tier);
+  // Only a non-deadline block gets steered: a deadline block is for its task.
+  const weak = subject?.syllabus && !task ? priorities(await subjectMastery(database, userId, subject.id, subject.syllabus), Date.now(), 3) : [];
   return {
     event,
     minutes: Math.max(5, Math.round((event.endAt - event.startAt) / MINUTE)),
@@ -214,6 +234,14 @@ async function gatherInputs(database: Database, userId: string, event: EventRow)
     record,
     untouched: paid ? untouchedTopics(topics, record, localDateKey(Date.now(), timeZone)) : [],
     paid,
+    weakPoints: weak.map((entry, index) => ({
+      tag: `D${index + 1}`,
+      pointId: entry.pointId,
+      text: entry.point.text,
+      subtopic: entry.point.subtopic,
+      score: Math.round(entry.mastery.score),
+      reason: entry.reason,
+    })),
     profile,
     goals: goalRows.filter((goal) => !goal.done).map((goal) => goal.title),
     memories: profile?.memoryEnabled === false ? [] : memoryRows.map((row) => row.content),
@@ -226,9 +254,10 @@ async function gatherInputs(database: Database, userId: string, event: EventRow)
  * make up a topic ("The Great Gatsby, chapter 3"), so it doesn't try.
  */
 function hasCourseDetail(inputs: PlanInputs): boolean {
-  const { task, brief, subject, lastCheckouts, record } = inputs;
+  const { task, brief, subject, lastCheckouts, record, weakPoints } = inputs;
   return Boolean(
     task ||
+      weakPoints.length ||
       record.length ||
       brief?.topic ||
       brief?.previousTopic ||
@@ -236,6 +265,35 @@ function hasCourseDetail(inputs: PlanInputs): boolean {
       brief?.resources.length ||
       subject?.notes.trim() ||
       lastCheckouts.some((past) => past.checkout.leftover.trim()),
+  );
+}
+
+/** What each kind of weakness gets: the steps' wording and log kind. */
+const WEAK_STEP: Record<Reason, { text: (point: string) => string; kind: LogKind }> = {
+  low_quality: { text: (point) => `Worked examples, then similar questions: ${point}`, kind: "learn" },
+  low_coverage: { text: (point) => `New question types on ${point}`, kind: "practice" },
+  decaying: { text: (point) => `Recall quiz, no notes: ${point}`, kind: "review" },
+  low_confidence: { text: (point) => `Timed questions on ${point}`, kind: "practice" },
+};
+
+/**
+ * A session built around the weakest dot points: most of it on the weakest,
+ * a short no-notes recall on the next, then mixed questions across them.
+ */
+export function weakPointSteps(weak: WeakPoint[], minutes: number): PlanStep[] {
+  const [first, second] = weak;
+  if (!first) return [];
+  const short = (point: WeakPoint) => clip(point.subtopic, 40).toLowerCase();
+  if (!second || minutes < 30) {
+    return fitSteps([{ minutes, text: WEAK_STEP[first.reason].text(short(first)), kind: WEAK_STEP[first.reason].kind, pointId: first.pointId }], minutes);
+  }
+  return fitSteps(
+    [
+      { minutes: Math.round(minutes * 0.55), text: WEAK_STEP[first.reason].text(short(first)), kind: WEAK_STEP[first.reason].kind, pointId: first.pointId },
+      { minutes: Math.round(minutes * 0.2), text: `Quick recall, no notes: ${short(second)}`, kind: "review", pointId: second.pointId },
+      { minutes: Math.round(minutes * 0.25), text: "Mixed questions across both", kind: "practice" },
+    ],
+    minutes,
   );
 }
 
@@ -260,6 +318,17 @@ export function fallbackPlan(inputs: PlanInputs): SessionPlan {
       ),
       by: "fallback",
       needsSyllabus: { subjectId: brief?.subjectId ?? inputs.subject?.id ?? null, subject: subjectName },
+      createdAt: new Date().toISOString(),
+    };
+  }
+  if (!task && inputs.weakPoints.length) {
+    const weakest = inputs.weakPoints[0];
+    return {
+      v: PLAN_VERSION,
+      topic: clip(weakest.subtopic, 60),
+      why: clip(`Your weakest dot point right now (${weakest.score}/100)`, 70),
+      steps: weakPointSteps(inputs.weakPoints, minutes),
+      by: "fallback",
       createdAt: new Date().toISOString(),
     };
   }
@@ -340,6 +409,15 @@ function prompt(inputs: PlanInputs, menu: MenuTopic[]): string {
   if (paid && record.length) {
     lines.push("Their study record in this subject:", ...describeRecords(record, timeZone).map((line) => `- ${line}`));
   }
+  if (inputs.weakPoints.length) {
+    lines.push(
+      'Their weakest syllabus dot points, from their own marked work (give a step on one its id as "point"):',
+      ...inputs.weakPoints.map(
+        (point) =>
+          `${point.tag} [${point.subtopic}] ${point.text} Mastery ${point.score}/100. Why: ${REASON_TIPS[point.reason].label.toLowerCase()}. Approach: ${REASON_TIPS[point.reason].tip}`,
+      ),
+    );
+  }
   if (menu.length) {
     lines.push(
       'Topics (tag each step with one, or "" if none fits):',
@@ -369,7 +447,7 @@ export async function planSession(env: Env, database: Database, userId: string, 
       topic: string;
       tag: string;
       why: string;
-      steps: Array<{ minutes: number; text: string; tag: string; kind: string }>;
+      steps: Array<{ minutes: number; text: string; tag: string; point: string; kind: string }>;
     }>(
       env,
       [
@@ -383,7 +461,12 @@ export async function planSession(env: Env, database: Database, userId: string, 
             '- tag: the tag (T1, T2…) of the topic the session is mainly on, or "" if it is none of them.',
             "- why: why this now, under 70 characters: what's assessed or due and when, or that it's this week's class topic.",
             `- steps: one to three steps whose minutes add up to exactly ${inputs.minutes}. Each is one short line of something they do: a section to work through, questions to attempt, a past paper, a draft to write themselves. If they left something unfinished last time, start with it. If the last session felt rough, go back over that before moving on.`,
-            '  Give each step the tag of the topic it is on ("" if none) and its kind: learn (new material), practice (questions, past papers), review (going back over something), assignment (a task or draft), study (anything else).',
+            '  Give each step the tag of the topic it is on ("" if none), the weakest dot point it works on as point (D1, D2, D3, or "" if none), and its kind: learn (new material), practice (questions, past papers), review (going back over something), assignment (a task or draft), study (anything else).',
+            ...(inputs.weakPoints.length && !inputs.task
+              ? [
+                  "Their weakest dot points are listed. After any leftovers, build the session on them: about half on D1 using its approach, a short no-notes recall on another, and the rest mixed questions across them. Make every step specific: the skill and how many questions (\"10 questions differentiating trig functions\"), never just \"study Methods\". Name the topic after D1.",
+                ]
+              : []),
             ...(inputs.paid && !inputs.task
               ? [
                   "This block isn't for a deadline, so spend it where it's needed most: after any leftovers, a topic they were lost on or still shaky with, then one taught but not studied yet, then this week's class topic.",
@@ -400,13 +483,17 @@ export async function planSession(env: Env, database: Database, userId: string, 
     );
     if (!reply || !clip(reply.topic, 60)) return fallbackPlan(inputs);
     const main = tagged(reply.tag);
+    const weak = (tag: unknown) =>
+      inputs.weakPoints.find((point) => point.tag.toLowerCase() === String(tag ?? "").trim().toLowerCase());
     const steps: PlanStep[] = (reply.steps ?? []).map((step) => {
       const on = tagged(step.tag);
+      const point = weak(step.point);
       return {
         minutes: step.minutes,
         text: step.text,
         ...(isLogKind(step.kind) ? { kind: step.kind } : {}),
         ...(on ? { topicId: on.topicId, topic: on.title } : {}),
+        ...(point ? { pointId: point.pointId } : {}),
       };
     });
     return {

@@ -5,6 +5,8 @@ interface SendArgs {
   subject: string;
   html: string;
   text: string;
+  /** Extra mail headers, e.g. List-Unsubscribe on marketing-style mail. */
+  headers?: Record<string, string>;
 }
 
 /**
@@ -28,6 +30,7 @@ export async function sendEmail(env: Env, args: SendArgs): Promise<boolean> {
       subject: args.subject,
       html: args.html,
       text: args.text,
+      ...(args.headers ? { headers: args.headers } : {}),
     }),
   });
 
@@ -47,7 +50,7 @@ export async function sendEmail(env: Env, args: SendArgs): Promise<boolean> {
  * rather than fighting each client's dark-mode handling. `preheader` is the
  * grey preview line inbox lists show next to the subject.
  */
-function emailLayout(opts: { heading: string; preheader: string; body: string }): string {
+function emailLayout(opts: { heading: string; preheader: string; body: string; footer?: string }): string {
   const accent = "#7c5cff";
   const ink = "#1a1a2e";
   const muted = "#6b7280";
@@ -79,7 +82,7 @@ function emailLayout(opts: { heading: string; preheader: string; body: string })
             <tr>
               <td style="padding:20px 32px 28px;border-top:1px solid #ececf1;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
                 <p style="margin:0;font-size:12.5px;line-height:1.5;color:${muted};">
-                  Arcadia, your study planner. If you did not create an account, you can ignore this email and nothing happens.
+                  ${opts.footer ?? "Arcadia, your study planner. If you did not create an account, you can ignore this email and nothing happens."}
                 </p>
                 <p style="margin:8px 0 0;font-size:12.5px;color:${muted};">
                   <a href="https://arcadiahq.app" style="color:${accent};text-decoration:none;">arcadiahq.app</a>
@@ -183,6 +186,74 @@ export function resetPasswordEmail(link: string) {
       heading: "Reset your Arcadia password",
       preheader: "Choose a new password for your Arcadia account.",
       body,
+    }),
+  };
+}
+
+export interface StudyPlanBlock {
+  subject: string;
+  /** Already formatted in the student's timezone, e.g. "4:30 pm". */
+  time: string;
+  minutes: number;
+}
+
+/** Most blocks listed in one email; the rest become "and 2 more". */
+const PLAN_EMAIL_BLOCK_LIMIT = 6;
+
+/**
+ * The 4pm "here is today's plan" reminder. Short on purpose: the blocks, one
+ * big button, and an unsubscribe link (required by the Spam Act).
+ */
+export function studyPlanEmail(args: {
+  firstName: string;
+  blocks: StudyPlanBlock[];
+  appLink: string;
+  unsubscribeUrl: string;
+}) {
+  const count = args.blocks.length;
+  const shown = args.blocks.slice(0, PLAN_EMAIL_BLOCK_LIMIT);
+  const more = count - shown.length;
+  const subject = `Your plan for today: ${count} ${count === 1 ? "session" : "sessions"}`;
+  const intro = "here is what is lined up for today. Starting is the hardest part, so just begin with the first one.";
+  const lead = (name: string) => (name ? `Hi ${name}, ${intro}` : `${intro[0].toUpperCase()}${intro.slice(1)}`);
+
+  const rows = shown
+    .map(
+      (block) => `<tr>
+        <td style="padding:12px 14px;border-top:1px solid #ececf1;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+          <div style="font-size:15px;font-weight:600;color:#1a1a2e;">${escapeHtml(block.subject)}</div>
+          <div style="margin-top:2px;font-size:13px;color:#6b7280;">${escapeHtml(block.time)} &middot; ${block.minutes} min</div>
+        </td>
+      </tr>`,
+    )
+    .join("");
+  const moreRow = more > 0
+    ? `<tr><td style="padding:12px 14px;border-top:1px solid #ececf1;font-size:13px;color:#6b7280;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">and ${more} more in the app</td></tr>`
+    : "";
+
+  const body = `
+    <p style="margin:0 0 20px;font-size:15px;line-height:1.55;color:#3a3a4a;">
+      ${lead(escapeHtml(args.firstName))}
+    </p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;border:1px solid #ececf1;border-radius:10px;border-collapse:separate;overflow:hidden;">
+      ${rows}${moreRow}
+    </table>
+    ${emailButton(args.appLink, "Start your first session")}`;
+
+  const footer = `You are getting this because daily plan reminders are on in your Arcadia settings. <a href="${args.unsubscribeUrl}" style="color:#7c5cff;text-decoration:underline;">Unsubscribe in one click</a>, or switch them off any time under Settings.`;
+
+  const lines = shown.map((block) => `- ${block.subject}, ${block.time}, ${block.minutes} min`);
+  if (more > 0) lines.push(`- and ${more} more in the app`);
+  const text = `${lead(args.firstName)}\n\n${lines.join("\n")}\n\nStart your first session:\n${args.appLink}\n\nYou are getting this because daily plan reminders are on in your Arcadia settings. Unsubscribe in one click:\n${args.unsubscribeUrl}\n\narcadiahq.app`;
+
+  return {
+    subject,
+    text,
+    html: emailLayout({
+      heading: "Your plan for today",
+      preheader: `${count} ${count === 1 ? "session" : "sessions"} planned. Start with the first one.`,
+      body,
+      footer,
     }),
   };
 }

@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { api, ApiError, saveCsrf } from "@/lib/api/client";
 import { resetAnalytics } from "@/lib/analytics/events";
 import type { CalendarFeed } from "@/lib/api/types";
-import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { updateProfile } from "@/lib/api/profile";
+import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { useTheme, type ThemeMode } from "@/lib/app/theme";
 import { isSoundEnabled, playCompletionTick, setSoundEnabled } from "@/lib/app/completion";
 import { is24Hour, set24Hour } from "@/lib/app/timeFormat";
@@ -172,6 +172,8 @@ export default function SettingsView() {
   const [pushPreferences, setPushPreferences] = useState<PushPreferences>(DEFAULT_PUSH_PREFERENCES);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushNotice, setPushNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [emailNotice, setEmailNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
   const [billingBusy, setBillingBusy] = useState(false);
   const [developerTierBusy, setDeveloperTierBusy] = useState(false);
   const [billingNotice, setBillingNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
@@ -252,6 +254,21 @@ export default function SettingsView() {
       })
       .catch(() => {});
   }, [hasPaidPlan, isGuest]);
+
+  const emailReminders = data.profile?.emailReminders !== false;
+
+  async function saveEmailReminders(next: boolean) {
+    setEmailBusy(true);
+    setEmailNotice(null);
+    try {
+      await updateProfile({ emailReminders: next });
+      patch((prev) => ({ ...prev, profile: prev.profile ? { ...prev.profile, emailReminders: next } : prev.profile }));
+    } catch (err) {
+      setEmailNotice({ tone: "error", text: err instanceof Error && err.message ? err.message : "Couldn't update email reminders." });
+    } finally {
+      setEmailBusy(false);
+    }
+  }
 
   async function enablePush() {
     setPushBusy(true);
@@ -1007,6 +1024,20 @@ export default function SettingsView() {
               </div>
             )}
             <Notice notice={pushNotice} />
+          </Card>
+        )}
+
+        {isGuest ? null : (
+          <Card>
+            <SectionHeader label="Email reminders" />
+            <PreferenceToggle
+              label="Email reminders"
+              detail="A short email around 4pm on days you have study blocks planned, with a button to start your first session."
+              checked={emailReminders}
+              disabled={emailBusy}
+              onChange={(next) => void saveEmailReminders(next)}
+            />
+            <Notice notice={emailNotice} />
           </Card>
         )}
 

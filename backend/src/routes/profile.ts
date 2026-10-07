@@ -190,6 +190,7 @@ interface ProfileBody {
   arcadAbout?: string;
   arcadStyle?: string;
   memoryEnabled?: boolean;
+  emailReminders?: boolean;
   /** Permission to send study details to OpenAI. */
   aiConsent?: "granted" | "declined";
   /** IANA zone, e.g. "America/New_York". */
@@ -262,6 +263,7 @@ profile.patch("/", async (c) => {
   if (body.arcadAbout !== undefined) patch.arcadAbout = String(body.arcadAbout).slice(0, TEXT_LIMIT);
   if (body.arcadStyle !== undefined) patch.arcadStyle = String(body.arcadStyle).slice(0, TEXT_LIMIT);
   if (body.memoryEnabled !== undefined) patch.memoryEnabled = Boolean(body.memoryEnabled);
+  if (body.emailReminders !== undefined) patch.emailRemindersEnabled = Boolean(body.emailReminders);
   if (body.aiConsent !== undefined) {
     if (body.aiConsent !== "granted" && body.aiConsent !== "declined") {
       return c.json({ error: "Choose allow or don't allow." }, 422);

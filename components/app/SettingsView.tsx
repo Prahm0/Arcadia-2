@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api, ApiError, saveCsrf } from "@/lib/api/client";
 import { resetAnalytics } from "@/lib/analytics/events";
 import type { CalendarFeed } from "@/lib/api/types";
+import { updateProfile } from "@/lib/api/profile";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { useTheme, type ThemeMode } from "@/lib/app/theme";
 import { isSoundEnabled, playCompletionTick, setSoundEnabled } from "@/lib/app/completion";
@@ -66,6 +67,16 @@ interface BlockedPerson {
 export default function SettingsView() {
   const router = useRouter();
   const { data, patch, reload } = useDashboardData();
+  const [aiBusy, setAiBusy] = useState(false);
+  async function saveAiConsent(allow: boolean) {
+    setAiBusy(true);
+    try {
+      await updateProfile({ aiConsent: allow ? "granted" : "declined" });
+      await reload();
+    } finally {
+      setAiBusy(false);
+    }
+  }
   const { mode, setMode } = useTheme();
 
   useEffect(() => {
@@ -161,6 +172,8 @@ export default function SettingsView() {
   const [pushPreferences, setPushPreferences] = useState<PushPreferences>(DEFAULT_PUSH_PREFERENCES);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushNotice, setPushNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [emailNotice, setEmailNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
   const [billingBusy, setBillingBusy] = useState(false);
   const [developerTierBusy, setDeveloperTierBusy] = useState(false);
   const [billingNotice, setBillingNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
@@ -241,6 +254,21 @@ export default function SettingsView() {
       })
       .catch(() => {});
   }, [hasPaidPlan, isGuest]);
+
+  const emailReminders = data.profile?.emailReminders !== false;
+
+  async function saveEmailReminders(next: boolean) {
+    setEmailBusy(true);
+    setEmailNotice(null);
+    try {
+      await updateProfile({ emailReminders: next });
+      patch((prev) => ({ ...prev, profile: prev.profile ? { ...prev.profile, emailReminders: next } : prev.profile }));
+    } catch (err) {
+      setEmailNotice({ tone: "error", text: err instanceof Error && err.message ? err.message : "Couldn't update email reminders." });
+    } finally {
+      setEmailBusy(false);
+    }
+  }
 
   async function enablePush() {
     setPushBusy(true);
@@ -807,6 +835,17 @@ export default function SettingsView() {
         </Card>
 
         <Card>
+          <SectionHeader label="AI" />
+          <PreferenceToggle
+            label="Let Arcadia use AI"
+            detail="Sends your first name, year level, school, subjects, schedule, tasks, messages to Arcad and uploaded notes to OpenAI to build your plan and power Arcad. Never your email, password or payment details. OpenAI doesn't train on it. Off: you get a basic plan without Arcad."
+            checked={data.profile?.aiConsent === "granted"}
+            disabled={aiBusy}
+            onChange={(next) => void saveAiConsent(next)}
+          />
+        </Card>
+
+        <Card>
           <SectionHeader label="Feedback sounds" />
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
@@ -985,6 +1024,20 @@ export default function SettingsView() {
               </div>
             )}
             <Notice notice={pushNotice} />
+          </Card>
+        )}
+
+        {isGuest ? null : (
+          <Card>
+            <SectionHeader label="Email reminders" />
+            <PreferenceToggle
+              label="Email reminders"
+              detail="A short email around 4pm on days you have study blocks planned, with a button to start your first session."
+              checked={emailReminders}
+              disabled={emailBusy}
+              onChange={(next) => void saveEmailReminders(next)}
+            />
+            <Notice notice={emailNotice} />
           </Card>
         )}
 

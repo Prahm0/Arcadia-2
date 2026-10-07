@@ -16,7 +16,7 @@ import MissedRecoveryCards from "./MissedRecoveryCards";
 import MonthPlanPanel from "./MonthPlanPanel";
 import ProactiveArcadCards from "./ProactiveArcadCards";
 import PageTour from "./tour/PageTour";
-import ChangeCard from "./arcad/ChangeCard";
+import ChangeCard, { SKIPPED_NOTICE } from "./arcad/ChangeCard";
 import ChatRail, { PANEL_ICON } from "./arcad/ChatRail";
 import Composer, { type ComposerHandle } from "./arcad/Composer";
 import { MessageRow, ThinkingRow } from "./arcad/ChatMessage";
@@ -362,9 +362,10 @@ function ArcadPage() {
   async function respondToProposal(id: string, action: "apply" | "decline") {
     setNotice(null);
     try {
-      await api(`/api/proposals/${encodeURIComponent(id)}/${action}`, { method: "POST" });
+      const result = await api<{ skipped?: number }>(`/api/proposals/${encodeURIComponent(id)}/${action}`, { method: "POST" });
       setProposals((prev) => prev.map((p) => (p.id === id ? { ...p, status: action === "apply" ? "applied" : "declined" } : p)));
       if (action === "apply") {
+        if (result?.skipped) setNotice(SKIPPED_NOTICE);
         await reload();
         requestDashboardRefresh();
       }

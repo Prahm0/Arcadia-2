@@ -8,6 +8,7 @@ import {
   LAYOUT_DAYS,
   applyLayout,
   baseCredit,
+  bookedTaskTime,
   groundwork,
   layoutKey,
   loadScheduleInputs,
@@ -97,6 +98,8 @@ interface Context {
   refs: Refs;
   /** Tasks Arcad can book, due after now. */
   tasks: Task[];
+  /** Each task's work already in blocks the student kept (moved or added), in ms. */
+  booked: Map<string, number>;
   asks: SubjectAsk[];
   /** Syllabus assessments that aren't on the deadline list. */
   assessments: Array<{ title: string; subject: string; kind: string; dueOn: string }>;
@@ -156,7 +159,8 @@ async function gather(database: Database, userId: string): Promise<Context | nul
     getUserTier(database, userId),
   ]);
 
-  const tasks = taskQueue(inputs.tasks, g.sessionLength)
+  const booked = bookedTaskTime(g.keep, g.now);
+  const tasks = taskQueue(inputs.tasks, g.sessionLength, booked)
     .map((entry) => entry.task)
     .filter((task) => task.dueAt > g.now);
   const refs: Refs = { tasks: new Map(), subjects: new Map(), refOfTask: new Map(), refOfSubject: new Map() };
@@ -206,6 +210,7 @@ async function gather(database: Database, userId: string): Promise<Context | nul
     key: layoutKey(inputs, g),
     refs,
     tasks,
+    booked,
     asks,
     assessments: assessmentRows
       .filter((row) => row.dueOn && row.dueOn >= today && row.dueOn <= soon && subjectById.has(row.subjectId))
@@ -233,10 +238,16 @@ function dayRoom(day: PlanDay): number {
  * many sessions it is, the day to have it done by, and which days before
  * then have room. Room is shared with everything else, so it's a guide.
  */
+/** Minutes of a task still to book: work left, less what's in blocks they kept. */
+function minutesLeft(ctx: Context, task: Task): number {
+  const booked = Math.round((ctx.booked.get(task.id) ?? 0) / MINUTE);
+  return Math.max(0, task.estimatedMinutes - task.completedMinutes - booked);
+}
+
 function workPlan(ctx: Context, task: Task): string {
   const { g } = ctx;
   const session = Math.round(g.sessionLength / MINUTE);
-  const left = Math.max(0, task.estimatedMinutes - task.completedMinutes);
+  const left = minutesLeft(ctx, task);
   const sessions = Math.max(1, Math.round(left / session));
   const size = `Plan: about ${sessions} session${sessions === 1 ? "" : "s"} of ${Math.round(left / sessions / 5) * 5} min.`;
   const due = localDateKey(task.dueAt, ctx.inputs.profile.timezone);
@@ -283,11 +294,15 @@ function brief(ctx: Context, previous: DayLayout | null): string {
       .sort((a, b) => a.startAt - b.startAt)
       .map((row) => `${clip(row.title, 40)} ${clock(Math.max(row.startAt, day.start), day.start)}–${clock(Math.min(row.endAt, end), day.start)}`);
     const free = day.free.map((slot) => `${clock(slot.start, day.start)}–${clock(slot.end, day.start)}`);
+    const takenOff = [...refs.subjects]
+      .filter(([, subject]) => day.takenOff.has(subjectKey(subject.name)))
+      .map(([ref, subject]) => `${ref} (${subject.name})`);
     lines.push(
       `- ${day.date} ${dayName(day.date)}${day.date === localDateKey(g.now, tz) ? " (today)" : ""}, ${kind}.` +
         ` Free: ${free.length ? free.join(", ") : "none"}.` +
         (busy.length ? ` Busy: ${busy.join(", ")}.` : "") +
         (day.used ? ` Study they've already booked: ${minutes(day.used)} min (counts toward the limit).` : "") +
+        (takenOff.length ? ` They took ${takenOff.join(" and ")} off this day themselves: don't put it back here.` : "") +
         ` Room for up to ${minutes(dayRoom(day))} min of study.`,
     );
   }
@@ -295,7 +310,7 @@ function brief(ctx: Context, previous: DayLayout | null): string {
   const horizon = g.days[g.days.length - 1].start + DAY;
   const dueWork = ctx.tasks
     .filter((task) => task.dueAt < horizon)
-    .reduce((sum, task) => sum + Math.max(0, task.estimatedMinutes - task.completedMinutes), 0);
+    .reduce((sum, task) => sum + minutesLeft(ctx, task), 0);
   const subjectTime = ctx.asks.reduce((sum, ask) => sum + ask.minutes, 0);
   lines.push(
     "",
@@ -305,11 +320,14 @@ function brief(ctx: Context, previous: DayLayout | null): string {
   );
   lines.push("", ctx.tasks.length ? "Deadline work (ref: what, due, work left, and a plan for it):" : "Deadline work: none.");
   for (const task of ctx.tasks) {
-    const left = Math.max(0, task.estimatedMinutes - task.completedMinutes);
+    const left = minutesLeft(ctx, task);
+    const booked = Math.round((ctx.booked.get(task.id) ?? 0) / MINUTE);
     lines.push(
       `- ${refs.refOfTask.get(task.id)}: ${clip(task.title, 80)} (${task.subject ?? "no subject"}, ${task.taskType}${
         task.priority >= 4 ? ", high priority" : ""
-      }), due ${when(task.dueAt, tz)}, ${left} min left${task.completedMinutes ? ` (${task.completedMinutes} done)` : ""}. ${
+      }), due ${when(task.dueAt, tz)}, ${left} min left to book${task.completedMinutes ? ` (${task.completedMinutes} done)` : ""}${
+        booked ? ` (${booked} in blocks they've booked themselves)` : ""
+      }. ${
         task.dueAt >= horizon ? "Due after these 7 days: make steady progress, it doesn't need finishing." : workPlan(ctx, task)
       }`,
     );
@@ -503,7 +521,7 @@ function review(ctx: Context, layout: DayLayout, unknown: string[]): Review {
   const { inputs, refs } = ctx;
   const tz = inputs.profile.timezone;
   const g = groundwork(inputs.profile.userId, inputs, ctx.g.days[0].start, ctx.g.days[0].start + LAYOUT_DAYS * DAY, ctx.g.now);
-  const queue = taskQueue(inputs.tasks, g.sessionLength);
+  const queue = taskQueue(inputs.tasks, g.sessionLength, bookedTaskTime(g.keep, g.now));
   const { placed, problems } = applyLayout(g, layout, queue, inputs.subjects);
   const broken = [...unknown, ...problems];
   const weak: string[] = [];
@@ -577,7 +595,7 @@ function review(ctx: Context, layout: DayLayout, unknown: string[]): Review {
       if (!task || count <= 2) continue;
       // More than two is fine only when the due date forces it.
       const daysLeft = Math.max(1, Math.ceil((task.dueAt - day.start) / DAY));
-      const left = Math.max(0, task.estimatedMinutes - task.completedMinutes) * MINUTE;
+      const left = minutesLeft(ctx, task) * MINUTE;
       if (count > Math.ceil(left / (entry?.unit || g.sessionLength) / daysLeft)) {
         weak.push(`${day.date}: ${count} blocks of ${refs.refOfTask.get(taskId)}. Spread it over more days.`);
       }

@@ -31,6 +31,7 @@ import { subjectColour } from "@/lib/app/subjectColour";
 import { SubjectTag } from "./cards/shared";
 import { playCompletionTick } from "@/lib/app/completion";
 import { noteWin } from "@/lib/capacitor/ratingPrompt";
+import { success } from "@/lib/capacitor/haptics";
 import TodayProgress from "./TodayProgress";
 
 const CATEGORY_BAR = CATEGORY_COLOR;
@@ -155,6 +156,7 @@ export default function TodayView() {
         method: "POST",
         body: JSON.stringify({ outcome }),
       });
+      if (outcome === "completed") void success();
       patch((prev) => ({
         ...prev,
         events: prev.events.map((existing) =>

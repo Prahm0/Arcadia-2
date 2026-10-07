@@ -8,6 +8,7 @@ import type { DashboardResponse, MissReason, PlannerEvent } from "@/lib/api/type
 import { formatClock, formatDurationMinutes, formatFriendlyDate } from "@/lib/api/time";
 import { playCompletionTick } from "@/lib/app/completion";
 import { noteWin } from "@/lib/capacitor/ratingPrompt";
+import { success, warning } from "@/lib/capacitor/haptics";
 import AppButton from "./AppButton";
 import MissReasonPicker from "./MissReasonPicker";
 
@@ -116,6 +117,7 @@ export default function EventDetailSheet({
           missReason ? { outcome, missReason, missNote } : { outcome },
         ),
       });
+      if (outcome === "completed") void success();
       await reload();
       onClose();
     } catch (err) {
@@ -142,6 +144,7 @@ export default function EventDetailSheet({
   async function remove() {
     if (!event) return;
     if (!confirm(`Remove "${event.title}" from your schedule?`)) return;
+    void warning();
     setBusy("delete");
     setError(null);
     try {

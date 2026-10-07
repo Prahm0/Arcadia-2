@@ -17,6 +17,7 @@ import commitments from "./routes/commitments";
 import companion from "./routes/companion";
 import constellations from "./routes/constellations";
 import dashboard from "./routes/dashboard";
+import emailReminders from "./routes/email-reminders";
 import events from "./routes/events";
 import feedback from "./routes/feedback";
 import goals from "./routes/goals";
@@ -38,6 +39,7 @@ import uploads from "./routes/uploads";
 import waitlist from "./routes/waitlist";
 import type { Env, Variables } from "./types";
 import { dispatchPushCheckIns } from "./lib/push";
+import { dispatchEmailReminders } from "./lib/email-reminders";
 import { refreshWantedLayouts } from "./lib/day-plan";
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -80,6 +82,10 @@ const PUBLIC_PREFIXES = [
   // RevenueCat uses the configured authorization header, verified by the
   // billing route before any subscription data is reconciled.
   "/api/billing/iap/webhook",
+  // The unsubscribe link in the daily plan email works without logging in;
+  // its signed token is the credential. Only this path is public: the
+  // developer test route under the same prefix still needs a session.
+  "/api/email-reminders/unsubscribe",
 ];
 
 app.use("/api/*", async (c, next) => {
@@ -106,6 +112,7 @@ app.route("/api/constellations", constellations);
 app.route("/api/conversations", conversations);
 app.route("/api/dashboard", dashboard);
 app.route("/api/decks", decks);
+app.route("/api/email-reminders", emailReminders);
 app.route("/api/events", events);
 app.route("/api/feedback", feedback);
 app.route("/api/goals", goals);
@@ -142,6 +149,7 @@ export default {
   fetch: app.fetch,
   async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(dispatchPushCheckIns(env));
+    ctx.waitUntil(dispatchEmailReminders(env).catch((error) => console.error("[email-reminders]", error)));
     ctx.waitUntil(refreshWantedLayouts(env));
   },
 } satisfies ExportedHandler<Env>;

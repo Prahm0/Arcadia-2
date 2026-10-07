@@ -225,6 +225,12 @@ export const profiles = sqliteTable("profiles", {
   arcadAbout: text("arcad_about").notNull().default(""),
   arcadStyle: text("arcad_style").notNull().default(""),
   memoryEnabled: integer("memory_enabled", { mode: "boolean" }).notNull().default(true),
+  // The daily study-plan email (lib/email-reminders.ts). Off via Settings or the email's unsubscribe link.
+  emailRemindersEnabled: integer("email_reminders_enabled", { mode: "boolean" }).notNull().default(true),
+  // Permission to send their study details to OpenAI (App Store 5.1.2).
+  // Null until asked. Nothing goes to the model unless it is "granted".
+  aiConsent: text("ai_consent", { enum: ["granted", "declined"] }),
+  aiConsentAt: integer("ai_consent_at"),
 });
 
 export const goals = sqliteTable(
@@ -349,6 +355,8 @@ export const events = sqliteTable(
     source: text("source").notNull().default("auto"),
     editable: integer("editable", { mode: "boolean" }).notNull().default(true),
     pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
+    // Where a moved block started before its first move (migration 0037).
+    movedFrom: integer("moved_from"),
     // Session plan and check-out, both JSON (see migration 0008).
     plan: text("plan"),
     checkout: text("checkout"),

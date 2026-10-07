@@ -12,6 +12,9 @@ interface ProposalOperation {
   kind?: string | null;
   startAt?: string;
   endAt?: string;
+  /** Where a moved block was when Arcad proposed it. Newer proposals carry it. */
+  fromStartAt?: string;
+  fromEndAt?: string;
 }
 
 interface ProposalPreviewProps {
@@ -61,9 +64,12 @@ function OperationChip({
   events: PlannerEvent[];
   timezone: string;
 }) {
-  const existing = operation.eventId
-    ? events.find((event) => event.id === operation.eventId) ?? null
-    : null;
+  const found = operation.eventId ? events.find((event) => event.id === operation.eventId) ?? null : null;
+  // Once applied, the block itself sits at the new time, so prefer where it was.
+  const existing =
+    operation.fromStartAt && operation.fromEndAt
+      ? { title: found?.title, subject: found?.subject, startAt: operation.fromStartAt, endAt: operation.fromEndAt }
+      : found;
   const isMove = operation.action === "update" && !!existing;
 
   const afterStartLabel = formatClock(operation.startAt, timezone);
@@ -233,16 +239,19 @@ function Arrow() {
 function normalize(raw: unknown): ProposalOperation | null {
   if (!raw || typeof raw !== "object") return null;
   const anyRaw = raw as Record<string, unknown>;
-  const startAt = typeof anyRaw.startAt === "string" ? anyRaw.startAt : undefined;
-  const endAt = typeof anyRaw.endAt === "string" ? anyRaw.endAt : undefined;
+  // Moved and added blocks get the chart; every other change is a row in ChangeCard.
+  if (typeof anyRaw.op === "string" && anyRaw.op !== "move_block" && anyRaw.op !== "add_block") return null;
+  const text = (key: string) => (typeof anyRaw[key] === "string" ? (anyRaw[key] as string) : undefined);
   return {
     action: anyRaw.action === "update" || anyRaw.action === "create" ? anyRaw.action : undefined,
-    eventId: typeof anyRaw.eventId === "string" ? anyRaw.eventId : null,
-    title: typeof anyRaw.title === "string" ? anyRaw.title : null,
-    subject: typeof anyRaw.subject === "string" ? anyRaw.subject : null,
-    kind: typeof anyRaw.kind === "string" ? anyRaw.kind : null,
-    startAt,
-    endAt,
+    eventId: text("eventId") ?? null,
+    title: text("title") ?? null,
+    subject: text("subject") ?? null,
+    kind: text("kind") ?? null,
+    startAt: text("startAt"),
+    endAt: text("endAt"),
+    fromStartAt: text("fromStartAt"),
+    fromEndAt: text("fromEndAt"),
   };
 }
 

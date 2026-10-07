@@ -10,6 +10,9 @@ import AppButton from "../AppButton";
 import ProposalPreview from "../ProposalPreview";
 import type { Proposal } from "./types";
 
+/** When Apply had to leave part of a change out because the schedule moved on. */
+export const SKIPPED_NOTICE = "Some of that didn't fit your schedule any more, so it was left out. Ask Arcad again.";
+
 const KIND_LABEL: Record<ChangeKind, string> = { add: "Add", edit: "Change", remove: "Remove" };
 const KIND_COLOUR: Record<ChangeKind, string> = {
   add: "var(--app-success)",
@@ -19,8 +22,9 @@ const KIND_COLOUR: Record<ChangeKind, string> = {
 
 /**
  * A change Arcad wants to make to the plan, shown under the reply that
- * suggested it: each task or commitment it would add, change or remove,
- * then Apply or Decline. Once decided it stays in the thread as a record.
+ * suggested it (or in the side panel): each block, task, commitment or
+ * subject it would add, change or remove, then Apply or Decline. Once
+ * decided it stays in the thread as a record.
  */
 export default function ChangeCard({
   proposal,

@@ -8,6 +8,7 @@ import type { PlannerTask } from "@/lib/api/types";
 import { dateKey, formatDurationMinutes, formatDueSoon } from "@/lib/api/time";
 import { playCompletionTick } from "@/lib/app/completion";
 import { noteWin } from "@/lib/capacitor/ratingPrompt";
+import { success, warning } from "@/lib/capacitor/haptics";
 import { cn } from "@/lib/cn";
 import { flashMenuNotice, showContextMenu } from "./ContextMenu";
 import PageHeader from "./PageHeader";
@@ -96,6 +97,7 @@ export default function DeadlinesView() {
         method: "PATCH",
         body: JSON.stringify({ status: "complete" }),
       });
+      void success();
     } catch (err) {
       flashMenuNotice(err instanceof Error ? err.message : "Couldn't mark it done.");
     }
@@ -104,6 +106,7 @@ export default function DeadlinesView() {
 
   async function remove(task: PlannerTask) {
     if (!confirm(`Delete "${task.title}"? This also removes its scheduled study blocks.`)) return;
+    void warning();
     try {
       await api(`/api/tasks/${encodeURIComponent(task.id)}`, { method: "DELETE" });
       patch((prev) => ({

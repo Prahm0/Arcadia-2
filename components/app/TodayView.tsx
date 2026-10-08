@@ -207,7 +207,7 @@ export default function TodayView() {
           </>
         }
       />
-      <TodayProgress refreshKey={progressRefresh} />
+      <TodayProgress refreshKey={progressRefresh} compact />
       {xpReward !== null ? (
         <div className="pointer-events-none fixed left-1/2 top-24 z-[100] -translate-x-1/2 app-pop rounded-full px-4 py-2 text-sm font-semibold shadow-lg" style={{ background: "var(--app-arcad)", color: "white" }}>
           +{xpReward} XP
@@ -217,9 +217,6 @@ export default function TodayView() {
       <div className="mx-auto grid w-full max-w-[1160px] gap-8 px-6 pb-10 pt-6 sm:px-10 @3xl/main:grid-cols-[minmax(0,1fr)_320px]">
         <section className="min-w-0">
           <StartNowCard />
-          <SundayReviewInline />
-          <ProactiveArcadCards />
-          <DailyCheckInCard />
           <TodayCard
             date={formatFriendlyDate(now.toISOString(), timezone)}
             weekProgress={weekProgress}
@@ -244,6 +241,14 @@ export default function TodayView() {
               setOpenEventMode(mode);
             }}
           />
+          {/* Then one suggestion at most, most useful first. Each card renders
+              nothing when it has nothing to say, so only the first that does
+              shows. Up to four used to stack above the student's next block. */}
+          <div className="mt-6 empty:hidden [&>*~*]:hidden">
+            <DailyCheckInCard />
+            <SundayReviewInline />
+            <ProactiveArcadCards limit={1} />
+          </div>
         </section>
 
         <TodayRail />

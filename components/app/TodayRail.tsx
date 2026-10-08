@@ -11,9 +11,9 @@ import { upcomingExamReadiness, type ExamReadiness } from "@/lib/app/examReadine
 import RailStreakCard from "./sky/RailStreakCard";
 
 /**
- * The column beside Today: one panel, read top to bottom. Your companion and
- * how close it is to growing, the week's focus by day, the streak, the next
- * streak card, and what's due next. Everything in it is a real number from the dashboard.
+ * The column beside Today: one panel, read top to bottom. The streak, the
+ * next streak card, and what's due next. Everything in it is a real number
+ * from the dashboard.
  */
 export default function TodayRail() {
   const { data } = useDashboardData();
@@ -36,7 +36,7 @@ export default function TodayRail() {
       className="self-start overflow-hidden rounded-xl @3xl/main:sticky @3xl/main:top-6"
       style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
     >
-      <WeekSection days={data.analytics.days ?? []} todayMinutes={Number(data.analytics.todayMinutes ?? 0)} />
+      {/* The week's chart is on Progress; a new student's is a row of zeros. */}
       <StreakSection />
       <RailStreakCard />
       <DeadlinesSection tasks={deadlines} timezone={timezone} urgency={urgency} />
@@ -45,7 +45,7 @@ export default function TodayRail() {
         className="ui-hover flex items-center justify-between border-t px-5 py-3 text-[13px] font-medium"
         style={{ borderColor: "var(--app-border)", color: "var(--app-text-soft)" }}
       >
-        All analytics
+        Your progress
         <Chevron />
       </Link>
     </aside>
@@ -70,45 +70,6 @@ function Section({ title, aside, children }: { title: string; aside?: ReactNode;
   );
 }
 
-
-function WeekSection({ days, todayMinutes }: { days: Array<{ date: string; minutes: number }>; todayMinutes: number }) {
-  const total = days.reduce((sum, day) => sum + day.minutes, 0);
-  // An hour is the floor for the scale, so one short session doesn't fill the chart.
-  const max = Math.max(60, ...days.map((day) => day.minutes));
-
-  return (
-    <Section title="Last 7 days" aside={`${formatDurationMinutes(total)} focused`}>
-      <div className="mt-4 flex h-[88px] items-end gap-2" role="img" aria-label={days.map((day) => `${weekday(day.date)} ${day.minutes} minutes`).join(", ")}>
-        {days.map((day, index) => {
-          const isToday = index === days.length - 1;
-          return (
-            <div key={day.date} className="flex h-full flex-1 flex-col items-center justify-end gap-1.5">
-              <div className="flex w-full flex-1 items-end">
-                <div
-                  className="w-full rounded-t-[2px]"
-                  style={{
-                    height: day.minutes > 0 ? `${Math.max(6, (day.minutes / max) * 100)}%` : 3,
-                    background: isToday ? "var(--app-text)" : day.minutes > 0 ? "var(--app-text-faint)" : "var(--app-border)",
-                    opacity: isToday || day.minutes > 0 ? 1 : 0.9,
-                  }}
-                />
-              </div>
-              <span
-                className="text-[11px]"
-                style={{ color: isToday ? "var(--app-text)" : "var(--app-text-faint)", fontWeight: isToday ? 600 : 400 }}
-              >
-                {weekday(day.date).charAt(0)}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-      <p className="mt-3 text-[12.5px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
-        Today <span style={{ color: "var(--app-text)" }}>{formatDurationMinutes(todayMinutes)}</span>
-      </p>
-    </Section>
-  );
-}
 
 function StreakSection() {
   const streak = useStreak();
@@ -166,9 +127,6 @@ function DeadlinesSection({ tasks, timezone, urgency }: { tasks: PlannerTask[]; 
   );
 }
 
-function weekday(date: string): string {
-  return new Intl.DateTimeFormat("en-AU", { weekday: "short", timeZone: "UTC" }).format(Date.parse(`${date}T12:00:00Z`));
-}
 
 function Chevron() {
   return (

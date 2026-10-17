@@ -14,7 +14,7 @@ import { DEFAULT_MESSAGE_USAGE_TIMEZONE, messageUsageWindow, type MessageUsageWi
 export type Tier = "free" | "pro" | "max";
 
 export const DAILY_MESSAGE_CAP: Record<Tier, number> = {
-  free: 2,
+  free: 3,
   pro: 20,
   max: 100,
 };

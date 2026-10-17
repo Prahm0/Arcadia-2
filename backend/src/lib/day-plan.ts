@@ -28,6 +28,7 @@ import { recentMissReasonContext, studyHabits } from "./study-context";
 import type { Habits } from "./study-habits";
 import { getUserTier, type Tier } from "./tiers";
 import { DAY, MINUTE, localDateKey, parseClock, startOfLocalDay } from "./time";
+import { courseLine, goalLine } from "./course-context";
 
 /**
  * Arcad's day-by-day layout of the next week of study.
@@ -274,7 +275,7 @@ function brief(ctx: Context, previous: DayLayout | null): string {
 
   const lines = [
     `Now: ${when(g.now, tz)}.`,
-    `Student: ${profile.grade ?? "year not given"}${profile.state ? `, ${profile.state}` : ""}.`,
+    `Student: ${profile.grade ?? "year not given"}${profile.state ? `, ${profile.state}` : ""}. Course: ${courseLine(profile)}.`,
     `Their settings: sessions usually ${minutes(g.sessionLength)} min, breaks ${minutes(g.breakLength)} min, at most ${minutes(g.dailyCap)} min of study a day. Up at ${profile.wakeTime}, bed at ${profile.bedtime}.`,
     "",
     "Days (free = when study can go; everything else is school, sleep, commitments or plans they've made):",
@@ -365,7 +366,8 @@ function brief(ctx: Context, previous: DayLayout | null): string {
   if (ctx.missReasons.length) {
     lines.push("Why they've missed blocks lately:", ...ctx.missReasons.map((line) => `- ${line}`));
   }
-  if (profile.atarTarget) lines.push("", `ATAR target ${profile.atarTarget.toFixed(2)}.`);
+  const goal = goalLine(profile);
+  if (goal) lines.push("", `${goal}.`);
   if (ctx.goals.length) lines.push(`Goals: ${ctx.goals.join("; ")}.`);
   if (profile.arcadAbout.trim()) lines.push(`About them: ${clip(profile.arcadAbout, 600)}`);
   if (ctx.memories.length) lines.push(`You remember: ${ctx.memories.slice(-10).join(" ")}`);

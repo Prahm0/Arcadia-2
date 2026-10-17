@@ -42,7 +42,7 @@ const PLANS: {
     price: PRO_MONTHLY,
     blurb: "Planning on autopilot, Arcad in the loop.",
     features: [
-      "20 Arcad messages a day, 10x the free plan",
+      "20 Arcad messages a day",
       "Google, Apple and Canvas calendar sync",
       "Upload notes and PDFs, Arcad answers from them",
       "Full analytics, up to 3 flashcard decks",
@@ -178,6 +178,12 @@ export default function OnboardingPaywall({
                   / month AUD
                 </span>
               </div>
+              {plan.highlighted ? (
+                // New accounts get Pro's free week on the web (billing.ts PRO_TRIAL_DAYS).
+                <p className="-mt-2 text-[12.5px] font-medium" style={{ color: "var(--app-arcad-strong)" }}>
+                  First 7 days free
+                </p>
+              ) : null}
               <ul className="flex flex-col gap-2">
                 {plan.features.map((f) => (
                   <li key={f} className="flex items-start gap-2.5 text-[13.5px]" style={{ color: "var(--app-text-soft)" }}>
@@ -204,7 +210,7 @@ export default function OnboardingPaywall({
                   loading={busy === plan.key}
                   className="w-full"
                 >
-                  {plan.highlighted ? "Start Pro" : "Go Max"}
+                  {plan.highlighted ? "Try free for 7 days" : "Go Max"}
                 </AppButton>
               </div>
             </div>
@@ -415,10 +421,14 @@ function NativeOnboardingPaywall({
               New subscriber offer
             </p>
             <h2 id="ios-offer-title" className="mt-2 text-[24px] font-medium leading-[1.15] tracking-[-0.02em]">
-              Your first month of Pro for {offer.introPriceString}
+              {offer.introOffer?.free
+                ? `Try Pro free for ${offer.introOffer.length}`
+                : `Your first ${offer.introOffer?.length || "month"} of Pro for ${offer.introPriceString}`}
             </h2>
             <p className="mt-3 text-[14px]" style={{ color: "var(--app-text-muted)" }}>
-              Then {offer.priceString} a month. Cancel any time in your iPhone&rsquo;s Settings.
+              {offer.introOffer?.free
+                ? `Then ${offer.priceString} a month. Cancel in your iPhone\u2019s Settings before it ends and you won\u2019t pay anything.`
+                : `Then ${offer.priceString} a month. Cancel any time in your iPhone\u2019s Settings.`}
             </p>
             {error ? (
               <p className="mt-3 text-[13px]" style={{ color: "var(--app-danger)" }}>
@@ -426,7 +436,7 @@ function NativeOnboardingPaywall({
               </p>
             ) : null}
             <AppButton variant="primary" onClick={() => void claim()} loading={busy} className="mt-5 w-full">
-              Claim offer
+              {offer.introOffer?.free ? "Start free trial" : "Claim offer"}
             </AppButton>
             <button type="button" onClick={onContinueFree} disabled={busy} className="mt-3 text-[13.5px] underline underline-offset-4" style={{ color: "var(--app-text-muted)" }}>
               No thanks, continue with Free

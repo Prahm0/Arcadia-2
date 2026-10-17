@@ -17,7 +17,7 @@ export const TIER_COPY = {
       "Auto-scheduled daily plan",
       "Tasks & deadlines",
       "Session timer (Classic 25/5)",
-      "Arcad, 2 messages / day",
+      "Arcad, 3 messages a day",
       "1 flashcard deck",
       "Weekly review, text summary",
       "Study rooms for up to 12, with chat and room colours",
@@ -27,7 +27,7 @@ export const TIER_COPY = {
     headline: "Planning on autopilot, Arcad in the loop.",
     features: [
       "Everything in Free",
-      "Arcad, 20 messages a day, 10x the free plan",
+      "Arcad, 20 messages a day",
       "Google / Apple / Canvas calendar sync",
       "Upload PDFs & notes, Arcad answers from them",
       "Study rooms for up to 30, with shared timers",
@@ -41,7 +41,7 @@ export const TIER_COPY = {
     headline: "The learning layer. Study, not just plan.",
     features: [
       "Everything in Pro",
-      "Arcad, 100 messages a day, 50x the free plan",
+      "Arcad, 100 messages a day",
       "Unlimited flashcard decks",
       "New study tools land here first",
       "Study rooms for up to 50",

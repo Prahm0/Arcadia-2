@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { api } from "@/lib/api/client";
 import { updateProfile, type ProfileGoal } from "@/lib/api/profile";
+import { courseFor } from "@/shared/education";
 import AppButton from "../AppButton";
 import type { SectionProps } from "./ProfileView";
 import { Section, TextInput } from "./ui";
@@ -15,15 +16,19 @@ import { Section, TextInput } from "./ui";
  */
 export default function GoalsSection({ data, refresh, replace }: SectionProps) {
   const graded = data.subjects.filter((subject) => subject.targetGrade);
-  // An ATAR is Australian. No country yet means an account from before
-  // countries existed, which were all Australian.
-  const { country } = data.profile;
-  const atar = !country || country === "AU";
+  // An ATAR is for Australian courses; everyone else sets the result their
+  // own course uses (an IB score, A-level grades, a GPA). No country yet
+  // means an account from before countries existed, which were Australian.
+  const { profile } = data;
+  const course = courseFor({ ...profile, country: profile.country ?? "AU" });
+  const atar = course.goal?.label === "ATAR target";
+  const goal = course.goal;
 
   return (
     <Section id="goals" title="Goals" meta="What you're aiming for. Arcad keeps these in mind.">
-      <div className={atar ? "grid grid-cols-1 gap-5 md:grid-cols-[220px_1fr]" : "grid grid-cols-1 gap-5"}>
-        {atar ? <AtarTarget value={data.profile.atarTarget} onSaved={replace} /> : null}
+      <div className={goal ? "grid grid-cols-1 gap-5 md:grid-cols-[220px_1fr]" : "grid grid-cols-1 gap-5"}>
+        {atar ? <AtarTarget value={profile.atarTarget} onSaved={replace} /> : null}
+        {!atar && goal ? <CourseTarget label={goal.label} placeholder={goal.placeholder} value={profile.goalTarget} onSaved={replace} /> : null}
 
         <div className="min-w-0">
           <GoalList goals={data.goals} refresh={refresh} />
@@ -146,6 +151,99 @@ function AtarTarget({
       ) : (
         <div className="mt-2">
           <AppButton variant="secondary" size="sm" onClick={open}>
+            Set a target
+          </AppButton>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** The overall result they're aiming for, in their course's own terms. */
+function CourseTarget({
+  label,
+  placeholder,
+  value,
+  onSaved,
+}: {
+  label: string;
+  placeholder: string;
+  value: string | null;
+  onSaved: SectionProps["replace"];
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    try {
+      onSaved(await updateProfile({ goalTarget: draft.trim() || null }));
+      setEditing(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't save.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="rounded-md p-4" style={{ background: "var(--app-surface-soft)" }}>
+      <p className="text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>
+        {label}
+      </p>
+      {editing ? (
+        <form
+          className="mt-2 space-y-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void save();
+          }}
+        >
+          <TextInput value={draft} onChange={setDraft} maxLength={60} placeholder={`e.g. ${placeholder}`} />
+          {error ? (
+            <p role="alert" className="text-[12.5px]" style={{ color: "var(--app-danger)" }}>
+              {error}
+            </p>
+          ) : null}
+          <div className="flex gap-2">
+            <AppButton type="submit" variant="primary" size="sm" loading={saving}>
+              Save
+            </AppButton>
+            <AppButton type="button" variant="ghost" size="sm" onClick={() => setEditing(false)}>
+              Cancel
+            </AppButton>
+          </div>
+        </form>
+      ) : value ? (
+        <button
+          type="button"
+          onClick={() => {
+            setDraft(value);
+            setEditing(true);
+          }}
+          className="mt-1 block text-left"
+          aria-label={`Edit ${label}`}
+        >
+          <span className="text-[28px] font-semibold tracking-[-0.02em]" style={{ color: "var(--app-text)" }}>
+            {value}
+          </span>
+          <span className="mt-0.5 block text-[12px]" style={{ color: "var(--app-text-muted)" }}>
+            Tap to change
+          </span>
+        </button>
+      ) : (
+        <div className="mt-2">
+          <AppButton
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setDraft("");
+              setEditing(true);
+            }}
+          >
             Set a target
           </AppButton>
         </div>

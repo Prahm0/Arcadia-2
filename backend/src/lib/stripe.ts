@@ -135,6 +135,8 @@ export async function createCheckoutSession(
     cancelUrl: string;
     /** A fixed coupon to auto-apply (the win-back offer). */
     couponId?: string;
+    /** Free days before the first charge; the card is still taken up front. */
+    trialDays?: number;
   },
 ): Promise<CheckoutSession> {
   const body: Record<string, unknown> = {
@@ -143,7 +145,10 @@ export async function createCheckoutSession(
     success_url: params.successUrl,
     cancel_url: params.cancelUrl,
     client_reference_id: params.userId,
-    subscription_data: { metadata: { userId: params.userId } },
+    subscription_data: {
+      metadata: { userId: params.userId },
+      ...(params.trialDays ? { trial_period_days: params.trialDays } : {}),
+    },
   };
   // Stripe rejects `discounts` and `allow_promotion_codes` together: a fixed
   // win-back coupon is auto-applied, otherwise customers can enter a code.

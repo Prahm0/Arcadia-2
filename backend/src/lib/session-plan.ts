@@ -9,6 +9,7 @@ import { describeRecords, summariseLog, topicMenu, untouchedTopics, type MenuTop
 import { getUserTier, isPaidTier } from "./tiers";
 import { MINUTE, localDateKey } from "./time";
 import { LOG_KINDS, isLogKind, type LogKind } from "../../../shared/studyLog";
+import { courseLine, goalLine } from "./course-context";
 
 type EventRow = typeof schema.events.$inferSelect;
 
@@ -347,7 +348,8 @@ function prompt(inputs: PlanInputs, menu: MenuTopic[]): string {
     );
   }
   if (goals.length) lines.push(`Their goals: ${goals.join("; ")}.`);
-  if (profile?.atarTarget) lines.push(`ATAR target ${profile.atarTarget.toFixed(2)}.`);
+  const goal = goalLine(profile);
+  if (goal) lines.push(`${goal}. Course: ${courseLine(profile)}.`);
   if (profile?.arcadAbout.trim()) lines.push(`About them: ${profile.arcadAbout.trim()}`);
   if (memories.length) lines.push(`You remember: ${memories.slice(-15).join(" ")}`);
   return lines.join("\n");

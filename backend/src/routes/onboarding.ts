@@ -8,6 +8,7 @@ import { parseClock, timeZoneOrNull } from "../lib/time";
 import { AU_STATES, countryCode } from "./profile";
 import type { Env, Variables } from "../types";
 import { cleanHeardFromDetail, isHeardFrom } from "../../../shared/heardFrom";
+import { courseByKey } from "../../../shared/education";
 
 /** Everything the profile holds, collected in one go at the end of onboarding. */
 interface OnboardingBody {
@@ -20,6 +21,10 @@ interface OnboardingBody {
   school?: string | null;
   timezone?: string;
   atarTarget?: number | null;
+  /** shared/education.ts course key, e.g. "hsc", "ib", "a_levels". */
+  course?: string | null;
+  /** The result they're aiming for in their course's terms, when it isn't an ATAR. */
+  goalTarget?: string | null;
   subjects?: Array<{
     name?: string;
     color?: string;
@@ -107,6 +112,8 @@ onboarding.post("/", async (c) => {
         body.atarTarget !== null && body.atarTarget !== undefined && Number.isFinite(atar) && atar >= 30 && atar <= 99.95
           ? Math.round(atar * 20) / 20
           : null,
+      course: courseByKey(body.course)?.key ?? null,
+      goalTarget: text(body.goalTarget, 60),
       timezone,
       onboardingComplete: true,
       wakeTime,

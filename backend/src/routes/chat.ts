@@ -11,6 +11,7 @@ import { describeBrief, recentMissReasonContext, subjectBriefs } from "../lib/st
 import { DAILY_MESSAGE_CAP, getMessageUsage, getUserTier, messageUsageSnapshot, refundMessage, tryConsumeMessage } from "../lib/tiers";
 import { DAY, iso, localDateKey } from "../lib/time";
 import type { Env, Variables } from "../types";
+import { courseAbout, courseLine, goalLine } from "../lib/course-context";
 
 const chat = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -445,11 +446,12 @@ async function buildContext(
       profile?.maxDailyStudyMinutes ?? 180
     } minutes of study a day in ${profile?.preferredSessionMinutes ?? 50} minute sessions.`,
     ...(who.length ? [`Student: ${who.join(" · ")}`] : []),
+    `Course: ${courseLine(profile)}. ${courseAbout(profile)} Use their course's own terms (its subjects, assessments and results), not another country's.`,
     "",
     "Goals:",
-    ...(profile?.atarTarget ? [`- ATAR target ${profile.atarTarget.toFixed(2)}`] : []),
+    ...(goalLine(profile) ? [`- ${goalLine(profile)}`] : []),
     ...openGoals.map((goal) => `- ${goal.title}`),
-    ...(!profile?.atarTarget && openGoals.length === 0 ? ["- none set"] : []),
+    ...(!goalLine(profile) && openGoals.length === 0 ? ["- none set"] : []),
     "",
     "Subjects and weekly study targets (the scheduler tops each one up across the week):",
     ...(subjectRows.length

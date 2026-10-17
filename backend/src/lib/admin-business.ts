@@ -179,7 +179,7 @@ export async function adminMoney(
     row.mrrCents += mrrCents;
     plans.set(key, row);
   };
-  const paying = { total: 0, stripe: 0, appStore: 0, pro: 0, max: 0, cancelling: 0, pastDue: 0, newThisPeriod: 0 };
+  const paying = { total: 0, stripe: 0, appStore: 0, pro: 0, max: 0, cancelling: 0, pastDue: 0, newThisPeriod: 0, trialing: 0 };
   let mrrStripe = 0;
   let mrrAppStore = 0;
   let sandbox = 0;
@@ -195,6 +195,11 @@ export async function adminMoney(
     if (!PAYING_STATUSES.has(sub.status)) continue;
     const user = byCustomer.get(sub.customer);
     if (user?.developer) continue;
+    // A free trial hasn't paid anything yet: counted on its own, not in MRR.
+    if (sub.status === "trialing") {
+      paying.trialing += 1;
+      continue;
+    }
     const mrr = subscriptionMrr(sub);
     const price = sub.items.data[0]?.price;
     const tier = /max/i.test(`${price?.lookup_key ?? ""} ${price?.id ?? ""}`) || isPrice(env, price?.id, "MAX") ? "max" : "pro";
@@ -230,6 +235,10 @@ export async function adminMoney(
       }
       const plan = appStorePlan(productId);
       if (!plan) return;
+      if (sub.period_type === "trial") {
+        paying.trialing += 1;
+        return;
+      }
       const listed = sub.period_type === "intro" && plan.tier === "pro" && plan.interval === "monthly"
         ? APP_STORE_INTRO_PRO_MONTHLY
         : APP_STORE_PRICES[`${plan.tier}.${plan.interval}`] ?? 0;

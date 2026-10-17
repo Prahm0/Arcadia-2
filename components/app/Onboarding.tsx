@@ -13,6 +13,7 @@ import OnboardingPaywall from "./OnboardingPaywall";
 import { setOnboardingOfferPending } from "@/lib/app/onboarding-offer";
 import { SOURCE_COOKIE } from "@/lib/appStore";
 import { HEARD_FROM, HEARD_FROM_DETAIL, type HeardFrom } from "@/shared/heardFrom";
+import { courseByKey, coursesFor, defaultCourse } from "@/shared/education";
 import { Label, Select, TextArea, TextInput, WeeklyStepper } from "./profile/ui";
 
 interface OnboardingProps {
@@ -22,69 +23,21 @@ interface OnboardingProps {
   onComplete: () => void;
 }
 
-const SUBJECT_SUGGESTIONS = [
-  // Maths
-  "General Mathematics",
-  "Mathematical Methods",
-  "Specialist Mathematics",
-  "Essential Mathematics",
-  // English
-  "English",
-  "Literature",
-  "English as an Additional Language",
-  // Sciences
-  "Biology",
-  "Chemistry",
-  "Physics",
-  "Psychology",
-  "Marine Science",
-  // Humanities
-  "Modern History",
-  "Ancient History",
-  "Geography",
-  "Legal Studies",
-  "Economics",
-  "Business",
-  "Study of Religion",
-  // Tech & Design
-  "Digital Solutions",
-  "Design",
-  "Engineering",
-  "Industrial Technology Skills",
-  // Arts & lifestyle
-  "Music",
-  "Music Extension",
-  "Visual Art",
-  "Drama",
-  "Film, Television & New Media",
-  "Dance",
-  "Physical Education",
-  "Health",
-  "Food & Nutrition",
-  // Languages
-  "Japanese",
-  "Chinese",
-  "French",
-  "Spanish",
-  "German",
-  "Italian",
-  "Indonesian",
-] as const;
 
-// Same list as the profile header, so what's picked here shows there.
-const YEAR_LEVELS = ["Year 10", "Year 11", "Year 12", "First year uni", "Second year+"] as const;
 
 type StepKey = "you" | "subjects" | "going" | "goals" | "week" | "routine" | "deadlines" | "hours" | "arcad";
+/**
+ * Four steps, then the plan. Students said setup felt like "another thing to
+ * do", so everything that has a sensible default (how each subject is going,
+ * goals, session length, hours per subject, notes for Arcad) is left for the
+ * profile or for telling Arcad later. Those steps' screens stay in the file
+ * for the profile to reuse, but onboarding doesn't show them.
+ */
 const STEPS: { key: StepKey; label: string }[] = [
   { key: "you", label: "You" },
   { key: "subjects", label: "Subjects" },
-  { key: "going", label: "How it's going" },
-  { key: "goals", label: "Goals" },
   { key: "week", label: "Your week" },
-  { key: "routine", label: "Routine" },
   { key: "deadlines", label: "Deadlines" },
-  { key: "hours", label: "Hours" },
-  { key: "arcad", label: "Arcad" },
 ];
 
 type Going = "well" | "okay" | "hard";
@@ -181,7 +134,10 @@ export default function Onboarding({ userId, defaultName, defaultTimezone, onCom
 
   // You
   const [name, setName] = useState(defaultName);
-  const [grade, setGrade] = useState<string>("Year 12");
+  // The year level they picked; `year` below keeps it valid for the course.
+  const [grade, setGrade] = useState<string>("");
+  // The course they picked, if they changed it from their country's usual one.
+  const [pickedCourse, setPickedCourse] = useState<string | null>(null);
   const [country, setCountry] = useState(() => guessCountry(defaultTimezone));
   // Australian state, for school term dates. Only asked for in Australia.
   const [state, setState] = useState("");
@@ -231,10 +187,20 @@ export default function Onboarding({ userId, defaultName, defaultTimezone, onCom
 
   const currentStep = STEPS[step];
   const australia = country === "AU";
-  // An ATAR is Australian, so it's only asked for there, in the senior years.
-  const seniorYears = australia && (grade === "Year 10" || grade === "Year 11" || grade === "Year 12");
+  // Their course follows their country (and state) until they pick one.
+  const courseOptions = useMemo(() => coursesFor(country, state), [country, state]);
+  const picked = courseByKey(pickedCourse);
+  const course = picked && courseOptions.includes(picked) ? picked : defaultCourse(country, state);
+  const year = course.years.includes(grade) ? grade : course.finalYears[course.finalYears.length - 1] ?? course.years[0];
+  // An ATAR is only for Australian courses; everyone else names their own goal.
+  const atarGoal = course.goal?.label === "ATAR target";
+  const [goalText, setGoalText] = useState("");
+  const goalRange = !atarGoal ? course.goal?.range : undefined;
+  const goalNumber = Number(goalText);
+  const goalValid =
+    !goalRange || !goalText.trim() || (Number.isFinite(goalNumber) && goalNumber >= goalRange.min && goalNumber <= goalRange.max);
 
-  const suggestedWeekly = fittedWeeklyMinutes(grade, selectedSubjects.length, maxDaily);
+  const suggestedWeekly = fittedWeeklyMinutes(year, selectedSubjects.length, maxDaily);
   const weeklyFor = (subject: string) => weeklyOverrides[subject] ?? suggestedWeekly;
   const weeklyTotal = selectedSubjects.reduce((sum, subject) => sum + weeklyFor(subject), 0);
   const weeklyCapacity = maxDaily * 7;
@@ -262,14 +228,14 @@ export default function Onboarding({ userId, defaultName, defaultTimezone, onCom
       case "subjects":
         return selectedSubjects.length ? null : "Pick at least one subject.";
       case "goals":
-        return atarValid ? null : "An ATAR target is between 30 and 99.95.";
+        if (atarGoal && !atarValid) return "An ATAR target is between 30 and 99.95.";
+        return goalValid || !goalRange ? null : `${course.goal?.label} is between ${goalRange.min} and ${goalRange.max}.`;
       case "week":
         if (goesToSchool && (schoolDays.length === 0 || !validTimes(schoolStart, schoolEnd))) {
           return "School needs at least one day and an end time after the start.";
         }
-        return activityProblem
-          ? `${activityProblem.title.trim()} needs a day and an end time after the start.`
-          : null;
+        if (activityProblem) return `${activityProblem.title.trim()} needs a day and an end time after the start.`;
+        return wakeTime && bedtime ? null : "Add a wake-up time and a bedtime.";
       case "routine":
         return wakeTime && bedtime ? null : "Add a wake-up time and a bedtime.";
       case "deadlines":
@@ -278,7 +244,7 @@ export default function Onboarding({ userId, defaultName, defaultTimezone, onCom
         return null;
     }
   }, [
-    currentStep.key, name, selectedSubjects.length, atarValid, goesToSchool, schoolDays.length,
+    currentStep.key, name, selectedSubjects.length, atarValid, atarGoal, goalValid, goalRange, course.goal?.label, goesToSchool, schoolDays.length,
     schoolStart, schoolEnd, activityProblem, wakeTime, bedtime, deadlineProblem,
   ]);
 
@@ -308,13 +274,11 @@ export default function Onboarding({ userId, defaultName, defaultTimezone, onCom
   const filteredSuggestions = useMemo(() => {
     const query = subjectSearch.trim().toLowerCase();
     // Custom subjects always show, so they can be unticked like the rest.
-    const extras = selectedSubjects.filter(
-      (s) => !SUBJECT_SUGGESTIONS.includes(s as (typeof SUBJECT_SUGGESTIONS)[number]),
-    );
-    const combined = [...SUBJECT_SUGGESTIONS, ...extras];
+    const extras = selectedSubjects.filter((s) => !course.subjects.includes(s));
+    const combined = [...course.subjects, ...extras];
     if (!query) return combined;
     return combined.filter((subject) => subject.toLowerCase().includes(query));
-  }, [subjectSearch, selectedSubjects]);
+  }, [subjectSearch, selectedSubjects, course]);
 
   function addGoal() {
     const title = goalDraft.replace(/\s+/g, " ").trim();
@@ -377,12 +341,14 @@ export default function Onboarding({ userId, defaultName, defaultTimezone, onCom
 
     return {
       name: name.trim(),
-      grade,
+      grade: year,
+      course: course.key,
       country: country || null,
       state: australia ? state || null : null,
       school: school.trim() || null,
       timezone: defaultTimezone,
-      atarTarget: seniorYears && atar.trim() ? atarNumber : null,
+      atarTarget: atarGoal && atar.trim() ? atarNumber : null,
+      goalTarget: !atarGoal && goalText.trim() ? goalText.trim() : null,
       subjects: selectedSubjects.map((subject, index) => {
         const detail = detailFor(subject);
         return {
@@ -490,7 +456,7 @@ export default function Onboarding({ userId, defaultName, defaultTimezone, onCom
           {currentStep.key === "week" && "School, sport, work, lessons. Study never gets planned on top of any of it."}
           {currentStep.key === "routine" && "Study only goes between waking up and bedtime, and never past your daily limit."}
           {currentStep.key === "deadlines" && "Assignments, exams, anything with a date. Each one gets study time in the days before it. Skip if nothing's due yet."}
-          {currentStep.key === "hours" && `A starting point for ${grade}. Arcad moves time between weeks around your deadlines, but this is your usual week.`}
+          {currentStep.key === "hours" && `A starting point for ${year}. Arcad moves time between weeks around your deadlines, but this is your usual week.`}
           {currentStep.key === "arcad" && "Arcad reads this whenever it plans a session or talks to you. You can change it later on your profile."}
         </p>
       </div>
@@ -501,15 +467,6 @@ export default function Onboarding({ userId, defaultName, defaultTimezone, onCom
             <Label text="Name">
               <TextInput required value={name} onChange={setName} placeholder="Your first name" maxLength={120} />
             </Label>
-            <Field label="Year">
-              <div className="flex flex-wrap gap-2">
-                {YEAR_LEVELS.map((option) => (
-                  <Chip key={option} active={grade === option} onClick={() => setGrade(option)}>
-                    {option}
-                  </Chip>
-                ))}
-              </div>
-            </Field>
             <Label text="Country">
               <Select value={country} onChange={setCountry}>
                 <option value="">Choose your country</option>
@@ -534,6 +491,25 @@ export default function Onboarding({ userId, defaultName, defaultTimezone, onCom
                 </div>
               </Field>
             ) : null}
+            <Field label="Course">
+              <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Course">
+                {courseOptions.map((option) => (
+                  <Chip key={option.key} role="radio" active={course.key === option.key} onClick={() => setPickedCourse(option.key)}>
+                    {option.label}
+                    <span className="ml-1.5 opacity-60">{option.detail}</span>
+                  </Chip>
+                ))}
+              </div>
+            </Field>
+            <Field label="Year">
+              <div className="flex flex-wrap gap-2">
+                {course.years.map((option) => (
+                  <Chip key={option} active={year === option} onClick={() => setGrade(option)}>
+                    {option}
+                  </Chip>
+                ))}
+              </div>
+            </Field>
             <Label text="School (optional)">
               <TextInput value={school} onChange={setSchool} placeholder="Your school's name" maxLength={120} />
             </Label>
@@ -683,7 +659,23 @@ export default function Onboarding({ userId, defaultName, defaultTimezone, onCom
 
         {currentStep.key === "goals" ? (
           <div className="flex flex-col gap-6">
-            {seniorYears ? (
+            {!atarGoal && course.goal ? (
+              <Label
+                text={`${course.goal.label} (optional)`}
+                hint={goalRange ? `Between ${goalRange.min} and ${goalRange.max}.` : undefined}
+              >
+                <div className="sm:max-w-[280px]">
+                  <TextInput
+                    value={goalText}
+                    onChange={setGoalText}
+                    inputMode={goalRange ? "decimal" : undefined}
+                    maxLength={60}
+                    placeholder={`e.g. ${course.goal.placeholder}`}
+                  />
+                </div>
+              </Label>
+            ) : null}
+            {atarGoal ? (
               <Label text="ATAR target (optional)" hint="Between 30 and 99.95.">
                 <div className="sm:max-w-[200px]">
                   <TextInput
@@ -848,6 +840,28 @@ export default function Onboarding({ userId, defaultName, defaultTimezone, onCom
                   ))}
                 </ul>
               )}
+            </div>
+            <div className="border-t pt-5" style={{ borderColor: "var(--app-border)" }}>
+              <div className="grid grid-cols-2 gap-4 sm:max-w-[360px]">
+                <Label text="Wake up">
+                  <TextInput type="time" required value={wakeTime} onChange={setWakeTime} />
+                </Label>
+                <Label text="Bedtime">
+                  <TextInput type="time" required value={bedtime} onChange={setBedtime} />
+                </Label>
+              </div>
+              <div className="mt-5">
+                <Range
+                  label="Most study in a day"
+                  display={formatWeekly(maxDaily)}
+                  value={maxDaily}
+                  min={60}
+                  max={360}
+                  step={15}
+                  onChange={setMaxDaily}
+                  hint="Arcadia never plans more than this. You can change it later."
+                />
+              </div>
             </div>
           </div>
         ) : null}

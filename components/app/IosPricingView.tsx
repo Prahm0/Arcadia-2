@@ -9,9 +9,11 @@ import { isGuestEmail } from "@/lib/auth/guest";
 import {
   getIosPurchaseOptions,
   getIosSubscriptionManagementUrl,
+  iosIntroOfferStatus,
   purchaseIosOption,
   restoreIosPurchases,
   revenueCatIosConfigured,
+  type IntroOffer,
   type IosPurchaseOption,
   type RevenueCatInterval,
   type RevenueCatTier,
@@ -47,6 +49,8 @@ export default function IosPricingView({ tiers }: { tiers: IosTier[] }) {
   const [busy, setBusy] = useState<"purchase" | "restore" | "manage" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Products whose introductory offer (the free week) this Apple ID can still use.
+  const [introEligible, setIntroEligible] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let active = true;
@@ -63,6 +67,14 @@ export default function IosPricingView({ tiers }: { tiers: IosTier[] }) {
         if (active) {
           setOptions(next);
           if (next.length === 0) setError("App Store plans are still being prepared. Please check back soon.");
+        }
+        // Apple says 2 when this Apple ID can still use a product's offer.
+        const withOffers = next.filter((option) => option.introOffer);
+        const statuses = await Promise.all(
+          withOffers.map((option) => iosIntroOfferStatus(data.user.id, option.productIdentifier).catch(() => null)),
+        );
+        if (active) {
+          setIntroEligible(new Set(withOffers.filter((_, index) => statuses[index] === 2).map((option) => option.productIdentifier)));
         }
       } catch (cause) {
         console.warn("[revenuecat] offerings failed", cause);
@@ -192,6 +204,10 @@ export default function IosPricingView({ tiers }: { tiers: IosTier[] }) {
               key={tier.key}
               tier={tier}
               option={tier.key === "free" ? null : optionByTier.get(`${tier.key}:${interval}`) ?? null}
+              intro={(() => {
+                const option = tier.key === "free" ? undefined : optionByTier.get(`${tier.key}:${interval}`);
+                return option && !hasSubscription && introEligible.has(option.productIdentifier) ? option.introOffer : null;
+              })()}
               interval={interval}
               currentTier={currentTier}
               hasSubscription={hasSubscription}
@@ -286,6 +302,7 @@ function IntervalButton({ active, onClick, children }: { active: boolean; onClic
 function IosTierCard({
   tier,
   option,
+  intro,
   interval,
   currentTier,
   hasSubscription,
@@ -298,6 +315,8 @@ function IosTierCard({
 }: {
   tier: IosTier;
   option: IosPurchaseOption | null;
+  /** The introductory offer this Apple ID can use on this plan, if any. */
+  intro: IntroOffer | null;
   interval: RevenueCatInterval;
   currentTier: TierKey;
   hasSubscription: boolean;
@@ -339,7 +358,14 @@ function IosTierCard({
         ) : option ? (
           <div>
             <span className="text-[36px] font-semibold" style={{ color: "var(--app-text)" }}>{option.priceString}</span>
-            <p className="mt-1 text-[12px]" style={{ color: "var(--app-text-faint)" }}>Billed per {billedLabel} through the App Store</p>
+            {intro ? (
+              <p className="mt-1 text-[12.5px] font-medium" style={{ color: "var(--app-arcad-strong)" }}>
+                {intro.free ? `First ${intro.length} free` : `First ${intro.length} for ${intro.priceString}`}
+              </p>
+            ) : null}
+            <p className="mt-1 text-[12px]" style={{ color: "var(--app-text-faint)" }}>
+              {intro ? "Then billed" : "Billed"} per {billedLabel} through the App Store
+            </p>
           </div>
         ) : (
           <p className="text-[14px]" style={{ color: "var(--app-text-muted)" }}>Not available yet</p>
@@ -372,7 +398,9 @@ function IosTierCard({
                 ? "Current subscription active"
                 : hasSubscription
                   ? `Switch to ${tier.name}`
-                  : `Start ${tier.name}`}
+                  : intro?.free
+                    ? `Try free for ${intro.length}`
+                    : `Start ${tier.name}`}
           </AppButton>
         )}
       </div>

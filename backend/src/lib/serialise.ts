@@ -65,6 +65,11 @@ function parseJson<T>(value: string | null | undefined): T | null {
   }
 }
 
+function parseSkipDates(value: string | null | undefined): string[] {
+  const parsed = parseJson<unknown>(value);
+  return Array.isArray(parsed) ? parsed.filter((date): date is string => typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date)) : [];
+}
+
 export function serialiseCommitment(commitment: CommitmentRow) {
   return {
     id: commitment.id,
@@ -76,6 +81,9 @@ export function serialiseCommitment(commitment: CommitmentRow) {
     startTime: commitment.startTime,
     endTime: commitment.endTime,
     notes: commitment.notes,
+    bufferBefore: commitment.bufferBefore,
+    bufferAfter: commitment.bufferAfter,
+    skipDates: parseSkipDates(commitment.skipDates),
   };
 }
 
@@ -149,6 +157,9 @@ export function serialiseProfile(profile: ProfileRow | null) {
   return {
     displayName: profile.displayName ?? undefined,
     grade: profile.grade ?? undefined,
+    country: profile.country ?? null,
+    state: profile.state ?? null,
+    course: profile.course ?? null,
     timezone: profile.timezone,
     onboardingComplete: profile.onboardingComplete,
     wakeTime: profile.wakeTime,

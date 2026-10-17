@@ -10,6 +10,7 @@ import { currentTopic } from "../lib/syllabus";
 import { DAY, iso, localDateKey, parseClock, startOfLocalWeek, timeZoneOrNull } from "../lib/time";
 import { serialiseAssessment, serialiseFile, serialiseTopic } from "./syllabus";
 import syllabusCatalog from "./syllabus-catalog";
+import { courseByKey } from "../../../shared/education";
 import type { Env, Variables } from "../types";
 
 export const AU_STATES = ["ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA"];
@@ -113,6 +114,8 @@ export async function buildProfile(database: Database, userId: string) {
       school: row.school,
       avatarColour: row.avatarColour,
       atarTarget: row.atarTarget,
+      course: row.course,
+      goalTarget: row.goalTarget,
       timezone,
       joinedAt: iso(user.createdAt),
       developerAccess: user.developerAccess,
@@ -189,6 +192,8 @@ interface ProfileBody {
   school?: string | null;
   avatarColour?: string | null;
   atarTarget?: number | null;
+  course?: string | null;
+  goalTarget?: string | null;
   arcadAbout?: string;
   arcadStyle?: string;
   memoryEnabled?: boolean;
@@ -262,6 +267,12 @@ profile.patch("/", async (c) => {
       patch.atarTarget = Math.round(atar * 20) / 20;
     }
   }
+  if (body.course !== undefined) {
+    const course = body.course === null ? null : courseByKey(body.course);
+    if (course === undefined) return c.json({ error: "Unknown course." }, 422);
+    patch.course = course?.key ?? null;
+  }
+  if (body.goalTarget !== undefined) patch.goalTarget = optionalText(body.goalTarget, 60);
   if (body.arcadAbout !== undefined) patch.arcadAbout = String(body.arcadAbout).slice(0, TEXT_LIMIT);
   if (body.arcadStyle !== undefined) patch.arcadStyle = String(body.arcadStyle).slice(0, TEXT_LIMIT);
   if (body.memoryEnabled !== undefined) patch.memoryEnabled = Boolean(body.memoryEnabled);

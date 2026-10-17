@@ -30,6 +30,8 @@ interface ContextPanelProps {
   onJump: (key: string) => void;
   /** Day view has its own list and habits open, so this only shows on very wide screens there. */
   roomy?: boolean;
+  /** The term's progress bar and week stars: only in the term view. */
+  showProgress?: boolean;
 }
 
 /**
@@ -50,6 +52,7 @@ export default function ContextPanel({
   onOpenTask,
   onJump,
   roomy = true,
+  showProgress = true,
 }: ContextPanelProps) {
   const at = new Date(`${today}T12:00:00Z`);
   const month = new Intl.DateTimeFormat("en-AU", { month: "short", timeZone: "UTC" }).format(at).slice(0, 3).toUpperCase();
@@ -99,7 +102,7 @@ export default function ContextPanel({
         ) : null}
       </div>
 
-      <section>
+      {showProgress ? <section>
         <PanelTitle aside={<span className="text-[12.5px] tabular-nums" style={{ color: "var(--app-text)" }}>{Math.round(pct * 100)}%</span>}>
           {period.name} progress
         </PanelTitle>
@@ -126,7 +129,7 @@ export default function ContextPanel({
             ))}
           </div>
         ) : null}
-      </section>
+      </section> : null}
 
       <section>
         <PanelTitle>Upcoming</PanelTitle>

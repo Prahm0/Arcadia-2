@@ -18,38 +18,14 @@ function icon(path: ReactNode) {
   );
 }
 
-// Arcad has its own tab in the bar. The rest is grouped so each page has a
-// clear home, with the study tools (useful, but not everyone's) last.
-const GROUPS: Array<{ title: string; items: MoreItem[] }> = [
-  {
-    title: "Plan",
-    items: [
-      { label: "Priorities", href: "/app/priorities", icon: icon(<><path d="M4 5h2M4 10h2M4 15h2M9 5h7M11 10h5M11 15h5" /></>) },
-      { label: "Sessions", href: "/app/sessions", icon: icon(<><circle cx="10" cy="10" r="7" /><circle cx="10" cy="10" r="3" /></>) },
-      { label: "Deadlines", href: "/app/deadlines", icon: icon(<><circle cx="10" cy="10" r="7" /><path d="M10 6v4l3 2" /></>) },
-    ],
-  },
-  {
-    title: "You",
-    items: [
-      { label: "Progress", href: "/app/progress", icon: icon(<><path d="M4 15v-4M9 15V7M14 15v-6" /><path d="M2 17h16" /></>) },
-      { label: "Profile", href: "/app/profile", icon: icon(<><circle cx="10" cy="8" r="3" /><path d="M4.5 16.5c1-2.6 3.1-4 5.5-4s4.5 1.4 5.5 4" /></>) },
-    ],
-  },
-  {
-    title: "Study tools",
-    items: [
-      { label: "Cards", href: "/app/cards", icon: icon(<><rect x="3" y="6" width="11" height="10" rx="1.5" /><path d="M6 6V4.5A1.5 1.5 0 0 1 7.5 3h8A1.5 1.5 0 0 1 17 4.5v7a1.5 1.5 0 0 1-1.5 1.5H14" /></>) },
-      { label: "Sheets", href: "/app/sheets", icon: icon(<><rect x="4" y="2.5" width="12" height="15" rx="1.5" /><path d="M7 6.5h6M7 9.5h6M7 12.5h3.5" /></>) },
-      { label: "Files", href: "/app/files", icon: icon(<><path d="M11 3H6a1.5 1.5 0 0 0-1.5 1.5v11A1.5 1.5 0 0 0 6 17h8a1.5 1.5 0 0 0 1.5-1.5V7.5L11 3z" /><path d="M11 3v4.5h4.5" /></>) },
-    ],
-  },
-  {
-    title: "",
-    items: [
-      { label: "Settings", href: "/app/settings", icon: icon(<><circle cx="10" cy="10" r="2.5" /><path d="M10 3v2M10 15v2M3 10h2M15 10h2M4.9 4.9l1.4 1.4M13.7 13.7l1.4 1.4M4.9 15.1l1.4-1.4M13.7 6.3l1.4-1.4" /></>) },
-    ],
-  },
+// Today, Schedule and Arcad have tabs. Everything else is one calm list.
+const ITEMS: MoreItem[] = [
+  { label: "Priorities", href: "/app/priorities", icon: icon(<><path d="M4 5h2M4 10h2M4 15h2M9 5h7M11 10h5M11 15h5" /></>) },
+  { label: "Progress", href: "/app/progress", icon: icon(<><path d="M4 15v-4M9 15V7M14 15v-6" /><path d="M2 17h16" /></>) },
+  { label: "Study tools", href: "/app/study", icon: icon(<><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H15v12H5.5A1.5 1.5 0 0 0 4 16.5v-12z" /><path d="M4 16.5A1.5 1.5 0 0 0 5.5 18H15v-3" /></>) },
+  { label: "Profile", href: "/app/profile", icon: icon(<><circle cx="10" cy="8" r="3" /><path d="M4.5 16.5c1-2.6 3.1-4 5.5-4s4.5 1.4 5.5 4" /></>) },
+  { label: "Settings", href: "/app/settings", icon: icon(<><circle cx="10" cy="10" r="2.5" /><path d="M10 3v2M10 15v2M3 10h2M15 10h2M4.9 4.9l1.4 1.4M13.7 13.7l1.4 1.4M4.9 15.1l1.4-1.4M13.7 6.3l1.4-1.4" /></>) },
+  { label: "Help", href: "/support", icon: icon(<><circle cx="10" cy="10" r="7" /><path d="M8 8a2 2 0 1 1 2.8 1.8c-.5.3-.8.7-.8 1.2v.5M10 14h.01" /></>) },
 ];
 
 interface MobileMoreSheetProps {
@@ -83,51 +59,36 @@ export default function MobileMoreSheet({ open, onClose }: MobileMoreSheetProps)
         role="dialog"
         aria-modal="true"
         aria-label="More"
-        className="relative w-full rounded-t-xl p-5 pb-8"
+        className="relative w-full rounded-t-2xl px-4 pt-3"
         style={{
-          background: "var(--app-elev)", boxShadow: "var(--elev-3)",
+          background: "var(--app-bg)", boxShadow: "var(--elev-3)",
           borderBottom: "none",
           paddingBottom: "calc(env(safe-area-inset-bottom, 0) + 24px)",
         }}
       >
-        <div className="mx-auto mb-4 h-1 w-10 rounded-full" style={{ background: "var(--app-border-strong)" }} />
-        <div className="flex max-h-[70svh] flex-col gap-4 overflow-y-auto">
-          {GROUPS.map((group) => (
-            <section key={group.title || "end"}>
-              {group.title ? (
-                <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>{group.title}</p>
-              ) : null}
-              <ul className={`${group.title ? "mt-2 " : ""}grid grid-cols-2 gap-2`}>
-              {group.items.map((item) => {
-                const active = pathname === item.href || (item.href !== "/app" && pathname.startsWith(item.href));
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      onClick={onClose}
-                      className="flex items-center gap-3 rounded-md px-4 py-3.5 text-[14.5px] font-medium"
-                      style={{
-                        color: active ? "var(--app-text)" : "var(--app-text-soft)",
-                        background: active ? "var(--app-surface-soft)" : "transparent",
-                        border: "1px solid var(--app-border)",
-                        minHeight: 52,
-                      }}
-                    >
-                      <span
-                        aria-hidden="true"
-                        style={{ color: active ? "var(--app-accent)" : "var(--app-text-muted)" }}
-                      >
-                        {item.icon}
-                      </span>
-                      {item.label}
-                    </Link>
-                  </li>
-                );
-              })}
-              </ul>
-            </section>
-          ))}
-        </div>
+        <div className="mx-auto mb-3 h-1 w-10 rounded-full" style={{ background: "var(--app-border-strong)" }} />
+        <ul className="overflow-hidden rounded-2xl" style={{ background: "var(--app-surface)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}>
+          {ITEMS.map((item, index) => {
+            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  onClick={onClose}
+                  aria-current={active ? "page" : undefined}
+                  className="flex min-h-[52px] items-center gap-3.5 pl-4 text-[16px]"
+                  style={{ color: "var(--app-text)" }}
+                >
+                  <span aria-hidden="true" style={{ color: active ? "var(--app-accent)" : "var(--app-text-muted)" }}>{item.icon}</span>
+                  <span className="flex min-h-[52px] flex-1 items-center justify-between pr-4" style={index ? { borderTop: "1px solid var(--app-border)" } : undefined}>
+                    {item.label}
+                    <span aria-hidden="true" style={{ color: "var(--app-text-faint)" }}>›</span>
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
       </div>
     </div>
   );

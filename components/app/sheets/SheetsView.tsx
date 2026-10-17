@@ -72,7 +72,7 @@ export default function SheetsView({ startCreating = false }: { startCreating?: 
     <>
       <PageHeader
         width={820}
-        title="Sheets"
+        title="Summary sheets"
         meta={state.status === "ready" && sheets.length > 0 ? `${sheets.length} ${sheets.length === 1 ? "sheet" : "sheets"}` : undefined}
         action={sheets.length > 0 ? newSheet : undefined}
       />

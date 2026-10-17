@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import SheetsView from "@/components/app/sheets/SheetsView";
 
-export const metadata: Metadata = { title: "Sheets" };
+export const metadata: Metadata = { title: "Summary sheets" };
 
 // A server page so ?new=1 reaches the view, like Cards.
 export default async function SheetsPage({ searchParams }: { searchParams: Promise<{ new?: string }> }) {

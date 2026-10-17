@@ -104,7 +104,7 @@ function NewDeckForm({ onClose, initialSubject }: { onClose: () => void; initial
   }
 
   return (
-    <Sheet open eyebrow="Cards" title="New deck" onClose={onClose}>
+    <Sheet open eyebrow="Flashcards" title="New deck" onClose={onClose}>
       <form
         className="space-y-5"
         onSubmit={(event) => {

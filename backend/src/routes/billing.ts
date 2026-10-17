@@ -91,6 +91,21 @@ function tierForPriceId(env: Env, priceId: string): "pro" | "max" | null {
 
 // ────────── Checkout ──────────
 
+/** Pro's free trial on the web, matching the App Store's free week. */
+export const PRO_TRIAL_DAYS = 7;
+
+/**
+ * A first-time Pro subscriber gets the free week. Anyone who has had a
+ * subscription before (on the web or the App Store) pays from day one, so
+ * cancelling and coming back doesn't buy another free week.
+ */
+function proTrialEligible(
+  plan: Plan,
+  user: { subscriptionStatus: string | null; stripeSubscriptionId: string | null; billingProvider: string | null },
+): boolean {
+  return plan === "pro" && !user.subscriptionStatus && !user.stripeSubscriptionId && !user.billingProvider;
+}
+
 billing.post("/checkout", async (c) => {
   const { userId } = c.get("session");
   const body = await c.req
@@ -177,14 +192,24 @@ billing.post("/checkout", async (c) => {
   }
 
   try {
-    const session = await createCheckoutSession(c.env, {
-      customerId: customerId ?? undefined,
-      userId,
-      priceId,
-      couponId,
-      successUrl: `${c.env.APP_ORIGIN}/app/welcome?upgrade=success`,
-      cancelUrl: `${c.env.APP_ORIGIN}/app/pricing?upgrade=cancelled`,
-    });
+    const checkout = (trialDays?: number) =>
+      createCheckoutSession(c.env, {
+        customerId: customerId ?? undefined,
+        userId,
+        priceId,
+        couponId,
+        trialDays,
+        successUrl: `${c.env.APP_ORIGIN}/app/welcome?upgrade=success`,
+        cancelUrl: `${c.env.APP_ORIGIN}/app/pricing?upgrade=cancelled`,
+      });
+    const trialDays = proTrialEligible(plan, user) ? PRO_TRIAL_DAYS : undefined;
+    // If Stripe ever refuses the trial, the student can still subscribe.
+    const session = trialDays
+      ? await checkout(trialDays).catch((err: unknown) => {
+          console.error("[billing] checkout with a trial failed, trying without", err);
+          return checkout();
+        })
+      : await checkout();
     if (!session.url) return c.json({ error: "Stripe returned no checkout URL." }, 502);
     return c.json({ url: session.url });
   } catch (err) {

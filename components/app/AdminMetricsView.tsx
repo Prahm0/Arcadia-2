@@ -212,7 +212,7 @@ function Business({ business, loading, days, signups }: {
           label="Paying"
           value={money ? count(money.paying.total) : dash}
           detail={money
-            ? `${count(money.paying.newThisPeriod)} new · ${count(money.paying.cancelling)} cancelling`
+            ? `${count(money.paying.newThisPeriod)} new · ${count(money.paying.cancelling)} cancelling${money.paying.trialing ? ` · ${count(money.paying.trialing)} on free trial` : ""}`
             : "Real customers, no tests"}
         />
         <StatTile

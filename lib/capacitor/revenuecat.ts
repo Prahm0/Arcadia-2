@@ -12,6 +12,27 @@ export interface IosPurchaseOption {
   title: string;
   /** Apple introductory price (e.g. first month discounted), when one is set up. */
   introPriceString: string | null;
+  /** The introductory offer in words, when one is set up: a free trial or a cheaper first period. */
+  introOffer: IntroOffer | null;
+}
+
+export interface IntroOffer {
+  /** A free trial rather than a discounted price. */
+  free: boolean;
+  /** "A$6.99"; meaningless when `free`. */
+  priceString: string;
+  /** "1 week", "7 days", "1 month". */
+  length: string;
+}
+
+/** RevenueCat's introPrice, in words. Null when the product has none. */
+function introOfferFrom(intro: unknown): IntroOffer | null {
+  if (!intro || typeof intro !== "object") return null;
+  const value = intro as { price?: number; priceString?: string; periodUnit?: string; periodNumberOfUnits?: number };
+  const count = Number(value.periodNumberOfUnits) || 1;
+  const unit = String(value.periodUnit ?? "").toLowerCase().replace(/s$/, "");
+  const length = unit ? `${count} ${unit}${count === 1 ? "" : "s"}` : "";
+  return { free: Number(value.price) === 0, priceString: value.priceString ?? "", length };
 }
 
 const IOS_API_KEY = process.env.NEXT_PUBLIC_REVENUECAT_IOS_API_KEY?.trim() ?? "";
@@ -106,6 +127,7 @@ export async function getIosPurchaseOptions(userId: string): Promise<IosPurchase
           priceString: aPackage.product.priceString,
           title: aPackage.product.title,
           introPriceString: aPackage.product.introPrice?.priceString ?? null,
+          introOffer: introOfferFrom(aPackage.product.introPrice),
         }]
       : [];
   });

@@ -74,6 +74,9 @@ export default function PricingView() {
   const currentTier: TierKey = data?.user?.tier ?? "free";
   const hasSubscription = Boolean(data?.user?.hasSubscription);
   const isGuest = isGuestEmail(data?.user?.email);
+  // First-time subscribers get a free week of Pro (the server decides; this
+  // only changes the wording).
+  const trialEligible = !hasSubscription && !isGuest && !data?.user?.subscriptionStatus && !data?.user?.billingProvider;
 
   const [interval, setInterval] = useState<Interval>("month");
   const [busyTier, setBusyTier] = useState<TierKey | null>(null);
@@ -222,6 +225,7 @@ export default function PricingView() {
               currentTier={currentTier}
               hasSubscription={hasSubscription}
               isGuest={isGuest}
+              trial={tier.key === "pro" && trialEligible}
               loading={busyTier === tier.key}
               onUpgrade={() => {
                 if (tier.key === "free") return;
@@ -316,6 +320,7 @@ function TierCard({
   currentTier,
   hasSubscription,
   isGuest,
+  trial,
   loading,
   onUpgrade,
   onManage,
@@ -325,6 +330,8 @@ function TierCard({
   currentTier: TierKey;
   hasSubscription: boolean;
   isGuest: boolean;
+  /** Show the free week (first-time Pro subscribers). */
+  trial?: boolean;
   loading: boolean;
   onUpgrade: () => void;
   onManage: () => void;
@@ -396,8 +403,13 @@ function TierCard({
                 / week AUD
               </span>
             </div>
+            {trial ? (
+              <p className="mt-1 text-[12.5px] font-medium" style={{ color: "var(--app-arcad-strong)" }}>
+                First 7 days free
+              </p>
+            ) : null}
             <p className="mt-1 text-[12px]" style={{ color: "var(--app-text-faint)" }}>
-              Billed ${billedAmount.toFixed(billedAmount % 1 === 0 ? 0 : 2)} per {billedLabel}
+              {trial ? "Then billed" : "Billed"} ${billedAmount.toFixed(billedAmount % 1 === 0 ? 0 : 2)} per {billedLabel}
             </p>
           </div>
         )}
@@ -456,6 +468,8 @@ function TierCard({
               ? `Sign up for ${tier.name}`
               : hasSubscription
               ? "Manage in Stripe"
+              : trial
+              ? "Try free for 7 days"
               : `Start ${tier.name}`}
           </AppButton>
         )}

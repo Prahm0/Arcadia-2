@@ -41,6 +41,8 @@ export default function LineRow({
   actions,
   onToggle,
   onNote,
+  editText,
+  onEdit,
 }: {
   /** For the slide-into-place animation (lib/app/useFlip). */
   flipId: string;
@@ -67,11 +69,17 @@ export default function LineRow({
   actions: RowAction[];
   onToggle: () => void;
   onNote?: (note: string) => void;
+  /** The line as the student would type it ("SLC 10:50"), for editing. */
+  editText?: string;
+  /** Tapping the line edits it; the time is read again from what's typed. */
+  onEdit?: (text: string) => void;
 }) {
   const [offset, setOffset] = useState(0);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(note);
+  const [renaming, setRenaming] = useState(false);
+  const [lineDraft, setLineDraft] = useState(editText ?? title);
   const gesture = useRef<{ x: number; y: number; dx: number; pressed: boolean; timer: number | null } | null>(null);
   // The click a browser sends when a long press or swipe ends shouldn't also open the note.
   const swallowClick = useRef(false);
@@ -142,9 +150,18 @@ export default function LineRow({
     if (open) {
       event.preventDefault();
       close();
+    } else if (onEdit) {
+      setLineDraft(editText ?? title);
+      setRenaming(true);
     } else if (!href) {
       setEditing((value) => !value);
     }
+  }
+
+  function saveLine() {
+    setRenaming(false);
+    const next = lineDraft.trim();
+    if (onEdit && next && next !== (editText ?? title)) onEdit(next);
   }
 
   const titleContent = (
@@ -194,6 +211,7 @@ export default function LineRow({
           [
             ...actions.map((action) => ({ kind: "item" as const, label: action.label, onSelect: action.onSelect })),
             onNote ? { kind: "item" as const, label: note ? "Edit note" : "Add a note", onSelect: () => setEditing(true) } : false,
+            onEdit ? { kind: "item" as const, label: "Edit line", onSelect: () => { setLineDraft(editText ?? title); setRenaming(true); } } : false,
           ],
           title,
         );
@@ -224,7 +242,28 @@ export default function LineRow({
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
       >
-        {href ? (
+        {renaming ? (
+          <div className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2">
+            <span className="w-[62px] shrink-0" />
+            <input
+              autoFocus
+              value={lineDraft}
+              aria-label="Edit line"
+              onChange={(event) => setLineDraft(event.target.value)}
+              onBlur={saveLine}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+                  event.preventDefault();
+                  saveLine();
+                } else if (event.key === "Escape") {
+                  setRenaming(false);
+                }
+              }}
+              className="min-w-0 flex-1 rounded-md px-2 py-1.5 text-[15px] outline-none"
+              style={{ background: "var(--app-surface-soft)", color: "var(--app-text)" }}
+            />
+          </div>
+        ) : href ? (
           <Link href={href} onClick={onTitle} className={titleClass}>{titleContent}</Link>
         ) : (
           <button type="button" onClick={onTitle} className={titleClass}>{titleContent}</button>

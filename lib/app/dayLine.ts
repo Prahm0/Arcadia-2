@@ -118,3 +118,79 @@ export function noteLine(text: string): string | null {
   const match = text.match(/^\s*[-•*]\s*(.+)$/);
   return match ? match[1].trim() || null : null;
 }
+
+export interface LoggedLine extends DayLine {
+  /** Typed as already done: "did astronomy till 4:25", "workout 4:30 to 4:55 done", "✅ Wake". */
+  done: boolean;
+}
+
+/** A logged line with only an end ("till 4:25") gets this long a block before it. */
+const LOGGED_MINUTES = 30;
+const DONE_MARK = /\s*(?:✅|✔️|✔|☑️|☑|\[x\])\s*/gu;
+const HAS_DONE_MARK = /✅|✔️|✔|☑️|☑|\[x\]/u;
+const DONE_LEAD = /^\s*(?:did|done|finished|completed)\s+/i;
+// "4:55 done" or "essay - done", but not "get it done".
+const DONE_TAIL = /(?:(?<=\d|am|pm)\s+|\s*[,–-]\s*)(?:done|finished|complete|completed)\s*[.!]?\s*$/i;
+
+/**
+ * A line that may say it's already done. The markers come off before the
+ * time is read; a done line with only an end time is logged as the half
+ * hour before it.
+ */
+export function parseLoggedLine(text: string, subjects: string[]): LoggedLine {
+  let rest = text;
+  let done = false;
+  if (HAS_DONE_MARK.test(rest)) {
+    done = true;
+    rest = rest.replace(DONE_MARK, " ");
+  }
+  if (DONE_LEAD.test(rest)) {
+    done = true;
+    rest = rest.replace(DONE_LEAD, "");
+  }
+  if (DONE_TAIL.test(rest)) {
+    done = true;
+    rest = rest.replace(DONE_TAIL, "");
+  }
+  if (done) {
+    // "till 4:25" with no start: it ended then.
+    const until = rest.match(new RegExp(String.raw`\s*\b(?:till|til|until|to|up to)\s+${CLOCK}(?=\s|$|[,.;])`, "i"));
+    const hasStart = new RegExp(String.raw`\d\s*(?::\d{2})?\s*(?:am|pm)?${SEPARATOR}\d`, "i").test(rest);
+    if (until && !hasStart) {
+      const end = clock(until[1], until[2], until[3]);
+      if (end !== null && end >= LOGGED_MINUTES) {
+        const line = parseDayLine(rest.replace(until[0], " "), subjects);
+        return { ...line, start: end - LOGGED_MINUTES, end, evening: false, done };
+      }
+    }
+  }
+  return { ...parseDayLine(rest.trim() || text, subjects), done };
+}
+
+export interface PastedLine extends LoggedLine {
+  /** "- " lines under it, in order. */
+  notes: string[];
+}
+
+const BULLET = /^\s*(?:[•◦▪●○]\s+|\*\s+|\d+[.)]\s+|\[\s?\]\s*)/u;
+
+/**
+ * A whole day pasted from Notes: one line each, ✅ lines come in done, and
+ * lines starting with "- " become notes under the line above.
+ */
+export function parseDayPaste(text: string, subjects: string[]): PastedLine[] {
+  const lines: PastedLine[] = [];
+  for (const raw of text.split(/\r?\n/)) {
+    if (!raw.trim()) continue;
+    // Only "- " is a note here: "•" and "*" are how Notes draws an ordinary bullet.
+    const note = raw.match(/^\s*-\s+(.+)$/)?.[1].trim() ?? null;
+    if (note && lines.length) {
+      lines[lines.length - 1].notes.push(note);
+      continue;
+    }
+    const cleaned = (note ?? raw).replace(BULLET, "").trim();
+    if (!cleaned.replace(DONE_MARK, "").trim()) continue;
+    lines.push({ ...parseLoggedLine(cleaned, subjects), notes: [] });
+  }
+  return lines;
+}

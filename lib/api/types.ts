@@ -153,6 +153,8 @@ export interface DashboardResponse {
   user: AuthUser;
   /** Untimed lines in Today's note, yesterday through the week ahead. */
   dayItems?: DayItem[];
+  /** Unticked lines just carried over from earlier days, on the request that moved them. */
+  rolledOver?: number;
   /** Open priorities, due first then outline order. Today suggests one in a gap. */
   priorityPicks?: PriorityPick[];
   profile: PlannerProfile | null;

@@ -50,6 +50,24 @@ export interface PlannerEvent {
   checkout?: SessionCheckout | null;
   /** When the student actually started it. */
   startedAt?: string | null;
+  /** The sub-bullet under the line in Today's note. */
+  note?: string;
+  createdAt?: string;
+}
+
+/** An untimed line in Today's note ("Call with Pari"). Timed lines are events with source "note". */
+export interface DayItem {
+  id: string;
+  /** YYYY-MM-DD in the student's timezone. */
+  day: string;
+  text: string;
+  subject: string | null;
+  note: string;
+  /** "rest of night": evening, no fixed time. */
+  evening: boolean;
+  done: boolean;
+  position: number;
+  createdAt: string;
 }
 
 export type MissReason = "sick" | "tired" | "other_plans" | "forgot" | "didnt_feel_like_it" | "other";
@@ -124,6 +142,8 @@ export interface CompanionProfile {
 
 export interface DashboardResponse {
   user: AuthUser;
+  /** Untimed lines in Today's note, yesterday through the week ahead. */
+  dayItems?: DayItem[];
   profile: PlannerProfile | null;
   preferences: Record<string, unknown>;
   subjects: Array<{

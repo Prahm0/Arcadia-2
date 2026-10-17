@@ -107,7 +107,7 @@ export default function MobileBottomNav({ onAdd }: { onAdd: () => void }) {
                   <button
                     type="button"
                     onClick={() => trigger(slot)}
-                    aria-label="Add a deadline"
+                    aria-label="Add to today"
                     className="ui-press grid size-[50px] place-items-center rounded-full"
                     style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}
                   >

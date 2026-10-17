@@ -35,6 +35,7 @@ import studyLog from "./routes/study-log";
 import subjects from "./routes/subjects";
 import { assessments, subjectFiles, subjectMaterials, topics } from "./routes/syllabus";
 import tasks from "./routes/tasks";
+import today from "./routes/today";
 import uploads from "./routes/uploads";
 import waitlist from "./routes/waitlist";
 import type { Env, Variables } from "./types";
@@ -136,6 +137,7 @@ app.route("/api/subject-files", subjectFiles);
 app.route("/api/topics", topics);
 app.route("/api/assessments", assessments);
 app.route("/api/tasks", tasks);
+app.route("/api/today", today);
 app.route("/api/uploads", uploads);
 
 app.notFound((c) => c.json({ error: "Not found." }, 404));

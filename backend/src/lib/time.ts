@@ -125,3 +125,14 @@ export function localHour(at: number, timeZone: string): number {
   const offset = zoneOffsetMinutes(timeZone, at);
   return new Date(at + offset * MINUTE).getUTCHours();
 }
+
+/**
+ * The instant a wall-clock time happens on a local day: "2026-10-17" at
+ * 14:15 in Melbourne. Corrects once for the offset at that time, so a
+ * daylight-saving day still lands on the hour the student typed.
+ */
+export function localDayTime(day: string, minutes: number, timeZone: string): number {
+  const wall = Date.parse(`${day}T00:00:00Z`) + minutes * MINUTE;
+  const guess = wall - zoneOffsetMinutes(timeZone, wall) * MINUTE;
+  return wall - zoneOffsetMinutes(timeZone, guess) * MINUTE;
+}

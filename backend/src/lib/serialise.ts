@@ -53,6 +53,22 @@ export function serialiseEvent(event: EventRow) {
     plan: parseJson<SessionPlan>(event.plan),
     checkout: parseJson<Checkout>(event.checkout),
     startedAt: event.startedAt ? iso(event.startedAt) : null,
+    note: event.note ?? "",
+    createdAt: iso(event.createdAt),
+  };
+}
+
+export function serialiseDayItem(item: typeof schema.dayItems.$inferSelect) {
+  return {
+    id: item.id,
+    day: item.day,
+    text: item.text,
+    subject: item.subject,
+    note: item.note,
+    evening: item.evening,
+    done: item.done,
+    position: item.position,
+    createdAt: iso(item.createdAt),
   };
 }
 

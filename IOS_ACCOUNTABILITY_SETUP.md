@@ -55,8 +55,9 @@ Request it at
 https://developer.apple.com/contact/request/family-controls-distribution,
 once per bundle ID. Approval has taken from a few days to a few weeks.
 
-Until then the project keeps Screen Time out of Release builds, so shipping
-isn't blocked:
+**Approved on 17 Oct 2026** (Family Controls (Distribution) assigned to the
+account), and Release builds now carry Screen Time from 1.1. The table below
+is how it was gated before approval, kept for reference:
 
 | | Debug (run from Xcode) | Release (archive) |
 |---|---|---|

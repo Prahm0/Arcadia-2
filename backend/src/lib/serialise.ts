@@ -160,6 +160,8 @@ export function serialiseProfile(profile: ProfileRow | null) {
     country: profile.country ?? null,
     state: profile.state ?? null,
     course: profile.course ?? null,
+    holidayMode: profile.holidayMode,
+    holidayAskedFor: profile.holidayAskedFor ?? null,
     timezone: profile.timezone,
     onboardingComplete: profile.onboardingComplete,
     wakeTime: profile.wakeTime,

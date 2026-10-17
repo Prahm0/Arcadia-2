@@ -618,6 +618,40 @@ export default function SettingsView() {
           </div>
         </Card>
 
+        {data.terms?.length ? (
+          <Card>
+            <SectionHeader label="School holidays" />
+            <p className="mb-3 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
+              What happens to your plan in the holidays. Deadlines always keep their time.
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                ["normal", "Usual plan"],
+                ["light", "Lighter"],
+                ["off", "Take a break"],
+              ] as const).map(([option, label]) => {
+                const current = (data.profile?.holidayMode ?? "normal") === option;
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    aria-pressed={current}
+                    onClick={() => void updateProfile({ holidayMode: option }).then(() => reload())}
+                    className="rounded-md px-3 py-2.5 text-[13.5px] font-medium transition-colors"
+                    style={{
+                      background: current ? "var(--app-accent-soft)" : "transparent",
+                      color: current ? "var(--app-accent-strong)" : "var(--app-text-soft)",
+                      border: "1px solid var(--app-border)",
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
+        ) : null}
+
         <Card>
           <SectionHeader label="Blocked people" />
           <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>

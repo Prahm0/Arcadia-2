@@ -194,6 +194,9 @@ interface ProfileBody {
   atarTarget?: number | null;
   course?: string | null;
   goalTarget?: string | null;
+  holidayMode?: string;
+  /** YYYY-MM-DD: the holidays the student just answered the Today card for. */
+  holidayAskedFor?: string | null;
   arcadAbout?: string;
   arcadStyle?: string;
   memoryEnabled?: boolean;
@@ -273,6 +276,15 @@ profile.patch("/", async (c) => {
     patch.course = course?.key ?? null;
   }
   if (body.goalTarget !== undefined) patch.goalTarget = optionalText(body.goalTarget, 60);
+  if (body.holidayMode !== undefined) {
+    if (!["normal", "light", "off"].includes(body.holidayMode)) return c.json({ error: "Pick normal, light or off." }, 422);
+    patch.holidayMode = body.holidayMode;
+  }
+  if (body.holidayAskedFor !== undefined) {
+    const date = body.holidayAskedFor;
+    if (date !== null && !/^\d{4}-\d{2}-\d{2}$/.test(date)) return c.json({ error: "That's not a date." }, 422);
+    patch.holidayAskedFor = date;
+  }
   if (body.arcadAbout !== undefined) patch.arcadAbout = String(body.arcadAbout).slice(0, TEXT_LIMIT);
   if (body.arcadStyle !== undefined) patch.arcadStyle = String(body.arcadStyle).slice(0, TEXT_LIMIT);
   if (body.memoryEnabled !== undefined) patch.memoryEnabled = Boolean(body.memoryEnabled);
@@ -330,6 +342,7 @@ profile.patch("/", async (c) => {
     "maxDailyStudyMinutes",
     "preferredSessionMinutes",
     "breakMinutes",
+    "holidayMode",
   ];
   if (planInputs.some((key) => body[key] !== undefined)) await replan(database, userId);
 

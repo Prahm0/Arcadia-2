@@ -149,6 +149,8 @@ export type ProfilePatch = Partial<{
   atarTarget: number | null;
   course: string | null;
   goalTarget: string | null;
+  holidayMode: "normal" | "light" | "off";
+  holidayAskedFor: string | null;
   arcadAbout: string;
   arcadStyle: string;
   memoryEnabled: boolean;

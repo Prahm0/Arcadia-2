@@ -97,6 +97,10 @@ export interface PlannerProfile {
   state?: string | null;
   /** shared/education.ts course key; null for accounts from before courses. */
   course?: string | null;
+  /** School holidays: keep the plan, go lighter, or pause subject study. */
+  holidayMode?: "normal" | "light" | "off";
+  /** First day of the holidays the student last answered the Today card for. */
+  holidayAskedFor?: string | null;
   timezone?: string;
   onboardingComplete?: boolean;
   wakeTime?: string;

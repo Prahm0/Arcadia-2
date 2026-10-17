@@ -1,6 +1,6 @@
 # App Store screenshots (version 1.2)
 
-Sage Day design, four per device, in upload order.
+The final Day design (sage, cream and gold, with the new logo), four per device, in upload order.
 
 | # | File | Caption | Screen |
 |---|------|---------|--------|
@@ -19,6 +19,7 @@ All are RGB PNGs with no alpha channel.
 ## How they were made
 
 - Captured from the real app running locally, inside a stand-in for the iOS Capacitor shell, so they show the native layout: no wordmark on iPhone, and App Store billing.
+- Recaptured after the sage, cream and gold brand, the one row design on Today and the Done group shipped.
 - iPhone captures are 440 x 956 points at 3x. iPad captures are 1032 x 1376 points at 2x, the iPad's own layout: the sidebar in 1 and 4, and the collapsed rail with the Arcad panel in 2.
 - The status bar, device frame and caption are drawn around each capture.
 - The demo student is Mia Thompson, Year 12: Chemistry, Mathematical Methods, English, Biology and Psychology. She has school on weekdays, netball on Thursday and a six-day streak.

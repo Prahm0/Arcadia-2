@@ -7,7 +7,7 @@ import { api } from "@/lib/api/client";
 import { CATEGORY_COLOR } from "@/lib/app/categoryColors";
 import { openArcad } from "@/lib/app/commands";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
-import type { PlannerEvent } from "@/lib/api/types";
+import type { PlannerEvent, PlannerTask } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import {
   dateKey,
@@ -33,7 +33,7 @@ import { subjectColour } from "@/lib/app/subjectColour";
 import { SubjectTag } from "./cards/shared";
 import { playCompletionTick } from "@/lib/app/completion";
 import { noteWin } from "@/lib/capacitor/ratingPrompt";
-import { success } from "@/lib/capacitor/haptics";
+import BlockDoneMoment from "./BlockDoneMoment";
 import TodayProgress from "./TodayProgress";
 
 const CATEGORY_BAR = CATEGORY_COLOR;
@@ -52,6 +52,8 @@ export default function TodayView() {
   const [lifeAutoDeadline, setLifeAutoDeadline] = useState<{ title: string; subject: string | null; dueAt: string } | null>(null);
   const [celebrateId, setCelebrateId] = useState<{ id: string; at: number } | null>(null);
   const [xpReward, setXpReward] = useState<number | null>(null);
+  // The full-screen "block done" moment, with the data it was opened from.
+  const [doneMoment, setDoneMoment] = useState<{ event: PlannerEvent; task: PlannerTask | undefined; blocks: PlannerEvent[] } | null>(null);
   const [progressRefresh, setProgressRefresh] = useState(0);
   const [openEventId, setOpenEventId] = useState<string | null>(null);
   const [openEventMode, setOpenEventMode] = useState<EventSheetMode>("details");
@@ -147,16 +149,20 @@ export default function TodayView() {
   async function markOutcome(event: PlannerEvent, outcome: "completed" | "missed") {
     setBusyId(event.id);
     if (outcome === "completed") {
-      setCelebrateId({ id: event.id, at: Date.now() });
+      // `at` only retriggers the burst, so a counter will do.
+      setCelebrateId((previous) => ({ id: event.id, at: (previous?.at ?? 0) + 1 }));
       playCompletionTick();
       noteWin();
+      // Shown straight away; the moment's ring fill carries the haptic.
+      if (event.category === "study") {
+        setDoneMoment({ event, task: data.tasks.find((task) => task.id === event.taskId), blocks: studyBlocks });
+      }
     }
     try {
       const result = await api<{ rewards?: Array<{ xp: number }> }>(`/api/events/${encodeURIComponent(event.id)}/outcome`, {
         method: "POST",
         body: JSON.stringify({ outcome }),
       });
-      if (outcome === "completed") void success();
       patch((prev) => ({
         ...prev,
         events: prev.events.map((existing) =>
@@ -171,6 +177,10 @@ export default function TodayView() {
         window.setTimeout(() => setXpReward(null), 1200);
       }
       setProgressRefresh((value) => value + 1);
+    } catch (error) {
+      // The tick didn't save, so there's nothing to celebrate.
+      setDoneMoment(null);
+      throw error;
     } finally {
       setBusyId(null);
     }
@@ -270,6 +280,16 @@ export default function TodayView() {
         <TodayRail />
       </div>
 
+      {doneMoment ? (
+        <BlockDoneMoment
+          event={doneMoment.event}
+          task={doneMoment.task}
+          blocks={doneMoment.blocks}
+          breakMinutes={Math.max(5, Number(data.preferences?.breakMinutes ?? 10) || 10)}
+          timezone={timezone}
+          onClose={() => setDoneMoment(null)}
+        />
+      ) : null}
       <NewTaskSheet open={showTaskSheet} onClose={() => setShowTaskSheet(false)} />
       <LifeHappened
         open={showLife}

@@ -375,6 +375,8 @@ export const events = sqliteTable(
     plan: text("plan"),
     checkout: text("checkout"),
     startedAt: integer("started_at"),
+    // The sub-bullet under a line in Today's note (migration 0047).
+    note: text("note").notNull().default(""),
     createdAt: integer("created_at").notNull().default(now),
   },
   (t) => [
@@ -948,4 +950,27 @@ export const userActiveDays = sqliteTable(
     day: text("day").notNull(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.day] }), index("user_active_days_day_idx").on(t.day)],
+);
+
+/** An untimed line in Today's note ("Call with Pari"); timed lines are events with source "note". */
+export const dayItems = sqliteTable(
+  "day_items",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** YYYY-MM-DD in the student's timezone. */
+    day: text("day").notNull(),
+    text: text("text").notNull(),
+    subject: text("subject"),
+    note: text("note").notNull().default(""),
+    /** "rest of night": the evening, with no fixed time. */
+    evening: integer("evening", { mode: "boolean" }).notNull().default(false),
+    done: integer("done", { mode: "boolean" }).notNull().default(false),
+    doneAt: integer("done_at"),
+    position: integer("position").notNull().default(0),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [index("day_items_user_day_idx").on(t.userId, t.day)],
 );

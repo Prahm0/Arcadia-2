@@ -20,7 +20,7 @@ import GuestBanner from "./GuestBanner";
 import OfflineBanner from "./OfflineBanner";
 import MenuBar from "./MenuBar";
 import MobileBottomNav from "./MobileBottomNav";
-import NewTaskSheet from "./NewTaskSheet";
+import { requestAddToToday } from "@/lib/app/addToToday";
 import NotificationCentre from "./NotificationCentre";
 import PageMount from "./PageMount";
 import ShortcutsDialog from "./ShortcutsDialog";
@@ -128,7 +128,6 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
   const streak = streakSummary.current;
   const [signingOut, setSigningOut] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(readSidebarPref);
-  const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const modKey = useModKey();
@@ -163,7 +162,11 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
       return !open;
     });
   }, []);
-  const openNewTask = useCallback(() => setNewTaskOpen(true), []);
+  // + and the new-task shortcut open Today's "Add to today..." line, not a sheet.
+  const openNewTask = useCallback(() => {
+    if (pathname === "/app") requestAddToToday();
+    else router.push("/app?add=1");
+  }, [pathname, router]);
   const openShortcuts = useCallback(() => setShortcutsOpen(true), []);
   const closeShortcuts = useCallback(() => setShortcutsOpen(false), []);
   const openSearch = useCallback(() => setSearchOpen(true), []);
@@ -600,7 +603,6 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
         <ArcadFloatingButton />
       </div>
       <MobileBottomNav onAdd={openNewTask} />
-      <NewTaskSheet open={newTaskOpen} onClose={() => setNewTaskOpen(false)} />
       <ShortcutsDialog open={shortcutsOpen} onClose={closeShortcuts} />
       <SearchDialog open={searchOpen} onClose={closeSearch} onNewTask={openNewTask} onShowShortcuts={openShortcuts} />
       <ContextMenuHost />

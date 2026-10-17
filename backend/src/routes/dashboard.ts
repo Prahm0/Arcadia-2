@@ -4,6 +4,7 @@ import { db, schema } from "../db";
 import { rebuildSchedule, subjectKey, uniqueSubjects, weeklyBudget, type WeeklyBudget } from "../lib/scheduler";
 import {
   serialiseCommitment,
+  serialiseDayItem,
   serialiseEvent,
   serialisePreferences,
   serialiseProfile,
@@ -178,8 +179,15 @@ dashboard.get("/", async (c) => {
 
   const focus = pending.slice(0, 5).map(serialiseTask);
 
+  // Today's note: untimed lines from yesterday through the week ahead.
+  const dayItemRows = await database
+    .select()
+    .from(schema.dayItems)
+    .where(and(eq(schema.dayItems.userId, userId), gte(schema.dayItems.day, localDateKey(start - DAY, timezone))));
+
   return c.json({
     user: serialiseUser(user, profile ?? null),
+    dayItems: dayItemRows.map(serialiseDayItem),
     profile: serialiseProfile(profile ?? null),
     preferences: serialisePreferences(profile ?? null),
     subjects: subjectRows.map((subject) => serialiseSubject(subject, profile?.grade)),

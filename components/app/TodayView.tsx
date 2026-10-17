@@ -7,7 +7,7 @@ import { api } from "@/lib/api/client";
 import { CATEGORY_COLOR } from "@/lib/app/categoryColors";
 import { openArcad } from "@/lib/app/commands";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
-import type { PlannerEvent, PlannerTask } from "@/lib/api/types";
+import type { DayItem, PlannerEvent, PlannerTask } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import {
   dateKey,
@@ -24,7 +24,6 @@ import HolidayCard from "./HolidayCard";
 import NewTermCard from "./NewTermCard";
 import EventDetailSheet from "./EventDetailSheet";
 import LifeHappened from "./LifeHappened";
-import NewTaskSheet from "./NewTaskSheet";
 import ProactiveArcadCards from "./ProactiveArcadCards";
 import StartNowCard from "./StartNowCard";
 import TodayRail from "./TodayRail";
@@ -35,7 +34,12 @@ import { playCompletionTick } from "@/lib/app/completion";
 import { noteWin } from "@/lib/capacitor/ratingPrompt";
 import BlockDoneMoment from "./BlockDoneMoment";
 import { blockDoneDecision } from "@/lib/app/blockDone";
-import { flipKey, useFlip } from "@/lib/app/useFlip";
+import { useFlip } from "@/lib/app/useFlip";
+import { requestAddToToday } from "@/lib/app/addToToday";
+import { noteEntries, type NoteEntry } from "@/lib/app/todayNote";
+import { startOfDayMs } from "./schedule/calendar";
+import AddLine, { type NoteTarget } from "./today/AddLine";
+import LineRow from "./today/LineRow";
 import TodayProgress from "./TodayProgress";
 
 const CATEGORY_BAR = CATEGORY_COLOR;
@@ -43,12 +47,11 @@ const CATEGORY_BAR = CATEGORY_COLOR;
 type EventSheetMode = "details" | "reschedule" | "miss-reason";
 
 export default function TodayView() {
-  const { data, patch } = useDashboardData();
+  const { data, patch, reload } = useDashboardData();
   const timezone = data.profile?.timezone || data.user.timezone || "Australia/Sydney";
   const now = new Date();
   const today = dateKey(now.toISOString(), timezone);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [showTaskSheet, setShowTaskSheet] = useState(false);
   const [showLife, setShowLife] = useState(false);
   const [lifeAutoReason, setLifeAutoReason] = useState<string | null>(null);
   const [lifeAutoDeadline, setLifeAutoDeadline] = useState<{ title: string; subject: string | null; dueAt: string } | null>(null);
@@ -61,24 +64,7 @@ export default function TodayView() {
   const [openEventId, setOpenEventId] = useState<string | null>(null);
   const [openEventMode, setOpenEventMode] = useState<EventSheetMode>("details");
 
-  // ?new=1 (links from elsewhere) auto-opens the New Task sheet, then strips
-  // the query so a refresh doesn't repeat.
-  const handledNewParam = useRef(false);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (handledNewParam.current) return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("new") === "1") {
-      handledNewParam.current = true;
-      // Opened on the next frame, not synchronously inside the effect.
-      window.requestAnimationFrame(() => setShowTaskSheet(true));
-      const url = new URL(window.location.href);
-      url.searchParams.delete("new");
-      window.history.replaceState({}, "", url.toString());
-    } else {
-      handledNewParam.current = true;
-    }
-  }, []);
+  // ?new=1 and ?add=1 (links from elsewhere) focus the "Add to today..." line; AddLine handles both.
 
   // A browser push notification returns here with the relevant event. Remove
   // the parameter once it has opened so a refresh does not repeat the sheet.
@@ -126,8 +112,15 @@ export default function TodayView() {
     .sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt));
 
   const studyBlocks = todaysEvents.filter((event) => event.category === "study");
+  // Today's note: Arcadia's blocks and the student's own lines, timed or not, in one list.
+  const dayStartMs = startOfDayMs(today, timezone);
+  const entries = noteEntries(
+    todaysEvents.filter((event) => event.category === "study" || event.source === "note"),
+    (data.dayItems ?? []).filter((item) => item.day === today),
+    dayStartMs,
+  );
   const laterCandidates = todaysEvents.filter(
-    (event) => event.category !== "study" && Date.parse(event.endAt) >= now.getTime(),
+    (event) => event.category !== "study" && event.source !== "note" && Date.parse(event.endAt) >= now.getTime(),
   );
   // Old or overlapping schedule rebuilds may have left several sleep rows.
   // Show the generated nightly target once while leaving other events alone.
@@ -192,6 +185,62 @@ export default function TodayView() {
     }
   }
 
+  const tomorrowKey = nextDayKey(today);
+
+  // The student's own lines: tick, move to tomorrow, delete, note.
+  const lineActions: LineActions = {
+    toggle: async (entry) => {
+      if (entry.kind === "item") {
+        const done = !entry.item.done;
+        if (done) playCompletionTick();
+        patchItem(entry.item.id, { done });
+        await api(`/api/today/items/${encodeURIComponent(entry.item.id)}`, { method: "PATCH", body: JSON.stringify({ done }) });
+        return;
+      }
+      if (entry.event.outcome !== "completed") return markOutcome(entry.event, "completed");
+      patch((prev) => ({ ...prev, events: prev.events.map((event) => (event.id === entry.event.id ? { ...event, outcome: "planned", status: "planned" } : event)) }));
+      await api(`/api/events/${encodeURIComponent(entry.event.id)}/outcome`, { method: "POST", body: JSON.stringify({ outcome: "planned" }) });
+      setProgressRefresh((value) => value + 1);
+    },
+    tomorrow: async (entry) => {
+      if (entry.kind === "item") {
+        patch((prev) => ({ ...prev, dayItems: (prev.dayItems ?? []).map((item) => (item.id === entry.item.id ? { ...item, day: tomorrowKey } : item)) }));
+        await api(`/api/today/items/${encodeURIComponent(entry.item.id)}`, { method: "PATCH", body: JSON.stringify({ day: tomorrowKey }) });
+        return;
+      }
+      const shift = (iso: string) => new Date(Date.parse(iso) + 86_400_000).toISOString();
+      patch((prev) => ({ ...prev, events: prev.events.map((event) => (event.id === entry.event.id ? { ...event, startAt: shift(event.startAt), endAt: shift(event.endAt) } : event)) }));
+      await api(`/api/events/${encodeURIComponent(entry.event.id)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ startAt: shift(entry.event.startAt), endAt: shift(entry.event.endAt) }),
+      });
+      void reload();
+    },
+    remove: async (entry) => {
+      if (entry.kind === "item") {
+        patch((prev) => ({ ...prev, dayItems: (prev.dayItems ?? []).filter((item) => item.id !== entry.item.id) }));
+        await api(`/api/today/items/${encodeURIComponent(entry.item.id)}`, { method: "DELETE" });
+        return;
+      }
+      patch((prev) => ({ ...prev, events: prev.events.filter((event) => event.id !== entry.event.id) }));
+      await api(`/api/events/${encodeURIComponent(entry.event.id)}`, { method: "DELETE" });
+      void reload();
+    },
+    note: async (entry, note) => {
+      if (entry.kind === "item") {
+        patchItem(entry.item.id, { note });
+        await api(`/api/today/items/${encodeURIComponent(entry.item.id)}`, { method: "PATCH", body: JSON.stringify({ note }) });
+        return;
+      }
+      patch((prev) => ({ ...prev, events: prev.events.map((event) => (event.id === entry.event.id ? { ...event, note } : event)) }));
+      await api(`/api/today/events/${encodeURIComponent(entry.event.id)}/note`, { method: "PATCH", body: JSON.stringify({ note }) });
+    },
+  };
+
+  function patchItem(id: string, change: Partial<DayItem>) {
+    patch((prev) => ({ ...prev, dayItems: (prev.dayItems ?? []).map((item) => (item.id === id ? { ...item, ...change } : item)) }));
+  }
+
   const greeting = timeOfDayGreeting(now, timezone);
   const firstName = data.user.name.split(" ")[0];
   // One line that reads the day back, like a friend would.
@@ -228,10 +277,10 @@ export default function TodayView() {
             <AppButton
               variant="primary"
               className="max-lg:hidden"
-              onClick={() => setShowTaskSheet(true)}
+              onClick={requestAddToToday}
               icon={<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M10 4v12M4 10h12" strokeLinecap="round" /></svg>}
             >
-              New task
+              Add
             </AppButton>
           </>
         }
@@ -259,7 +308,10 @@ export default function TodayView() {
             celebrate={celebrateId}
             timezone={timezone}
             hasTasks={data.tasks.length > 0}
-            onNewTask={() => setShowTaskSheet(true)}
+            entries={entries}
+            today={today}
+            onNewTask={requestAddToToday}
+            onLine={lineActions}
             onComplete={(event) => markOutcome(event, "completed")}
             onMiss={(event) => {
               setOpenEventId(event.id);
@@ -275,7 +327,7 @@ export default function TodayView() {
               shows. Up to four used to stack above the student's next block. */}
           <div className="mt-6 empty:hidden [&>*~*]:hidden">
             <HolidayCard />
-            <NewTermCard onAdd={() => setShowTaskSheet(true)} />
+            <NewTermCard onAdd={requestAddToToday} />
             <DailyCheckInCard />
             <SundayReviewInline />
             <ProactiveArcadCards limit={1} />
@@ -296,7 +348,6 @@ export default function TodayView() {
           onClose={() => setDoneMoment(null)}
         />
       ) : null}
-      <NewTaskSheet open={showTaskSheet} onClose={() => setShowTaskSheet(false)} />
       <LifeHappened
         open={showLife}
         autoReason={lifeAutoReason}
@@ -334,6 +385,10 @@ interface TodayCardProps {
   timezone: string;
   hasTasks: boolean;
   onNewTask: () => void;
+  /** Today's note, in order: blocks and the student's own lines. */
+  entries: NoteEntry[];
+  today: string;
+  onLine: LineActions;
   onComplete: (event: PlannerEvent) => void;
   onMiss: (event: PlannerEvent) => void;
   onOpen: (event: PlannerEvent, mode: EventSheetMode) => void;
@@ -343,11 +398,18 @@ function TodayCard(props: TodayCardProps) {
   const {
     date, weekProgress, totalMinutes, remainingCount, completedCount,
     studyBlocks, laterEvents, inProgressIds, busyId, celebrate, timezone, hasTasks,
-    onNewTask, onComplete, onMiss, onOpen,
+    onNewTask, onComplete, onMiss, onOpen, entries, today, onLine,
   } = props;
-  // When Arcad replans, today's blocks slide into their new order.
+  // When Arcad replans or a line moves the plan, everything slides into its new place.
   const blockList = useRef<HTMLUListElement>(null);
-  useFlip(blockList, flipKey(studyBlocks));
+  useFlip(blockList, entries.map((entry) => (entry.kind === "block" ? `${entry.key}@${entry.event.startAt}` : entry.key)).join("|"));
+  // A "- note" typed into the line attaches to the last of the student's own lines.
+  const lastMine = [...entries].reverse().find((entry) => entry.kind === "item" || entry.mine);
+  const lastLine: NoteTarget | null = !lastMine
+    ? null
+    : lastMine.kind === "item"
+      ? { kind: "item", id: lastMine.item.id, note: lastMine.item.note }
+      : { kind: "event", id: lastMine.event.id, note: lastMine.event.note ?? "" };
 
   return (
     <div
@@ -404,32 +466,43 @@ function TodayCard(props: TodayCardProps) {
         </p>
       </div>
 
-      {studyBlocks.length === 0 && !hasTasks ? (
-        // Fresh account, no tasks, no schedule. Offer three concrete
-        // starting points instead of one bare button, so the page
-        // doesn't feel empty. The three actions cover the main ways to
-        // seed a plan: manual task, ask Arcad, or pull in real events.
+      <div className="mt-4">
+        <AddLine today={today} timezone={timezone} lastLine={lastLine} />
+      </div>
+
+      {entries.length === 0 && !hasTasks ? (
+        // Fresh account: a few concrete ways to seed a plan under the line.
         <FirstRunActions onNewTask={onNewTask} />
-      ) : studyBlocks.length === 0 ? (
-        <div className="px-5 pb-6 pt-6 sm:px-6">
-          <AppButton variant="secondary" onClick={onNewTask}>
-            Add a task
-          </AppButton>
-        </div>
       ) : (
-        <ul ref={blockList} className="mt-5 flex flex-col px-2 pb-3 sm:px-3" aria-label="Focus for today">
-          {studyBlocks.map((event) => (
-            <FocusRow
-              key={event.id}
-              event={event}
-              timezone={timezone}
-              busy={busyId === event.id}
-              celebrateTrigger={celebrate?.id === event.id ? celebrate.at : 0}
-              onComplete={() => onComplete(event)}
-              onMiss={() => onMiss(event)}
-              onOpen={(mode) => onOpen(event, mode)}
-            />
-          ))}
+        <ul ref={blockList} className="flex flex-col px-2 pb-3 sm:px-3" aria-label="Today">
+          {entries.map((entry) =>
+            entry.kind === "block" && !entry.mine ? (
+              <FocusRow
+                key={entry.key}
+                event={entry.event}
+                timezone={timezone}
+                busy={busyId === entry.event.id}
+                celebrateTrigger={celebrate?.id === entry.event.id ? celebrate.at : 0}
+                onComplete={() => onComplete(entry.event)}
+                onMiss={() => onMiss(entry.event)}
+                onOpen={(mode) => onOpen(entry.event, mode)}
+              />
+            ) : (
+              <LineRow
+                key={entry.key}
+                flipId={entry.key}
+                title={entry.kind === "item" ? entry.item.text : entry.event.title}
+                time={lineTime(entry, timezone)}
+                note={entry.kind === "item" ? entry.item.note : entry.event.note ?? ""}
+                done={entry.kind === "item" ? entry.item.done : entry.event.outcome === "completed"}
+                busy={entry.kind === "block" && busyId === entry.event.id}
+                onToggle={() => void onLine.toggle(entry)}
+                onTomorrow={() => void onLine.tomorrow(entry)}
+                onDelete={() => void onLine.remove(entry)}
+                onNote={(note) => void onLine.note(entry, note)}
+              />
+            ),
+          )}
         </ul>
       )}
 
@@ -802,4 +875,26 @@ function FirstRunRow({
       </button>
     </li>
   );
+}
+
+interface LineActions {
+  toggle: (entry: NoteEntry) => Promise<void>;
+  tomorrow: (entry: NoteEntry) => Promise<void>;
+  remove: (entry: NoteEntry) => Promise<void>;
+  note: (entry: NoteEntry, note: string) => Promise<void>;
+}
+
+/** "10:50am", "2:15pm to 2:45pm" for a timed line, "Tonight" for an evening one. */
+function lineTime(entry: NoteEntry, timezone: string): string | null {
+  if (entry.kind === "item") return entry.item.evening ? "Tonight" : null;
+  const start = formatClock(entry.event.startAt, timezone);
+  // A line typed with only a start ("SLC 10:50") shows just that; one typed with an end shows both.
+  return entry.event.kind === "note-range" ? `${start} to ${formatClock(entry.event.endAt, timezone)}` : start;
+}
+
+/** The local day after `day` ("YYYY-MM-DD"). */
+function nextDayKey(day: string): string {
+  const at = new Date(`${day}T12:00:00Z`);
+  at.setUTCDate(at.getUTCDate() + 1);
+  return at.toISOString().slice(0, 10);
 }

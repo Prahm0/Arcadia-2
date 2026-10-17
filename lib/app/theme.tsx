@@ -18,14 +18,16 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function readStored(): ThemeMode {
-  if (typeof window === "undefined") return "system";
+  if (typeof window === "undefined") return "light";
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (stored === "light" || stored === "dark" || stored === "system") return stored;
   } catch {
     /* ignore */
   }
-  return "system";
+  // Sage (light) unless the student picks Night or "match my phone" in
+  // Settings: the calm daytime look is Arcadia's face.
+  return "light";
 }
 
 function systemTheme(): Theme {

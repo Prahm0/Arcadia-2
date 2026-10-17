@@ -5,14 +5,12 @@ import { useMemo, type ReactNode } from "react";
 import type { PlannerTask } from "@/lib/api/types";
 import { formatDueSoon, formatDurationMinutes } from "@/lib/api/time";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
-import { START_STREAK_HINT } from "@/lib/app/streaks";
-import { useStreak } from "@/lib/app/useStreak";
 import { upcomingExamReadiness, type ExamReadiness } from "@/lib/app/examReadiness";
 import RailStreakCard from "./sky/RailStreakCard";
 
 /**
- * The column beside Today: one panel, read top to bottom. The streak, the
- * next streak card, and what's due next. Everything in it is a real number
+ * The column beside Today: one panel, read top to bottom. The next streak
+ * card and what's due next. Everything in it is a real number
  * from the dashboard.
  */
 export default function TodayRail() {
@@ -36,8 +34,8 @@ export default function TodayRail() {
       className="self-start overflow-hidden rounded-xl @3xl/main:sticky @3xl/main:top-6"
       style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
     >
-      {/* The week's chart is on Progress; a new student's is a row of zeros. */}
-      <StreakSection />
+      {/* The streak itself is the card beside today's ring; this keeps the
+          next streak card and what's due. */}
       <RailStreakCard />
       <DeadlinesSection tasks={deadlines} timezone={timezone} urgency={urgency} />
       <Link
@@ -70,36 +68,6 @@ function Section({ title, aside, children }: { title: string; aside?: ReactNode;
   );
 }
 
-
-function StreakSection() {
-  const streak = useStreak();
-  const pct = streak.nextMilestone ? Math.min(1, streak.current / streak.nextMilestone) : 1;
-
-  return (
-    <Section title="Streak" aside={streak.longest > streak.current ? `Best ${streak.longest}` : undefined}>
-      <p className="mt-2 flex items-baseline gap-1.5">
-        <span className="text-[28px] font-semibold leading-none tracking-[-0.02em] tabular-nums" style={{ color: "var(--app-text)" }}>
-          {streak.current}
-        </span>
-        <span className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-          {streak.current === 1 ? "day" : "days"}
-        </span>
-      </p>
-      <p className="mt-2 text-[12.5px] leading-snug" style={{ color: "var(--app-text-muted)" }}>
-        {streak.current === 0
-          ? START_STREAK_HINT
-          : streak.nextMilestone && streak.daysToNext
-            ? `${streak.daysToNext} more to ${streak.nextMilestone}`
-            : "Past every milestone"}
-      </p>
-      {streak.current > 0 && streak.nextMilestone ? (
-        <span className="mt-2 block h-[3px] overflow-hidden rounded-[1px]" style={{ background: "var(--app-border)" }} aria-hidden="true">
-          <span className="block h-full" style={{ width: `${pct * 100}%`, background: "var(--app-text)" }} />
-        </span>
-      ) : null}
-    </Section>
-  );
-}
 
 function DeadlinesSection({ tasks, timezone, urgency }: { tasks: PlannerTask[]; timezone: string; urgency: Map<string, ExamReadiness> }) {
   return (

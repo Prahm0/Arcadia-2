@@ -600,19 +600,19 @@ export default function SettingsView() {
         <Card>
           <SectionHeader label="Appearance" />
           <div className="grid grid-cols-3 gap-2">
-            {(["light", "system", "dark"] as ThemeMode[]).map((option) => (
+            {([["light", "Day"], ["system", "Match phone"], ["dark", "Night"]] as Array<[ThemeMode, string]>).map(([option, label]) => (
               <button
                 key={option}
                 type="button"
                 onClick={() => setMode(option)}
-                className="rounded-md px-3 py-2.5 text-[13.5px] font-medium capitalize transition-colors"
+                className="rounded-md px-3 py-2.5 text-[13.5px] font-medium transition-colors"
                 style={{
                   background: mode === option ? "var(--app-accent-soft)" : "transparent",
                   color: mode === option ? "var(--app-accent-strong)" : "var(--app-text-soft)",
                   border: "1px solid var(--app-border)",
                 }}
               >
-                {option}
+                {label}
               </button>
             ))}
           </div>

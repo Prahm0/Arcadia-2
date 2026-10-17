@@ -27,16 +27,18 @@ interface OnboardingProps {
 
 
 type StepKey = "you" | "subjects" | "going" | "goals" | "week" | "routine" | "deadlines" | "hours" | "arcad";
+/**
+ * Four steps, then the plan. Students said setup felt like "another thing to
+ * do", so everything that has a sensible default (how each subject is going,
+ * goals, session length, hours per subject, notes for Arcad) is left for the
+ * profile or for telling Arcad later. Those steps' screens stay in the file
+ * for the profile to reuse, but onboarding doesn't show them.
+ */
 const STEPS: { key: StepKey; label: string }[] = [
   { key: "you", label: "You" },
   { key: "subjects", label: "Subjects" },
-  { key: "going", label: "How it's going" },
-  { key: "goals", label: "Goals" },
   { key: "week", label: "Your week" },
-  { key: "routine", label: "Routine" },
   { key: "deadlines", label: "Deadlines" },
-  { key: "hours", label: "Hours" },
-  { key: "arcad", label: "Arcad" },
 ];
 
 type Going = "well" | "okay" | "hard";
@@ -234,9 +236,8 @@ export default function Onboarding({ userId, defaultName, defaultTimezone, onCom
         if (goesToSchool && (schoolDays.length === 0 || !validTimes(schoolStart, schoolEnd))) {
           return "School needs at least one day and an end time after the start.";
         }
-        return activityProblem
-          ? `${activityProblem.title.trim()} needs a day and an end time after the start.`
-          : null;
+        if (activityProblem) return `${activityProblem.title.trim()} needs a day and an end time after the start.`;
+        return wakeTime && bedtime ? null : "Add a wake-up time and a bedtime.";
       case "routine":
         return wakeTime && bedtime ? null : "Add a wake-up time and a bedtime.";
       case "deadlines":
@@ -845,6 +846,28 @@ export default function Onboarding({ userId, defaultName, defaultTimezone, onCom
                   ))}
                 </ul>
               )}
+            </div>
+            <div className="border-t pt-5" style={{ borderColor: "var(--app-border)" }}>
+              <div className="grid grid-cols-2 gap-4 sm:max-w-[360px]">
+                <Label text="Wake up">
+                  <TextInput type="time" required value={wakeTime} onChange={setWakeTime} />
+                </Label>
+                <Label text="Bedtime">
+                  <TextInput type="time" required value={bedtime} onChange={setBedtime} />
+                </Label>
+              </div>
+              <div className="mt-5">
+                <Range
+                  label="Most study in a day"
+                  display={formatWeekly(maxDaily)}
+                  value={maxDaily}
+                  min={60}
+                  max={360}
+                  step={15}
+                  onChange={setMaxDaily}
+                  hint="Arcadia never plans more than this. You can change it later."
+                />
+              </div>
             </div>
           </div>
         ) : null}

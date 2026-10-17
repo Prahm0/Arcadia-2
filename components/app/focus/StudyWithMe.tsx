@@ -12,7 +12,7 @@ type Scene = "night" | "paper" | "dusk";
 const SCENE_KEY = "arcadia:study-with-me:scene";
 
 const SCENES: Record<Scene, { label: string; background: string; text: string; muted: string; panel: string }> = {
-  night: { label: "Night", background: "radial-gradient(circle at 50% 30%, #1a1640 0%, #09091c 42%, #04040e 100%)", text: "#f8f7ff", muted: "rgba(235,232,255,.62)", panel: "rgba(255,255,255,.07)" },
+  night: { label: "Night", background: "radial-gradient(circle at 50% 30%, #1a2c22 0%, #0f1a14 42%, #08100c 100%)", text: "#f3f1ea", muted: "rgba(243,241,234,.62)", panel: "rgba(255,255,255,.07)" },
   paper: { label: "Paper", background: "linear-gradient(145deg, #f8f6ef, #e9edf4)", text: "#22222b", muted: "rgba(34,34,43,.58)", panel: "rgba(34,34,43,.07)" },
   dusk: { label: "Dusk", background: "radial-gradient(circle at 75% 12%, #d896b5 0%, transparent 31%), linear-gradient(145deg, #291b4b, #ad5e8b 57%, #ef9a83)", text: "#fff9fb", muted: "rgba(255,249,251,.72)", panel: "rgba(255,255,255,.13)" },
 };
@@ -217,7 +217,7 @@ function StudyShare({ definition, subject, minutes, scene, onClose }: { definiti
 function drawShare(canvas: HTMLCanvasElement, definition: ConstellationDefinition, subject: string, minutes: number, scene: Scene) {
   const width = 1080, height = 1920, ctx = canvas.getContext("2d"); if (!ctx) return;
   canvas.width = width; canvas.height = height;
-  const bg = scene === "paper" ? "#f4f2ec" : scene === "dusk" ? "#51285f" : "#04040e";
+  const bg = scene === "paper" ? "#f4f2ec" : scene === "dusk" ? "#51285f" : "#08100c";
   ctx.fillStyle = bg; ctx.fillRect(0, 0, width, height);
   ctx.fillStyle = scene === "paper" ? "#22222b" : "#fff8ea"; ctx.font = "600 42px system-ui"; ctx.fillText("ARCADIA", 80, 110);
   ctx.globalAlpha = .68; ctx.font = "500 28px system-ui"; ctx.fillText("STUDY WITH ME", 80, 158); ctx.globalAlpha = 1;

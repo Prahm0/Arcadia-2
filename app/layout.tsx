@@ -89,7 +89,7 @@ export const viewport: Viewport = {
   // Chrome. Kept as the deep-night background rather than pure black so
   // the tint blends with the app's own surface rather than punching a
   // hard cutoff at the top.
-  themeColor: "#0a0714",
+  themeColor: "#0c1611",
   colorScheme: "dark",
   viewportFit: "cover",
 };

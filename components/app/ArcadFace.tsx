@@ -9,15 +9,15 @@
 
 export type ArcadExpression = "idle" | "happy" | "wink" | "think" | "excited" | "surprised" | "sleep";
 
-const INK = "#1b0a35";
-const MOUTH = "#2a0f45";
+const INK = "#2a1d06";
+const MOUTH = "#3a2808";
 
 function Eye({ x, y, tilt, wink = false }: { x: number; y: number; tilt: number; wink?: boolean }) {
   return (
     <g transform={`translate(${x} ${y}) rotate(${tilt})`}>
       <g className="arcad-face-eye-open">
-        <ellipse rx="44" ry="58" fill="#1d0940" stroke={INK} strokeWidth="9" />
-        <ellipse cx="4" cy="20" rx="30" ry="28" fill="#5b2aa8" opacity="0.75" />
+        <ellipse rx="44" ry="58" fill="#2b1f08" stroke={INK} strokeWidth="9" />
+        <ellipse cx="4" cy="20" rx="30" ry="28" fill="#8a6512" opacity="0.75" />
         <circle cx="12" cy="-30" r="14" fill="#fff" />
         <circle cx="-14" cy="24" r="6" fill="#fff" opacity="0.55" />
       </g>

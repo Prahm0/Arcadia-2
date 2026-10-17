@@ -66,7 +66,7 @@ export default function Hero() {
             className="aurora absolute -inset-[20%]"
             style={{
               background:
-                "radial-gradient(38% 30% at 34% 22%, rgba(124,92,255,0.13) 0%, rgba(124,92,255,0.04) 45%, transparent 72%), radial-gradient(30% 26% at 72% 70%, rgba(220,238,255,0.05) 0%, transparent 70%)",
+                "radial-gradient(38% 30% at 34% 22%, rgba(226,184,79,0.13) 0%, rgba(226,184,79,0.04) 45%, transparent 72%), radial-gradient(30% 26% at 72% 70%, rgba(220,238,255,0.05) 0%, transparent 70%)",
             }}
           />
         </div>

@@ -19,7 +19,7 @@ export default function FinalCTA() {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(60% 50% at 50% 55%, rgba(124,92,255,0.12) 0%, rgba(124,92,255,0.03) 45%, rgba(0,0,0,0) 70%)",
+            "radial-gradient(60% 50% at 50% 55%, rgba(226,184,79,0.12) 0%, rgba(226,184,79,0.03) 45%, rgba(0,0,0,0) 70%)",
         }}
       />
 

@@ -51,8 +51,8 @@ export async function sendEmail(env: Env, args: SendArgs): Promise<boolean> {
  * grey preview line inbox lists show next to the subject.
  */
 function emailLayout(opts: { heading: string; preheader: string; body: string; footer?: string }): string {
-  const accent = "#7c5cff";
-  const ink = "#1a1a2e";
+  const accent = "#2f4a3a";
+  const ink = "#1c2420";
   const muted = "#6b7280";
   return `<!doctype html>
 <html lang="en">
@@ -62,9 +62,9 @@ function emailLayout(opts: { heading: string; preheader: string; body: string; f
     <meta name="color-scheme" content="light" />
     <title>${opts.heading}</title>
   </head>
-  <body style="margin:0;padding:0;background:#f5f5f7;">
+  <body style="margin:0;padding:0;background:#f3f1ea;">
     <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${opts.preheader}</div>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f7;padding:32px 16px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f1ea;padding:32px 16px;">
       <tr>
         <td align="center">
           <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="width:480px;max-width:100%;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #ececf1;">
@@ -101,7 +101,7 @@ function emailLayout(opts: { heading: string; preheader: string; body: string; f
 function emailButton(href: string, label: string): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 4px;">
     <tr>
-      <td style="border-radius:10px;background:#7c5cff;">
+      <td style="border-radius:10px;background:#2f4a3a;">
         <a href="${href}" style="display:inline-block;padding:13px 26px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:10px;">${label}</a>
       </td>
     </tr>
@@ -130,7 +130,7 @@ export function roomReportEmail(args: {
   ].filter(Boolean).join("\n");
   const body = `
     <p style="margin:0 0 16px;font-size:15px;line-height:1.55;color:#3a3a4a;">A study room message was reported and needs review within 24 hours.</p>
-    <pre style="margin:0;padding:14px;white-space:pre-wrap;word-break:break-word;background:#f5f5f7;border-radius:8px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.55;color:#1a1a2e;">${escapeHtml(detail)}</pre>`;
+    <pre style="margin:0;padding:14px;white-space:pre-wrap;word-break:break-word;background:#f3f1ea;border-radius:8px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.55;color:#1c2420;">${escapeHtml(detail)}</pre>`;
   return {
     subject: `Arcadia room report: ${args.reason}`,
     text: `Arcadia room report\n\n${detail}`,
@@ -148,7 +148,7 @@ export function verificationEmail(link: string) {
       Or paste this link into your browser:
     </p>
     <p style="margin:0 0 20px;font-size:13px;line-height:1.5;word-break:break-all;">
-      <a href="${link}" style="color:#7c5cff;text-decoration:none;">${link}</a>
+      <a href="${link}" style="color:#2f4a3a;text-decoration:none;">${link}</a>
     </p>
     <p style="margin:0;font-size:13px;line-height:1.5;color:#6b7280;">
       This link expires in 24 hours.
@@ -174,7 +174,7 @@ export function resetPasswordEmail(link: string) {
       Or paste this link into your browser:
     </p>
     <p style="margin:0 0 20px;font-size:13px;line-height:1.5;word-break:break-all;">
-      <a href="${link}" style="color:#7c5cff;text-decoration:none;">${link}</a>
+      <a href="${link}" style="color:#2f4a3a;text-decoration:none;">${link}</a>
     </p>
     <p style="margin:0;font-size:13px;line-height:1.5;color:#6b7280;">
       This link works for 60 minutes. If you didn&rsquo;t ask for this, you can ignore this email.
@@ -221,7 +221,7 @@ export function studyPlanEmail(args: {
     .map(
       (block) => `<tr>
         <td style="padding:12px 14px;border-top:1px solid #ececf1;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-          <div style="font-size:15px;font-weight:600;color:#1a1a2e;">${escapeHtml(block.subject)}</div>
+          <div style="font-size:15px;font-weight:600;color:#1c2420;">${escapeHtml(block.subject)}</div>
           <div style="margin-top:2px;font-size:13px;color:#6b7280;">${escapeHtml(block.time)} &middot; ${block.minutes} min</div>
         </td>
       </tr>`,
@@ -240,7 +240,7 @@ export function studyPlanEmail(args: {
     </table>
     ${emailButton(args.appLink, "Start your first session")}`;
 
-  const footer = `You are getting this because daily plan reminders are on in your Arcadia settings. <a href="${args.unsubscribeUrl}" style="color:#7c5cff;text-decoration:underline;">Unsubscribe in one click</a>, or switch them off any time under Settings.`;
+  const footer = `You are getting this because daily plan reminders are on in your Arcadia settings. <a href="${args.unsubscribeUrl}" style="color:#2f4a3a;text-decoration:underline;">Unsubscribe in one click</a>, or switch them off any time under Settings.`;
 
   const lines = shown.map((block) => `- ${block.subject}, ${block.time}, ${block.minutes} min`);
   if (more > 0) lines.push(`- and ${more} more in the app`);

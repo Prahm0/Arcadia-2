@@ -19,7 +19,7 @@ const config: CapacitorConfig = {
   },
   ios: {
     contentInset: "never",
-    backgroundColor: "#04040e",
+    backgroundColor: "#2f4a3a",
     scrollEnabled: true,
     // Lets WKWebView choose the appropriate viewport for each device: phone
     // on iPhone and the existing tablet/desktop layout on iPad.
@@ -34,12 +34,12 @@ const config: CapacitorConfig = {
       launchAutoHide: true,
       // Stay up while the live app loads; NativeShell hides it on mount.
       launchShowDuration: 10000,
-      backgroundColor: "#04040e",
+      backgroundColor: "#2f4a3a",
       showSpinner: false,
     },
     StatusBar: {
       style: "DARK",
-      backgroundColor: "#04040e",
+      backgroundColor: "#2f4a3a",
     },
     // Check-ins still show as a banner while Arcadia is open, as they do in
     // a browser. The focus guard's own nudges stay quiet in the foreground.

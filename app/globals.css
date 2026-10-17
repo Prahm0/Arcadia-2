@@ -12,21 +12,21 @@
   --color-paper-200: #eeeeee;
 
   /* Hours of the day. The page moves through them from top to bottom. */
-  --color-night-900: #000000;
-  --color-night-800: #080c14;
-  --color-dusk: #10162a;
-  --color-dawn: #f6f1ea;
-  --color-noon: #fbfaf7;
-  --color-afternoon: #efe9e1;
+  --color-night-900: #0c1611;
+  --color-night-800: #111e17;
+  --color-dusk: #1a2c22;
+  --color-dawn: #f3f1ea;
+  --color-noon: #f8f7f2;
+  --color-afternoon: #ebe7dc;
 
   /* Warm near-black for text on the paper surfaces. */
   --color-day-text: #171512;
   --color-day-muted: #6f6a63;
   --color-day-border: #e4ddd3;
 
-  --color-accent: #7c5cff;
-  --color-accent-300: #9d87ff;
-  --color-accent-200: #c6b8ff;
+  --color-accent: #e2b84f;
+  --color-accent-300: #f2d78b;
+  --color-accent-200: #f7e6b5;
 
   --color-ui-text: #111111;
   --color-ui-muted: #707070;
@@ -65,7 +65,7 @@
   --app-text-faint: #949d93;
   /* Sage. Primary actions, selection and progress are a deep, calm green
      on the cream ground; colour elsewhere comes from the student's subjects,
-     and violet is kept for Arcad alone so it still means "this is Arcad". */
+     and gold is kept for Arcad, Pro and rewards. */
   --app-accent: #2f4a3a;
   --app-accent-soft: rgba(47, 74, 58, 0.08);
   --app-accent-strong: #23392d;   /* hover on sage fills */
@@ -82,10 +82,10 @@
   --app-hero-on: #f3f1ea;
   --app-hero-cta: #f3f1ea;
   --app-hero-cta-on: #2f4a3a;
-  --app-arcad: #6a5ad8;           /* reserved for Arcad, the AI companion */
-  --app-arcad-soft: rgba(106, 90, 216, 0.12);
-  --app-arcad-strong: #4a3f8c;
-  --app-arcad-on: #f6f2ff;
+  --app-arcad: #86650f;           /* gold: Arcad, Pro and rewards. Deep enough for AA text on cream */
+  --app-arcad-soft: rgba(226, 184, 79, 0.18);
+  --app-arcad-strong: #6b500b;
+  --app-arcad-on: #fffaf0;
 
   /* Event categories. Mid-tones read under 3:1 on white, so light mode gets
      the darker end of each hue and dark mode the lighter. */
@@ -148,10 +148,10 @@
   --app-gold: #f2c75c;
   --app-gold-soft: rgba(242, 199, 92, 0.1);
   --app-gold-border: rgba(242, 199, 92, 0.4);
-  --app-arcad: #b3a1ff;
-  --app-arcad-soft: rgba(179, 161, 255, 0.16);
-  --app-arcad-strong: #c9bcff;
-  --app-arcad-on: #1a1330;
+  --app-arcad: #f2d78b;
+  --app-arcad-soft: rgba(242, 215, 139, 0.14);
+  --app-arcad-strong: #f7e3a8;
+  --app-arcad-on: #1b1a12;
 
   --app-cat-school: #9ba3af;
   --app-cat-sport: #7fd39a;
@@ -263,7 +263,7 @@ html[data-app-theme] {
   }
 
   ::selection {
-    background: rgba(124, 92, 255, 0.35);
+    background: rgba(226, 184, 79, 0.35);
     color: inherit;
   }
 
@@ -951,7 +951,7 @@ html[data-app-theme] .type-mono-label {
     transition: opacity 0.5s var(--ease-out-expo);
     background: radial-gradient(
       260px circle at var(--mx, 50%) var(--my, 50%),
-      rgba(124, 92, 255, 0.09),
+      rgba(226, 184, 79, 0.09),
       transparent 70%
     );
   }

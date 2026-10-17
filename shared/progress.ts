@@ -4,6 +4,9 @@ export const XP = {
   focusDailyCap: 120,
   recovery: 10,
   ringClosed: 25,
+  /** Ticking one of your own lines on Today, up to lineDailyCap a day. */
+  line: 10,
+  lineDailyCap: 100,
 } as const;
 
 /** A day stays on track after 70% of its planned study is completed. */

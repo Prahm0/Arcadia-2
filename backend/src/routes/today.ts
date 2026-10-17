@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { db, schema } from "../db";
 import { newId } from "../lib/ids";
 import { replan } from "../lib/replan";
+import { lineXp } from "../lib/rewards";
 import { serialiseDayItem, serialiseEvent } from "../lib/serialise";
 import { MINUTE, localDayTime } from "../lib/time";
 import type { Env, Variables } from "../types";
@@ -128,7 +129,8 @@ today.patch("/items/:id", async (c) => {
     .where(and(eq(schema.dayItems.id, c.req.param("id")), eq(schema.dayItems.userId, userId)))
     .returning();
   if (!updated.length) return c.json({ error: "Not found." }, 404);
-  return c.json({ item: serialiseDayItem(updated[0]) });
+  const rewards = typeof body.done === "boolean" ? await lineXp(database, userId, updated[0].id, body.done) : [];
+  return c.json({ item: serialiseDayItem(updated[0]), rewards });
 });
 
 today.delete("/items/:id", async (c) => {

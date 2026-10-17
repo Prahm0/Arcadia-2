@@ -18,6 +18,7 @@ import {
 } from "@/lib/app/priorityOutline";
 import { dateKey, formatMinutes } from "@/lib/api/time";
 import PageHeader from "./PageHeader";
+import EmptyArt from "./EmptyArt";
 
 const SAVE_AFTER_MS = 700;
 const INDENT_PX = 22;
@@ -230,13 +231,14 @@ export default function PrioritiesView() {
             </ul>
           </section>
         ) : null}
+        {lines && lines.length === 1 && !lines[0].text ? <EmptyArt className="mx-auto mb-3 mt-6" /> : null}
         {!lines ? null : (
-          <ul aria-label="Priorities" className="flex flex-col">
+          <ul aria-label="Priorities" className="arcadia-stagger flex flex-col">
             {lines.map((line, index) => {
               const focused = focusedId === line.id;
               const parent = hasChildren(lines, index);
               return (
-                <li key={line.id} className="group flex items-start gap-1.5 rounded-md py-0.5 pr-1" style={{ paddingLeft: line.depth * INDENT_PX }}>
+                <li key={line.id} className="group flex items-start gap-1.5 rounded-md py-0.5 pr-1" style={{ paddingLeft: line.depth * INDENT_PX, ["--i" as string]: index }}>
                   <button
                     type="button"
                     onClick={() => update(index, { done: !line.done })}

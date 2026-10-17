@@ -9,6 +9,8 @@ import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
 import { reviewLeads, weekProgress } from "@/lib/app/weekProgress";
 import { dateKey, formatMinutes } from "@/lib/api/time";
 import { nextLevelUnlock } from "@/shared/progress";
+import { flameScale } from "@/lib/app/celebrate";
+import CountUp from "./CountUp";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import ShareCard from "./ShareCard";
@@ -93,24 +95,24 @@ export default function ProgressView() {
       />
 
       <div className="mx-auto w-full max-w-[1000px] px-6 pb-16 pt-6 sm:px-10">
-        <section aria-label="This week" className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <section aria-label="This week" className="arcadia-stagger grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Stat label="This week" wide>
             <div className="flex items-center gap-4">
               <WeekRing ratio={week.ratio} />
               <div>
-                <p className="text-[26px] font-semibold tabular-nums leading-none" style={{ color: "var(--app-text)" }}>{week.done}<span className="text-[15px] font-medium" style={{ color: "var(--app-text-muted)" }}> of {week.planned}</span></p>
+                <p className="text-[26px] font-semibold tabular-nums leading-none" style={{ color: "var(--app-text)" }}><CountUp value={week.done} /><span className="text-[15px] font-medium" style={{ color: "var(--app-text-muted)" }}> of {week.planned}</span></p>
                 <p className="mt-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>blocks done</p>
               </div>
             </div>
           </Stat>
           <Stat label="Streak">
             <p className="text-[26px] font-semibold tabular-nums leading-none" style={{ color: "var(--app-text)" }}>
-              <span aria-hidden="true" className="mr-1">🔥</span>{streak.current} {streak.current === 1 ? "day" : "days"}
+              <span aria-hidden="true" className="arcadia-flame mr-1" style={{ ["--flame" as string]: flameScale(streak.current) }}>🔥</span><CountUp value={streak.current} /> {streak.current === 1 ? "day" : "days"}
             </p>
             <p className="mt-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>{streak.longest > streak.current ? `Best ${streak.longest}` : streak.current > 0 ? "Your best yet" : "Finish today's plan to start one"}</p>
           </Stat>
           <Stat label="Focused">
-            <p className="text-[26px] font-semibold tabular-nums leading-none" style={{ color: "var(--app-text)" }}>{formatMinutes(Math.max(week.minutes, weekly.minutes))}</p>
+            <p className="text-[26px] font-semibold tabular-nums leading-none" style={{ color: "var(--app-text)" }}><CountUp value={Math.max(week.minutes, weekly.minutes)} format={formatMinutes} /></p>
             <p className="mt-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>{previous.minutes > 0 ? `${formatMinutes(previous.minutes)} last week` : "this week"}</p>
           </Stat>
         </section>

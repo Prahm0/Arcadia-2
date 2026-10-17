@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api/client";
+import { applyThemeColor } from "@/lib/app/themeColors";
 
 export type Theme = "light" | "dark";
 export type ThemeMode = "light" | "dark" | "system";
@@ -39,6 +40,7 @@ function apply(theme: Theme) {
   if (typeof document === "undefined") return;
   document.documentElement.setAttribute("data-app-theme", theme);
   document.documentElement.style.colorScheme = theme;
+  applyThemeColor(theme);
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -48,8 +50,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // the pre-paint script in app/(app)/layout.tsx.
   const [systemPref, setSystemPref] = useState<Theme>(systemTheme);
 
+  // systemPref already starts from the device; this only follows changes.
   useEffect(() => {
-    setSystemPref(systemTheme());
     if (typeof window !== "undefined" && window.matchMedia) {
       const media = window.matchMedia("(prefers-color-scheme: dark)");
       const listener = (event: MediaQueryListEvent) =>

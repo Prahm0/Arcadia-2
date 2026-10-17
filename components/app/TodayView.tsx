@@ -34,6 +34,7 @@ import { SubjectTag } from "./cards/shared";
 import { playCompletionTick } from "@/lib/app/completion";
 import { noteWin } from "@/lib/capacitor/ratingPrompt";
 import BlockDoneMoment from "./BlockDoneMoment";
+import { blockDoneDecision } from "@/lib/app/blockDone";
 import { flipKey, useFlip } from "@/lib/app/useFlip";
 import TodayProgress from "./TodayProgress";
 
@@ -54,6 +55,7 @@ export default function TodayView() {
   const [celebrateId, setCelebrateId] = useState<{ id: string; at: number } | null>(null);
   const [xpReward, setXpReward] = useState<number | null>(null);
   // The full-screen "block done" moment, with the data it was opened from.
+  const lastMomentAt = useRef(0);
   const [doneMoment, setDoneMoment] = useState<{ event: PlannerEvent; task: PlannerTask | undefined; blocks: PlannerEvent[] } | null>(null);
   const [progressRefresh, setProgressRefresh] = useState(0);
   const [openEventId, setOpenEventId] = useState<string | null>(null);
@@ -154,8 +156,11 @@ export default function TodayView() {
       setCelebrateId((previous) => ({ id: event.id, at: (previous?.at ?? 0) + 1 }));
       playCompletionTick();
       noteWin();
-      // Shown straight away; the moment's ring fill carries the haptic.
-      if (event.category === "study") {
+      // Shown straight away; the moment's ring fill carries the haptic. Only
+      // the first of several quick ticks gets it, and old blocks tick quietly.
+      const decision = event.category === "study" ? blockDoneDecision(event, lastMomentAt.current) : null;
+      if (decision?.show) {
+        lastMomentAt.current = decision.at;
         setDoneMoment({ event, task: data.tasks.find((task) => task.id === event.taskId), blocks: studyBlocks });
       }
     }

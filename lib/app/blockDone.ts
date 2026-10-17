@@ -49,3 +49,24 @@ export function ringMinutes(event: PlannerEvent, blocks: PlannerEvent[]) {
     .reduce((sum, block) => sum + blockMinutes(block), 0);
   return { goal, before, after: Math.min(goal, before + blockMinutes(event)) };
 }
+
+/** Ticks after a moment within this long count as one end-of-day batch. */
+const BATCH_MS = 3 * 60_000;
+/** A block that ended longer ago than this is being caught up on, not just finished. */
+const STALE_MS = 2 * 60 * 60_000;
+
+/**
+ * Whether ticking `event` gets the full-screen moment. Only the first tick
+ * in a batch does, and a block that ended over two hours ago ticks quietly.
+ * `lastShownAt` is when the previous moment opened (0 for never); `at` is
+ * what to store next when `show` is true.
+ */
+export function blockDoneDecision(
+  event: Pick<PlannerEvent, "endAt">,
+  lastShownAt: number,
+  now = Date.now(),
+): { show: boolean; at: number } {
+  const stale = now - Date.parse(event.endAt) > STALE_MS;
+  const batched = lastShownAt > 0 && now - lastShownAt < BATCH_MS;
+  return { show: !stale && !batched, at: now };
+}

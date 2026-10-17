@@ -160,3 +160,25 @@ test("a skipped day frees that day only", () => {
     .map((row) => new Date(row.startAt).toISOString().slice(0, 10));
   assert.deepEqual(trainingDays, ["2026-10-20"]);
 });
+
+// QLD: term 3 ends Fri 18 Sep 2026 and term 4 starts Tue 6 Oct, so Mon 21
+// Sep is in the holidays and Wed 7 Oct is a school day.
+const brisbane = "Australia/Brisbane";
+const holidayDay = Date.parse("2026-09-20T14:00:00Z");
+const termDay = Date.parse("2026-10-06T14:00:00Z");
+const qldProfile = (holidayMode) => ({ ...profile, timezone: brisbane, state: "QLD", holidayMode });
+const capOn = (start, holidayMode) =>
+  groundwork("usr_test", { profile: qldProfile(holidayMode), existing: [], commitments: [] }, start, start + 86_400_000, start).days[0].cap;
+
+test("holiday mode lowers subject time only in the school holidays", () => {
+  assert.equal(capOn(holidayDay, "normal"), 300 * MINUTE);
+  assert.equal(capOn(holidayDay, "light"), 150 * MINUTE);
+  assert.equal(capOn(holidayDay, "off"), 0);
+  // A school day keeps the usual limit whatever the setting.
+  assert.equal(capOn(termDay, "off"), 300 * MINUTE);
+  // No state, no term dates: nothing changes.
+  assert.equal(
+    groundwork("usr_test", { profile: { ...profile, holidayMode: "off" }, existing: [], commitments: [] }, holidayDay, holidayDay + 86_400_000, holidayDay).days[0].cap,
+    300 * MINUTE,
+  );
+});

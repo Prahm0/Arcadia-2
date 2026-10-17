@@ -223,6 +223,9 @@ export const profiles = sqliteTable("profiles", {
   // The student's course and target result in its own terms (migration 0045, shared/education.ts).
   course: text("course"),
   goalTarget: text("goal_target"),
+  // School holidays: normal, light or off (migration 0046).
+  holidayMode: text("holiday_mode").notNull().default("normal"),
+  holidayAskedFor: text("holiday_asked_for"),
   // Arcad personalisation: "what should Arcad know about you" and "how
   // should Arcad respond", plus whether it may save memories from chats.
   arcadAbout: text("arcad_about").notNull().default(""),

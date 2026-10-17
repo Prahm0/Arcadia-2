@@ -20,6 +20,8 @@ import AppButton from "./AppButton";
 import CompletionBurst from "./CompletionBurst";
 import { showContextMenu } from "./ContextMenu";
 import DailyCheckInCard from "./DailyCheckInCard";
+import HolidayCard from "./HolidayCard";
+import NewTermCard from "./NewTermCard";
 import EventDetailSheet from "./EventDetailSheet";
 import LifeHappened from "./LifeHappened";
 import NewTaskSheet from "./NewTaskSheet";
@@ -245,6 +247,8 @@ export default function TodayView() {
               nothing when it has nothing to say, so only the first that does
               shows. Up to four used to stack above the student's next block. */}
           <div className="mt-6 empty:hidden [&>*~*]:hidden">
+            <HolidayCard />
+            <NewTermCard onAdd={() => setShowTaskSheet(true)} />
             <DailyCheckInCard />
             <SundayReviewInline />
             <ProactiveArcadCards limit={1} />

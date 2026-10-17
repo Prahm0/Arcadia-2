@@ -16,6 +16,7 @@ import {
   startOfLocalDay,
   startOfLocalWeek,
 } from "./time";
+import { inTerm } from "./terms";
 import { weeklyMinutesForGrade } from "../../../shared/education";
 
 type Profile = typeof schema.profiles.$inferSelect;
@@ -638,6 +639,13 @@ export function groundwork(
   // Whatever is left is study time, day by day. Nothing starts at an odd
   // minute like 2:28pm: today's free time begins on the next five minutes.
   const dailyCap = Math.max(0, profile.maxDailyStudyMinutes) * MINUTE;
+  // In the school holidays a student can go lighter or take a break. Only
+  // subject time follows the day's cap; deadline work keeps the full limit.
+  const holidayCap = (date: string): number => {
+    const mode = profile.holidayMode;
+    if ((mode !== "light" && mode !== "off") || inTerm(profile.state, date) !== false) return dailyCap;
+    return mode === "off" ? 0 : Math.round(dailyCap / 2 / (5 * MINUTE)) * 5 * MINUTE;
+  };
   const startFrom = Math.ceil(now / (5 * MINUTE)) * 5 * MINUTE;
   const days: PlanDay[] = [];
   for (let day = startOfLocalDay(Math.max(from, now), tz); day < to; day = nextLocalDay(day, tz)) {
@@ -661,7 +669,7 @@ export function groundwork(
             event.startAt < end,
         )
         .reduce((sum, event) => sum + (event.endAt - event.startAt), 0),
-      cap: dailyCap,
+      cap: holidayCap(localDateKey(day, tz)),
       takenOff: takenOff.get(localDateKey(day, tz)) ?? new Set<string>(),
     });
   }
@@ -1046,7 +1054,7 @@ export function planStudy(userId: string, inputs: ScheduleInputs, g: Groundwork)
               ? sum + Math.round(Number(block.minutes) / 5) * 5 * MINUTE
               : sum;
           }, 0);
-        day.cap = Math.min(g.dailyCap, Math.max(day.used, (alreadyUsed.get(day) ?? 0) + booked));
+        day.cap = Math.min(day.cap, Math.max(day.used, (alreadyUsed.get(day) ?? 0) + booked));
       }
     }
   }

@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { Notice } from "@/lib/api/types";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
+import { hasCompletedStudyBlock } from "@/lib/app/firstStudyBlock";
 
 const SNOOZE_KEY = "arcadia:notices:snoozed";
 const SNOOZE_MS = 3 * 86_400_000;
@@ -152,6 +153,6 @@ export default function NoticeStack({ notices }: { notices: Notice[] }) {
 /** The signed-in student's notices, under the page title. */
 export function HeaderNotices() {
   const { data } = useDashboardData();
-  const notices = data.user.onboardingComplete ? (data.notices ?? []) : [];
+  const notices = data.user.onboardingComplete && hasCompletedStudyBlock(data.events) ? (data.notices ?? []).slice(0, 1) : [];
   return notices.length ? <NoticeStack notices={notices} /> : null;
 }

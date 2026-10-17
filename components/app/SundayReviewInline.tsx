@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
+import { hasCompletedStudyBlock } from "@/lib/app/firstStudyBlock";
 import { previousWeekWindow, weekWindowContaining } from "@/lib/app/weeklyReview";
 import WeeklyReviewCard from "./WeeklyReviewCard";
 
@@ -62,7 +63,7 @@ export default function SundayReviewInline() {
     setVisible(false);
   }
 
-  if (!visible) return null;
+  if (!hasCompletedStudyBlock(data.events) || !visible) return null;
 
   return (
     <div className="mb-6">

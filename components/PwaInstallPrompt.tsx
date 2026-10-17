@@ -18,6 +18,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { hidePwaBanner } from "@/lib/capacitor/platform";
+import { FIRST_STUDY_BLOCK_EVENT, hasRecordedFirstStudyBlock } from "@/lib/app/firstStudyBlock";
 
 const DISMISS_KEY = "arcadia:pwa-prompt-dismissed-at";
 const DISMISS_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -35,6 +36,7 @@ export default function PwaInstallPrompt() {
   const pathname = usePathname();
   const [mode, setMode] = useState<Mode>("hidden");
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
+  const [eligible, setEligible] = useState(hasRecordedFirstStudyBlock);
   const nativeShell = hidePwaBanner();
 
   const dismiss = useCallback(() => {
@@ -53,6 +55,12 @@ export default function PwaInstallPrompt() {
   const isInApp = pathname?.startsWith("/app");
 
   useEffect(() => {
+    const markEligible = () => setEligible(true);
+    window.addEventListener(FIRST_STUDY_BLOCK_EVENT, markEligible);
+    return () => window.removeEventListener(FIRST_STUDY_BLOCK_EVENT, markEligible);
+  }, []);
+
+  useEffect(() => {
     if (!nativeShell) return;
     // The native shell deliberately owns launch timing. Once the remote page
     // hydrates, it is safe to reveal the real UI beneath the branded splash.
@@ -65,6 +73,7 @@ export default function PwaInstallPrompt() {
     if (typeof window === "undefined") return;
     if (nativeShell) return;
     if (!isInApp) return;
+    if (!eligible) return;
 
     // Already installed, nothing to prompt.
     const isStandalone =
@@ -105,7 +114,7 @@ export default function PwaInstallPrompt() {
     };
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
-  }, [isInApp, nativeShell]);
+  }, [eligible, isInApp, nativeShell]);
 
   // This is a small reminder, not a modal students must manage. It also
   // disappears after an iOS install action, which Safari cannot report back

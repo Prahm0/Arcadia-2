@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
+import { hasCompletedStudyBlock } from "@/lib/app/firstStudyBlock";
 import { useStreak } from "@/lib/app/useStreak";
 import type { PlannerEvent } from "@/lib/api/types";
 import { dateKey, formatDurationMinutes } from "@/lib/api/time";
@@ -60,7 +61,7 @@ export default function DailyCheckInCard() {
     setVisible(false);
   }
 
-  if (!summary || !visible) return null;
+  if (!hasCompletedStudyBlock(data.events) || !summary || !visible) return null;
 
   const streakLine = streakSentence(streak.current, summary);
 

@@ -8,6 +8,7 @@ import { analytics, resetAnalytics } from "@/lib/analytics/events";
 import type { AuthUser, Notice, PlannerEvent } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
+import { hasCompletedStudyBlock, recordFirstStudyBlock } from "@/lib/app/firstStudyBlock";
 import { useStreak } from "@/lib/app/useStreak";
 import { useSessionReminders } from "@/lib/app/useSessionReminders";
 import { useSessionStartWatcher } from "@/lib/app/useSessionStartWatcher";
@@ -204,6 +205,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
       className="min-h-svh"
       style={{ background: "var(--app-bg)", color: "var(--app-text)" }}
     >
+      <FirstStudyBlockMarker />
       <OfflineBanner />
       <MenuBar
         sidebarOpen={sidebarOpen}
@@ -613,6 +615,17 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
       <SleepStartPrompt blocked={Boolean(sessionStart.event)} />
     </div>
   );
+}
+
+/** Lets optional global prompts wait until the student has completed one block. */
+function FirstStudyBlockMarker() {
+  const { data } = useDashboardData();
+
+  useEffect(() => {
+    if (hasCompletedStudyBlock(data.events)) recordFirstStudyBlock();
+  }, [data.events]);
+
+  return null;
 }
 
 /** Selected nav row: a neutral tint, so the accent stays for icons and actions. */

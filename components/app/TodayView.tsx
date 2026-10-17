@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import { CATEGORY_COLOR } from "@/lib/app/categoryColors";
 import { openArcad } from "@/lib/app/commands";
@@ -65,7 +65,8 @@ export default function TodayView() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("new") === "1") {
       handledNewParam.current = true;
-      setShowTaskSheet(true);
+      // Opened on the next frame, not synchronously inside the effect.
+      window.requestAnimationFrame(() => setShowTaskSheet(true));
       const url = new URL(window.location.href);
       url.searchParams.delete("new");
       window.history.replaceState({}, "", url.toString());
@@ -114,13 +115,10 @@ export default function TodayView() {
 
   const openedEvent = openEventId ? data.events.find((event) => event.id === openEventId) ?? null : null;
 
-  const todaysEvents = useMemo(
-    () =>
-      data.events
-        .filter((event) => dateKey(event.startAt, timezone) === today)
-        .sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt)),
-    [data.events, timezone, today],
-  );
+  // The React Compiler memoizes this; a manual useMemo made it skip the component.
+  const todaysEvents = data.events
+    .filter((event) => dateKey(event.startAt, timezone) === today)
+    .sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt));
 
   const studyBlocks = todaysEvents.filter((event) => event.category === "study");
   const laterCandidates = todaysEvents.filter(

@@ -20,7 +20,7 @@ registerHooks({
   },
 });
 
-const { findTask, localInstant } = await import("./src/lib/plan-changes.ts");
+const { findTask, localInstant, prepareRoutineUpdate, prepareSubjectCreate, prepareSubjectDelete } = await import("./src/lib/plan-changes.ts");
 const { bookedTaskTime, groundwork, skipDates, taskQueue } = await import("./src/lib/scheduler.ts");
 
 const MINUTE = 60_000;
@@ -93,6 +93,52 @@ test("a name that matches no task, or more than one, finds nothing", () => {
   assert.equal(findTask(tasks, { subject: "PSYC2050" }), undefined);
   assert.equal(findTask(tasks, { title: "Report" }), undefined);
   assert.equal(findTask(tasks, {}), undefined);
+});
+
+const currentSubjects = [
+  { id: "sub_maths", name: "Maths", colour: "#2f7cf6" },
+  { id: "sub_english", name: "English", colour: "#e8603c" },
+];
+
+test("a new subject is trimmed, gets the next saved colour and refuses duplicates", () => {
+  const created = prepareSubjectCreate({ subjects: currentSubjects }, { subject: "  UCAT   ", weeklyMinutes: 205 });
+  assert.deepEqual(created, {
+    op: "create_subject",
+    subject: "UCAT",
+    colour: "#23a35a",
+    weeklyMinutes: 205,
+  });
+  assert.equal(prepareSubjectCreate({ subjects: currentSubjects }, { subject: "maths" }), "you already have maths");
+  assert.equal(
+    prepareSubjectCreate({ subjects: currentSubjects }, { subject: "UCAT", weeklyMinutes: "lots" }),
+    "weekly study time needs to be a number",
+  );
+});
+
+test("deleting a subject finds it by name but leaves any task handling outside the operation", () => {
+  assert.deepEqual(prepareSubjectDelete({ subjects: currentSubjects }, { subject: "ENGLISH" }), {
+    op: "delete_subject",
+    id: "sub_english",
+    subject: "English",
+  });
+  assert.equal(prepareSubjectDelete({ subjects: currentSubjects }, { subject: "UCAT" }), '"UCAT" isn\'t one of your subjects');
+});
+
+test("a lasting routine change only accepts real clocks and a sensible daily limit", () => {
+  const routine = { wakeTime: "07:00", bedtime: "22:30", maxDailyStudyMinutes: 180 };
+  assert.deepEqual(prepareRoutineUpdate(routine, { wakeTime: "06:30", maxDailyStudyMinutes: 240 }), {
+    op: "update_routine",
+    wakeTime: "06:30",
+    maxDailyStudyMinutes: 240,
+    fromWakeTime: "07:00",
+    fromBedtime: "22:30",
+    fromMaxDailyStudyMinutes: 180,
+  });
+  assert.equal(prepareRoutineUpdate(routine, { bedtime: "tonight" }), "that's not a bedtime I can read");
+  assert.equal(
+    prepareRoutineUpdate(routine, { maxDailyStudyMinutes: 20 }),
+    "daily study time needs to be between 30 minutes and 12 hours",
+  );
 });
 
 test("skip dates read back, and bad JSON reads as none", () => {

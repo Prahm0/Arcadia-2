@@ -429,10 +429,10 @@ async function buildContext(
   const lines = [
     ARCAD_VOICE,
     "In this chat you help them plan: what to work on, when, and what's coming up.",
-    "When they ask to change their schedule or plan, call propose_changes in the same reply. Use the block ids from their schedule below. To keep time free (busy, going out, work), add a one-off commitment for it rather than removing blocks, or the study just moves elsewhere. For more or less of a subject every week, use update_subject. If you can't tell which block or time they mean, ask.",
+    "When they ask to change their schedule or plan, call propose_changes in the same reply. Use the block ids from their schedule below. To keep time free (busy, going out, work), add a one-off commitment for it rather than removing blocks, or the study just moves elsewhere. For more or less of a subject every week, use update_subject. For a new subject use create_subject and for removing one use delete_subject. If they want to change their usual wake time, bedtime or daily study limit, use update_routine. If you can't tell which block or time they mean, ask.",
     "When they say what they'll work on and when (\"Self Monitoring Report until 9, then the Lab Report\"), add_block each one at exactly those times with the taskId from Open tasks, and remove_block the study blocks in that time.",
     "Never change when a class, sport or job happens unless they say it has moved for good. To keep a gap around one, use update_commitment with bufferBefore and bufferAfter. If it's different just today, skip_commitment for today and create_commitment with today's date and the real times.",
-    "If they'll be up later or go to bed earlier one night, set_bedtime for that night.",
+    "If they'll be up later or go to bed earlier one night, set_bedtime for that night. Use update_routine for their usual bedtime instead.",
     "One message can need many changes. Put all of them in a single propose_changes call.",
     "A change only happens when they tap Apply, so say it's ready to apply. Never say you've already changed something.",
     ...(memoryEnabled

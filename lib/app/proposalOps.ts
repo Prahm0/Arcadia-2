@@ -184,6 +184,37 @@ export function describeOperations(operations: unknown[], data: DashboardRespons
         });
         break;
       }
+      case "create_subject": {
+        const subject = str("subject");
+        if (!subject) continue;
+        const minutes = num("weeklyMinutes");
+        out.push({
+          kind: "add",
+          noun: "Subject",
+          title: subject,
+          subject,
+          details: minutes !== null ? [`${formatDurationMinutes(minutes)} a week`] : [],
+        });
+        break;
+      }
+      case "delete_subject": {
+        const subject = str("subject");
+        if (!subject) continue;
+        out.push({ kind: "remove", noun: "Subject", title: subject, subject, details: ["Tasks stay in your plan"] });
+        break;
+      }
+      case "update_routine": {
+        const details: string[] = [];
+        const wakeTime = str("wakeTime");
+        const bedtime = str("bedtime");
+        const maxDaily = num("maxDailyStudyMinutes");
+        if (wakeTime) details.push(`Wake ${clock(wakeTime)}`);
+        if (bedtime) details.push(`Bed ${clock(bedtime)}`);
+        if (maxDaily !== null) details.push(`Up to ${formatDurationMinutes(maxDaily)} a day`);
+        if (details.length === 0) continue;
+        out.push({ kind: "edit", noun: "Routine", title: "Usual routine", subject: null, details });
+        break;
+      }
       default:
         break;
     }

@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
   // bundling step can run as two separate commands.
   output: "standalone",
   // Old links and bookmarks land on the page that replaced them: Streaks,
-  // Analytics and Weekly review became Progress, Focus became Sessions and
+  // Analytics and Weekly review became Progress, Deadlines joined Priorities, Focus became Sessions and
   // Rooms moved inside it.
   // Query strings (?eventId=…) carry over.
   async redirects() {
@@ -16,6 +16,7 @@ const nextConfig: NextConfig = {
       { source: "/app/streaks", destination: "/app/progress", permanent: true },
       { source: "/app/analytics", destination: "/app/progress", permanent: true },
       { source: "/app/review", destination: "/app/progress", permanent: true },
+      { source: "/app/deadlines", destination: "/app/priorities", permanent: true },
       { source: "/app/focus", destination: "/app/sessions", permanent: true },
       { source: "/app/rooms", destination: "/app/sessions/rooms", permanent: true },
       { source: "/app/rooms/:code", destination: "/app/sessions/rooms/:code", permanent: true },

@@ -95,7 +95,6 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "Schedule", href: "/app/schedule", icon: icon(<><rect x="3" y="4" width="14" height="13" rx="2" /><path d="M3 8h14M7 2v4M13 2v4" /></>) },
       { label: "Priorities", href: "/app/priorities", icon: icon(<><path d="M4 5h2M4 10h2M4 15h2M9 5h7M11 10h5M11 15h5" /></>) },
-      { label: "Deadlines", href: "/app/deadlines", icon: icon(<><circle cx="10" cy="10" r="7" /><path d="M10 6v4l3 2" /></>) },
     ],
   },
   {

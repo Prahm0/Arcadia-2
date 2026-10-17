@@ -250,8 +250,8 @@ function SubjectEditor({
         title="Coming up"
         meta={upcoming.length ? undefined : `No deadlines for ${subject.name} right now.`}
         action={
-          <Link href="/app/deadlines" className="text-[13px] ui-hover rounded-md px-2 py-1" style={{ color: "var(--app-text-muted)" }}>
-            All deadlines
+          <Link href="/app/priorities" className="text-[13px] ui-hover rounded-md px-2 py-1" style={{ color: "var(--app-text-muted)" }}>
+            Priorities
           </Link>
         }
       >

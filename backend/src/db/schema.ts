@@ -994,6 +994,8 @@ export const priorities = sqliteTable(
     subject: text("subject"),
     /** Optional, YYYY-MM-DD. */
     dueOn: text("due_on"),
+    /** The task the planner books prep for, while the line has a due date. */
+    taskId: text("task_id"),
     done: integer("done", { mode: "boolean" }).notNull().default(false),
     doneAt: integer("done_at"),
     createdAt: integer("created_at").notNull().default(now),

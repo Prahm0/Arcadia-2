@@ -10,8 +10,10 @@ export interface OutlineLine {
   depth: number;
   text: string;
   done: boolean;
-  /** Optional, YYYY-MM-DD. */
+  /** Optional, YYYY-MM-DD. A dated line is a deadline the planner books prep for. */
   dueOn: string | null;
+  /** Prep the deadline needs, once the server has guessed it or the student set it. */
+  estimatedMinutes?: number;
 }
 
 export interface SavedPriority {
@@ -21,6 +23,24 @@ export interface SavedPriority {
   subject: string | null;
   dueOn: string | null;
   done: boolean;
+  estimatedMinutes?: number;
+}
+
+/** Tapping the estimate steps through these. */
+export const ESTIMATE_STEPS = [30, 60, 90, 120, 150, 180, 240, 300];
+
+export function nextEstimate(minutes: number): number {
+  return ESTIMATE_STEPS.find((step) => step > minutes) ?? ESTIMATE_STEPS[0];
+}
+
+/** Open dated lines due within `days` (or overdue), soonest first. */
+export function dueSoon(lines: OutlineLine[], today: string, days = 14): OutlineLine[] {
+  const limit = new Date(`${today}T12:00:00Z`);
+  limit.setUTCDate(limit.getUTCDate() + days);
+  const last = limit.toISOString().slice(0, 10);
+  return lines
+    .filter((line) => line.dueOn && !line.done && line.text.trim() && line.dueOn <= last)
+    .sort((a, b) => (a.dueOn! < b.dueOn! ? -1 : a.dueOn! > b.dueOn! ? 1 : 0));
 }
 
 /** How deep the outline goes: Area > Subject > Task, with room to spare. */
@@ -106,7 +126,8 @@ export function toSaved(lines: OutlineLine[], subjects: string[]): SavedPriority
     parents.length = depth;
     subjectAt.length = depth;
     const subject = matchSubject(line.text, subjects) ?? (depth ? subjectAt[depth - 1] : null);
-    const saved = { id: line.id, parentId: depth ? parents[depth - 1] : null, text: line.text, subject, dueOn: line.dueOn, done: line.done };
+    const saved: SavedPriority = { id: line.id, parentId: depth ? parents[depth - 1] : null, text: line.text, subject, dueOn: line.dueOn, done: line.done };
+    if (line.dueOn && line.estimatedMinutes !== undefined) saved.estimatedMinutes = line.estimatedMinutes;
     parents.push(line.id);
     subjectAt.push(subject);
     return saved;
@@ -119,6 +140,6 @@ export function fromSaved(items: SavedPriority[]): OutlineLine[] {
   return items.map((item) => {
     const level = item.parentId ? (depth.get(item.parentId) ?? -1) + 1 : 0;
     depth.set(item.id, level);
-    return { id: item.id, depth: level, text: item.text, done: item.done, dueOn: item.dueOn };
+    return { id: item.id, depth: level, text: item.text, done: item.done, dueOn: item.dueOn, ...(item.estimatedMinutes ? { estimatedMinutes: item.estimatedMinutes } : {}) };
   });
 }

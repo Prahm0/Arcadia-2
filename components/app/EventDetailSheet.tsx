@@ -10,6 +10,9 @@ import { playCompletionTick } from "@/lib/app/completion";
 import { noteWin } from "@/lib/capacitor/ratingPrompt";
 import { success, warning } from "@/lib/capacitor/haptics";
 import AppButton from "./AppButton";
+
+/** When the sheet opened: whether sleep has started or passed is judged from then. */
+const readNow = () => Date.now();
 import MissReasonPicker from "./MissReasonPicker";
 
 interface EventDetailSheetProps {
@@ -44,6 +47,7 @@ export default function EventDetailSheet({
   const [savingReschedule, setSavingReschedule] = useState(false);
   const [savingSleepDelay, setSavingSleepDelay] = useState(false);
   const [confirmedSleepEvent, setConfirmedSleepEvent] = useState<PlannerEvent | null>(null);
+  const [openedAt] = useState(readNow);
 
   useEffect(() => {
     if (!event) return;
@@ -76,8 +80,8 @@ export default function EventDetailSheet({
   const canAct = !isCompleted && !isMissed;
   const isStudy = event.category === "study";
   const isSleep = event.category === "sleep";
-  const sleepPast = isSleep && Date.parse(displayedEvent.endAt) <= Date.now();
-  const sleepStarted = isSleep && Date.parse(displayedEvent.startAt) <= Date.now() && !sleepPast;
+  const sleepPast = isSleep && Date.parse(displayedEvent.endAt) <= openedAt;
+  const sleepStarted = isSleep && Date.parse(displayedEvent.startAt) <= openedAt && !sleepPast;
   const isEditable = event.editable !== false;
   const canReschedule = !isSleep && isEditable && canAct;
   const canAdjustSleep = isSleep && canAct && !sleepPast && (event.source === "sleep" || isEditable);
@@ -382,7 +386,7 @@ export default function EventDetailSheet({
               <dt className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>Part of</dt>
               <dd className="mt-1.5">
                 <Link
-                  href="/app/deadlines"
+                  href="/app/priorities"
                   onClick={onClose}
                   className="text-[13.5px] font-medium underline underline-offset-4"
                   style={{ color: "var(--app-text)" }}

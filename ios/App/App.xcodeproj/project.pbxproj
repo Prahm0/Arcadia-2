@@ -263,7 +263,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# App Store and TestFlight builds may only carry Screen Time once Apple\n# approves Family Controls (Distribution). Until ARCADIA_SCREEN_TIME is YES\n# for a configuration, it ships without the FocusMonitor extension.\n# See IOS_ACCOUNTABILITY_SETUP.md.\nif [ \"${ARCADIA_SCREEN_TIME}\" != \"YES\" ]; then\n  rm -rf \"${TARGET_BUILD_DIR}/${PLUGINS_FOLDER_PATH}/FocusMonitor.appex\"\nfi\n";
+			shellScript = "# App Store and TestFlight builds may only carry Screen Time once Apple\n# approves Family Controls (Distribution). Until ARCADIA_SCREEN_TIME is YES\n# for a configuration, it ships without the FocusMonitor extension.\n# See IOS_ACCOUNTABILITY_SETUP.md.\nif [ \"${ARCADIA_SCREEN_TIME}\" != \"YES\" ]; then\n  rm -rf \"${TARGET_BUILD_DIR}/${PLUGINS_FOLDER_PATH}/FocusMonitor.appex\"\n  rm -rf \"${TARGET_BUILD_DIR}/${PLUGINS_FOLDER_PATH}/ShieldConfiguration.appex\"\n  rm -rf \"${TARGET_BUILD_DIR}/${PLUGINS_FOLDER_PATH}/ShieldAction.appex\"\nfi\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */

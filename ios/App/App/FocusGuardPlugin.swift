@@ -6,9 +6,16 @@ import SwiftUI
 import UIKit
 import UserNotifications
 
-/// Keeps a student honest while a focus timer runs in Arcadia.
+/// Keeps a student honest during study blocks and focus timers.
 ///
-/// - Blocking: the apps they picked with Apple's picker are shielded (Screen
+/// - Study blocks: the web app hands over the day's study blocks
+///   (scheduleBlocks). Each one shields the picked apps from its start, even
+///   with Arcadia closed (the FocusMonitor extension raises and lowers it),
+///   until it's ticked (endBlock) or ends. "5 more minutes" (snooze, or the
+///   block screen's second button) opens them briefly. The ShieldConfiguration
+///   extension draws the Arcadia block screen and counts tries to open a
+///   blocked app; endBlock hands that count back.
+/// - Timers: the apps they picked with Apple's picker are shielded (Screen
 ///   Time, iOS 16+) from beginFocus until the timer's end or endFocus. The
 ///   FocusMonitor extension lifts the shield on time even if Arcadia has been
 ///   suspended since.
@@ -25,18 +32,39 @@ public class FocusGuardPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "pickApps", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setPreferences", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "beginFocus", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "endFocus", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "endFocus", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "scheduleBlocks", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "endBlock", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "snooze", returnType: CAPPluginReturnPromise)
     ]
 
     /// Must match FocusMonitorExtension, which clears the same store.
     static let storeName = "arcadia.focus"
     static let activityPrefix = "arcadia.focus."
+    /// Study blocks use their own store, so a timer ending can't lift a
+    /// block's shield. Must match FocusMonitor, ShieldConfiguration and
+    /// ShieldAction.
+    static let blockStoreName = "arcadia.block"
+    static let blockPrefix = "arcadia.block."
+    static let snoozePrefix = "arcadia.snooze."
+    /// Shared with the extensions, which read the picked apps and the blocks
+    /// and write the attempt counts. Needs the App Group on every target.
+    static let appGroup = "group.app.arcadiahq.arcadia"
+    /// Screen Time monitors a limited number of schedules at once.
+    static let maxBlocks = 12
 
     private enum Keys {
         static let selection = "focusGuard.selection"
         static let blockingEnabled = "focusGuard.blockingEnabled"
         static let nudgesEnabled = "focusGuard.nudgesEnabled"
         static let session = "focusGuard.session"
+        // Study blocks; the extensions use the same names.
+        static let blocks = "focusGuard.blocks"
+        static let currentBlock = "focusGuard.currentBlock"
+        static let doneBlocks = "focusGuard.doneBlocks"
+        static let snoozedUntil = "focusGuard.snoozedUntil"
+        static func attempts(_ id: String) -> String { "focusGuard.attempts.\(id)" }
+        static func snoozes(_ id: String) -> String { "focusGuard.snoozes.\(id)" }
     }
 
     private enum NotificationIds {
@@ -49,13 +77,16 @@ public class FocusGuardPlugin: CAPPlugin, CAPBridgedPlugin {
     /// Controls (Distribution); nudges work either way.
     private let screenTimeBuild = (Bundle.main.object(forInfoDictionaryKey: "ArcadiaScreenTime") as? String) == "YES"
 
-    private let defaults = UserDefaults.standard
+    /// The App Group's defaults when the group is set up, so the extensions
+    /// see the same picks and blocks; the app's own otherwise.
+    private let defaults = UserDefaults(suiteName: FocusGuardPlugin.appGroup) ?? .standard
     /// Set while Arcadia is in the background during a focus session.
     private var leftAt: Date?
     /// Keeps Arcadia awake for the few seconds the leave check needs.
     private var leaveCheckTask = UIBackgroundTaskIdentifier.invalid
 
     override public func load() {
+        moveToAppGroup()
         let center = NotificationCenter.default
         center.addObserver(self, selector: #selector(sceneDidEnterBackground), name: UIScene.didEnterBackgroundNotification, object: nil)
         center.addObserver(self, selector: #selector(sceneWillEnterForeground), name: UIScene.willEnterForegroundNotification, object: nil)
@@ -182,6 +213,93 @@ public class FocusGuardPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
+    /// The coming study blocks: `blocks` of { id, startsAt, endsAt, subject }
+    /// (ms since 1970). Replaces what was scheduled before; a block under way
+    /// is shielded straight away. Ticked blocks stay unblocked.
+    @objc func scheduleBlocks(_ call: CAPPluginCall) {
+        let raw = call.getArray("blocks", JSObject.self) ?? []
+        DispatchQueue.main.async {
+            guard #available(iOS 16.0, *), self.screenTimeBuild else {
+                call.resolve(self.statusObject())
+                return
+            }
+            let now = self.nowMs()
+            let done = Set(self.defaults.stringArray(forKey: Keys.doneBlocks) ?? [])
+            let center = DeviceActivityCenter()
+            let previous = center.activities.filter { $0.rawValue.hasPrefix(FocusGuardPlugin.blockPrefix) }
+            if !previous.isEmpty { center.stopMonitoring(previous) }
+
+            var stored: [String: [String: Any]] = [:]
+            for block in raw.prefix(FocusGuardPlugin.maxBlocks) {
+                guard let id = block["id"] as? String,
+                      let startsAt = (block["startsAt"] as? NSNumber)?.doubleValue,
+                      let endsAt = (block["endsAt"] as? NSNumber)?.doubleValue,
+                      endsAt > now, !done.contains(id) else { continue }
+                let subject = (block["subject"] as? String) ?? "Study"
+                stored[id] = ["subject": subject, "startsAt": startsAt, "endsAt": endsAt]
+                if startsAt > now {
+                    self.monitor(name: FocusGuardPlugin.blockPrefix + id, from: startsAt, to: endsAt)
+                } else {
+                    // Under way: shield now, and hand the end to the extension.
+                    self.monitor(name: FocusGuardPlugin.blockPrefix + id, from: now, to: endsAt)
+                    self.shieldBlock(id: id)
+                }
+            }
+            self.defaults.set(stored, forKey: Keys.blocks)
+            // The block being shielded was moved off the plan or finished early.
+            if let current = self.defaults.string(forKey: Keys.currentBlock), stored[current] == nil {
+                self.clearBlockShield()
+            }
+            call.resolve(self.statusObject())
+        }
+    }
+
+    /// The block was ticked: unblock now, and report what the block screen saw.
+    @objc func endBlock(_ call: CAPPluginCall) {
+        guard let id = call.getString("id") else {
+            call.reject("Missing id", "INVALID_ARGUMENT")
+            return
+        }
+        DispatchQueue.main.async {
+            var done = self.defaults.stringArray(forKey: Keys.doneBlocks) ?? []
+            if !done.contains(id) { done.append(id) }
+            self.defaults.set(Array(done.suffix(50)), forKey: Keys.doneBlocks)
+            if #available(iOS 16.0, *), self.screenTimeBuild {
+                let center = DeviceActivityCenter()
+                let names = center.activities.filter { $0.rawValue == FocusGuardPlugin.blockPrefix + id || $0.rawValue.hasPrefix(FocusGuardPlugin.snoozePrefix) }
+                if !names.isEmpty { center.stopMonitoring(names) }
+            }
+            if self.defaults.string(forKey: Keys.currentBlock) == id { self.clearBlockShield() }
+            call.resolve([
+                "attempts": self.defaults.integer(forKey: Keys.attempts(id)),
+                "snoozes": self.defaults.integer(forKey: Keys.snoozes(id))
+            ])
+        }
+    }
+
+    /// "5 more minutes" from inside Arcadia (the block screen has its own):
+    /// opens the apps for `minutes`, then the extension blocks them again.
+    @objc func snooze(_ call: CAPPluginCall) {
+        let minutes = max(1, min(15, call.getInt("minutes") ?? 5))
+        DispatchQueue.main.async {
+            guard #available(iOS 16.0, *), self.screenTimeBuild,
+                  let id = self.defaults.string(forKey: Keys.currentBlock),
+                  let block = self.storedBlock(id),
+                  block.endsAt > self.nowMs() else {
+                call.reject("Nothing is blocked right now.", "UNAVAILABLE")
+                return
+            }
+            let until = self.nowMs() + Double(minutes) * 60_000
+            self.defaults.set(self.defaults.integer(forKey: Keys.snoozes(id)) + 1, forKey: Keys.snoozes(id))
+            self.defaults.set(until, forKey: Keys.snoozedUntil)
+            self.blockStore.clearAllSettings()
+            if until < block.endsAt {
+                self.monitor(name: FocusGuardPlugin.snoozePrefix + id, from: until, to: block.endsAt)
+            }
+            call.resolve(self.statusObject())
+        }
+    }
+
     // MARK: - State
 
     private struct Session {
@@ -215,9 +333,17 @@ public class FocusGuardPlugin: CAPPlugin, CAPBridgedPlugin {
             result["active"] = true
             result["endsAt"] = session.endsAt
             result["blocking"] = shieldIsUp()
+        } else if let id = defaults.string(forKey: Keys.currentBlock), let block = storedBlock(id), block.endsAt > nowMs() {
+            result["active"] = true
+            result["endsAt"] = block.endsAt
+            result["blocking"] = blockShieldIsUp()
+            result["blockId"] = id
+            let snoozedUntil = defaults.double(forKey: Keys.snoozedUntil)
+            if snoozedUntil > nowMs() { result["snoozedUntil"] = snoozedUntil }
         }
         if #available(iOS 16.0, *), screenTimeBuild {
             result["blockingSupported"] = true
+            result["autoBlocking"] = true
             result["authorized"] = AuthorizationCenter.shared.authorizationStatus == .approved
             if let selection = loadSelection() {
                 result["appCount"] = selection.applicationTokens.count
@@ -233,6 +359,9 @@ public class FocusGuardPlugin: CAPPlugin, CAPBridgedPlugin {
     private func endIfExpired() {
         if defaults.dictionary(forKey: Keys.session) != nil && activeSession() == nil {
             stopFocus()
+        }
+        if let id = defaults.string(forKey: Keys.currentBlock), (storedBlock(id)?.endsAt ?? 0) <= nowMs() {
+            clearBlockShield()
         }
     }
 
@@ -337,6 +466,90 @@ public class FocusGuardPlugin: CAPPlugin, CAPBridgedPlugin {
         if !ours.isEmpty { center.stopMonitoring(ours) }
     }
 
+    // MARK: - Study blocks
+
+    private struct StoredBlock {
+        let subject: String
+        let startsAt: Double
+        let endsAt: Double
+    }
+
+    private func storedBlock(_ id: String) -> StoredBlock? {
+        guard let blocks = defaults.dictionary(forKey: Keys.blocks) as? [String: [String: Any]],
+              let block = blocks[id],
+              let startsAt = block["startsAt"] as? Double,
+              let endsAt = block["endsAt"] as? Double else { return nil }
+        return StoredBlock(subject: block["subject"] as? String ?? "Study", startsAt: startsAt, endsAt: endsAt)
+    }
+
+    @available(iOS 16.0, *)
+    private var blockStore: ManagedSettingsStore {
+        ManagedSettingsStore(named: ManagedSettingsStore.Name(rawValue: FocusGuardPlugin.blockStoreName))
+    }
+
+    private func blockShieldIsUp() -> Bool {
+        guard #available(iOS 16.0, *), screenTimeBuild else { return false }
+        let shield = blockStore.shield
+        return shield.applications != nil || shield.applicationCategories != nil || shield.webDomains != nil
+    }
+
+    /// Shields the picked apps for a study block under way, when blocking is
+    /// on and something is picked. FocusMonitor does the same at a block's
+    /// start when Arcadia isn't running.
+    private func shieldBlock(id: String) {
+        guard #available(iOS 16.0, *), screenTimeBuild,
+              defaults.bool(forKey: Keys.blockingEnabled),
+              AuthorizationCenter.shared.authorizationStatus == .approved,
+              let selection = loadSelection(),
+              !isEmpty(selection) else { return }
+        defaults.set(id, forKey: Keys.currentBlock)
+        defaults.removeObject(forKey: Keys.snoozedUntil)
+        let store = blockStore
+        store.shield.applications = selection.applicationTokens.isEmpty ? nil : selection.applicationTokens
+        store.shield.applicationCategories = selection.categoryTokens.isEmpty ? nil : .specific(selection.categoryTokens)
+        store.shield.webDomains = selection.webDomainTokens.isEmpty ? nil : selection.webDomainTokens
+        store.shield.webDomainCategories = selection.categoryTokens.isEmpty ? nil : .specific(selection.categoryTokens)
+    }
+
+    private func clearBlockShield() {
+        defaults.removeObject(forKey: Keys.currentBlock)
+        defaults.removeObject(forKey: Keys.snoozedUntil)
+        guard #available(iOS 16.0, *), screenTimeBuild else { return }
+        blockStore.clearAllSettings()
+    }
+
+    /// One Screen Time schedule from `from` to `to` (ms since 1970). Screen
+    /// Time won't monitor under 15 minutes, so a shorter one runs to 15 with
+    /// its warning at the real end, which FocusMonitor treats as the end.
+    @available(iOS 16.0, *)
+    private func monitor(name: String, from: Double, to: Double) {
+        let start = Date(timeIntervalSince1970: from / 1000)
+        let end = Date(timeIntervalSince1970: to / 1000)
+        let intervalEnd = max(end, start.addingTimeInterval(15 * 60 + 30))
+        let early = Int(intervalEnd.timeIntervalSince(end).rounded())
+        let components: Set<Calendar.Component> = [.year, .month, .day, .hour, .minute, .second]
+        let schedule = DeviceActivitySchedule(
+            intervalStart: Calendar.current.dateComponents(components, from: start),
+            intervalEnd: Calendar.current.dateComponents(components, from: intervalEnd),
+            repeats: false,
+            warningTime: early > 0 ? DateComponents(minute: early / 60, second: early % 60) : nil
+        )
+        do {
+            try DeviceActivityCenter().startMonitoring(DeviceActivityName(rawValue: name), during: schedule)
+        } catch {
+            CAPLog.print("[FocusGuard] couldn't schedule \(name): \(error)")
+        }
+    }
+
+    /// Picks and switches saved before the App Group existed move into it once.
+    private func moveToAppGroup() {
+        let old = UserDefaults.standard
+        guard defaults !== old else { return }
+        for key in [Keys.selection, Keys.blockingEnabled, Keys.nudgesEnabled] where defaults.object(forKey: key) == nil {
+            if let value = old.object(forKey: key) { defaults.set(value, forKey: key) }
+        }
+    }
+
     /// Blocking was switched on or off, or the apps changed, mid-session.
     private func refreshShield() {
         if let session = activeSession() {
@@ -344,6 +557,14 @@ public class FocusGuardPlugin: CAPPlugin, CAPBridgedPlugin {
             scheduleFinished(session: session, blocking: blocking)
         } else {
             clearShield()
+        }
+        // The same for a study block under way.
+        if let id = defaults.string(forKey: Keys.currentBlock) {
+            if defaults.bool(forKey: Keys.blockingEnabled) {
+                shieldBlock(id: id)
+            } else if #available(iOS 16.0, *), screenTimeBuild {
+                blockStore.clearAllSettings()
+            }
         }
     }
 

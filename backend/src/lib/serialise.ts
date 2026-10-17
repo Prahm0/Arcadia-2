@@ -54,6 +54,9 @@ export function serialiseEvent(event: EventRow) {
     checkout: parseJson<Checkout>(event.checkout),
     startedAt: event.startedAt ? iso(event.startedAt) : null,
     note: event.note ?? "",
+    focusReport: event.blockedAttempts === null || event.blockedAttempts === undefined
+      ? null
+      : { attempts: event.blockedAttempts, snoozes: event.unlockSnoozes ?? 0 },
     createdAt: iso(event.createdAt),
   };
 }

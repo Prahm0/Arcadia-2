@@ -34,6 +34,7 @@ import { playCompletionTick } from "@/lib/app/completion";
 import { noteWin } from "@/lib/capacitor/ratingPrompt";
 import BlockDoneMoment from "./BlockDoneMoment";
 import { blockDoneDecision } from "@/lib/app/blockDone";
+import { finishBlock, useFocusGuardStatus, type BlockReport } from "@/lib/capacitor/focusGuard";
 import { useFlip } from "@/lib/app/useFlip";
 import { requestAddToToday } from "@/lib/app/addToToday";
 import { noteEntries, type NoteEntry } from "@/lib/app/todayNote";
@@ -41,6 +42,7 @@ import { startOfDayMs } from "./schedule/calendar";
 import AddLine, { type NoteTarget } from "./today/AddLine";
 import LineRow from "./today/LineRow";
 import GapSuggestion from "./today/GapSuggestion";
+import BlockingBar from "./today/BlockingBar";
 import TodayProgress from "./TodayProgress";
 
 const CATEGORY_BAR = CATEGORY_COLOR;
@@ -60,7 +62,8 @@ export default function TodayView() {
   const [xpReward, setXpReward] = useState<number | null>(null);
   // The full-screen "block done" moment, with the data it was opened from.
   const lastMomentAt = useRef(0);
-  const [doneMoment, setDoneMoment] = useState<{ event: PlannerEvent; task: PlannerTask | undefined; blocks: PlannerEvent[] } | null>(null);
+  const [doneMoment, setDoneMoment] = useState<{ event: PlannerEvent; task: PlannerTask | undefined; blocks: PlannerEvent[]; report?: BlockReport } | null>(null);
+  const [guardStatus] = useFocusGuardStatus();
   const [progressRefresh, setProgressRefresh] = useState(0);
   const [openEventId, setOpenEventId] = useState<string | null>(null);
   const [openEventMode, setOpenEventMode] = useState<EventSheetMode>("details");
@@ -151,6 +154,15 @@ export default function TodayView() {
       if (decision?.show) {
         lastMomentAt.current = decision.at;
         setDoneMoment({ event, task: data.tasks.find((task) => task.id === event.taskId), blocks: studyBlocks });
+      }
+      // Ticking a study block unlocks the apps now, and the phone says how
+      // often they were reached for: shown on the moment, kept for Arcad.
+      if (event.category === "study") {
+        void finishBlock(event.id, guardStatus).then((report) => {
+          if (!report) return;
+          setDoneMoment((moment) => (moment && moment.event.id === event.id ? { ...moment, report } : moment));
+          void api(`/api/events/${encodeURIComponent(event.id)}/focus-report`, { method: "POST", body: JSON.stringify(report) }).catch(() => undefined);
+        });
       }
     }
     try {
@@ -326,6 +338,7 @@ export default function TodayView() {
           task={doneMoment.task}
           blocks={doneMoment.blocks}
           breakMinutes={Math.max(5, Number(data.preferences?.breakMinutes ?? 10) || 10)}
+          report={doneMoment.report ?? null}
           timezone={timezone}
           onClose={() => setDoneMoment(null)}
         />
@@ -396,6 +409,7 @@ function TodayCard(props: TodayCardProps) {
       <div className="pt-3">
         <AddLine today={today} timezone={timezone} lastLine={lastLine} />
       </div>
+      <BlockingBar timezone={timezone} />
       <GapSuggestion
         events={[...entries.flatMap((entry) => (entry.kind === "block" ? [entry.event] : [])), ...laterEvents]}
         picks={priorityPicks}

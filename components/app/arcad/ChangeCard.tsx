@@ -137,8 +137,8 @@ export default function ChangeCard({
           <Link href="/app/schedule" className="text-[12.5px] font-medium underline-offset-2 hover:underline" style={{ color: "var(--app-text-soft)" }}>
             See it in Schedule
           </Link>
-          <Link href="/app/deadlines" className="text-[12.5px] font-medium underline-offset-2 hover:underline" style={{ color: "var(--app-text-soft)" }}>
-            Deadlines
+          <Link href="/app/priorities" className="text-[12.5px] font-medium underline-offset-2 hover:underline" style={{ color: "var(--app-text-soft)" }}>
+            Priorities
           </Link>
         </div>
       ) : (

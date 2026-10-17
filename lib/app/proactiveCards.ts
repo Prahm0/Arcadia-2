@@ -131,7 +131,7 @@ export function buildProactiveCards(
           arcadPrompt: `${soonest.title} is due in ${hoursOut} hours and I have ${soonest.remainingMinutes} minutes left. What's the best way to finish it?`,
           variant: "primary",
         },
-        { label: "Open task", href: "/app/deadlines", variant: "ghost" },
+        { label: "Open task", href: "/app/priorities", variant: "ghost" },
       ],
     });
   }

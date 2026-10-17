@@ -111,7 +111,7 @@ function SearchPanel({ onClose, onNewTask, onShowShortcuts }: Omit<SearchDialogP
         detail: [task.subject, formatDueSoon(task.dueAt, timezone)].filter(Boolean).join(" · "),
         keywords: task.subject ?? "",
         icon: ICONS.deadline,
-        run: go(`/app/deadlines?task=${encodeURIComponent(task.id)}`),
+        run: go("/app/priorities"),
       }));
     const blocks: Result[] = data.events
       .filter(

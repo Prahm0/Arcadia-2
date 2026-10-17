@@ -5,7 +5,9 @@ import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import {
   MAX_DEPTH,
+  dueSoon,
   fromSaved,
+  nextEstimate,
   indent,
   outdent,
   parsePasted,
@@ -14,6 +16,7 @@ import {
   type OutlineLine,
   type SavedPriority,
 } from "@/lib/app/priorityOutline";
+import { dateKey, formatMinutes } from "@/lib/api/time";
 import PageHeader from "./PageHeader";
 
 const SAVE_AFTER_MS = 700;
@@ -23,9 +26,11 @@ const newId = () => `pri_${Math.random().toString(36).slice(2, 10)}${Date.now().
 const blank = (depth = 0): OutlineLine => ({ id: newId(), depth, text: "", done: false, dueOn: null });
 
 /**
- * Priorities, as a nested bullet list: Area > Subject > Task. Return makes a
- * new line, Tab and Shift-Tab indent on a computer, and the arrows beside the
- * line you're on do it on a phone. Pasting a bullet list keeps its shape.
+ * Priorities, as a nested bullet list: Area > Subject > Task, and every
+ * deadline. Return makes a new line, Tab and Shift-Tab indent on a computer,
+ * and the arrows beside the line you're on do it on a phone. Pasting a bullet
+ * list keeps its shape. Any line can have a due date: it shows under Due soon
+ * and the planner books prep for it, with a guessed estimate one tap changes.
  * Free study time in the plan and gaps on Today are filled from here.
  */
 export default function PrioritiesView() {
@@ -68,6 +73,12 @@ export default function PrioritiesView() {
     try {
       await api("/api/priorities", { method: "PUT", body: JSON.stringify({ items }) });
       setError(null);
+      // Newly dated lines come back with the estimate the server guessed.
+      if (latest.current.some((line) => line.dueOn && line.estimatedMinutes === undefined)) {
+        const fresh = await api<{ items: SavedPriority[] }>("/api/priorities");
+        const estimates = new Map(fresh.items.map((item) => [item.id, item.estimatedMinutes]));
+        setLines((current) => current?.map((line) => (line.dueOn && line.estimatedMinutes === undefined && estimates.get(line.id) ? { ...line, estimatedMinutes: estimates.get(line.id) } : line)) ?? current);
+      }
       // Free study blocks on Today and Schedule pick up the new top priorities.
       void reload();
     } catch (caught) {
@@ -182,6 +193,9 @@ export default function PrioritiesView() {
   }
 
   const open = lines?.filter((line, index) => line.text.trim() && !line.done && !hasChildren(lines, index)).length ?? 0;
+  const timezone = data.profile?.timezone || data.user.timezone || "Australia/Sydney";
+  const today = dateKey(new Date().toISOString(), timezone);
+  const soon = lines ? dueSoon(lines, today) : [];
 
   return (
     <>
@@ -191,6 +205,30 @@ export default function PrioritiesView() {
           <p role="alert" className="mb-3 px-2 text-[13px]" style={{ color: "var(--app-danger)" }}>
             {error}
           </p>
+        ) : null}
+        {soon.length ? (
+          <section aria-label="Due soon" className="mb-5 overflow-hidden rounded-2xl border" style={{ background: "var(--app-surface)", borderColor: "var(--app-border)" }}>
+            <h2 className="px-4 pb-1 pt-3 text-[12px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-text-muted)" }}>Due soon</h2>
+            <ul>
+              {soon.map((line) => (
+                <li key={line.id} className="flex items-center gap-3 px-4 py-2.5" style={{ borderTop: "1px solid var(--app-border)" }}>
+                  <span className="min-w-0 flex-1 truncate text-[15px]" style={{ color: "var(--app-text)" }}>{line.text}</span>
+                  {line.estimatedMinutes ? (
+                    <button
+                      type="button"
+                      onClick={() => lines && change(lines.map((item) => (item.id === line.id ? { ...item, estimatedMinutes: nextEstimate(line.estimatedMinutes!) } : item)))}
+                      aria-label={`Prep ${formatMinutes(line.estimatedMinutes)}, tap to change`}
+                      className="shrink-0 rounded-full px-2.5 py-1 text-[12px] tabular-nums"
+                      style={{ background: "var(--app-surface-soft)", color: "var(--app-text-soft)" }}
+                    >
+                      {formatMinutes(line.estimatedMinutes)} prep
+                    </button>
+                  ) : null}
+                  <DueChip dueOn={line.dueOn!} today={today} />
+                </li>
+              ))}
+            </ul>
+          </section>
         ) : null}
         {!lines ? null : (
           <ul aria-label="Priorities" className="flex flex-col">
@@ -291,6 +329,20 @@ function DueDate({ value, visible, onChange }: { value: string | null; visible: 
         className="absolute inset-0 cursor-pointer opacity-0"
       />
     </label>
+  );
+}
+
+/** "Today", "Tomorrow", "Thu" within a week, else "21 Oct"; overdue in the danger colour. */
+function DueChip({ dueOn, today }: { dueOn: string; today: string }) {
+  const days = Math.round((Date.parse(`${dueOn}T12:00:00Z`) - Date.parse(`${today}T12:00:00Z`)) / 86_400_000);
+  const date = new Date(`${dueOn}T12:00:00Z`);
+  const label = days < 0 ? "Overdue" : days === 0 ? "Today" : days === 1 ? "Tomorrow" : days < 7
+    ? new Intl.DateTimeFormat("en-AU", { weekday: "short", timeZone: "UTC" }).format(date)
+    : new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short", timeZone: "UTC" }).format(date);
+  return (
+    <span className="shrink-0 rounded-full px-2.5 py-1 text-[12px] font-medium" style={{ background: days <= 1 ? "var(--app-arcad-soft)" : "var(--app-surface-soft)", color: days < 0 ? "var(--app-danger)" : days <= 1 ? "var(--app-arcad)" : "var(--app-text-soft)" }}>
+      {label}
+    </span>
   );
 }
 

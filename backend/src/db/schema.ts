@@ -974,3 +974,25 @@ export const dayItems = sqliteTable(
   },
   (t) => [index("day_items_user_day_idx").on(t.userId, t.day)],
 );
+
+/** One line in the Priorities outline (Area > Subject > Task), in outline order. */
+export const priorities = sqliteTable(
+  "priorities",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    parentId: text("parent_id"),
+    position: integer("position").notNull().default(0),
+    text: text("text").notNull().default(""),
+    /** The student's subject this sits under, matched on the device. */
+    subject: text("subject"),
+    /** Optional, YYYY-MM-DD. */
+    dueOn: text("due_on"),
+    done: integer("done", { mode: "boolean" }).notNull().default(false),
+    doneAt: integer("done_at"),
+    createdAt: integer("created_at").notNull().default(now),
+  },
+  (t) => [index("priorities_user_idx").on(t.userId, t.position)],
+);

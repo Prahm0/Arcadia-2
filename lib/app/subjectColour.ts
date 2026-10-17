@@ -24,5 +24,7 @@ export function subjectColour(
 export function studyTitle(event: PlannerEvent): string {
   if (event.plan?.topic) return event.plan.topic;
   if (event.taskId) return event.title;
+  // Free study time is spent on the top priority for the subject.
+  if (event.priority) return event.priority.text;
   return event.subject ?? event.title;
 }

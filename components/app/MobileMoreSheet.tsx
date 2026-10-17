@@ -24,6 +24,7 @@ const GROUPS: Array<{ title: string; items: MoreItem[] }> = [
   {
     title: "Plan",
     items: [
+      { label: "Priorities", href: "/app/priorities", icon: icon(<><path d="M4 5h2M4 10h2M4 15h2M9 5h7M11 10h5M11 15h5" /></>) },
       { label: "Sessions", href: "/app/sessions", icon: icon(<><circle cx="10" cy="10" r="7" /><circle cx="10" cy="10" r="3" /></>) },
       { label: "Deadlines", href: "/app/deadlines", icon: icon(<><circle cx="10" cy="10" r="7" /><path d="M10 6v4l3 2" /></>) },
       { label: "Weekly review", href: "/app/review", icon: icon(<><path d="M4 5h12M4 10h8M4 15h12" /><circle cx="15" cy="10" r="1" fill="currentColor" /></>) },

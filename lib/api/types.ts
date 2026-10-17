@@ -52,7 +52,16 @@ export interface PlannerEvent {
   startedAt?: string | null;
   /** The sub-bullet under the line in Today's note. */
   note?: string;
+  /** For a free study block: the top priority for its subject, which it's spent on. */
+  priority?: { id: string; text: string };
   createdAt?: string;
+}
+
+export interface PriorityPick {
+  id: string;
+  text: string;
+  subject: string | null;
+  dueOn: string | null;
 }
 
 /** An untimed line in Today's note ("Call with Pari"). Timed lines are events with source "note". */
@@ -144,6 +153,8 @@ export interface DashboardResponse {
   user: AuthUser;
   /** Untimed lines in Today's note, yesterday through the week ahead. */
   dayItems?: DayItem[];
+  /** Open priorities, due first then outline order. Today suggests one in a gap. */
+  priorityPicks?: PriorityPick[];
   profile: PlannerProfile | null;
   preferences: Record<string, unknown>;
   subjects: Array<{

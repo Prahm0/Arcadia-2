@@ -23,6 +23,7 @@ export interface GoTarget {
 export const GO_TARGETS: GoTarget[] = [
   { label: "Today", href: "/app", key: "t" },
   { label: "Schedule", href: "/app/schedule", key: "s" },
+  { label: "Priorities", href: "/app/priorities", key: "o" },
   { label: "Deadlines", href: "/app/deadlines", key: "d" },
   { label: "Sessions", href: "/app/sessions", key: "f" },
   { label: "Rooms", href: "/app/sessions/rooms", key: "r" },

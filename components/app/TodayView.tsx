@@ -7,7 +7,7 @@ import { api } from "@/lib/api/client";
 import { CATEGORY_COLOR } from "@/lib/app/categoryColors";
 import { openArcad } from "@/lib/app/commands";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
-import type { DayItem, PlannerEvent, PlannerTask } from "@/lib/api/types";
+import type { DayItem, PlannerEvent, PlannerTask, PriorityPick } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import {
   dateKey,
@@ -40,6 +40,7 @@ import { noteEntries, type NoteEntry } from "@/lib/app/todayNote";
 import { startOfDayMs } from "./schedule/calendar";
 import AddLine, { type NoteTarget } from "./today/AddLine";
 import LineRow from "./today/LineRow";
+import GapSuggestion from "./today/GapSuggestion";
 import TodayProgress from "./TodayProgress";
 
 const CATEGORY_BAR = CATEGORY_COLOR;
@@ -289,6 +290,8 @@ export default function TodayView() {
             hasTasks={data.tasks.length > 0}
             entries={entries}
             today={today}
+            dayStartMs={dayStartMs}
+            priorityPicks={data.priorityPicks ?? []}
             onNewTask={requestAddToToday}
             onLine={lineActions}
             onComplete={(event) => markOutcome(event, "completed")}
@@ -361,6 +364,8 @@ interface TodayCardProps {
   /** Today's note, in order: blocks and the student's own lines. */
   entries: NoteEntry[];
   today: string;
+  dayStartMs: number;
+  priorityPicks: PriorityPick[];
   onLine: LineActions;
   onComplete: (event: PlannerEvent) => void;
   onMiss: (event: PlannerEvent) => void;
@@ -370,7 +375,7 @@ interface TodayCardProps {
 function TodayCard(props: TodayCardProps) {
   const {
     laterEvents, inProgressIds, busyId, celebrate, timezone, hasTasks,
-    onNewTask, onComplete, onMiss, onOpen, entries, today, onLine,
+    onNewTask, onComplete, onMiss, onOpen, entries, today, onLine, dayStartMs, priorityPicks,
   } = props;
   // When Arcad replans or a line moves the plan, everything slides into its new place.
   const blockList = useRef<HTMLUListElement>(null);
@@ -391,6 +396,13 @@ function TodayCard(props: TodayCardProps) {
       <div className="pt-3">
         <AddLine today={today} timezone={timezone} lastLine={lastLine} />
       </div>
+      <GapSuggestion
+        events={[...entries.flatMap((entry) => (entry.kind === "block" ? [entry.event] : [])), ...laterEvents]}
+        picks={priorityPicks}
+        today={today}
+        timezone={timezone}
+        dayStartMs={dayStartMs}
+      />
 
       {entries.length === 0 && !hasTasks ? (
         // Fresh account: a few concrete ways to seed a plan under the line.

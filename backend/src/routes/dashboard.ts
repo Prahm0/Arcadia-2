@@ -15,6 +15,7 @@ import {
 import { DAY, iso, localDateKey, startOfLocalDay } from "../lib/time";
 import { termsAround } from "../lib/terms";
 import { computeStreaks, minutesBetween } from "../lib/analytics";
+import { loadPriorities, openTasks, topBySubject, withPriorities } from "../lib/priorities";
 import type { Env, Variables } from "../types";
 
 /** How far back planner events are sent, for streaks and this week's history. */
@@ -170,12 +171,17 @@ dashboard.get("/", async (c) => {
     .from(schema.proposals)
     .where(and(eq(schema.proposals.userId, userId), eq(schema.proposals.status, "pending")));
 
+  // Free study blocks show the top priority for their subject.
+  const priorityRows = await loadPriorities(database, userId);
   // Blocks the student took off the schedule stay in the table (they hold the
   // slot so it isn't refilled) but aren't shown.
-  const events = eventRows
-    .filter((event) => event.status !== "cancelled")
-    .sort((a, b) => a.startAt - b.startAt)
-    .map(serialiseEvent);
+  const events = withPriorities(
+    eventRows
+      .filter((event) => event.status !== "cancelled")
+      .sort((a, b) => a.startAt - b.startAt)
+      .map(serialiseEvent),
+    topBySubject(priorityRows),
+  );
 
   const focus = pending.slice(0, 5).map(serialiseTask);
 
@@ -188,6 +194,8 @@ dashboard.get("/", async (c) => {
   return c.json({
     user: serialiseUser(user, profile ?? null),
     dayItems: dayItemRows.map(serialiseDayItem),
+    // Open priorities, due first then outline order: Today suggests one in a gap.
+    priorityPicks: openTasks(priorityRows).slice(0, 20),
     profile: serialiseProfile(profile ?? null),
     preferences: serialisePreferences(profile ?? null),
     subjects: subjectRows.map((subject) => serialiseSubject(subject, profile?.grade)),

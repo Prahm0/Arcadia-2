@@ -13,6 +13,7 @@ import { clearLog, findSubject, replaceLog } from "../lib/study-log";
 import { blockEntries, type CheckoutAnswers } from "../lib/study-record";
 import { XP } from "../../../shared/progress";
 import { isConfidence, overallFeeling, type Confidence } from "../../../shared/studyLog";
+import { loadPriorities, topBySubject, withPriorities } from "../lib/priorities";
 import type { Env, Variables } from "../types";
 
 type EventRow = typeof schema.events.$inferSelect;
@@ -121,7 +122,8 @@ events.get("/", async (c) => {
   }
   if (to - from > MAX_RANGE_MS) return c.json({ error: "That range is too long." }, 400);
 
-  const rows = await db(c.env.DB)
+  const database = db(c.env.DB);
+  const rows = await database
     .select()
     .from(schema.events)
     .where(
@@ -136,7 +138,7 @@ events.get("/", async (c) => {
     .filter((event) => event.status !== "cancelled" && event.endAt > from)
     .sort((a, b) => a.startAt - b.startAt)
     .map(serialiseEvent);
-  return c.json({ events });
+  return c.json({ events: withPriorities(events, topBySubject(await loadPriorities(database, userId))) });
 });
 
 events.post("/:id/outcome", async (c) => {

@@ -14,7 +14,7 @@ import { formatDurationMinutes } from "@/lib/api/time";
 interface WeeklyReviewCardProps {
   /**
    * "previous" (default) reviews the most recent completed week.
-   * "current" reviews the in-progress week, used for the /app/review page
+   * "current" reviews the in-progress week, used on Progress on Sundays
    * when today is late in the week.
    */
   window?: "previous" | "current";

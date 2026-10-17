@@ -27,14 +27,12 @@ const GROUPS: Array<{ title: string; items: MoreItem[] }> = [
       { label: "Priorities", href: "/app/priorities", icon: icon(<><path d="M4 5h2M4 10h2M4 15h2M9 5h7M11 10h5M11 15h5" /></>) },
       { label: "Sessions", href: "/app/sessions", icon: icon(<><circle cx="10" cy="10" r="7" /><circle cx="10" cy="10" r="3" /></>) },
       { label: "Deadlines", href: "/app/deadlines", icon: icon(<><circle cx="10" cy="10" r="7" /><path d="M10 6v4l3 2" /></>) },
-      { label: "Weekly review", href: "/app/review", icon: icon(<><path d="M4 5h12M4 10h8M4 15h12" /><circle cx="15" cy="10" r="1" fill="currentColor" /></>) },
     ],
   },
   {
     title: "You",
     items: [
-      { label: "Progress", href: "/app/analytics", icon: icon(<><path d="M4 15v-4M9 15V7M14 15v-6" /><path d="M2 17h16" /></>) },
-      { label: "Streaks", href: "/app/streaks", icon: icon(<path d="M10 17c3 0 5-2 5-5 0-3.2-2.6-5-3.7-8.5C9.3 5 8.6 7 8.8 9 7.6 8.5 7 7.4 6.9 6.5 5.6 7.8 5 9.6 5 12c0 3 2 5 5 5z" />) },
+      { label: "Progress", href: "/app/progress", icon: icon(<><path d="M4 15v-4M9 15V7M14 15v-6" /><path d="M2 17h16" /></>) },
       { label: "Profile", href: "/app/profile", icon: icon(<><circle cx="10" cy="8" r="3" /><path d="M4.5 16.5c1-2.6 3.1-4 5.5-4s4.5 1.4 5.5 4" /></>) },
     ],
   },

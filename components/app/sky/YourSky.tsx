@@ -43,6 +43,8 @@ export default function YourSky({
 }) {
   const { sky, loading, error, refresh, update, acknowledge } = useStudySky();
   const [filter, setFilter] = useState<Filter>("all");
+  // The collection folds to its first row; 92 cards is a lot to scroll past on Progress.
+  const [showAll, setShowAll] = useState(false);
   const [selected, setSelected] = useState(0);
   const [detailId, setDetailId] = useState<ConstellationId | null>(null);
   const [replay, setReplay] = useState(0);
@@ -247,7 +249,7 @@ export default function YourSky({
           />
           {listed.length ? (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 @3xl/main:grid-cols-4">
-              {listed.map((card) => (
+              {(showAll ? listed : listed.slice(0, 4)).map((card) => (
                 <button
                   key={card.id}
                   type="button"
@@ -258,6 +260,13 @@ export default function YourSky({
                   <ConstellationCard card={card} featured={sky.preferences.featured === card.id} following={sky.preferences.followed === card.id} />
                 </button>
               ))}
+              {listed.length > 4 ? (
+                <div className="col-span-full">
+                  <AppButton variant="ghost" onClick={() => setShowAll((value) => !value)}>
+                    {showAll ? "Show fewer" : `Show all ${listed.length}`}
+                  </AppButton>
+                </div>
+              ) : null}
             </div>
           ) : (
             <div className="rounded-xl border border-dashed p-8 text-center" style={{ borderColor: "var(--app-border)", color: "var(--app-text)" }}>

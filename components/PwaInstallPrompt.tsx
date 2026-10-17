@@ -144,7 +144,7 @@ export default function PwaInstallPrompt() {
       aria-label="Install Arcadia on your home screen"
       className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom,0px)+68px)] z-[60] mx-auto max-w-[440px] rounded-2xl p-4 shadow-2xl"
       style={{
-        background: "var(--app-surface, #17131f)",
+        background: "var(--app-surface, #1a2c22)",
         border: "1px solid rgba(255,255,255,0.08)",
         color: "var(--app-text, #ffffff)",
       }}
@@ -152,7 +152,7 @@ export default function PwaInstallPrompt() {
       <div className="flex items-start gap-3">
         <div
           className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl"
-          style={{ background: "#090812" }}
+          style={{ background: "#0c1611" }}
         >
           <Image src="/brand/arcadia-mark.png" alt="" aria-hidden="true" width={28} height={28} className="rounded-[18%]" />
         </div>
@@ -194,7 +194,7 @@ export default function PwaInstallPrompt() {
             type="button"
             onClick={install}
             className="rounded-full px-4 py-1.5 text-[13px] font-semibold"
-            style={{ background: "#7c5cff", color: "#0b0716" }}
+            style={{ background: "#e2b84f", color: "#0f1a14" }}
           >
             Install
           </button>

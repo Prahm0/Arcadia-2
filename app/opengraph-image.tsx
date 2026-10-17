@@ -73,7 +73,7 @@ export default async function OpenGraphImage() {
           <div
             style={{
               alignItems: "center",
-              background: "#1d2a22",
+              background: "#2f4a3a",
               borderRadius: 16,
               display: "flex",
               height: 56,
@@ -83,15 +83,9 @@ export default async function OpenGraphImage() {
               width: 56,
             }}
           >
-            <svg
-              height="36"
-              viewBox="0 0 48 48"
-              width="36"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path d="M4 42 20.5 7h8L17 42Z" fill="#b6d1ab" />
-              <path d="M27.5 7 44 42H32.5L20.5 17.5Z" fill="#b6d1ab" />
-              <path d="m24 30 6 12H18Z" fill="#b6d1ab" />
+            <svg height="56" viewBox="0 0 512 512" width="56" xmlns="http://www.w3.org/2000/svg">
+              <path d="M60 424 L220 104 L292 104 L452 424 L374 424 L256 188 L138 424 Z M210 424 L256 332 L302 424 Z" fill="#f3f1ea" />
+              <path d="M392 64 C396 92 404 100 432 104 C404 108 396 116 392 144 C388 116 380 108 352 104 C380 100 388 92 392 64 Z" fill="#e2b84f" />
             </svg>
           </div>
           Arcadia

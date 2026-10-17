@@ -93,7 +93,7 @@ export default function PricingSection() {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(70% 55% at 50% 30%, rgba(124,92,255,0.10) 0%, rgba(124,92,255,0.02) 45%, rgba(0,0,0,0) 75%)",
+            "radial-gradient(70% 55% at 50% 30%, rgba(226,184,79,0.10) 0%, rgba(226,184,79,0.02) 45%, rgba(0,0,0,0) 75%)",
         }}
       />
 
@@ -197,7 +197,7 @@ function IntervalButton({
       onClick={onClick}
       className="rounded-full px-4 py-1.5 text-[12.5px] font-semibold whitespace-nowrap transition-colors"
       style={{
-        background: active ? "rgb(124,92,255)" : "transparent",
+        background: active ? "rgb(226,184,79)" : "transparent",
         color: active ? "white" : "rgba(255,255,255,0.7)",
       }}
     >
@@ -223,13 +223,13 @@ function TierCard({ tier, interval }: { tier: Tier; interval: Interval }) {
       className="relative flex h-full flex-col gap-6 rounded-2xl p-7"
       style={{
         background: tier.highlighted
-          ? "linear-gradient(180deg, rgba(124,92,255,0.14) 0%, rgba(124,92,255,0.04) 100%)"
+          ? "linear-gradient(180deg, rgba(226,184,79,0.14) 0%, rgba(226,184,79,0.04) 100%)"
           : "rgba(255,255,255,0.03)",
         border: tier.highlighted
-          ? "1px solid rgba(124,92,255,0.42)"
+          ? "1px solid rgba(226,184,79,0.42)"
           : "1px solid rgba(255,255,255,0.08)",
         boxShadow: tier.highlighted
-          ? "0 20px 60px -20px rgba(124,92,255,0.35)"
+          ? "0 20px 60px -20px rgba(226,184,79,0.35)"
           : "none",
       }}
     >
@@ -237,7 +237,7 @@ function TierCard({ tier, interval }: { tier: Tier; interval: Interval }) {
         <div
           className="type-mono-label absolute -top-3 right-6 rounded-full px-3 py-1 text-[10.5px]"
           style={{
-            background: "rgb(124,92,255)",
+            background: "rgb(226,184,79)",
             color: "white",
           }}
         >
@@ -283,7 +283,7 @@ function TierCard({ tier, interval }: { tier: Tier; interval: Interval }) {
               aria-hidden="true"
               className="mt-1 grid h-4 w-4 shrink-0 place-items-center rounded-full"
               style={{
-                background: tier.highlighted ? "rgb(124,92,255)" : "rgba(255,255,255,0.08)",
+                background: tier.highlighted ? "rgb(226,184,79)" : "rgba(255,255,255,0.08)",
                 color: tier.highlighted ? "white" : "rgba(255,255,255,0.75)",
               }}
             >

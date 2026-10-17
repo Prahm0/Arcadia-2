@@ -17,11 +17,11 @@ async function turnOff(env: Env, token: string): Promise<boolean> {
 function page(env: Env, heading: string, message: string): string {
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="robots" content="noindex" /><title>${heading}</title></head>
-<body style="margin:0;background:#f5f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1a1a2e;">
+<body style="margin:0;background:#f3f1ea;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1c2420;">
 <main style="max-width:440px;margin:15vh auto;padding:32px;background:#ffffff;border:1px solid #ececf1;border-radius:14px;">
 <h1 style="margin:0 0 12px;font-size:22px;">${heading}</h1>
 <p style="margin:0 0 20px;font-size:15px;line-height:1.55;color:#3a3a4a;">${message}</p>
-<a href="${env.APP_ORIGIN}/app" style="color:#7c5cff;text-decoration:none;font-weight:600;">Open Arcadia</a>
+<a href="${env.APP_ORIGIN}/app" style="color:#2f4a3a;text-decoration:none;font-weight:600;">Open Arcadia</a>
 </main></body></html>`;
 }
 

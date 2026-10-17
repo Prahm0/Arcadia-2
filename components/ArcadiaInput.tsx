@@ -140,7 +140,7 @@ export default function ArcadiaInput() {
                   width={76}
                   height={76}
                   sizes="76px"
-                  className="mb-0.5 shrink-0 rounded-full object-cover shadow-[0_12px_26px_-16px_rgba(86,57,220,0.55)]"
+                  className="mb-0.5 shrink-0 rounded-full object-cover shadow-[0_12px_26px_-16px_rgba(134,101,15,0.55)]"
                 />
               </div>
             </FadeIn>

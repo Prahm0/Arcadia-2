@@ -23,7 +23,7 @@ export default function ThinkingSection() {
   });
 
   return (
-    <section id="how-it-works" aria-labelledby="thinking-heading" className="bg-black text-white">
+    <section id="how-it-works" aria-labelledby="thinking-heading" className="bg-night-900 text-white">
       {reduced ? (
         <Container className="py-[120px] lg:py-[160px]">
           <SectionLabel>How the plan stays useful</SectionLabel>

@@ -72,7 +72,7 @@ feeds.post("/", async (c) => {
   }
 
   const name = String(body.name ?? "").trim().slice(0, 60) || guessName(url);
-  const color = normaliseColor(body.color) ?? "#7c5cff";
+  const color = normaliseColor(body.color) ?? "#6f9a6b";
 
   const id = newId("cfd");
   await database.insert(schema.calendarFeeds).values({

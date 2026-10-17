@@ -104,7 +104,7 @@ export default function ThinkingVisual({ stage, reduced, className }: ThinkingVi
               opacity: active ? (dim ? 0.3 : 1) : 0,
             }}
             transition={slow}
-            stroke={purple ? "rgba(157,135,255,0.6)" : "rgba(255,255,255,0.22)"}
+            stroke={purple ? "rgba(242,215,139,0.6)" : "rgba(255,255,255,0.22)"}
             strokeWidth={purple ? 1 : 0.8}
             strokeLinecap="round"
           />
@@ -116,7 +116,7 @@ export default function ThinkingVisual({ stage, reduced, className }: ThinkingVi
         const isMoved = i === MOVED_NODE && stage >= 2;
         const isFocus = i === FOCUS_NODE && stage === 3;
         const dim = stage === 3 && !isFocus;
-        const fill = isFocus ? "#C6B8FF" : isMoved ? "#9D87FF" : "#FFFFFF";
+        const fill = isFocus ? "#F7E6B5" : isMoved ? "#F2D78B" : "#FFFFFF";
         return (
           <g key={i}>
             {(isMoved || isFocus) && (
@@ -125,7 +125,7 @@ export default function ThinkingVisual({ stage, reduced, className }: ThinkingVi
                 animate={{ cx: x, cy: y, opacity: isFocus ? 0.4 : 0.25 }}
                 transition={slow}
                 r={12}
-                fill="rgba(124,92,255,1)"
+                fill="rgba(226,184,79,1)"
                 style={{ filter: "blur(7px)" }}
               />
             )}
@@ -145,7 +145,7 @@ export default function ThinkingVisual({ stage, reduced, className }: ThinkingVi
                 cx={x}
                 cy={y}
                 fill="none"
-                stroke="rgba(198,184,255,0.7)"
+                stroke="rgba(247,230,181,0.7)"
                 strokeWidth={1}
                 initial={{ r: 6, opacity: 0 }}
                 animate={reduced ? { r: 16, opacity: 0.6 } : { r: [6, 22], opacity: [0.8, 0] }}
@@ -160,7 +160,7 @@ export default function ThinkingVisual({ stage, reduced, className }: ThinkingVi
       <motion.text
         x={positions[MOVED_NODE][0] + 14}
         y={positions[MOVED_NODE][1] + 4}
-        fill="rgba(198,184,255,0.9)"
+        fill="rgba(247,230,181,0.9)"
         fontSize={12}
         initial={false}
         animate={{ opacity: stage === 2 ? 1 : 0 }}

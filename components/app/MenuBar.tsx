@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import Logo from "@/components/ui/Logo";
-import { useNativeIOS } from "@/lib/capacitor/platform";
+import { useNativeIOS, useNativeIPad } from "@/lib/capacitor/platform";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { GO_TARGETS, openArcad, openPageTour } from "@/lib/app/commands";
 import { useTheme, type ThemeMode } from "@/lib/app/theme";
@@ -43,6 +43,7 @@ export default function MenuBar({
 }: MenuBarProps) {
   const router = useRouter();
   const nativeIOS = useNativeIOS();
+  const nativeIPad = useNativeIPad();
   const modKey = useModKey();
   const pathname = usePathname();
   const { mode, setMode } = useTheme();
@@ -256,7 +257,7 @@ export default function MenuBar({
         className="mr-2 flex h-7 items-center gap-2 rounded-md pl-0.5 pr-1.5 ui-hover"
       >
         <Logo size={22} />
-        {nativeIOS ? null : (
+        {nativeIOS && !nativeIPad ? null : (
           <span className="text-[16px] font-bold tracking-[-0.02em]" style={{ color: "var(--app-text)" }}>
             Arcadia
           </span>

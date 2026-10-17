@@ -22,6 +22,13 @@ export function isNativeIOS(): boolean {
   }
 }
 
+/** True only when Arcadia runs inside the iPad Capacitor shell. */
+export function isNativeIPad(): boolean {
+  if (!isNativeIOS()) return false;
+  return /iPad/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
 const subscribeToPlatform = () => () => {};
 
 /**
@@ -30,6 +37,11 @@ const subscribeToPlatform = () => () => {};
  */
 export function useNativeIOS(): boolean {
   return useSyncExternalStore(subscribeToPlatform, isNativeIOS, () => false);
+}
+
+/** Hydration-safe iPad check for native-shell client components. */
+export function useNativeIPad(): boolean {
+  return useSyncExternalStore(subscribeToPlatform, isNativeIPad, () => false);
 }
 
 /** The web install prompt is redundant inside the native shell. */

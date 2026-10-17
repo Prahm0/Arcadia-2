@@ -21,7 +21,9 @@ const config: CapacitorConfig = {
     contentInset: "never",
     backgroundColor: "#04040e",
     scrollEnabled: true,
-    preferredContentMode: "mobile",
+    // Lets WKWebView choose the appropriate viewport for each device: phone
+    // on iPhone and the existing tablet/desktop layout on iPad.
+    preferredContentMode: "recommended",
   },
   plugins: {
     Keyboard: {

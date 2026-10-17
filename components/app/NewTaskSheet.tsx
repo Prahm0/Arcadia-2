@@ -5,6 +5,7 @@ import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { dateKey } from "@/lib/api/time";
 import type { DashboardResponse, PlannerTask } from "@/lib/api/types";
+import { parseQuickAdd, type QuickAdd } from "@/lib/app/quickAdd";
 import { startOfDayMs } from "./schedule/calendar";
 import AppButton from "./AppButton";
 import SubjectPicker from "./SubjectPicker";
@@ -40,6 +41,25 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
   const [error, setError] = useState<string | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const isEditing = Boolean(editing);
+  // Quick add (new tasks only): one line the fields below are read from.
+  // A field the student sets by hand stops following the line.
+  const [quick, setQuick] = useState("");
+  const [parsed, setParsed] = useState<QuickAdd | null>(null);
+  const [touched, setTouched] = useState<Set<string>>(new Set());
+  const touch = (field: string) => setTouched((prev) => new Set(prev).add(field));
+
+  function readQuick(text: string) {
+    setQuick(text);
+    const timezone = data.user?.timezone ?? "Australia/Brisbane";
+    const next = parseQuickAdd(text, data.subjects.map((item) => item.name), dateKey(new Date().toISOString(), timezone));
+    setParsed(next);
+    setTitle(next.title || text.trim());
+    if (!touched.has("subject") && next.subject) setSubject(next.subject);
+    if (!touched.has("type") && next.taskType) setTaskType(next.taskType);
+    if (!touched.has("due") && next.dueDate) setDueDate(next.dueDate);
+    if (!touched.has("time") && next.dueTime) setDueTime(next.dueTime);
+    if (!touched.has("minutes") && next.minutes) setMinutes(Math.min(360, Math.max(15, next.minutes)));
+  }
 
   useEffect(() => {
     if (open) {
@@ -56,6 +76,9 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
         setMinutes(editing.remainingMinutes || 60);
       } else {
         setTitle("");
+        setQuick("");
+        setParsed(null);
+        setTouched(new Set());
         setSubject(initialSubject ?? null);
         setTaskType("homework");
         setDueDate(initialDue || defaultDueDate(data.user?.timezone ?? "Australia/Brisbane"));
@@ -212,26 +235,44 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
         </div>
 
         <form onSubmit={submit} className="mt-5 space-y-4">
-          <Field label="Title">
-            <input
-              ref={titleRef}
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Chemistry lab report"
-              className="w-full rounded-md px-3 py-2.5 text-[15px] outline-none"
-              style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
-            />
-          </Field>
+          {isEditing ? (
+            <Field label="Title">
+              <input
+                ref={titleRef}
+                required
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Chemistry lab report"
+                className="w-full rounded-md px-3 py-2.5 text-[15px] outline-none"
+                style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
+              />
+            </Field>
+          ) : (
+            <div>
+              <Field label="What's due?">
+                <input
+                  ref={titleRef}
+                  required
+                  value={quick}
+                  onChange={(e) => readQuick(e.target.value)}
+                  placeholder="e.g. chem SAC next thursday, about 3 hours"
+                  autoComplete="off"
+                  className="w-full rounded-md px-3 py-3 text-[16px] outline-none"
+                  style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
+                />
+              </Field>
+              {parsed && quick.trim() ? <QuickRead parsed={parsed} /> : null}
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="Subject">
-              <SubjectPicker subjects={data.subjects} value={subject} onChange={setSubject} />
+              <SubjectPicker subjects={data.subjects} value={subject} onChange={(next) => { touch("subject"); setSubject(next); }} />
             </Field>
             <Field label="Type">
               <select
                 value={taskType}
-                onChange={(e) => setTaskType(e.target.value)}
+                onChange={(e) => { touch("type"); setTaskType(e.target.value); }}
                 className="w-full rounded-md px-3 py-2.5 text-[15px] outline-none"
                 style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
               >
@@ -248,7 +289,7 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
                 required
                 type="date"
                 value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
+                onChange={(e) => { touch("due"); setDueDate(e.target.value); }}
                 className="w-full min-w-0 max-w-full rounded-md px-3 py-2.5 text-[15px] outline-none"
                 style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
               />
@@ -257,7 +298,7 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
               <input
                 type="time"
                 value={dueTime}
-                onChange={(e) => setDueTime(e.target.value)}
+                onChange={(e) => { touch("time"); setDueTime(e.target.value); }}
                 className="w-full min-w-0 max-w-full rounded-md px-3 py-2.5 text-[15px] outline-none"
                 style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
               />
@@ -271,7 +312,7 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
                 max={360}
                 step={15}
                 value={minutes}
-                onChange={(e) => setMinutes(Number(e.target.value))}
+                onChange={(e) => { touch("minutes"); setMinutes(Number(e.target.value)); }}
                 className="mt-3 w-full"
                 style={{ accentColor: "var(--app-accent)" }}
               />
@@ -299,6 +340,33 @@ export default function NewTaskSheet({ open, onClose, editing, defaultDueDate: i
           </div>
         </form>
       </div>
+    </div>
+  );
+}
+
+/** What quick add understood, so the student can see it worked before saving. */
+function QuickRead({ parsed }: { parsed: QuickAdd }) {
+  const bits = [
+    parsed.subject,
+    parsed.taskType ? parsed.taskType.charAt(0).toUpperCase() + parsed.taskType.slice(1) : null,
+    parsed.dueDate
+      ? new Intl.DateTimeFormat("en-AU", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${parsed.dueDate}T12:00:00Z`))
+      : null,
+    parsed.dueTime,
+    parsed.minutes ? formatMinutes(parsed.minutes) : null,
+  ].filter(Boolean) as string[];
+  if (!bits.length) return null;
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-1.5" aria-live="polite">
+      {bits.map((bit) => (
+        <span
+          key={bit}
+          className="app-pop rounded-full px-2.5 py-1 text-[12px] font-medium"
+          style={{ background: "color-mix(in oklab, var(--app-arcad) 16%, transparent)", color: "var(--app-arcad-strong)" }}
+        >
+          {bit}
+        </span>
+      ))}
     </div>
   );
 }

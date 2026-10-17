@@ -5,7 +5,7 @@ import { api } from "@/lib/api/client";
 import type { DayItem, PlannerEvent } from "@/lib/api/types";
 import { ADD_TO_TODAY_EVENT } from "@/lib/app/addToToday";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
-import { noteLine, parseDayLine } from "@/lib/app/dayLine";
+import { noteLine, parseDayPaste, parseLoggedLine } from "@/lib/app/dayLine";
 import { parseQuickAdd } from "@/lib/app/quickAdd";
 import { startOfDayMs } from "../schedule/calendar";
 
@@ -16,14 +16,32 @@ export type NoteTarget = { kind: "event" | "item"; id: string; note: string };
  * press return, it's added and the cursor stays for the next one.
  *
  * "SLC 10:50" becomes a block in the timeline, "Call with Pari" a to-do for
- * today, "- bring the form" a note on the line above, and "chem SAC next
- * thursday" a deadline.
+ * today, "- bring the form" a note on the line above, "chem SAC next
+ * thursday" a deadline, and "did chem till 4:25" a block logged as done.
+ * Pasting a whole day from Notes adds every line at once.
  */
-export default function AddLine({ today, timezone, lastLine }: { today: string; timezone: string; lastLine: NoteTarget | null }) {
+const HINT_DONE_KEY = "arcadia:today-hint-done";
+
+export default function AddLine({ today, timezone, lastLine, empty }: { today: string; timezone: string; lastLine: NoteTarget | null; empty?: boolean }) {
   const { data, patch, reload } = useDashboardData();
   const input = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState("");
   const [hint, setHint] = useState<{ tone: "info" | "error"; text: string } | null>(null);
+  // One small hint, the first time Today is empty; gone after the first line.
+  const [firstUse, setFirstUse] = useState(false);
+  useEffect(() => {
+    let seen = true;
+    try { seen = window.localStorage.getItem(HINT_DONE_KEY) === "1"; } catch { /* private mode: no hint */ }
+    if (!seen) {
+      const frame = requestAnimationFrame(() => setFirstUse(true));
+      return () => cancelAnimationFrame(frame);
+    }
+  }, []);
+  const showHint = firstUse && empty;
+  function used() {
+    setFirstUse(false);
+    try { window.localStorage.setItem(HINT_DONE_KEY, "1"); } catch { /* fine */ }
+  }
   // The line a "- note" attaches to: the last one added here, else the list's last line.
   const lastAdded = useRef<NoteTarget | null>(null);
 
@@ -85,8 +103,16 @@ export default function AddLine({ today, timezone, lastLine }: { today: string; 
   }
 
   async function addLine(text: string) {
-    const parsed = parseDayLine(text, data.subjects.map((subject) => subject.name));
-    const body = { day: today, title: parsed.title, subject: parsed.subject, start: parsed.start, end: parsed.end, evening: parsed.evening };
+    const parsed = parseLoggedLine(text, data.subjects.map((subject) => subject.name));
+    const body = { day: today, title: parsed.title, subject: parsed.subject, start: parsed.start, end: parsed.end, evening: parsed.evening, done: parsed.done };
+    if (parsed.done) {
+      // Logged as done: saved straight away, then the list reloads with it ticked.
+      const result = await api<{ rewards?: Array<{ xp: number }> }>("/api/today/lines", { method: "POST", body: JSON.stringify(body) });
+      const xp = result.rewards?.reduce((sum, reward) => sum + reward.xp, 0) ?? 0;
+      setHint({ tone: "info", text: `Logged as done${xp ? `, +${xp} XP` : ""}.` });
+      void reload();
+      return;
+    }
     const tempId = `tmp-${Math.random().toString(36).slice(2)}`;
     const createdAt = new Date().toISOString();
 
@@ -123,9 +149,31 @@ export default function AddLine({ today, timezone, lastLine }: { today: string; 
     }
   }
 
+  /** A whole day from Notes: one line each, ✅ done, "- " notes under the line above. */
+  async function addPasted(text: string) {
+    const lines = parseDayPaste(text, data.subjects.map((subject) => subject.name));
+    if (!lines.length) return;
+    used();
+    setHint({ tone: "info", text: `Adding ${lines.length} lines...` });
+    try {
+      await api("/api/today/lines/batch", {
+        method: "POST",
+        body: JSON.stringify({
+          lines: lines.map((line) => ({ day: today, title: line.title, subject: line.subject, start: line.start, end: line.end, evening: line.evening, done: line.done, note: line.notes.join("\n") })),
+        }),
+      });
+      const done = lines.filter((line) => line.done).length;
+      setHint({ tone: "info", text: `Added ${lines.length} ${lines.length === 1 ? "line" : "lines"}${done ? `, ${done} already done` : ""}.` });
+      void reload();
+    } catch (error) {
+      setHint({ tone: "error", text: error instanceof Error && error.message ? error.message : "Couldn't add those. Try again." });
+    }
+  }
+
   async function submit() {
     const text = value.trim();
     if (!text) return;
+    used();
     setValue("");
     setHint(null);
     try {
@@ -155,6 +203,12 @@ export default function AddLine({ today, timezone, lastLine }: { today: string; 
           id="add-to-today"
           value={value}
           onChange={(event) => setValue(event.target.value)}
+          onPaste={(event) => {
+            const pasted = event.clipboardData.getData("text/plain");
+            if (!pasted.includes("\n")) return;
+            event.preventDefault();
+            void addPasted(pasted);
+          }}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.nativeEvent.isComposing) {
               event.preventDefault();
@@ -163,7 +217,7 @@ export default function AddLine({ today, timezone, lastLine }: { today: string; 
               input.current?.blur();
             }
           }}
-          placeholder="Add to today..."
+          placeholder={showHint ? "Paste your plan from Notes, or type your first line" : "Add to today..."}
           autoComplete="off"
           autoCapitalize="sentences"
           enterKeyHint="enter"

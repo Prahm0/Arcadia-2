@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lt, lte, ne, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../db";
 import { rebuildSchedule, subjectKey, uniqueSubjects, weeklyBudget, type WeeklyBudget } from "../lib/scheduler";
@@ -185,6 +185,14 @@ dashboard.get("/", async (c) => {
 
   const focus = pending.slice(0, 5).map(serialiseTask);
 
+  // Unticked lines from earlier days roll over to today, the way a Notes
+  // list carries on. Only the request that moves them reports how many.
+  const rolled = await database
+    .update(schema.dayItems)
+    .set({ day: todayKey })
+    .where(and(eq(schema.dayItems.userId, userId), lt(schema.dayItems.day, todayKey), eq(schema.dayItems.done, false)))
+    .returning({ id: schema.dayItems.id });
+
   // Today's note: untimed lines from yesterday through the week ahead.
   const dayItemRows = await database
     .select()
@@ -194,6 +202,7 @@ dashboard.get("/", async (c) => {
   return c.json({
     user: serialiseUser(user, profile ?? null),
     dayItems: dayItemRows.map(serialiseDayItem),
+    rolledOver: rolled.length,
     // Open priorities, due first then outline order: Today suggests one in a gap.
     priorityPicks: openTasks(priorityRows).slice(0, 20),
     profile: serialiseProfile(profile ?? null),

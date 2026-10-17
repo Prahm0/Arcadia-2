@@ -17,6 +17,7 @@ import {
   type SavedPriority,
 } from "@/lib/app/priorityOutline";
 import { dateKey, formatMinutes } from "@/lib/api/time";
+import { matchSubject } from "@/lib/app/quickAdd";
 import PageHeader from "./PageHeader";
 import EmptyArt from "./EmptyArt";
 
@@ -40,6 +41,8 @@ export default function PrioritiesView() {
   const [lines, setLines] = useState<OutlineLine[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [focusedId, setFocusedId] = useState<string | null>(null);
+  // Lines just sent to Today, so their button reads "On today".
+  const [sent, setSent] = useState<ReadonlySet<string>>(new Set());
   const inputs = useRef(new Map<string, HTMLTextAreaElement>());
   const focusNext = useRef<{ id: string; caret: number } | null>(null);
   const dirty = useRef(false);
@@ -198,6 +201,21 @@ export default function PrioritiesView() {
   const today = dateKey(new Date().toISOString(), timezone);
   const soon = lines ? dueSoon(lines, today) : [];
 
+  async function sendToToday(line: OutlineLine) {
+    setSent((current) => new Set(current).add(line.id));
+    try {
+      await api("/api/today/lines", { method: "POST", body: JSON.stringify({ day: today, title: line.text.trim(), subject: matchSubject(line.text, subjects) }) });
+      void reload();
+    } catch (caught) {
+      setSent((current) => {
+        const next = new Set(current);
+        next.delete(line.id);
+        return next;
+      });
+      setError(caught instanceof Error ? caught.message : "Couldn't add it to today.");
+    }
+  }
+
   return (
     <>
       <PageHeader width={760} title="Priorities" meta={lines ? `${open} open` : undefined} />
@@ -226,6 +244,7 @@ export default function PrioritiesView() {
                     </button>
                   ) : null}
                   <DueChip dueOn={line.dueOn!} today={today} />
+                  <TodayButton sent={sent.has(line.id)} onPress={() => void sendToToday(line)} />
                 </li>
               ))}
             </ul>
@@ -284,6 +303,11 @@ export default function PrioritiesView() {
                       fontWeight: line.depth === 0 && parent ? 600 : 400,
                     }}
                   />
+                  {!parent && line.text.trim() && !line.done ? (
+                    <span className={`mt-[5px] shrink-0 ${focused || sent.has(line.id) ? "" : "invisible group-hover:visible"}`}>
+                      <TodayButton sent={sent.has(line.id)} onPress={() => void sendToToday(line)} />
+                    </span>
+                  ) : null}
                   <DueDate
                     value={line.dueOn}
                     visible={focused || Boolean(line.dueOn)}
@@ -345,6 +369,23 @@ function DueChip({ dueOn, today }: { dueOn: string; today: string }) {
     <span className="shrink-0 rounded-full px-2.5 py-1 text-[12px] font-medium" style={{ background: days <= 1 ? "var(--app-arcad-soft)" : "var(--app-surface-soft)", color: days < 0 ? "var(--app-danger)" : days <= 1 ? "var(--app-arcad)" : "var(--app-text-soft)" }}>
       {label}
     </span>
+  );
+}
+
+/** Sends a priority to today's list in one tap. */
+function TodayButton({ sent, onPress }: { sent: boolean; onPress: () => void }) {
+  return (
+    <button
+      type="button"
+      disabled={sent}
+      // Keep the line's focus (and the phone keyboard) while tapping.
+      onPointerDown={(event) => event.preventDefault()}
+      onClick={onPress}
+      className="shrink-0 rounded-full px-2.5 py-1 text-[12px] font-medium"
+      style={{ background: sent ? "var(--app-accent-soft)" : "var(--app-surface-soft)", color: sent ? "var(--app-accent)" : "var(--app-text-soft)" }}
+    >
+      {sent ? "On today" : "Today"}
+    </button>
   );
 }
 

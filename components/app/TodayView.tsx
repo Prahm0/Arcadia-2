@@ -30,6 +30,7 @@ import { playCompletionTick } from "@/lib/app/completion";
 import { noteWin } from "@/lib/capacitor/ratingPrompt";
 import { success } from "@/lib/capacitor/haptics";
 import { comboCount, isPerfectDay, splitDone } from "@/lib/app/celebrate";
+import { parseLoggedLine } from "@/lib/app/dayLine";
 import BlockDoneMoment from "./BlockDoneMoment";
 import { blockDoneDecision } from "@/lib/app/blockDone";
 import { finishBlock, useFocusGuardStatus, type BlockReport } from "@/lib/capacitor/focusGuard";
@@ -267,6 +268,16 @@ export default function TodayView() {
       await api(`/api/events/${encodeURIComponent(entry.event.id)}`, { method: "DELETE" });
       void reload();
     },
+    edit: async (entry, text) => {
+      const parsed = parseLoggedLine(text, data.subjects.map((subject) => subject.name));
+      const kind = entry.kind === "item" ? "item" : "event";
+      const id = entry.kind === "item" ? entry.item.id : entry.event.id;
+      await api(`/api/today/lines/${kind}/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        body: JSON.stringify({ day: today, title: parsed.title, subject: parsed.subject, start: parsed.start, end: parsed.end, evening: parsed.evening }),
+      });
+      void reload();
+    },
     note: async (entry, note) => {
       if (entry.kind === "item") {
         patchItem(entry.item.id, { note });
@@ -430,7 +441,10 @@ function TodayCard(props: TodayCardProps) {
     laterEvents, inProgressIds, busyId, celebrate, settling, timezone, hasTasks,
     onNewTask, onComplete, onMiss, onOpen, entries, today, onLine, dayStartMs, priorityPicks,
   } = props;
-  const { subjects } = useDashboardData().data;
+  const { subjects, rolledOver: justRolled } = useDashboardData().data;
+  // "3 things moved over from yesterday": kept from the load that moved them, not cleared by the next reload.
+  const [rolledOver, setRolledOver] = useState(0);
+  if (justRolled && justRolled !== rolledOver) setRolledOver(justRolled);
   // Lines added after the page opened drop in; the ones already there just stagger in.
   const [mountedAt] = useState(readNow);
   const { open, done } = splitDone(
@@ -458,7 +472,12 @@ function TodayCard(props: TodayCardProps) {
       style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
     >
       <div className="pt-3">
-        <AddLine today={today} timezone={timezone} lastLine={lastLine} />
+        <AddLine today={today} timezone={timezone} lastLine={lastLine} empty={entries.length === 0} />
+        {rolledOver ? (
+          <p className="px-5 pb-1 pl-[58px] text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
+            {rolledOver === 1 ? "One thing" : `${rolledOver} things`} moved over from yesterday.
+          </p>
+        ) : null}
       </div>
       <BlockingBar timezone={timezone} />
       <GapSuggestion
@@ -534,6 +553,8 @@ function TodayCard(props: TodayCardProps) {
                 ]}
                 onToggle={() => void onLine.toggle(entry)}
                 onNote={(note) => void onLine.note(entry, note)}
+                editText={editableText(entry, timezone)}
+                onEdit={(text) => void onLine.edit(entry, text)}
               />
             );
           })}
@@ -765,6 +786,16 @@ interface LineActions {
   tomorrow: (entry: NoteEntry) => Promise<void>;
   remove: (entry: NoteEntry) => Promise<void>;
   note: (entry: NoteEntry, note: string) => Promise<void>;
+  edit: (entry: NoteEntry, text: string) => Promise<void>;
+}
+
+/** A line as the student would type it, so editing shows "SLC 10:50", not just "SLC". */
+function editableText(entry: NoteEntry, timezone: string): string {
+  if (entry.kind === "item") return entry.item.evening ? `${entry.item.text} tonight` : entry.item.text;
+  const clock = (iso: string) => formatClock(iso, timezone).replace(/:00(?=[ap]m)/, "");
+  return entry.event.kind === "note-range"
+    ? `${entry.event.title} ${clock(entry.event.startAt)} to ${clock(entry.event.endAt)}`
+    : `${entry.event.title} ${clock(entry.event.startAt)}`;
 }
 
 /** "10:50am", "2:15pm to 2:45pm" for a timed line, "Tonight" for an evening one. */

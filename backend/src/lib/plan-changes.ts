@@ -23,6 +23,9 @@ const MAX_LENGTH = 6 * 60 * MINUTE;
 /** Same cap as the Subjects page. */
 const WEEKLY_MAX = 1200;
 const CATEGORIES = new Set(["school", "sport", "extracurricular", "other"]);
+// Kept in step with lib/app/categoryColors.ts. The Worker cannot import from
+// the web bundle, and subjects store a literal colour rather than a token.
+const SUBJECT_COLORS = ["#2f7cf6", "#e8603c", "#23a35a", "#d9468f", "#14a0b4", "#d49b00", "#8a5cf0"];
 
 const str = (operation: Operation, key: string) =>
   typeof operation[key] === "string" && (operation[key] as string).trim() ? (operation[key] as string).trim() : undefined;
@@ -104,6 +107,7 @@ interface Loaded {
   timeZone: string;
   bedtime: string;
   wakeTime: string;
+  maxDailyStudyMinutes: number;
   commitments: Array<typeof schema.commitments.$inferSelect>;
   sessionMinutes: number;
   grade: string | null;
@@ -120,6 +124,7 @@ async function load(database: Database, userId: string, now: number): Promise<Lo
       grade: schema.profiles.grade,
       bedtime: schema.profiles.bedtime,
       wakeTime: schema.profiles.wakeTime,
+      maxDailyStudyMinutes: schema.profiles.maxDailyStudyMinutes,
     })
     .from(schema.profiles)
     .where(eq(schema.profiles.userId, userId))
@@ -143,6 +148,7 @@ async function load(database: Database, userId: string, now: number): Promise<Lo
     timeZone,
     bedtime: profile?.bedtime ?? "22:30",
     wakeTime: profile?.wakeTime ?? "07:00",
+    maxDailyStudyMinutes: profile?.maxDailyStudyMinutes ?? 180,
     commitments,
     sessionMinutes: Math.max(15, profile?.preferredSessionMinutes ?? 50),
     grade: profile?.grade ?? null,
@@ -369,6 +375,71 @@ function prepareSubject(loaded: Loaded, operation: Operation): Operation | strin
   };
 }
 
+/** The first palette colour not already used, before cycling through again. */
+function nextSubjectColour(subjects: Loaded["subjects"]): string {
+  const used = new Set(subjects.map((subject) => subject.colour?.toLowerCase()).filter(Boolean));
+  return SUBJECT_COLORS.find((colour) => !used.has(colour)) ?? SUBJECT_COLORS[subjects.length % SUBJECT_COLORS.length];
+}
+
+/** Checks a new subject before Arcad puts it on an approval card. */
+export function prepareSubjectCreate(loaded: Pick<Loaded, "subjects">, operation: Operation): Operation | string {
+  const requested = str(operation, "subject");
+  if (!requested) return "that subject needs a name";
+  const subject = requested.replace(/\s+/g, " ").slice(0, 80);
+  if (loaded.subjects.some((row) => subjectKey(row.name) === subjectKey(subject))) {
+    return `you already have ${subject}`;
+  }
+  const suppliedMinutes = Object.prototype.hasOwnProperty.call(operation, "weeklyMinutes");
+  const rawMinutes = num(operation, "weeklyMinutes");
+  if (suppliedMinutes && rawMinutes === undefined) return "weekly study time needs to be a number";
+  return {
+    op: "create_subject",
+    subject,
+    colour: nextSubjectColour(loaded.subjects),
+    weeklyMinutes: rawMinutes === undefined ? null : Math.min(WEEKLY_MAX, Math.max(0, Math.round(rawMinutes / 5) * 5)),
+  };
+}
+
+/** Deletes only the subject row. Tasks retain their label as useful history. */
+export function prepareSubjectDelete(loaded: Pick<Loaded, "subjects">, operation: Operation): Operation | string {
+  const subject = findSubject(loaded as Loaded, str(operation, "subject"));
+  if (!subject) return `"${str(operation, "subject") ?? "that"}" isn't one of your subjects`;
+  return { op: "delete_subject", id: subject.id, subject: subject.name };
+}
+
+/** A lasting routine change. One-night bedtimes remain set_bedtime instead. */
+export function prepareRoutineUpdate(
+  loaded: Pick<Loaded, "wakeTime" | "bedtime" | "maxDailyStudyMinutes">,
+  operation: Operation,
+): Operation | string {
+  const hasWake = Object.prototype.hasOwnProperty.call(operation, "wakeTime");
+  const hasBedtime = Object.prototype.hasOwnProperty.call(operation, "bedtime");
+  const hasDailyLimit = Object.prototype.hasOwnProperty.call(operation, "maxDailyStudyMinutes");
+  if (!hasWake && !hasBedtime && !hasDailyLimit) return "tell me which part of your usual routine to change";
+
+  const wakeTime = hasWake ? str(operation, "wakeTime") : loaded.wakeTime;
+  if (hasWake && parseClock(wakeTime) === null) return "that's not a wake time I can read";
+  const bedtime = hasBedtime ? str(operation, "bedtime") : loaded.bedtime;
+  if (hasBedtime && parseClock(bedtime) === null) return "that's not a bedtime I can read";
+  const rawLimit = num(operation, "maxDailyStudyMinutes");
+  if (hasDailyLimit && (rawLimit === undefined || rawLimit < 30 || rawLimit > 720)) {
+    return "daily study time needs to be between 30 minutes and 12 hours";
+  }
+  const maxDailyStudyMinutes = hasDailyLimit ? Math.round(rawLimit!) : loaded.maxDailyStudyMinutes;
+  if (wakeTime === loaded.wakeTime && bedtime === loaded.bedtime && maxDailyStudyMinutes === loaded.maxDailyStudyMinutes) {
+    return "your usual routine is already set up like that";
+  }
+  return {
+    op: "update_routine",
+    ...(hasWake ? { wakeTime } : {}),
+    ...(hasBedtime ? { bedtime } : {}),
+    ...(hasDailyLimit ? { maxDailyStudyMinutes } : {}),
+    fromWakeTime: loaded.wakeTime,
+    fromBedtime: loaded.bedtime,
+    fromMaxDailyStudyMinutes: loaded.maxDailyStudyMinutes,
+  };
+}
+
 /**
  * Checks what Arcad proposed against the student's real schedule, so a
  * change card only offers what Apply can actually do. Block and commitment
@@ -401,6 +472,15 @@ export async function prepareOperations(
         break;
       case "update_subject":
         prepared = prepareSubject(loaded, operation);
+        break;
+      case "create_subject":
+        prepared = prepareSubjectCreate(loaded, operation);
+        break;
+      case "delete_subject":
+        prepared = prepareSubjectDelete(loaded, operation);
+        break;
+      case "update_routine":
+        prepared = prepareRoutineUpdate(loaded, operation);
         break;
       case "update_commitment":
         prepared = prepareCommitmentUpdate(loaded, operation);
@@ -580,6 +660,44 @@ export async function applyOperations(
           .set({ weeklyMinutes: Math.min(WEEKLY_MAX, Math.max(0, Math.round(minutes))) })
           .where(eq(schema.subjects.id, subject.id));
         done = true;
+      }
+    } else if (op === "create_subject") {
+      const checked = prepareSubjectCreate(loaded, operation);
+      if (typeof checked !== "string") {
+        const id = newId("sub");
+        const subject = {
+          id,
+          userId,
+          name: String(checked.subject),
+          colour: String(checked.colour),
+          weeklyMinutes: typeof checked.weeklyMinutes === "number" ? checked.weeklyMinutes : null,
+        };
+        await database.insert(schema.subjects).values(subject);
+        loaded.subjects.push(subject as typeof schema.subjects.$inferSelect);
+        done = true;
+      }
+    } else if (op === "delete_subject") {
+      const checked = prepareSubjectDelete(loaded, operation);
+      if (typeof checked !== "string") {
+        await database
+          .delete(schema.subjects)
+          .where(and(eq(schema.subjects.id, String(checked.id)), eq(schema.subjects.userId, userId)));
+        const index = loaded.subjects.findIndex((subject) => subject.id === checked.id);
+        if (index >= 0) loaded.subjects.splice(index, 1);
+        done = true;
+      }
+    } else if (op === "update_routine") {
+      const checked = prepareRoutineUpdate(loaded, operation);
+      if (typeof checked !== "string") {
+        const patch: Partial<typeof schema.profiles.$inferInsert> = {};
+        if (typeof checked.wakeTime === "string") patch.wakeTime = checked.wakeTime;
+        if (typeof checked.bedtime === "string") patch.bedtime = checked.bedtime;
+        if (typeof checked.maxDailyStudyMinutes === "number") patch.maxDailyStudyMinutes = checked.maxDailyStudyMinutes;
+        if (Object.keys(patch).length > 0) {
+          await database.update(schema.profiles).set(patch).where(eq(schema.profiles.userId, userId));
+          Object.assign(loaded, patch);
+          done = true;
+        }
       }
     } else if (op === "move_block" || op === "remove_block") {
       const event = loaded.events.find((row) => row.id === s("id"));

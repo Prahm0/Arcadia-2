@@ -17,8 +17,9 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#0a0714",
-    theme_color: "#0a0714",
+    // The app opens in the sage Day theme; the page switches the bar to Night itself.
+    background_color: "#f3f1ea",
+    theme_color: "#f3f1ea",
     lang: "en-AU",
     categories: ["education", "productivity", "utilities"],
     icons: [

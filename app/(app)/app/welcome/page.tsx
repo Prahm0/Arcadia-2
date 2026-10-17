@@ -8,7 +8,7 @@ type Tier = "free" | "pro" | "max";
 
 const UNLOCKED: Record<"pro" | "max", string[]> = {
   pro: [
-    "20 Arcad messages a day, 10x the free plan",
+    "20 Arcad messages a day",
     "Google, Apple and Canvas calendar sync",
     "Upload notes and PDFs, Arcad answers from them",
     "Full analytics and unlimited study rooms",

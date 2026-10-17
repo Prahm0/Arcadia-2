@@ -131,6 +131,8 @@ export interface AdminMoney {
     pastDue: number;
     /** Accounts made this period that pay now. */
     newThisPeriod: number;
+    /** On a free trial (Stripe or App Store): not paying yet, so not in the totals or MRR. */
+    trialing: number;
   };
   /** App Store test purchases (sandbox, TestFlight), left out of the above. */
   sandbox: number;

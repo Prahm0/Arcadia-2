@@ -5,6 +5,7 @@ import { api } from "@/lib/api/client";
 import { formatClock } from "@/lib/api/time";
 import type { DashboardResponse, PlannerEvent } from "@/lib/api/types";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
+import { claimAutomaticInterruption, hasCompletedStudyBlock } from "@/lib/app/firstStudyBlock";
 import { isGuestEmail } from "@/lib/auth/guest";
 import AppButton from "./AppButton";
 
@@ -69,7 +70,7 @@ export default function SleepStartPrompt({ blocked }: { blocked: boolean }) {
   }
 
   useEffect(() => {
-    if (isGuest || blocked) return;
+    if (isGuest || blocked || !hasCompletedStudyBlock(data.events)) return;
 
     function check() {
       if (document.visibilityState === "hidden" || shown) return;
@@ -89,7 +90,7 @@ export default function SleepStartPrompt({ blocked }: { blocked: boolean }) {
             return true;
           }
         });
-      if (!next) return;
+      if (!next || !claimAutomaticInterruption()) return;
 
       shownThisVisit.current.add(next.id);
       try {

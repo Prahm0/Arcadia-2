@@ -11,7 +11,7 @@ interface PageHeaderProps {
   /** Live facts about the page's data, counts, dates, totals. */
   meta?: string;
   action?: ReactNode;
-  /** The page's "How it works" tour: auto-opens on first visit. */
+  /** The page's optional "How it works" guide. */
   tour?: TourId;
   /** Match the page's content column so the title lines up with it. */
   width?: number | "full";

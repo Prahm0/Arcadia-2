@@ -14,7 +14,6 @@ import { setOnboardingOfferPending } from "@/lib/app/onboarding-offer";
 import { SOURCE_COOKIE } from "@/lib/appStore";
 import { HEARD_FROM, HEARD_FROM_DETAIL, type HeardFrom } from "@/shared/heardFrom";
 import { courseByKey, coursesFor, defaultCourse } from "@/shared/education";
-import OnboardingWow from "./OnboardingWow";
 import { Label, Select, TextArea, TextInput, WeeklyStepper } from "./profile/ui";
 
 interface OnboardingProps {
@@ -129,9 +128,8 @@ const toggleDay = (days: number[], day: number) =>
 export default function Onboarding({ userId, defaultName, defaultTimezone, onComplete }: OnboardingProps) {
   const [step, setStep] = useState(0);
   const [building, setBuilding] = useState(false);
-  // After the plan builds: first the wow moment (feel the adaptive replan),
-  // then the paywall, then the app. Plans are never shown mid-onboarding.
-  const [showWow, setShowWow] = useState(false);
+  // Once the plan builds, the existing post-onboarding paywall is the only
+  // interruption before the student reaches their real plan.
   const [showPaywall, setShowPaywall] = useState(false);
 
   // You
@@ -397,10 +395,6 @@ export default function Onboarding({ userId, defaultName, defaultTimezone, onCom
     return <OnboardingPaywall onContinueFree={onComplete} onCheckoutStarted={() => setOnboardingOfferPending(userId, false)} />;
   }
 
-  if (showWow) {
-    return <OnboardingWow onContinue={() => setShowPaywall(true)} />;
-  }
-
   if (building) {
     return (
       <OnboardingBuild
@@ -411,7 +405,7 @@ export default function Onboarding({ userId, defaultName, defaultTimezone, onCom
           analytics.onboardingCompleted(body.subjects.length, body.tasks.length);
         }}
         onBack={() => setBuilding(false)}
-        onDone={() => setShowWow(true)}
+        onDone={() => setShowPaywall(true)}
       />
     );
   }

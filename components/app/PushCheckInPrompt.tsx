@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
+import { claimAutomaticInterruption, hasCompletedStudyBlock } from "@/lib/app/firstStudyBlock";
 import { enablePushCheckins, pushCheckinsSupported, pushPermission } from "@/lib/app/pushCheckins";
 import { isGuestEmail } from "@/lib/auth/guest";
 import AppButton from "./AppButton";
@@ -18,7 +19,7 @@ export default function PushCheckInPrompt() {
   const paid = data.user.tier === "pro" || data.user.tier === "max";
 
   useEffect(() => {
-    if (!paid || isGuestEmail(data.user.email) || !pushCheckinsSupported()) return;
+    if (!paid || isGuestEmail(data.user.email) || !pushCheckinsSupported() || !hasCompletedStudyBlock(data.events)) return;
     let active = true;
     // Asked of iOS in the app, where there's no browser Notification API.
     void pushPermission().then((permission) => {
@@ -26,7 +27,7 @@ export default function PushCheckInPrompt() {
       try {
         const visits = Number(window.localStorage.getItem(VISITS_KEY) ?? "0") + 1;
         window.localStorage.setItem(VISITS_KEY, String(visits));
-        if (visits >= 2 && window.localStorage.getItem(DISMISSED_KEY) !== "1") setOpen(true);
+        if (visits >= 2 && window.localStorage.getItem(DISMISSED_KEY) !== "1" && claimAutomaticInterruption()) setOpen(true);
       } catch {
         // If storage is unavailable, keep the permission request in Settings.
       }
@@ -34,7 +35,7 @@ export default function PushCheckInPrompt() {
     return () => {
       active = false;
     };
-  }, [data.user.email, paid]);
+  }, [data.events, data.user.email, paid]);
 
   function dismiss() {
     try {

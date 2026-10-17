@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isGuestEmail } from "@/lib/auth/guest";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
+import { claimAutomaticInterruption, hasCompletedStudyBlock } from "@/lib/app/firstStudyBlock";
 import type { PlannerEvent } from "@/lib/api/types";
 
 const CHECK_INTERVAL_MS = 15_000;
@@ -52,7 +53,7 @@ export function useSessionStartWatcher(): {
   const dismiss = useCallback(() => setShownEventId(null), []);
 
   useEffect(() => {
-    if (isGuest) return;
+    if (isGuest || !hasCompletedStudyBlock(data.events)) return;
 
     function check() {
       if (checkingRef.current) return;
@@ -66,7 +67,7 @@ export function useSessionStartWatcher(): {
           .filter((candidate) => !wasShown(candidate.id))
           .sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt))[0];
 
-        if (!next) return;
+        if (!next || !claimAutomaticInterruption()) return;
         markShown(next.id);
         setShownEventId(next.id);
       } finally {

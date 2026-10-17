@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api/client";
 import { success } from "@/lib/capacitor/haptics";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
+import { hasCompletedStudyBlock } from "@/lib/app/firstStudyBlock";
 import type { DashboardResponse, MissReason, PlannerEvent } from "@/lib/api/types";
 import { formatClock } from "@/lib/api/time";
 import AppButton from "./AppButton";
@@ -38,7 +39,7 @@ export default function MissedRecoveryCards() {
   const hasPaidPlan = data.user.tier === "pro" || data.user.tier === "max";
 
   const candidates = useMemo(() => findRecoveryCandidates(data.events), [data.events]);
-  const visible = candidates.filter((event) => !snoozed.has(event.id));
+  const visible = hasCompletedStudyBlock(data.events) ? candidates.filter((event) => !snoozed.has(event.id)) : [];
 
   // Hydrate per-event snoozes from localStorage on mount. Snoozes are per-event
   // (not per-day) so a truly forgotten missed block keeps nagging tomorrow.

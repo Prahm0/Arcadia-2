@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
+import { hasCompletedStudyBlock } from "@/lib/app/firstStudyBlock";
 import { useStreak } from "@/lib/app/useStreak";
 import { buildProactiveCards, type ProactiveCard, type ProactiveTone } from "@/lib/app/proactiveCards";
 
@@ -30,7 +31,7 @@ export default function ProactiveArcadCards({ limit = 2, compact = false }: Proa
   const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
 
   const cards = useMemo(() => buildProactiveCards(data, streak), [data, streak]);
-  const visible = cards.filter((card) => !dismissed.has(card.id)).slice(0, limit);
+  const visible = hasCompletedStudyBlock(data.events) ? cards.filter((card) => !dismissed.has(card.id)).slice(0, limit) : [];
 
   useEffect(() => {
     const next = new Set<string>();

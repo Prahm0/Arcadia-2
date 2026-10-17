@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api/client";
+import { dateKey } from "@/lib/api/time";
+import { useDashboardData } from "@/lib/app/DashboardProvider";
+import { hasCompletedStudyBlock } from "@/lib/app/firstStudyBlock";
 
 type Progress = { todayRing: { doneMinutes: number; goalMinutes: number; closed: boolean; restDay?: boolean } };
 
-function todayKey() {
-  return `arcadia:daily-welcome:${new Date().toLocaleDateString("en-CA")}`;
+function todayKey(userId: string, timezone: string) {
+  return `arcadia:daily-welcome:${userId}:${dateKey(new Date().toISOString(), timezone)}`;
 }
 
 function message(ring: Progress["todayRing"]): string {
@@ -21,10 +24,19 @@ function message(ring: Progress["todayRing"]): string {
  * and never interrupts the student; dismissing it just hides it sooner.
  */
 export default function DailyWelcome() {
+  const { data } = useDashboardData();
   const [progress, setProgress] = useState<Progress | null>(null);
+  const timezone = data.profile?.timezone || data.user.timezone || "Australia/Sydney";
+  const completed = data.events.filter((event) => event.category === "study" && event.outcome === "completed");
+  const today = dateKey(new Date().toISOString(), timezone);
+  const firstStudyDay = completed.length > 0 && completed.every((event) => dateKey(event.endAt, timezone) === today);
+
   useEffect(() => {
+    // The first session is for seeing the plan work, not another message to
+    // read. A welcome starts on a later day once study has actually happened.
+    if (!hasCompletedStudyBlock(data.events) || firstStudyDay) return;
     try {
-      if (localStorage.getItem(todayKey()) === "1") return;
+      if (localStorage.getItem(todayKey(data.user.id, timezone)) === "1") return;
     } catch {
       /* no storage: show it, it's harmless */
     }
@@ -32,13 +44,13 @@ export default function DailyWelcome() {
       .then((value) => {
         setProgress(value);
         try {
-          localStorage.setItem(todayKey(), "1");
+          localStorage.setItem(todayKey(data.user.id, timezone), "1");
         } catch {
           /* ignore */
         }
       })
       .catch(() => {});
-  }, []);
+  }, [data.events, data.user.id, firstStudyDay, timezone]);
   if (!progress) return null;
   return (
     <div className="mx-auto flex w-full max-w-[1160px] items-center justify-between gap-3 px-6 pt-3 sm:px-10" role="status">

@@ -2,37 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
-import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { OPEN_TOUR_EVENT } from "@/lib/app/commands";
-import { TOURS, TOUR_VERSION, setActiveTour, type Tour, type TourId } from "./tours";
+import { TOURS, setActiveTour, type Tour, type TourId } from "./tours";
 
-/** Long enough for the page to paint first, so the tour reads as "about this". */
-const AUTO_OPEN_DELAY_MS = 450;
 /** One wheel gesture advances one step, however many events the trackpad fires. */
 const WHEEL_COOLDOWN_MS = 450;
 
-function storageKey(id: TourId, userId: string) {
-  const own = TOURS[id].version;
-  return `arcadia:tour:v${TOUR_VERSION}${own ? `.${own}` : ""}:${id}:${userId}`;
-}
-
-function hasSeen(key: string): boolean {
-  try {
-    return window.localStorage.getItem(key) === "done";
-  } catch {
-    // Storage blocked: don't nag on every visit.
-    return true;
-  }
-}
-
 /**
- * A page's "How it works" button plus its tour. The tour opens by itself the
- * first time someone visits the page, and again whenever they ask for it
- * (the button, or Help → How this page works).
+ * A page's quiet, user-initiated "How it works" help. Tours never open on
+ * their own, so a student can explore a new page before asking for guidance.
  */
 export default function PageTour({ id }: { id: TourId }) {
-  const { data } = useDashboardData();
-  const key = storageKey(id, data.user.id);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -41,28 +21,12 @@ export default function PageTour({ id }: { id: TourId }) {
   }, [id]);
 
   useEffect(() => {
-    if (hasSeen(key)) return;
-    const timer = window.setTimeout(() => {
-      // Never stack on top of a sheet or dialog someone already opened.
-      if (!document.querySelector('[aria-modal="true"]')) setOpen(true);
-    }, AUTO_OPEN_DELAY_MS);
-    return () => window.clearTimeout(timer);
-  }, [key]);
-
-  useEffect(() => {
     const onOpen = () => setOpen(true);
     window.addEventListener(OPEN_TOUR_EVENT, onOpen);
     return () => window.removeEventListener(OPEN_TOUR_EVENT, onOpen);
   }, []);
 
-  const close = useCallback(() => {
-    setOpen(false);
-    try {
-      window.localStorage.setItem(key, "done");
-    } catch {
-      /* ignore */
-    }
-  }, [key]);
+  const close = useCallback(() => setOpen(false), []);
 
   return (
     <>

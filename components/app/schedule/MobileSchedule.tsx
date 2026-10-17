@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { flipKey, useFlip } from "@/lib/app/useFlip";
 import type { DashboardResponse, PlannerEvent } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { dateKey, formatClock } from "@/lib/api/time";
@@ -68,9 +69,12 @@ export function MobileWeekSchedule({
     events
       .filter((event) => dateKey(event.startAt, timezone) === day.key)
       .sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt));
+  // Blocks slide between days and times when Arcad replans the week.
+  const weekRef = useRef<HTMLElement>(null);
+  useFlip(weekRef, flipKey(events), `${days[0]?.key ?? ""}:${days.length}`);
 
   return (
-    <section className="mt-4" aria-label="Week schedule">
+    <section ref={weekRef} className="mt-4" aria-label="Week schedule">
       <p className="mb-3 text-[12px]" style={{ color: "var(--app-text-muted)" }}>
         Your full week at a glance. Tap a day for its timeline.
       </p>
@@ -119,6 +123,7 @@ export function MobileWeekSchedule({
                     return (
                       <button
                         key={event.id}
+                        data-flip-id={event.id}
                         type="button"
                         onClick={() => onSelectEvent(event)}
                         className={cn("flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left active:scale-[0.99]", completed && "opacity-55", missed && "opacity-40")}
@@ -188,6 +193,9 @@ export function MobileDaySchedule({
   const blocks = events
     .map((event) => ({ event, position: positionFor(event, days, timezone) }))
     .filter(({ position }) => position.visible && position.dayIndex === selectedDayIndex);
+  // Blocks slide to their new times when Arcad replans; swiping days doesn't animate.
+  const dayRef = useRef<HTMLDivElement>(null);
+  useFlip(dayRef, flipKey(blocks.map(({ event }) => event)), selectedDay?.key ?? "");
 
   function handleTouchEnd(event: React.TouchEvent<HTMLDivElement>) {
     const start = touchStart.current;
@@ -255,6 +263,7 @@ export function MobileDaySchedule({
         </div>
 
         <div
+          ref={dayRef}
           className="relative touch-pan-y select-none"
           style={{ height: HEIGHT }}
           onTouchStart={(event) => {
@@ -289,6 +298,7 @@ export function MobileDaySchedule({
             return (
               <button
                 key={event.id}
+                data-flip-id={event.id}
                 type="button"
                 onClick={() => onSelectEvent(event)}
                 className={cn("absolute left-[60px] right-2 z-10 overflow-hidden rounded-md px-3 py-2 text-left active:scale-[0.99]", completed && "opacity-55", missed && "opacity-40")}

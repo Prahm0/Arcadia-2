@@ -18,6 +18,7 @@ import {
   type PlacedBlock,
 } from "./calendar";
 import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
+import { flipKey, useFlip } from "@/lib/app/useFlip";
 import { showContextMenu, type ContextMenuEntry } from "../ContextMenu";
 
 const HOUR_PX = 52;
@@ -98,6 +99,8 @@ export default function TimeGrid({
   const [dropDay, setDropDay] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const columnsRef = useRef<HTMLDivElement>(null);
+  // Blocks slide to their new times and days when Arcad replans the week.
+  useFlip(columnsRef, flipKey(events), `${days[0]?.key ?? ""}:${days.length}`);
   const dragRef = useRef<DragState | null>(null);
   // The latest snapped offset, and whether a drag just ended so its click is swallowed.
   const offsetRef = useRef({ minutes: 0, days: 0 });
@@ -557,6 +560,7 @@ function Block({
 
   return (
     <div
+      data-flip-id={event.id}
       onContextMenu={onContextMenu}
       className={cn("group/block absolute px-[3px]", moving ? "z-30" : "z-10")}
       style={{

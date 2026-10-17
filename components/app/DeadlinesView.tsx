@@ -66,12 +66,6 @@ export default function DeadlinesView() {
   );
   const total = pending.length;
   const totalMinutes = pending.reduce((sum, task) => sum + task.remainingMinutes, 0);
-  const nextTask = pending[0] ?? null;
-  const thisWeek = pending.filter((task) => {
-    const days = daysUntil(task.dueAt, timezone);
-    return days >= 0 && days <= 7;
-  });
-  const overdue = pending.filter((task) => daysUntil(task.dueAt, timezone) < 0);
   const prepByTask = useMemo(() => new Map(data.tasks.map((task) => {
     const sessions = data.events.filter((event) => event.category === "study" && event.taskId === task.id && Date.parse(event.startAt) <= Date.parse(task.dueAt));
     return [task.id, { planned: sessions.length, done: sessions.filter((event) => event.outcome === "completed").length }];
@@ -137,14 +131,12 @@ export default function DeadlinesView() {
   return (
     <>
       <PageHeader width={820}
-        eyebrow="Plan"
         title="Deadlines"
         meta={
           total === 0
             ? "No open tasks"
             : `${total} open ${total === 1 ? "task" : "tasks"} · ${formatDurationMinutes(totalMinutes)} of work across ${subjectCount(data)} ${subjectCount(data) === 1 ? "subject" : "subjects"}`
         }
-        tour="deadlines"
         action={
           <AppButton
             variant="primary"
@@ -177,7 +169,6 @@ export default function DeadlinesView() {
                 Add a deadline
               </AppButton>
             }
-            hint="You can also just tell Arcad in chat, it'll add and schedule for you."
           />
         ) : total === 0 ? (
           <EmptyState
@@ -191,19 +182,6 @@ export default function DeadlinesView() {
           />
         ) : null}
 
-        {nextTask ? (
-          <DeadlineOverview
-            task={nextTask}
-            timezone={timezone}
-            color={subjectColor.get((nextTask.subject || "").toLowerCase())}
-            dueThisWeek={thisWeek.length}
-            overdue={overdue.length}
-            minutesThisWeek={thisWeek.reduce((sum, task) => sum + task.remainingMinutes, 0)}
-            prep={prepByTask.get(nextTask.id)}
-            onOpen={() => setDetailTask(nextTask)}
-            onContextMenu={taskMenu(nextTask)}
-          />
-        ) : null}
 
         {grouped.map((group) => (
           <section key={group.label}>
@@ -246,87 +224,6 @@ export default function DeadlinesView() {
         onClose={() => { setSheetOpen(false); setEditing(null); }}
       />
     </>
-  );
-}
-
-function DeadlineOverview({
-  task,
-  timezone,
-  color,
-  dueThisWeek,
-  overdue,
-  minutesThisWeek,
-  onOpen,
-  onContextMenu,
-  prep,
-}: {
-  task: PlannerTask;
-  timezone: string;
-  color?: string;
-  dueThisWeek: number;
-  overdue: number;
-  minutesThisWeek: number;
-  onOpen: () => void;
-  onContextMenu: (event: React.MouseEvent) => void;
-  prep?: { planned: number; done: number };
-}) {
-  const state = deadlineState(task.dueAt, timezone);
-  const attention = state.days <= 1 || state.days < 0;
-
-  return (
-    <section
-      onContextMenu={onContextMenu}
-      className="overflow-hidden rounded-xl border"
-      style={{
-        background: attention
-          ? "linear-gradient(135deg, color-mix(in oklab, var(--app-danger) 10%, var(--app-surface)), var(--app-surface))"
-          : "linear-gradient(135deg, color-mix(in oklab, var(--app-accent) 10%, var(--app-surface)), var(--app-surface))",
-        borderColor: attention
-          ? "color-mix(in oklab, var(--app-danger) 24%, var(--app-border))"
-          : "color-mix(in oklab, var(--app-accent) 22%, var(--app-border))",
-        boxShadow: "var(--elev-1)",
-      }}
-      aria-label="Next deadline"
-    >
-      <div className="grid @3xl/main:grid-cols-[minmax(0,1fr)_210px]">
-        <div className="min-w-0 px-5 py-5 sm:px-6 sm:py-6">
-          <p className="type-eyebrow" style={{ color: attention ? "var(--app-danger)" : "var(--app-accent-strong)" }}>
-            {state.days < 0 ? "Needs attention" : "Next deadline"}
-          </p>
-          <div className="mt-3 flex items-start gap-3">
-            <span className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ background: color || "var(--app-accent)" }} aria-hidden="true" />
-            <div className="min-w-0">
-              <h2 className="truncate text-[21px] font-semibold tracking-[-0.02em] sm:text-[24px]" style={{ color: "var(--app-text)" }}>
-                {task.title}
-              </h2>
-              <p className="mt-1 text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
-                {task.subject ? `${task.subject} · ` : ""}{formatDueSoon(task.dueAt, timezone)} · {formatDurationMinutes(task.remainingMinutes)} left
-              </p>
-            </div>
-          </div>
-          <div className="mt-5">
-            <AppButton variant={attention ? "danger" : "primary"} onClick={onOpen}>
-              Open deadline
-            </AppButton>
-          </div>
-          {prep?.planned ? <PrepProgress prep={prep} color={color} /> : null}
-        </div>
-        <div className="grid grid-cols-2 border-t px-5 py-4 sm:px-6 @3xl/main:grid-cols-1 @3xl/main:border-l @3xl/main:border-t-0" style={{ borderColor: "var(--app-border)" }}>
-          <DeadlineSnapshot label={overdue > 0 ? "Overdue" : "Due this week"} value={String(overdue > 0 ? overdue : dueThisWeek)} detail={overdue > 0 ? "needs a new plan" : "tasks to prepare for"} tone={overdue > 0 ? "danger" : "default"} />
-          <DeadlineSnapshot label="This week" value={formatDurationMinutes(minutesThisWeek)} detail="of work left" />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function DeadlineSnapshot({ label, value, detail, tone = "default" }: { label: string; value: string; detail: string; tone?: "default" | "danger" }) {
-  return (
-    <div className="py-1.5 lg:py-2.5">
-      <p className="text-[11.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>{label}</p>
-      <p className="mt-1 text-[20px] font-semibold leading-none tabular-nums tracking-[-0.025em]" style={{ color: tone === "danger" ? "var(--app-danger)" : "var(--app-text)" }}>{value}</p>
-      <p className="mt-1 text-[11.5px]" style={{ color: "var(--app-text-faint)" }}>{detail}</p>
-    </div>
   );
 }
 

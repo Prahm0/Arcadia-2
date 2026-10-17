@@ -16,7 +16,6 @@ import AppButton from "./AppButton";
 import NewTaskSheet from "./NewTaskSheet";
 import TaskDetailSheet from "./TaskDetailSheet";
 import EventDetailSheet from "./EventDetailSheet";
-import PageTour from "./tour/PageTour";
 import TimeGrid, { type ScheduleMenus } from "./schedule/TimeGrid";
 import TermMatrix, { type MatrixView } from "./schedule/TermMatrix";
 import AnalyticsStrip from "./schedule/AnalyticsStrip";
@@ -83,7 +82,6 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
   const router = useRouter();
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
   const [anchor, setAnchor] = useState(today);
-  const [mobileWeek, setMobileWeek] = useState(false);
   const [taskSheet, setTaskSheet] = useState<{ due: string | null; subject: string | null; editing: PlannerTask | null } | null>(null);
   const [detailTask, setDetailTask] = useState<PlannerTask | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<PlannerEvent | null>(null);
@@ -397,10 +395,8 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
       {!wide ? (
         <div className="md:hidden">
           <PageHeader
-            eyebrow="Plan"
             title="Schedule"
-            meta={`${title} · ${meta}`}
-            tour="schedule"
+            meta={title}
             action={
               <>
                 <AppButton variant="primary" onClick={() => addTask(mode === "day" ? anchor : null)} icon={<PlusIcon />}>
@@ -432,15 +428,7 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
               </>
             ) : (
               <div>
-                <div className="mb-3 flex items-center gap-2">
-                  <span className="text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>{mode === "week" || mobileWeek ? "Agenda" : "Timeline"}</span>
-                  {mode === "day" ? (
-                    <button type="button" onClick={() => setMobileWeek((value) => !value)} className="text-[12.5px] font-medium underline underline-offset-2" style={{ color: "var(--app-text-soft)" }}>
-                      {mobileWeek ? "Show the day" : "Show the week"}
-                    </button>
-                  ) : null}
-                </div>
-                {mode === "day" && !mobileWeek ? (
+                {mode === "day" ? (
                   <MobileDaySchedule
                     days={week}
                     events={gridEvents.filter((event) => Date.parse(event.startAt) < week[6].endMs && Date.parse(event.endAt) > week[0].startMs)}
@@ -451,7 +439,6 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
                     onSelectDay={(index) => setAnchor(addDays(mondayOf(anchor), index))}
                     onPreviousDay={() => setAnchor((current) => addDays(current, -1))}
                     onNextDay={() => setAnchor((current) => addDays(current, 1))}
-                    onToday={goToday}
                     onSelectEvent={setSelectedEvent}
                     onCreateAtDay={(key) => addTask(key)}
                   />
@@ -461,10 +448,7 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
                     events={gridEvents.filter((event) => Date.parse(event.startAt) < week[6].endMs && Date.parse(event.endAt) > week[0].startMs)}
                     subjects={data.subjects}
                     timezone={timezone}
-                    onOpenDay={(index) => {
-                      setMobileWeek(false);
-                      openDay(addDays(mondayOf(anchor), index));
-                    }}
+                    onOpenDay={(index) => openDay(addDays(mondayOf(anchor), index))}
                     onSelectEvent={setSelectedEvent}
                     onCreateAtDay={(key) => addTask(key)}
                   />
@@ -506,7 +490,6 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
             ) : null}
 
             <div className="ml-auto flex items-center gap-2">
-              <PageTour id="schedule" />
               {subjects.length ? <SubjectMenu subjects={subjects} selected={selected} onToggle={toggleSubject} hideAt={mode === "day" ? "wide" : "xl"} /> : null}
               <ModeSwitch mode={mode} onChange={setMode} />
               <AppButton variant="primary" onClick={() => addTask(mode === "day" ? anchor : null)} icon={<PlusIcon />} title="Add task (N)">
@@ -518,19 +501,15 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
 
           <div className="flex min-h-0 flex-1">
             <ContextPanel
-              data={data}
               today={today}
               timezone={timezone}
-              todayPeriod={todayPeriod}
               period={displayPeriod}
               studyEvents={studyEvents}
-              tasks={tasks}
               subjects={subjects}
               selected={selected}
               onToggleSubject={toggleSubject}
               roomy={mode !== "day"}
               showProgress={mode === "term"}
-              onOpenTask={setDetailTask}
               onJump={setAnchor}
             />
 

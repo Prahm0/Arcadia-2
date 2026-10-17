@@ -70,14 +70,12 @@ export default function CardsView({ startCreating = false }: { startCreating?: b
   return (
     <>
       <PageHeader width={820}
-        eyebrow="Resources"
         title="Cards"
         meta={
           state.status !== "ready" || decks.length === 0
             ? undefined
             : `${decks.length} ${decks.length === 1 ? "deck" : "decks"} · ${cardCount(total)}${due ? ` · ${due} due` : ""}`
         }
-        tour="cards"
         action={decks.length > 0 ? newDeck : undefined}
       />
 
@@ -105,7 +103,6 @@ export default function CardsView({ startCreating = false }: { startCreating?: b
               </>
             }
             action={newDeck}
-            hint="Studying is free on every plan."
           />
         ) : (
           <>

@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import type { DashboardResponse, PlannerEvent, PlannerTask } from "@/lib/api/types";
+import type { PlannerEvent } from "@/lib/api/types";
 import { dateKey } from "@/lib/api/time";
 import { SubjectTag } from "../cards/shared";
-import { addDays, dueIn, eventMinutes, isExam, shortMinutes } from "./calendar";
-import { Bar, ExamWord, PanelTitle, Sparkle } from "./bits";
-import { periodPosition, type TermPeriod } from "./period";
+import { eventMinutes, shortMinutes } from "./calendar";
+import { Bar, PanelTitle, Sparkle } from "./bits";
+import type { TermPeriod } from "./period";
 
 export interface SubjectInfo {
   name: string;
@@ -14,19 +14,14 @@ export interface SubjectInfo {
 }
 
 interface ContextPanelProps {
-  data: DashboardResponse;
   today: string;
   timezone: string;
-  /** The period containing today, for "Term 3 · Week 10". */
-  todayPeriod: TermPeriod;
   /** The period on screen, for its progress. */
   period: TermPeriod;
   studyEvents: PlannerEvent[];
-  tasks: PlannerTask[];
   subjects: SubjectInfo[];
   selected: Set<string>;
   onToggleSubject: (name: string | null) => void;
-  onOpenTask: (task: PlannerTask) => void;
   onJump: (key: string) => void;
   /** Day view has its own list and habits open, so this only shows on very wide screens there. */
   roomy?: boolean;
@@ -35,21 +30,18 @@ interface ContextPanelProps {
 }
 
 /**
- * Where you are and what's next: the date, the term and week, how the term's
- * plan is going, what's due, and which subjects the page is showing.
+ * Beside the grid: today's date, how the term's plan is going (term view)
+ * and which subjects the page is showing. What's due lives on Deadlines and
+ * the term and week in the page header.
  */
 export default function ContextPanel({
-  data,
   today,
   timezone,
-  todayPeriod,
   period,
   studyEvents,
-  tasks,
   subjects,
   selected,
   onToggleSubject,
-  onOpenTask,
   onJump,
   roomy = true,
   showProgress = true,
@@ -77,10 +69,6 @@ export default function ContextPanel({
       return { label: week.label, from, lit: weekPlanned > 0 && weekDone / weekPlanned >= 0.7, current: from <= today && today <= to };
     });
 
-  const upcoming = tasks
-    .filter((task) => task.status === "pending" && dateKey(task.dueAt, timezone) >= today)
-    .slice(0, 5);
-  const overdue = tasks.filter((task) => task.status === "pending" && dateKey(task.dueAt, timezone) < today).length;
   const all = selected.size === 0;
 
   return (
@@ -94,12 +82,6 @@ export default function ContextPanel({
           {month} {at.getUTCDate()}
         </p>
         <p className="mt-1.5 text-[11.5px] font-medium tracking-[0.08em]" style={{ color: "var(--app-text-muted)" }}>{weekday}</p>
-        <p className="mt-3 text-[13px] font-medium" style={{ color: "var(--app-text)" }}>{periodPosition(todayPeriod, today)}</p>
-        {!todayPeriod.isTerm ? (
-          <Link href="/app/profile" className="mt-1 block text-[12px]" style={{ color: "var(--app-text-muted)" }}>
-            Add your state for real term dates →
-          </Link>
-        ) : null}
       </div>
 
       {showProgress ? <section>
@@ -131,41 +113,6 @@ export default function ContextPanel({
         ) : null}
       </section> : null}
 
-      <section>
-        <PanelTitle>Upcoming</PanelTitle>
-        {upcoming.length ? (
-          <ul className="mt-2 flex flex-col">
-            {upcoming.map((task) => {
-              const key = dateKey(task.dueAt, timezone);
-              const soon = key <= addDays(today, 2);
-              return (
-                <li key={task.id} className="group -mx-2 flex items-center gap-2 rounded-md px-2 py-1.5 ui-hover">
-                  <button type="button" onClick={() => onOpenTask(task)} className="flex min-w-0 flex-1 items-center gap-1.5 text-left">
-                    {isExam(task) ? <ExamWord /> : null}
-                    <span className="truncate text-[13px]" style={{ color: "var(--app-text)" }}>{task.title}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onJump(key)}
-                    title="Show on the calendar"
-                    className="shrink-0 text-[11.5px] tabular-nums"
-                    style={{ color: soon ? "var(--app-warning)" : "var(--app-text-muted)", fontWeight: soon ? 600 : 400 }}
-                  >
-                    {dueIn(key, today).replace(/^in /, "")}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <p className="mt-2 text-[12.5px] leading-snug" style={{ color: "var(--app-text-muted)" }}>Nothing due. Add a deadline and Arcad plans the study.</p>
-        )}
-        {overdue ? (
-          <Link href="/app/deadlines" className="mt-1.5 block text-[12px] font-medium" style={{ color: "var(--app-danger)" }}>
-            {overdue} overdue →
-          </Link>
-        ) : null}
-      </section>
 
       {subjects.length ? (
         <section>
@@ -193,12 +140,6 @@ export default function ContextPanel({
       <div className="mt-auto flex flex-col gap-1 border-t pt-3 text-[12.5px]" style={{ borderColor: "var(--app-border)" }}>
         <Link href="/app/commitments" className="ui-hover -mx-2 rounded-md px-2 py-1" style={{ color: "var(--app-text-muted)" }}>
           Weekly commitments
-        </Link>
-        <Link href="/app/settings#calendars" className="ui-hover -mx-2 rounded-md px-2 py-1" style={{ color: "var(--app-text-muted)" }}>
-          {data.google?.connected || data.calendarFeeds?.length ? "Connected calendars" : "Connect a calendar"}
-        </Link>
-        <Link href="/app/settings#calendar-export" className="ui-hover -mx-2 rounded-md px-2 py-1" style={{ color: "var(--app-text-muted)" }}>
-          Add to Google or Apple Calendar
         </Link>
       </div>
     </aside>

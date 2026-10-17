@@ -164,7 +164,6 @@ export default function IosPricingView({ tiers }: { tiers: IosTier[] }) {
     <>
       <PageHeader
         width={1080}
-        eyebrow="Plans"
         title={
           <>
             Pick your <span className="accent-serif">Arcadia</span>.

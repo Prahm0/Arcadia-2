@@ -72,10 +72,8 @@ export default function SheetsView({ startCreating = false }: { startCreating?: 
     <>
       <PageHeader
         width={820}
-        eyebrow="Resources"
         title="Sheets"
         meta={state.status === "ready" && sheets.length > 0 ? `${sheets.length} ${sheets.length === 1 ? "sheet" : "sheets"}` : undefined}
-        tour="sheets"
         action={sheets.length > 0 ? newSheet : undefined}
       />
 

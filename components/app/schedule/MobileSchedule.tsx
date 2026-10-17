@@ -33,20 +33,6 @@ function mobileBlockStyle(event: PlannerEvent, subjects: DashboardResponse["subj
   return event.category === "sleep" ? CATEGORY_STYLE.sleep : FIXED_COMMITMENT_STYLE;
 }
 
-function IconButton({ children, onClick, label }: { children: React.ReactNode; onClick: () => void; label: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      className="grid h-9 w-9 place-items-center"
-      style={{ color: "var(--app-text-soft)" }}
-    >
-      {children}
-    </button>
-  );
-}
-
 /** A whole-week phone view that stays readable by using a compact agenda. */
 export function MobileWeekSchedule({
   days,
@@ -170,7 +156,6 @@ export function MobileDaySchedule({
   onSelectDay,
   onPreviousDay,
   onNextDay,
-  onToday,
   onSelectEvent,
   onCreateAtDay,
 }: {
@@ -183,7 +168,6 @@ export function MobileDaySchedule({
   onSelectDay: (index: number) => void;
   onPreviousDay: () => void;
   onNextDay: () => void;
-  onToday: () => void;
   onSelectEvent: (event: PlannerEvent) => void;
   onCreateAtDay: (dayKey: string) => void;
 }) {
@@ -211,24 +195,8 @@ export function MobileDaySchedule({
 
   return (
     <section aria-label="Daily schedule">
-      <div className="flex items-center justify-between gap-2">
-        <IconButton label="Previous day" onClick={onPreviousDay}>
-          <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 5l-5 5 5 5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-        </IconButton>
-        <button
-          type="button"
-          onClick={onToday}
-          className="h-10 rounded-md px-3 text-[13px] font-medium"
-          style={{ color: "var(--app-text-soft)", background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
-        >
-          Today
-        </button>
-        <IconButton label="Next day" onClick={onNextDay}>
-          <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M8 5l5 5-5 5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-        </IconButton>
-      </div>
-
-      <div className="mt-4 grid grid-cols-7 gap-1" role="tablist" aria-label="Days this week">
+      {/* Previous, Today and Next live in the page's own bar above; this is just the week. */}
+      <div className="grid grid-cols-7 gap-1" role="tablist" aria-label="Days this week">
         {days.map((day, index) => {
           const active = index === selectedDayIndex;
           return (
@@ -253,15 +221,8 @@ export function MobileDaySchedule({
         })}
       </div>
 
-      <div className="mt-5 overflow-hidden rounded-lg" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
-        <div className="flex items-center justify-between gap-3 border-b px-4 py-3" style={{ borderColor: "var(--app-border)" }}>
-          <div>
-            <p className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>{selectedDay.weekday}, {selectedDay.label}</p>
-            <p className="mt-0.5 text-[12px]" style={{ color: "var(--app-text-muted)" }}>Swipe between days. Tap a block for details.</p>
-          </div>
-          {selectedDay.isToday ? <span className="text-[11px] font-medium" style={{ color: "var(--app-accent-strong)" }}>Today</span> : null}
-        </div>
-
+      {/* The top padding keeps the first hour's label clear of the card's edge. */}
+      <div className="mt-5 overflow-hidden rounded-lg pt-3" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
         <div
           ref={dayRef}
           className="relative touch-pan-y select-none"

@@ -12,10 +12,8 @@ export default function ReviewView() {
   return (
     <>
       <PageHeader width={900}
-        eyebrow="Progress"
         title="Weekly review"
         meta={which === "previous" ? "Last week" : "This week"}
-        tour="review"
         action={
           <div
             className="inline-flex rounded-md p-1"

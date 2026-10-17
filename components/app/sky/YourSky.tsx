@@ -97,17 +97,6 @@ export default function YourSky({
           id="sky-heading"
           title="Streak cards"
           body="Every minute of focus lights stars on your streak cards. Unlike a daily streak, they never go out."
-          aside={sky ? (
-            <label className="flex items-center gap-2 text-[12px]" style={{ color: "var(--app-text-muted)" }}>
-              <input
-                type="checkbox"
-                checked={sky.preferences.ambientMotion}
-                disabled={busy}
-                onChange={(event) => void act(() => update({ ambientMotion: event.target.checked }))}
-              />
-              Ambient motion
-            </label>
-          ) : null}
         />
 
         {error || (actionError && !detail) ? (

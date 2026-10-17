@@ -5,7 +5,6 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 import type { StudyRoom, StudyRoomMember } from "@/lib/api/rooms";
 import AppButton from "../AppButton";
 import { copyText, showContextMenu, type ContextMenuEntry } from "../ContextMenu";
-import PageTour from "../tour/PageTour";
 import { AvatarStack, LIVE } from "./MemberAvatar";
 import { byActivity, formatHours, periodSeconds } from "./format";
 
@@ -75,7 +74,6 @@ export default function RoomHeader({
           </p>
         </div>
         <div className="flex items-center gap-1.5">
-          <PageTour id="rooms" />
           <AppButton variant="secondary" onClick={open(inviteEntries, "Invite to room")} aria-haspopup="menu">
             <svg aria-hidden="true" viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M8 3v10M3 8h10" /></svg>
             Invite

@@ -136,11 +136,6 @@ export default function TodayView() {
 
   const remaining = studyBlocks.filter((event) => event.outcome === "planned");
   const completed = studyBlocks.filter((event) => event.outcome === "completed");
-  const totalMinutes = remaining.reduce(
-    (sum, event) => sum + Math.round((Date.parse(event.endAt) - Date.parse(event.startAt)) / 60000),
-    0,
-  );
-  const weekProgress = clampWeekProgress(now);
 
   async function markOutcome(event: PlannerEvent, outcome: "completed" | "missed") {
     setBusyId(event.id);
@@ -263,7 +258,6 @@ export default function TodayView() {
         eyebrow={formatFriendlyDate(now.toISOString(), timezone)}
         title={`${greeting}, ${firstName}`}
         meta={summary}
-        tour="today"
         action={
           <>
             <AppButton
@@ -272,15 +266,6 @@ export default function TodayView() {
               icon={<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 10a6 6 0 0 1 10.5-4M16 10a6 6 0 0 1-10.5 4M14 3v3.5h-3.5M6 17v-3.5h3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
             >
               Life happened
-            </AppButton>
-            {/* Phones have Add in the tab bar, so this would be a second copy. */}
-            <AppButton
-              variant="primary"
-              className="max-lg:hidden"
-              onClick={requestAddToToday}
-              icon={<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M10 4v12M4 10h12" strokeLinecap="round" /></svg>}
-            >
-              Add
             </AppButton>
           </>
         }
@@ -296,12 +281,6 @@ export default function TodayView() {
           <StartNowCard />
           <TodayProgress refreshKey={progressRefresh} compact />
           <TodayCard
-            date={formatFriendlyDate(now.toISOString(), timezone)}
-            weekProgress={weekProgress}
-            totalMinutes={totalMinutes}
-            remainingCount={remaining.length}
-            completedCount={completed.length}
-            studyBlocks={studyBlocks}
             laterEvents={laterEvents}
             inProgressIds={inProgressIds}
             busyId={busyId}
@@ -372,12 +351,6 @@ export default function TodayView() {
 }
 
 interface TodayCardProps {
-  date: string;
-  weekProgress: number;
-  totalMinutes: number;
-  remainingCount: number;
-  completedCount: number;
-  studyBlocks: PlannerEvent[];
   laterEvents: PlannerEvent[];
   inProgressIds: Set<string>;
   busyId: string | null;
@@ -396,8 +369,7 @@ interface TodayCardProps {
 
 function TodayCard(props: TodayCardProps) {
   const {
-    date, weekProgress, totalMinutes, remainingCount, completedCount,
-    studyBlocks, laterEvents, inProgressIds, busyId, celebrate, timezone, hasTasks,
+    laterEvents, inProgressIds, busyId, celebrate, timezone, hasTasks,
     onNewTask, onComplete, onMiss, onOpen, entries, today, onLine,
   } = props;
   // When Arcad replans or a line moves the plan, everything slides into its new place.
@@ -416,57 +388,7 @@ function TodayCard(props: TodayCardProps) {
       className="w-full rounded-[24px] surface-card"
       style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
     >
-      {/* The page header already carries the date on phones. */}
-      <div
-        className="flex items-center justify-between px-5 py-4 max-lg:hidden sm:px-6"
-        style={{ borderBottom: "1px solid var(--app-border)" }}
-      >
-        <p className="text-[13px] font-medium" style={{ color: "var(--app-text-muted)" }}>
-          {date}
-        </p>
-        <div className="flex items-center gap-3 text-[12px]" style={{ color: "var(--app-text-muted)" }}>
-          <span>Week {Math.round(weekProgress * 100)}%</span>
-          <span
-            className="relative h-1 w-16 overflow-hidden rounded-[1px]"
-            style={{ background: "var(--app-border)" }}
-            aria-hidden="true"
-          >
-            <span
-              className="absolute inset-y-0 left-0"
-              style={{ width: `${weekProgress * 100}%`, background: "var(--app-accent)" }}
-            />
-          </span>
-        </div>
-      </div>
-
-      <div className="px-5 pt-6 sm:px-6">
-        <h2 className="text-[18px] font-semibold leading-none tracking-[-0.01em]" style={{ color: "var(--app-text)" }}>
-          Today&apos;s plan
-        </h2>
-        <p className="mt-1.5 text-[14px]" style={{ color: "var(--app-text-muted)" }}>
-          {studyBlocks.length === 0
-            ? hasTasks
-              ? "Nothing scheduled today, the plan is clear."
-              : "Let's build your first week. Pick where you want to start."
-            : (
-              <>
-                {remainingCount === 0
-                  ? "You're done for today."
-                  : `${remainingCount} ${remainingCount === 1 ? "thing" : "things"} to focus on today.`}
-                {remainingCount > 0 && (
-                  <span className="tabular-nums"> · {formatDurationMinutes(totalMinutes)}</span>
-                )}
-                {completedCount > 0 && (
-                  <span className="ml-1" style={{ color: "var(--app-success)" }}>
-                    · {completedCount} done
-                  </span>
-                )}
-              </>
-            )}
-        </p>
-      </div>
-
-      <div className="mt-4">
+      <div className="pt-3">
         <AddLine today={today} timezone={timezone} lastLine={lastLine} />
       </div>
 
@@ -764,13 +686,6 @@ function timeOfDayGreeting(now: Date, timezone: string): string {
   if (hour < 12) return "Good morning";
   if (hour < 17) return "Good afternoon";
   return "Good evening";
-}
-
-function clampWeekProgress(now: Date): number {
-  const day = now.getDay(); // 0 = Sun
-  const dayOfWeekMon = (day + 6) % 7;
-  const hour = now.getHours() + now.getMinutes() / 60;
-  return Math.min(1, (dayOfWeekMon * 24 + hour) / (7 * 24));
 }
 
 /**

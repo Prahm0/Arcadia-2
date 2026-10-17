@@ -121,7 +121,7 @@ export default function PricingView() {
       });
       if (response?.url) {
         analytics.checkoutStarted(plan, interval);
-        window.location.href = response.url;
+        window.location.assign(response.url);
         return;
       }
       throw new Error("Checkout URL missing.");
@@ -144,7 +144,7 @@ export default function PricingView() {
         method: "POST",
       });
       if (response?.url) {
-        window.location.href = response.url;
+        window.location.assign(response.url);
         return;
       }
       throw new Error("Portal URL missing.");
@@ -162,7 +162,6 @@ export default function PricingView() {
   return (
     <>
       <PageHeader width={1080}
-        eyebrow="Plans"
         title={
           <>
             Pick your <span className="accent-serif">Arcadia</span>.

@@ -90,11 +90,7 @@ export default function ChatRail({
       ) : null}
 
       <nav className="min-h-0 flex-1 overflow-y-auto px-2 pb-3" aria-label="Past chats">
-        {conversations.length === 0 ? (
-          <p className="px-2.5 pt-3 text-[12.5px] leading-snug" style={{ color: "var(--app-text-faint)" }}>
-            Your chats with Arcad will show up here.
-          </p>
-        ) : groups.length === 0 ? (
+        {conversations.length === 0 ? null : groups.length === 0 ? (
           <p className="px-2.5 pt-3 text-[12.5px]" style={{ color: "var(--app-text-faint)" }}>
             No chats match.
           </p>

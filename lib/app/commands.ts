@@ -12,13 +12,6 @@ export function openArcad(): void {
   window.dispatchEvent(new CustomEvent(OPEN_ARCAD_EVENT));
 }
 
-export const OPEN_TOUR_EVENT = "arcadia:open-tour";
-
-/** Replay the "How it works" tour for the page on screen. */
-export function openPageTour(): void {
-  window.dispatchEvent(new CustomEvent(OPEN_TOUR_EVENT));
-}
-
 export interface GoTarget {
   label: string;
   href: string;

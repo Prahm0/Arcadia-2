@@ -1,11 +1,17 @@
 import { registerPlugin } from "@capacitor/core";
 import { useEffect, useState } from "react";
+import type { GuardedBlock } from "@/lib/app/autoBlocking";
 import { isNativeIOS } from "./platform";
 
 /**
  * The iOS app's focus guard (ios/App/App/FocusGuardPlugin.swift): blocks the
- * apps a student picked while a focus timer counts down, and nudges them if
- * they leave Arcadia mid-focus. Everything here is a no-op on the web.
+ * apps a student picked during study blocks and focus timers, and nudges them
+ * if they leave Arcadia mid-focus. Everything here is a no-op on the web.
+ *
+ * Builds with automatic blocking (status.autoBlocking) are handed the day's
+ * study blocks and block apps from each one's start on their own, with the
+ * Arcadia block screen, "5 more minutes" and a count of attempts. Older
+ * builds only block while Arcadia is open, through the "block" hold.
  */
 
 export interface FocusGuardStatus {
@@ -25,6 +31,20 @@ export interface FocusGuardStatus {
   blocking?: boolean;
   /** pickApps only: the student closed the picker without saving. */
   cancelled?: boolean;
+  /** This build blocks study blocks on its own (scheduleBlocks and friends). */
+  autoBlocking?: boolean;
+  /** The study block being blocked right now, when it's one. */
+  blockId?: string;
+  /** "5 more minutes" is running until then (ms since 1970). */
+  snoozedUntil?: number;
+}
+
+/** What the phone saw during one block. */
+export interface BlockReport {
+  /** Tries to open a blocked app. */
+  attempts: number;
+  /** "5 more minutes" taken. */
+  snoozes: number;
 }
 
 interface FocusGuardPlugin {
@@ -33,6 +53,10 @@ interface FocusGuardPlugin {
   setPreferences(options: { blockingEnabled?: boolean; nudgesEnabled?: boolean }): Promise<FocusGuardStatus>;
   beginFocus(options: { endsAt: number; subject: string }): Promise<FocusGuardStatus>;
   endFocus(): Promise<FocusGuardStatus>;
+  // Builds with automatic blocking only (status.autoBlocking).
+  scheduleBlocks(options: { blocks: GuardedBlock[] }): Promise<FocusGuardStatus>;
+  endBlock(options: { id: string }): Promise<BlockReport>;
+  snooze(options: { minutes: number }): Promise<FocusGuardStatus>;
 }
 
 export const FocusGuard = registerPlugin<FocusGuardPlugin>("FocusGuard");
@@ -72,7 +96,7 @@ function flush() {
  * A timer (`source`) is in a focus phase until `hold.endsAt`, or has stopped
  * (null). Safe to call on every render; only changes reach the phone.
  */
-export function holdFocus(source: "timer" | "room", hold: FocusHold | null): void {
+export function holdFocus(source: "timer" | "room" | "block", hold: FocusHold | null): void {
   if (!isNativeIOS()) return;
   if (hold) holds.set(source, hold);
   else holds.delete(source);
@@ -139,4 +163,47 @@ export async function releaseFocusGuard(): Promise<void> {
   holds.clear();
   sent = null;
   await FocusGuard.endFocus().catch(() => undefined);
+}
+
+/**
+ * Hands the coming study blocks to the phone. A build with automatic
+ * blocking schedules them itself; an older one blocks the live block while
+ * Arcadia is open. `live` is the block under way, if any.
+ */
+export async function guardBlocks(blocks: GuardedBlock[], live: GuardedBlock | null, status: FocusGuardStatus | null): Promise<void> {
+  if (!isNativeIOS() || !status?.blockingSupported) return;
+  if (status.autoBlocking) {
+    await FocusGuard.scheduleBlocks({ blocks }).catch((error) => console.warn("[focus-guard] schedule", error));
+    window.dispatchEvent(new Event(FOCUS_GUARD_CHANGED));
+    return;
+  }
+  holdFocus("block", live ? { endsAt: live.endsAt, subject: live.subject } : null);
+}
+
+/**
+ * The block was ticked: unblock now and say what the phone saw. Null when
+ * this build doesn't count attempts (or on the web).
+ */
+export async function finishBlock(id: string, status: FocusGuardStatus | null): Promise<BlockReport | null> {
+  if (!isNativeIOS() || !status?.blockingSupported) return null;
+  if (!status.autoBlocking) {
+    holdFocus("block", null);
+    return null;
+  }
+  try {
+    const report = await FocusGuard.endBlock({ id });
+    window.dispatchEvent(new Event(FOCUS_GUARD_CHANGED));
+    return report;
+  } catch (error) {
+    console.warn("[focus-guard] end block", error);
+    return null;
+  }
+}
+
+/** "5 more minutes": apps open for that long, then the block screen comes back. */
+export async function snoozeBlock(minutes = 5): Promise<FocusGuardStatus | null> {
+  if (!isNativeIOS()) return null;
+  const next = await FocusGuard.snooze({ minutes });
+  window.dispatchEvent(new Event(FOCUS_GUARD_CHANGED));
+  return next;
 }

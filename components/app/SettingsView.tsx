@@ -1308,7 +1308,7 @@ function FocusGuardSection() {
 
   const pickApps = () =>
     run(() => FocusGuard.pickApps(), (next) =>
-      next.cancelled ? null : next.blockingEnabled ? "Saved. They're blocked from your next focus timer." : "Nothing picked, so nothing is blocked.");
+      next.cancelled ? null : next.blockingEnabled ? "Saved. They're blocked from your next study block." : "Nothing picked, so nothing is blocked.");
 
   const picked = status.appCount + status.categoryCount + status.websiteCount > 0;
   const blocking = status.blockingEnabled && picked;
@@ -1318,15 +1318,15 @@ function FocusGuardSection() {
 
   return (
     <Card id="focus-guard" className="scroll-mt-24">
-      <SectionHeader label="While you focus" />
+      <SectionHeader label="App blocking" />
       <div className="flex flex-col gap-5">
         {status.blockingSupported ? (
           <div>
             <PreferenceToggle
-              label="Block distracting apps"
+              label="Block apps during study blocks"
               detail={picked
-                ? `${describePicked(status)} stay blocked while a focus timer runs. They unblock when it ends, pauses or hits a break.`
-                : "Pick the apps that pull you away. They stay blocked while a focus timer runs, then unblock."}
+                ? `${describePicked(status)} are blocked from the start of each study block until you tick it or it ends, and during focus timers. Nothing to start.`
+                : "Pick the apps that pull you away. Every study block blocks them until you tick it or it ends."}
               checked={blocking}
               disabled={busy}
               onChange={(next) => void (next && !picked ? pickApps() : run(() => FocusGuard.setPreferences({ blockingEnabled: next })))}
@@ -1341,8 +1341,9 @@ function FocusGuardSection() {
                 </span>
               ) : null}
               {/* A running timer here unblocks by pausing. This is for a block
-                  left over from a timer this visit no longer knows about. */}
-              {until && !isHoldingFocus() ? (
+                  left over from a timer this visit no longer knows about. A
+                  study block unblocks by ticking it, or "5 more minutes". */}
+              {until && !isHoldingFocus() && !status.blockId ? (
                 <AppButton type="button" variant="ghost" onClick={() => void run(async () => {
                   await releaseFocusGuard();
                   return FocusGuard.status();

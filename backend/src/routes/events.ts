@@ -259,6 +259,32 @@ events.patch("/:id", async (c) => {
   return c.json({ ok: true, event: await reread(database, event.id) });
 });
 
+/**
+ * The phone's app-blocking report for a block (iOS): how many times the
+ * student tried to open a blocked app, and how many times they took 5 more
+ * minutes. Reports only ever grow, so a repeat send can't lower them.
+ */
+events.post("/:id/focus-report", async (c) => {
+  const { userId } = c.get("session");
+  const body = await c.req.json<{ attempts?: unknown; snoozes?: unknown }>().catch(() => null);
+  const count = (value: unknown, max: number) =>
+    typeof value === "number" && Number.isInteger(value) && value >= 0 ? Math.min(value, max) : null;
+  const attempts = count(body?.attempts, 999);
+  const snoozes = count(body?.snoozes, 99) ?? 0;
+  if (attempts === null) return c.json({ error: "Send how many attempts." }, 422);
+  const database = db(c.env.DB);
+  const event = await ownedEvent(database, userId, c.req.param("id"));
+  if (!event) return c.json({ error: "Event not found." }, 404);
+  await database
+    .update(schema.events)
+    .set({
+      blockedAttempts: Math.max(event.blockedAttempts ?? 0, attempts),
+      unlockSnoozes: Math.max(event.unlockSnoozes ?? 0, snoozes),
+    })
+    .where(eq(schema.events.id, event.id));
+  return c.json({ ok: true, event: await reread(database, event.id) });
+});
+
 /** Delay one generated sleep block without changing the user's usual sleep schedule. */
 events.post("/:id/snooze", async (c) => {
   const { userId } = c.get("session");

@@ -5,6 +5,7 @@ import { api } from "@/lib/api/client";
 import type { PlannerEvent, PriorityPick } from "@/lib/api/types";
 import { formatClock } from "@/lib/api/time";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
+import { useFocusGuardStatus } from "@/lib/capacitor/focusGuard";
 
 /** A gap shorter than this isn't worth filling. */
 const MIN_GAP_MINUTES = 25;
@@ -34,12 +35,15 @@ export default function GapSuggestion({
   const [now, setNow] = useState(() => Date.now());
   const [skipped, setSkipped] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  // Apps blocked (or a "5 more minutes") means something's on already.
+  const [guard] = useFocusGuardStatus();
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 60_000);
     return () => window.clearInterval(timer);
   }, []);
 
+  if (guard?.active) return null;
   const live = events.filter((event) => event.status !== "cancelled" && event.outcome === "planned");
   if (live.some((event) => Date.parse(event.startAt) <= now && Date.parse(event.endAt) > now)) return null;
   const next = live

@@ -14,6 +14,7 @@ import { useSessionReminders } from "@/lib/app/useSessionReminders";
 import { useSessionStartWatcher } from "@/lib/app/useSessionStartWatcher";
 import { useAppShortcuts } from "@/lib/app/useAppShortcuts";
 import ArcadFloatingButton from "./ArcadFloatingButton";
+import AutoBlocking from "./AutoBlocking";
 import ContextMenuHost from "./ContextMenu";
 import GuestBanner from "./GuestBanner";
 import OfflineBanner from "./OfflineBanner";
@@ -208,6 +209,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
       style={{ background: "var(--app-bg)", color: "var(--app-text)" }}
     >
       <FirstStudyBlockMarker />
+      <AutoBlocking />
       <OfflineBanner />
       <MenuBar />
 

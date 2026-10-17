@@ -377,6 +377,10 @@ export const events = sqliteTable(
     startedAt: integer("started_at"),
     // The sub-bullet under a line in Today's note (migration 0047).
     note: text("note").notNull().default(""),
+    // App blocking on iOS (migration 0049): tries to open a blocked app during
+    // the block, and "5 more minutes" taken. Null until the phone reports.
+    blockedAttempts: integer("blocked_attempts"),
+    unlockSnoozes: integer("unlock_snoozes"),
     createdAt: integer("created_at").notNull().default(now),
   },
   (t) => [

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNotNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNotNull, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../db";
 import { newId } from "../lib/ids";
@@ -12,6 +12,7 @@ import { DAILY_MESSAGE_CAP, getMessageUsage, getUserTier, messageUsageSnapshot, 
 import { DAY, iso, localDateKey } from "../lib/time";
 import type { Env, Variables } from "../types";
 import { courseAbout, courseLine, goalLine } from "../lib/course-context";
+import { focusReportLine } from "../lib/focus-report";
 
 const chat = new Hono<{ Bindings: Env; Variables: Variables }>();
 
@@ -400,10 +401,21 @@ async function buildContext(
         .orderBy(asc(schema.memories.createdAt)),
     ]);
 
-  const [briefs, missReasonContext] = await Promise.all([
+  const [briefs, missReasonContext, focusRows] = await Promise.all([
     subjectBriefs(database, userId, profile?.timezone ?? "Australia/Brisbane"),
     recentMissReasonContext(database, userId),
+    // App blocking reports from the phone, for check-ins: the last 7 days.
+    database
+      .select({ blockedAttempts: schema.events.blockedAttempts, unlockSnoozes: schema.events.unlockSnoozes })
+      .from(schema.events)
+      .where(and(
+        eq(schema.events.userId, userId),
+        eq(schema.events.category, "study"),
+        gte(schema.events.startAt, Date.now() - 7 * 24 * 60 * 60 * 1000),
+        isNotNull(schema.events.blockedAttempts),
+      )),
   ]);
+  const focusLine = focusReportLine(focusRows);
   const memoryEnabled = profile?.memoryEnabled ?? true;
   const about = profile?.arcadAbout.trim() ?? "";
   const style = profile?.arcadStyle.trim() ?? "";
@@ -468,6 +480,14 @@ async function buildContext(
         )
       : ["- none"]),
     "",
+    ...(focusLine
+      ? [
+          "Phone during study (their iPhone blocks picked apps during study blocks):",
+          `- ${focusLine}`,
+          "Mention it only when it helps, kindly and briefly, e.g. in a check-in. Never shame them for it.",
+          "",
+        ]
+      : []),
     ...(missReasonContext.length
       ? [
           "Recent self-reported reasons for missed study blocks (last 30 days):",

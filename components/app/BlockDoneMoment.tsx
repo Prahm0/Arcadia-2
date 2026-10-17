@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from "react";
 import type { PlannerEvent, PlannerTask } from "@/lib/api/types";
 import { formatClock } from "@/lib/api/time";
 import { blockDoneLine, blockMinutes, ringMinutes } from "@/lib/app/blockDone";
+import { attemptsLine } from "@/lib/app/autoBlocking";
+import type { BlockReport } from "@/lib/capacitor/focusGuard";
 import { tap } from "@/lib/capacitor/haptics";
 
 const RING_R = 88;
@@ -23,6 +25,7 @@ export default function BlockDoneMoment({
   blocks,
   breakMinutes,
   timezone,
+  report,
   onClose,
 }: {
   event: PlannerEvent;
@@ -31,6 +34,8 @@ export default function BlockDoneMoment({
   blocks: PlannerEvent[];
   breakMinutes: number;
   timezone: string;
+  /** What the phone saw while apps were blocked; arrives a moment after the tick, iPhone only. */
+  report?: BlockReport | null;
   onClose: () => void;
 }) {
   // Captured once, so the moment doesn't change under the student when the
@@ -120,6 +125,11 @@ export default function BlockDoneMoment({
       <p className="mt-2 max-w-sm text-[15.5px] leading-6" style={{ color: soft }}>
         {line}
       </p>
+      {report ? (
+        <p className="mt-1 max-w-sm text-[14px] leading-6" style={{ color: soft }}>
+          {attemptsLine(report.attempts)}
+        </p>
+      ) : null}
 
       {breakEndsAt !== null ? (
         <p className="mt-8 text-[15px] tabular-nums" role="timer" aria-live="off" style={{ color: soft }}>

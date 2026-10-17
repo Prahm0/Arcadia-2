@@ -96,3 +96,84 @@ On a device (Screen Time does not work in the Simulator):
 3. Turn on "Nudge me if I leave", start a timer, switch to another app. About
    a minute later a "You left mid-focus" notification arrives. Locking the
    phone instead sends nothing.
+
+## 4. Automatic blocking for study blocks (1.2)
+
+What it does: every planned study block blocks the picked apps from its
+start, with Arcadia closed, until the student ticks it or it ends. No timer
+to start. The block screen is Arcadia's ("Chemistry, 32 min left", "Back to
+Arcadia", "5 more minutes" with a confirming second tap), and every try to
+open a blocked app is counted against the block. The count shows on the
+block-done screen and goes to Arcad for check-ins.
+
+The web side ships first and works with today's 1.1 build too: there, a
+study block blocks apps only while Arcadia is open (the "block" hold). A
+build with the pieces below reports `autoBlocking` in `FocusGuard.status()`,
+and the web app switches to handing it the day's blocks.
+
+### Code in this repo
+
+| File | Target | Change |
+|---|---|---|
+| `App/FocusGuardPlugin.swift` | App (existing) | `scheduleBlocks`, `endBlock`, `snooze`; App Group defaults (old picks move over once); a separate `arcadia.block` shield store so a timer ending can't lift a block's shield |
+| `FocusMonitor/FocusMonitorExtension.swift` | FocusMonitor (existing) | Shields at a block's start (`arcadia.block.<id>`), lifts at its end, re-shields after "5 more minutes" (`arcadia.snooze.<id>`) |
+| `ShieldConfiguration/ShieldConfigurationExtension.swift` | **new** ShieldConfiguration | The Arcadia block screen; counts tries (once per 3 seconds) |
+| `ShieldAction/ShieldActionExtension.swift` | **new** ShieldAction | "Back to Arcadia" (closes the app, notification opens Arcadia); "5 more minutes" needs a second tap within 10 seconds, logs it, schedules the shield's return |
+| `*/Info.plist`, `*.entitlements` | new targets | Extension points and Family Controls + App Group |
+| `App/AppScreenTime.entitlements`, `FocusMonitor/FocusMonitor.entitlements` | existing | App Group added |
+
+None of it was compiled here (no Xcode in the cloud session); expect to fix
+small things on the first build.
+
+### Apple Developer portal
+
+1. **App Group.** Identifiers > App Groups > +: `group.app.arcadiahq.arcadia`.
+   Enable it on the App IDs `app.arcadiahq.arcadia` and
+   `app.arcadiahq.arcadia.FocusMonitor`.
+2. **Two new App IDs** (Identifiers > App IDs > App), each with the **Family
+   Controls** and **App Groups** capabilities (App Group above):
+   - `app.arcadiahq.arcadia.ShieldConfiguration`
+   - `app.arcadiahq.arcadia.ShieldAction`
+3. **Family Controls (Distribution)** is approved per bundle ID: request it for
+   both new IDs at
+   https://developer.apple.com/contact/request/family-controls-distribution.
+   Until approved, they work in Debug builds only; Release builds leave them
+   out (step 5 of Xcode below), and the app falls back to blocking with
+   Apple's plain screen.
+4. With automatic signing, Xcode makes the provisioning profiles on the next
+   build. With manual signing, regenerate the app's and FocusMonitor's
+   profiles (the App Group changes them) and make two new ones.
+
+### Xcode
+
+1. File > New > Target > **Shield Configuration Extension**, product name
+   `ShieldConfiguration`, bundle ID
+   `app.arcadiahq.arcadia.ShieldConfiguration`, embedded in App. Delete the
+   template's Swift file and add `ShieldConfiguration/ShieldConfigurationExtension.swift`
+   and its `Info.plist` (Build Settings > Info.plist File).
+2. File > New > Target > **Shield Action Extension**, product name
+   `ShieldAction`, bundle ID `app.arcadiahq.arcadia.ShieldAction`, the same
+   way with `ShieldAction/ShieldActionExtension.swift`.
+3. For both: Deployment Target iOS 16.0, Code Signing Entitlements
+   `ShieldConfiguration/ShieldConfiguration.entitlements` /
+   `ShieldAction/ShieldAction.entitlements`, Development Team 4M56HCN39G,
+   version and build matching the app.
+4. Add the Arcadia mark to the ShieldConfiguration target's asset catalog as
+   an image named `ShieldIcon` (the screen shows no icon without it).
+5. The "Leave out Screen Time until approved" build phase already removes
+   both new extensions when `ARCADIA_SCREEN_TIME` isn't `YES`.
+6. Signing & Capabilities: check App Groups shows
+   `group.app.arcadiahq.arcadia` on App, FocusMonitor and both new targets.
+
+### Test on a device
+
+1. Settings > App blocking > Choose apps, pick one.
+2. Add a study line a few minutes out ("Chem 3:30"), close Arcadia, wait. At
+   3:30 the app shows "Chemistry, 30 min left".
+3. Tap "5 more minutes": it asks again; tap again and the app opens. Five
+   minutes later the screen is back.
+4. Open the app a few times, then tick the block in Arcadia: apps open at
+   once and the block-done screen says "You reached for blocked apps 3
+   times." Arcad's next check-in can mention it.
+5. Let a block end without ticking it: the apps open at its end with
+   Arcadia closed.

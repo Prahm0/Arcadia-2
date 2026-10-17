@@ -15,6 +15,7 @@ import {
   startOfLocalDay,
   startOfLocalWeek,
 } from "./time";
+import { weeklyMinutesForGrade } from "../../../shared/education";
 
 type Profile = typeof schema.profiles.$inferSelect;
 type Subject = typeof schema.subjects.$inferSelect;
@@ -136,11 +137,7 @@ function sleepSlots(profile: Profile, from: number, to: number): Slot[] {
  * Keep in step with suggestedWeeklyMinutes in lib/app/studyTargets.ts.
  */
 export function defaultWeeklyMinutes(grade: string | null | undefined): number {
-  const text = (grade ?? "").trim().toLowerCase();
-  const year = /^year\s*(\d{1,2})$/.exec(text);
-  if (year) return Number(year[1]) >= 11 ? 180 : 120;
-  if (text.includes("uni") || text.includes("year+")) return 240;
-  return 150;
+  return weeklyMinutesForGrade(grade);
 }
 
 export function weeklyTargetMinutes(subject: Subject, grade: string | null | undefined): number {

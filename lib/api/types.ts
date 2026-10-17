@@ -91,6 +91,12 @@ export interface SessionCheckout {
 export interface PlannerProfile {
   displayName?: string;
   grade?: string;
+  /** ISO alpha-2, e.g. "AU". */
+  country?: string | null;
+  /** Australian state; null elsewhere. */
+  state?: string | null;
+  /** shared/education.ts course key; null for accounts from before courses. */
+  course?: string | null;
   timezone?: string;
   onboardingComplete?: boolean;
   wakeTime?: string;

@@ -1,3 +1,5 @@
+import { weeklyMinutesForGrade } from "@/shared/education";
+
 /**
  * Weekly study targets per subject. The scheduler tops each subject up to its
  * target across the week, so these numbers are what actually fills the plan.
@@ -8,14 +10,10 @@ export const WEEKLY_MAX_MINUTES = 10 * 60;
 
 /**
  * Year-level starting point for one subject.
- * Keep in step with defaultWeeklyMinutes in backend/src/lib/scheduler.ts.
+ * The same rule the scheduler uses (shared/education.ts).
  */
 export function suggestedWeeklyMinutes(grade: string): number {
-  const text = grade.trim().toLowerCase();
-  const year = /^year\s*(\d{1,2})$/.exec(text);
-  if (year) return Number(year[1]) >= 11 ? 180 : 120;
-  if (text.includes("uni") || text.includes("year+")) return 240;
-  return 150;
+  return weeklyMinutesForGrade(grade);
 }
 
 /**

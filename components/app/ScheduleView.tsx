@@ -43,7 +43,9 @@ import {
   type ScheduleMode,
 } from "./schedule/calendar";
 
-const PREFS_KEY = "arcadia:planner:v1";
+// v2: the view now opens on Week (Day on phones) instead of the term grid,
+// which students found overwhelming. A new key lets everyone start there once.
+const PREFS_KEY = "arcadia:planner:v2";
 const MODES: Array<{ value: ScheduleMode; label: string; key: string }> = [
   { value: "term", label: "Term", key: "1" },
   { value: "week", label: "Week", key: "2" },
@@ -57,7 +59,7 @@ interface Prefs {
 }
 
 const DEFAULT_PREFS: Prefs = {
-  mode: "term",
+  mode: "week",
   matrix: "subjects",
   subjects: [],
 };
@@ -94,7 +96,11 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
     const restore = () => {
       try {
         const raw = window.localStorage.getItem(PREFS_KEY);
-        if (!raw) return;
+        if (!raw) {
+          // On a phone, today's timeline is what most students open the Schedule for.
+          if (!window.matchMedia("(min-width: 768px)").matches) setPrefs({ ...DEFAULT_PREFS, mode: "day" });
+          return;
+        }
         const saved = JSON.parse(raw) as Partial<Prefs>;
         setPrefs({
           ...DEFAULT_PREFS,
@@ -374,10 +380,13 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
     onMoveTask: (task: PlannerTask, key: string) => void planner.moveTask(task, key),
   };
 
-  const strip = (
+  // Progress numbers belong to the term view, where the point is how the
+  // term is going. On the day and week views they pushed the calendar half
+  // off the screen and repeated what Today and Progress already show.
+  const strip = mode === "term" ? (
     <AnalyticsStrip day={stripDay} today={today} studyEvents={studyEvents} timezone={timezone} />
-  );
-  const subjectProgress = mode !== "day" ? (
+  ) : null;
+  const subjectProgress = mode === "term" ? (
     <SubjectProgress subjects={shownSubjects} studyEvents={studyEvents} anchor={anchor} timezone={timezone} />
   ) : null;
 
@@ -520,6 +529,7 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
               selected={selected}
               onToggleSubject={toggleSubject}
               roomy={mode !== "day"}
+              showProgress={mode === "term"}
               onOpenTask={setDetailTask}
               onJump={setAnchor}
             />

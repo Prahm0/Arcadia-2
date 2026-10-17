@@ -34,6 +34,7 @@ import { SubjectTag } from "./cards/shared";
 import { playCompletionTick } from "@/lib/app/completion";
 import { noteWin } from "@/lib/capacitor/ratingPrompt";
 import BlockDoneMoment from "./BlockDoneMoment";
+import { flipKey, useFlip } from "@/lib/app/useFlip";
 import TodayProgress from "./TodayProgress";
 
 const CATEGORY_BAR = CATEGORY_COLOR;
@@ -339,6 +340,9 @@ function TodayCard(props: TodayCardProps) {
     studyBlocks, laterEvents, inProgressIds, busyId, celebrate, timezone, hasTasks,
     onNewTask, onComplete, onMiss, onOpen,
   } = props;
+  // When Arcad replans, today's blocks slide into their new order.
+  const blockList = useRef<HTMLUListElement>(null);
+  useFlip(blockList, flipKey(studyBlocks));
 
   return (
     <div
@@ -408,7 +412,7 @@ function TodayCard(props: TodayCardProps) {
           </AppButton>
         </div>
       ) : (
-        <ul className="mt-5 flex flex-col px-2 pb-3 sm:px-3" aria-label="Focus for today">
+        <ul ref={blockList} className="mt-5 flex flex-col px-2 pb-3 sm:px-3" aria-label="Focus for today">
           {studyBlocks.map((event) => (
             <FocusRow
               key={event.id}
@@ -543,6 +547,7 @@ function FocusRow({
 
   return (
     <li
+      data-flip-id={event.id}
       className="group flex items-center gap-1 rounded-md pr-2 transition-colors duration-200 hover:bg-[color:var(--app-surface-soft)]"
       onContextMenu={(e) =>
         showContextMenu(

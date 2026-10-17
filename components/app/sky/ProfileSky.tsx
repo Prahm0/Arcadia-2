@@ -32,8 +32,8 @@ export default function ProfileSky() {
   const showcase = sky?.preferences.showcase.map((id) => sky.cards.find((card) => card.id === id)).filter((card): card is SkyCard => !!card && card.earnedAt !== null) || [];
   return <Section id="sky" title="Streak cards" action={<AppButton disabled={!sky} onClick={() => setEditing(true)}>Customise appearance</AppButton>}>
     {error && <p role="alert" className="mb-3 text-[13px]">{error} <button className="underline" onClick={() => void refresh()}>Try again</button></p>}
-    {showcase.length ? <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">{showcase.map((card) => <Link key={card.id} href="/app/streaks#constellations" className={styles.cardButton}><ConstellationCard card={card} featured={sky?.preferences.featured === card.id} /></Link>)}</div> : null}
-    <Link href="/app/streaks#constellations" className={`${appButtonClass("ghost")} mt-4`}>Open collection →</Link>
+    {showcase.length ? <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">{showcase.map((card) => <Link key={card.id} href="/app/progress#constellations" className={styles.cardButton}><ConstellationCard card={card} featured={sky?.preferences.featured === card.id} /></Link>)}</div> : null}
+    <Link href="/app/progress#constellations" className={`${appButtonClass("ghost")} mt-4`}>Open collection →</Link>
     {editing && sky && <AppearanceEditor initial={sky.preferences} cards={sky.cards} onClose={() => setEditing(false)} />}
   </Section>;
 }

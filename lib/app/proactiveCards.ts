@@ -154,7 +154,7 @@ export function buildProactiveCards(
             ? "A full week. This one's stuck."
             : "Three in a row, you've got a streak.",
       actions: [
-        { label: "See it", href: "/app/streaks", variant: "primary" },
+        { label: "See it", href: "/app/progress", variant: "primary" },
       ],
     });
   }
@@ -186,7 +186,7 @@ export function buildProactiveCards(
             arcadPrompt: "This week's been quiet compared to last. Can you help me plan the rest of it?",
             variant: "primary",
           },
-          { label: "See review", href: "/app/review", variant: "ghost" },
+          { label: "See review", href: "/app/progress", variant: "ghost" },
         ],
       });
     } else if (currentReview.totalDone === 0 && dateKey(now.toISOString(), timezone) === currentWindow.endKey && data.events.some((e) => e.category === "study")) {

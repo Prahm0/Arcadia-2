@@ -484,7 +484,7 @@ function FinishedNote({ finished, status, receipt, onDismiss }: {
           <p className="mt-0.5" style={{ color: "var(--app-text-muted)" }}>
             {status === "saving" ? "Saving…" : status === "pending" ? "Waiting to sync, it'll retry." : reward ? <><span style={{ color: "var(--app-gold)" }}>✦</span> {reward}</> : "Saved to your streaks."}
             {status === "saved" && (receipt.cards.length || receipt.stars) ? (
-              <Link href="/app/streaks" className="ml-1.5 underline underline-offset-2">View</Link>
+              <Link href="/app/progress" className="ml-1.5 underline underline-offset-2">View</Link>
             ) : null}
           </p>
         ) : null}

@@ -67,7 +67,7 @@ export default function SundayReviewInline() {
 
   return (
     <div className="mb-6">
-      <WeeklyReviewCard window="previous" inline cta={{ href: "/app/review", label: "See full review" }} />
+      <WeeklyReviewCard window="previous" inline cta={{ href: "/app/progress", label: "See full review" }} />
       <div className="mt-2 flex justify-end">
         <button
           type="button"

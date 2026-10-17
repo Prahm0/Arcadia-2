@@ -9,75 +9,124 @@ export const size = {
 
 export const contentType = "image/png";
 
-export default function OpenGraphImage() {
+export const runtime = "edge";
+
+const dmSans = fetch(
+  "https://fonts.gstatic.com/s/dmsans/v17/rP2tp2ywxg089UriI5-g4vlH9VoD8CmcqZG40F9JadbnoEwARZthTg.ttf",
+).then((response) => response.arrayBuffer());
+
+export default async function OpenGraphImage() {
+  const font = await dmSans;
+
   return new ImageResponse(
     (
       <div
         style={{
           alignItems: "stretch",
-          background:
-            "radial-gradient(circle at 82% 14%, rgba(130, 86, 255, 0.36), transparent 29%), radial-gradient(circle at 12% 88%, rgba(86, 59, 198, 0.28), transparent 30%), #04040e",
-          color: "#f8f7ff",
+          background: "#f3f1ea",
+          color: "#1d2a22",
           display: "flex",
           flexDirection: "column",
           height: "100%",
           justifyContent: "space-between",
-          padding: "64px 72px",
+          overflow: "hidden",
+          padding: "62px 72px",
           position: "relative",
           width: "100%",
         }}
       >
         <div
           style={{
+            background: "#d8e0d3",
+            borderRadius: "50%",
+            height: 560,
+            opacity: 0.7,
+            position: "absolute",
+            right: -190,
+            top: -280,
+            width: 560,
+          }}
+        />
+        <div
+          style={{
+            background: "#e5e9df",
+            borderRadius: "50%",
+            bottom: -310,
+            height: 560,
+            left: -130,
+            position: "absolute",
+            width: 560,
+          }}
+        />
+
+        <div
+          style={{
             alignItems: "center",
             display: "flex",
-            fontFamily: "sans-serif",
-            fontSize: 30,
+            fontFamily: "DM Sans",
+            fontSize: 31,
             fontWeight: 700,
-            letterSpacing: "0.04em",
+            letterSpacing: "-0.04em",
+            position: "relative",
           }}
         >
           <div
             style={{
               alignItems: "center",
-              background: "linear-gradient(145deg, #9c83ff, #6540ee)",
-              borderRadius: 18,
+              background: "#1d2a22",
+              borderRadius: 16,
               display: "flex",
-              fontSize: 35,
-              height: 58,
+              height: 56,
               justifyContent: "center",
-              marginRight: 18,
-              width: 58,
+              marginRight: 17,
+              overflow: "hidden",
+              width: 56,
             }}
           >
-            A
+            <svg
+              height="36"
+              viewBox="0 0 48 48"
+              width="36"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path d="M4 42 20.5 7h8L17 42Z" fill="#b6d1ab" />
+              <path d="M27.5 7 44 42H32.5L20.5 17.5Z" fill="#b6d1ab" />
+              <path d="m24 30 6 12H18Z" fill="#b6d1ab" />
+            </svg>
           </div>
-          ARCADIA
+          Arcadia
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", maxWidth: 910 }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            maxWidth: 875,
+            position: "relative",
+          }}
+        >
           <div
             style={{
-              color: "#c7baff",
+              color: "#2f4a3a",
               display: "flex",
-              fontFamily: "sans-serif",
-              fontSize: 26,
+              fontFamily: "DM Sans",
+              fontSize: 22,
               fontWeight: 700,
-              letterSpacing: "0.08em",
+              letterSpacing: "0.11em",
               marginBottom: 25,
               textTransform: "uppercase",
             }}
           >
-            Study planner for real life
+            A study planner for real life
           </div>
           <div
             style={{
               display: "flex",
-              fontFamily: "serif",
-              fontSize: 82,
-              fontWeight: 500,
-              letterSpacing: "-0.045em",
-              lineHeight: 1,
+              fontFamily: "DM Sans",
+              fontSize: 76,
+              fontWeight: 700,
+              letterSpacing: "-0.065em",
+              lineHeight: 1.03,
             }}
           >
             Your study plan survives real life.
@@ -86,18 +135,28 @@ export default function OpenGraphImage() {
 
         <div
           style={{
-            color: "#b5b0c6",
+            color: "#2f4a3a",
             display: "flex",
-            fontFamily: "sans-serif",
-            fontSize: 28,
+            fontFamily: "DM Sans",
+            fontSize: 27,
+            fontWeight: 500,
+            position: "relative",
           }}
         >
-          Plans around school, deadlines, sport and work. Rebuilds when life changes.
+          Plans around your week, then adapts when it changes.
         </div>
       </div>
     ),
     {
       ...size,
+      fonts: [
+        {
+          data: font,
+          name: "DM Sans",
+          style: "normal",
+          weight: 700,
+        },
+      ],
     },
   );
 }

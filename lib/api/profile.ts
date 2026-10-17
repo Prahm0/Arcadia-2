@@ -107,6 +107,10 @@ export interface ProfileResponse {
     school: string | null;
     avatarColour: string | null;
     atarTarget: number | null;
+    /** shared/education.ts course key; null for accounts from before courses. */
+    course: string | null;
+    /** What they're aiming for in their course's terms, when it isn't an ATAR. */
+    goalTarget: string | null;
     timezone: string;
     joinedAt: string;
     /** A developer test account: gold avatar ring and a Developer tag. */
@@ -139,6 +143,8 @@ export type ProfilePatch = Partial<{
   school: string | null;
   avatarColour: string | null;
   atarTarget: number | null;
+  course: string | null;
+  goalTarget: string | null;
   arcadAbout: string;
   arcadStyle: string;
   memoryEnabled: boolean;

@@ -1,5 +1,6 @@
 "use client";
 
+import { courseByKey, courseFor, coursesFor } from "@/shared/education";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { updateProfile } from "@/lib/api/profile";
@@ -22,7 +23,6 @@ import {
   formatHoursMinutes,
 } from "./ui";
 
-const YEAR_LEVELS = ["Year 10", "Year 11", "Year 12", "First year uni", "Second year+"];
 
 /**
  * The top of the profile: picture, name, the facts that frame the plan, and
@@ -149,11 +149,17 @@ function EditProfileForm({ onClose, data, onSaved }: EditProfileProps) {
   const [country, setCountry] = useState(profile.country ?? (profile.state ? "AU" : ""));
   const [state, setState] = useState(profile.state ?? "");
   const countries = useMemo(() => countryOptions(), []);
+  // The course decides which year levels make sense; it follows the country
+  // until they pick one (accounts from before courses have none saved).
+  const [courseKey, setCourseKey] = useState(profile.course ?? "");
+  const courseOptions = useMemo(() => coursesFor(country, state), [country, state]);
+  const chosen = courseByKey(courseKey);
+  const course = chosen && courseOptions.includes(chosen) ? chosen : courseFor({ country, state, grade });
   const [colour, setColour] = useState(profile.avatarColour ?? fallbackColour(profile.name));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const yearOptions = grade && !YEAR_LEVELS.includes(grade) ? [...YEAR_LEVELS, grade] : YEAR_LEVELS;
+  const yearOptions = grade && !course.years.includes(grade) ? [...course.years, grade] : course.years;
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -163,12 +169,13 @@ function EditProfileForm({ onClose, data, onSaved }: EditProfileProps) {
       const next = await updateProfile({
         name,
         grade: grade || null,
+        course: course.key,
         school: school || null,
         country: country || null,
         state: country === "AU" ? state || null : null,
         avatarColour: colour,
       });
-      await onSaved(next, (profile.grade ?? "") !== grade);
+      await onSaved(next, (profile.grade ?? "") !== grade || (profile.course ?? "") !== course.key);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't save.");
@@ -190,6 +197,15 @@ function EditProfileForm({ onClose, data, onSaved }: EditProfileProps) {
       </div>
       <Label text="Name">
         <TextInput required value={name} onChange={setName} maxLength={120} />
+      </Label>
+      <Label text="Course" hint="Arcad plans in your course's own terms.">
+        <Select value={course.key} onChange={setCourseKey}>
+          {courseOptions.map((option) => (
+            <option key={option.key} value={option.key}>
+              {option.label} ({option.detail})
+            </option>
+          ))}
+        </Select>
       </Label>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Label text="Year level" hint="Sets the suggested study time per subject.">

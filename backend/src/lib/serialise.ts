@@ -149,6 +149,9 @@ export function serialiseProfile(profile: ProfileRow | null) {
   return {
     displayName: profile.displayName ?? undefined,
     grade: profile.grade ?? undefined,
+    country: profile.country ?? null,
+    state: profile.state ?? null,
+    course: profile.course ?? null,
     timezone: profile.timezone,
     onboardingComplete: profile.onboardingComplete,
     wakeTime: profile.wakeTime,

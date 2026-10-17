@@ -220,6 +220,9 @@ export const profiles = sqliteTable("profiles", {
   school: text("school"),
   avatarColour: text("avatar_colour"),
   atarTarget: real("atar_target"),
+  // The student's course and target result in its own terms (migration 0045, shared/education.ts).
+  course: text("course"),
+  goalTarget: text("goal_target"),
   // Arcad personalisation: "what should Arcad know about you" and "how
   // should Arcad respond", plus whether it may save memories from chats.
   arcadAbout: text("arcad_about").notNull().default(""),

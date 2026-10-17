@@ -9,6 +9,7 @@ import { studyHabits } from "./study-context";
 import { inTerm, termWeekOf } from "./terms";
 import { getUserTier } from "./tiers";
 import { DAY, localDateKey, nextLocalDay, startOfLocalDay, startOfLocalWeek } from "./time";
+import { courseAbout, courseLine, goalLine } from "./course-context";
 
 type Subject = typeof schema.subjects.$inferSelect;
 
@@ -267,6 +268,7 @@ function describe(inputs: PlanInputs): string {
     }${
       profile.school ? `, ${profile.school}` : ""
     }.`,
+    `Course: ${courseLine(profile)}. ${courseAbout(profile)}`,
     `Daily study limit ${profile.maxDailyStudyMinutes} minutes, so at most ${capacity} minutes a week.`,
     "",
     "Subjects (usual minutes a week):",
@@ -293,7 +295,8 @@ function describe(inputs: PlanInputs): string {
   if (inputs.keptShare !== null) {
     lines.push("", `Over the last four weeks they got ${Math.round(inputs.keptShare * 100)}% of their marked study done.`);
   }
-  if (profile.atarTarget) lines.push("", `ATAR target ${profile.atarTarget.toFixed(2)}.`);
+  const goal = goalLine(profile);
+  if (goal) lines.push("", `${goal}.`);
   if (goals.length) lines.push(`Goals: ${goals.join("; ")}.`);
   if (profile.arcadAbout.trim()) lines.push(`About them: ${clip(profile.arcadAbout, 600)}`);
   if (memories.length) lines.push(`You remember: ${memories.slice(-10).join(" ")}`);

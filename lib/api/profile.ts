@@ -71,6 +71,10 @@ export interface ProfileCommitment {
   startTime: string;
   endTime: string;
   notes: string;
+  bufferBefore: number;
+  bufferAfter: number;
+  /** Local YYYY-MM-DD dates this recurring commitment does not happen. */
+  skipDates: string[];
 }
 
 export interface ProfileGoal {

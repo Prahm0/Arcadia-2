@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { db, schema } from "../db";
 import { newId } from "../lib/ids";
 import { replan } from "../lib/replan";
+import { MAX_COMMITMENT_BUFFER } from "../lib/scheduler";
 import { serialiseCommitment } from "../lib/serialise";
 import { parseClock } from "../lib/time";
 import type { Env, Variables } from "../types";
@@ -20,6 +21,11 @@ interface CommitmentBody {
   startTime?: string;
   endTime?: string;
   notes?: string;
+  /** Minutes to leave clear either side of this commitment. */
+  bufferBefore?: number;
+  bufferAfter?: number;
+  /** Local YYYY-MM-DD dates a repeating commitment does not happen. */
+  skipDates?: string[];
 }
 
 const commitments = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -33,7 +39,24 @@ commitments.get("/", async (c) => {
   return c.json({ commitments: rows.map(serialiseCommitment) });
 });
 
-function validate(body: CommitmentBody): string | null {
+const LOCAL_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+function isLocalDate(value: string): boolean {
+  if (!LOCAL_DATE.test(value)) return false;
+  const instant = Date.parse(`${value}T12:00:00Z`);
+  return Number.isFinite(instant) && new Date(instant).toISOString().slice(0, 10) === value;
+}
+
+function isBuffer(value: unknown): boolean {
+  return value === undefined || (typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= MAX_COMMITMENT_BUFFER);
+}
+
+function isSkipDateList(value: unknown): value is string[] {
+  return value === undefined || (Array.isArray(value) && value.every((date) => typeof date === "string" && isLocalDate(date)));
+}
+
+/** Validation shared by create and edit, and covered by the route-level tests. */
+export function commitmentProblem(body: CommitmentBody): string | null {
   if (!String(body.title ?? "").trim()) return "Give the commitment a title.";
   const start = parseClock(body.startTime);
   const end = parseClock(body.endTime);
@@ -48,7 +71,15 @@ function validate(body: CommitmentBody): string | null {
   if (body.recurrence === "none" && !/^\d{4}-\d{2}-\d{2}$/.test(String(body.startDate ?? ""))) {
     return "Pick the day it's on.";
   }
+  if (!isBuffer(body.bufferBefore) || !isBuffer(body.bufferAfter)) {
+    return "Keep between 0 minutes and 4 hours free around a commitment.";
+  }
+  if (!isSkipDateList(body.skipDates)) return "Use valid dates for days off.";
   return null;
+}
+
+function serialiseSkipDates(dates: string[] | undefined): string {
+  return JSON.stringify([...(dates ?? [])].filter((date, index, all) => all.indexOf(date) === index).sort());
 }
 
 commitments.post("/", async (c) => {
@@ -56,7 +87,7 @@ commitments.post("/", async (c) => {
   const body = await c.req.json<CommitmentBody>().catch(() => null);
   if (!body) return c.json({ error: "Invalid request." }, 400);
 
-  const problem = validate(body);
+  const problem = commitmentProblem(body);
   if (problem) return c.json({ error: problem }, 422);
 
   const id = newId("cmt");
@@ -71,6 +102,9 @@ commitments.post("/", async (c) => {
     startTime: body.startTime!,
     endTime: body.endTime!,
     notes: String(body.notes ?? "").slice(0, 1000),
+    bufferBefore: body.bufferBefore ?? 0,
+    bufferAfter: body.bufferAfter ?? 0,
+    skipDates: serialiseSkipDates(body.skipDates),
   });
 
   await replan(db(c.env.DB), userId);
@@ -83,12 +117,17 @@ commitments.patch("/:id", async (c) => {
   const body = await c.req.json<CommitmentBody>().catch(() => null);
   if (!body) return c.json({ error: "Invalid request." }, 400);
 
-  const problem = validate(body);
+  const problem = commitmentProblem(body);
   if (problem) return c.json({ error: problem }, 422);
 
   const database = db(c.env.DB);
   const [existing] = await database
-    .select({ id: schema.commitments.id })
+    .select({
+      id: schema.commitments.id,
+      bufferBefore: schema.commitments.bufferBefore,
+      bufferAfter: schema.commitments.bufferAfter,
+      skipDates: schema.commitments.skipDates,
+    })
     .from(schema.commitments)
     .where(and(eq(schema.commitments.id, id), eq(schema.commitments.userId, userId)))
     .limit(1);
@@ -105,6 +144,10 @@ commitments.patch("/:id", async (c) => {
       startTime: body.startTime!,
       endTime: body.endTime!,
       notes: String(body.notes ?? "").slice(0, 1000),
+      // Older clients do not know about these controls. Preserve their values on an edit.
+      bufferBefore: body.bufferBefore ?? existing.bufferBefore,
+      bufferAfter: body.bufferAfter ?? existing.bufferAfter,
+      skipDates: body.skipDates === undefined ? existing.skipDates : serialiseSkipDates(body.skipDates),
     })
     .where(eq(schema.commitments.id, id));
 

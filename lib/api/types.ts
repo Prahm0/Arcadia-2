@@ -130,7 +130,20 @@ export interface DashboardResponse {
     notes?: string;
   }>;
   tasks: PlannerTask[];
-  commitments: Array<Record<string, unknown>>;
+  commitments: Array<{
+    id: string;
+    title: string;
+    category: "school" | "sport" | "extracurricular" | "other";
+    recurrence: "none" | "daily" | "weekly" | "weekdays";
+    weekday: number | null;
+    startDate: string | null;
+    startTime: string;
+    endTime: string;
+    notes: string;
+    bufferBefore: number;
+    bufferAfter: number;
+    skipDates: string[];
+  }>;
   range: { start: string; end: string };
   /** The student's school terms (last, this and next year), empty when their state's dates aren't known. */
   terms?: SchoolTerm[];

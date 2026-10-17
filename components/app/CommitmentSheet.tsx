@@ -21,6 +21,14 @@ export const COMMITMENT_CATEGORIES: Record<
 
 export const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+const BUFFER_OPTIONS = [
+  { value: 0, label: "None" },
+  { value: 15, label: "15 min" },
+  { value: 30, label: "30 min" },
+  { value: 60, label: "1 hr" },
+  { value: 120, label: "2 hrs" },
+];
+
 /**
  * Add or edit anything that blocks out time every week: training, clubs, a
  * job, school hours. Saving replans the week around it.
@@ -74,7 +82,7 @@ function CommitmentForm({
 }: {
   editing: ProfileCommitment | null;
   initial: Pick<ProfileCommitment, "title" | "category" | "recurrence" | "weekday" | "startTime" | "endTime"> &
-    Partial<Pick<ProfileCommitment, "startDate">>;
+    Partial<Pick<ProfileCommitment, "startDate" | "bufferBefore" | "bufferAfter" | "skipDates">>;
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
@@ -88,6 +96,11 @@ function CommitmentForm({
   const [date, setDate] = useState(initial.startDate ?? today);
   const [startTime, setStartTime] = useState(initial.startTime);
   const [endTime, setEndTime] = useState(initial.endTime);
+  const [bufferBefore, setBufferBefore] = useState(initial.bufferBefore ?? 0);
+  const [bufferAfter, setBufferAfter] = useState(initial.bufferAfter ?? 0);
+  const [separateBuffers, setSeparateBuffers] = useState((initial.bufferBefore ?? 0) !== (initial.bufferAfter ?? 0));
+  const [skipDates, setSkipDates] = useState<string[]>(() => [...(initial.skipDates ?? [])].sort());
+  const [dayOffDate, setDayOffDate] = useState("");
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,6 +119,9 @@ function CommitmentForm({
         startTime,
         endTime,
         notes: editing?.notes ?? "",
+        bufferBefore,
+        bufferAfter,
+        skipDates: recurrence === "none" ? [] : skipDates,
       };
       if (editing) {
         await api(`/api/commitments/${encodeURIComponent(editing.id)}`, {
@@ -211,6 +227,76 @@ function CommitmentForm({
         </Label>
       </div>
 
+      <Label text="Keep time free" hint="Arcadia will not schedule study in this gap around the commitment.">
+        {separateBuffers ? (
+          <div className="grid grid-cols-2 gap-3">
+            <BufferSelect label="Before" value={bufferBefore} onChange={setBufferBefore} />
+            <BufferSelect label="After" value={bufferAfter} onChange={setBufferAfter} />
+          </div>
+        ) : (
+          <Select
+            value={String(bufferBefore)}
+            onChange={(value) => {
+              const minutes = Number(value);
+              setBufferBefore(minutes);
+              setBufferAfter(minutes);
+            }}
+          >
+            {BUFFER_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label} before and after</option>)}
+          </Select>
+        )}
+        <button
+          type="button"
+          onClick={() => setSeparateBuffers((value) => !value)}
+          className="mt-2 text-[12.5px] underline ui-hover"
+          style={{ color: "var(--app-text-muted)" }}
+        >
+          {separateBuffers ? "Use the same gap on both sides" : "Set before and after separately"}
+        </button>
+      </Label>
+
+      {recurrence !== "none" ? (
+        <Label text="Days off" hint="For one-off changes to this repeating commitment.">
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="min-w-[150px] flex-1">
+              <TextInput type="date" value={dayOffDate} onChange={setDayOffDate} min={today} />
+            </div>
+            <AppButton
+              type="button"
+              variant="ghost"
+              disabled={!dayOffDate || skipDates.includes(dayOffDate)}
+              onClick={() => {
+                if (!dayOffDate || skipDates.includes(dayOffDate)) return;
+                setSkipDates((dates) => [...dates, dayOffDate].sort());
+                setDayOffDate("");
+              }}
+            >
+              Not on…
+            </AppButton>
+          </div>
+          {skipDates.filter((date) => date >= today).length ? (
+            <ul className="mt-3 flex flex-wrap gap-2" aria-label="Upcoming days off">
+              {skipDates.filter((date) => date >= today).map((date) => (
+                <li key={date} className="flex items-center gap-1 rounded-full py-1 pl-2.5 pr-1 text-[12.5px]" style={{ background: "var(--app-surface-soft)", color: "var(--app-text-soft)" }}>
+                  Off on {formatOffDate(date)}
+                  <button
+                    type="button"
+                    aria-label={`Remove day off on ${formatOffDate(date)}`}
+                    onClick={() => setSkipDates((dates) => dates.filter((item) => item !== date))}
+                    className="grid h-5 w-5 place-items-center rounded-full ui-hover"
+                    style={{ color: "var(--app-text-muted)" }}
+                  >
+                    <svg viewBox="0 0 20 20" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" strokeLinecap="round" /></svg>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>No days off coming up.</p>
+          )}
+        </Label>
+      ) : null}
+
       {error ? (
         <p role="alert" className="text-[13.5px]" style={{ color: "var(--app-danger)" }}>
           {error}
@@ -236,6 +322,21 @@ function CommitmentForm({
       </div>
     </form>
   );
+}
+
+function BufferSelect({ label, value, onChange }: { label: string; value: number; onChange: (minutes: number) => void }) {
+  return (
+    <div className="block">
+      <span className="mb-1.5 block text-[12px]" style={{ color: "var(--app-text-muted)" }}>{label}</span>
+      <Select value={String(value)} onChange={(next) => onChange(Number(next))}>
+        {BUFFER_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+      </Select>
+    </div>
+  );
+}
+
+function formatOffDate(date: string): string {
+  return new Intl.DateTimeFormat("en-AU", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
 }
 
 export function describeRecurrence(commitment: ProfileCommitment): string {

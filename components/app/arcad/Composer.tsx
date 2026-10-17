@@ -99,7 +99,6 @@ const Composer = forwardRef<
 
   useEffect(() => {
     if (disabled) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMenu("closed");
     }
   }, [disabled]);
@@ -261,10 +260,6 @@ const Composer = forwardRef<
             </div>
           ) : null}
         </div>
-
-        <span className="ml-1 hidden text-[11.5px] sm:inline" style={{ color: "var(--app-text-faint)" }}>
-          Shift + Enter for a new line
-        </span>
 
         <div className="ml-auto flex items-center gap-1">
           <MicButton value={value} onChange={onChange} targetRef={inputRef} compact disabled={disabled} />

@@ -10,7 +10,8 @@ const RAIL_DEADLINES = 3;
 
 /**
  * The column beside Today: just what's due next, as quiet text with no card
- * around it. The streak and today's ring live in the main column, so they
+ * around it, beside Today on wide screens only (on a phone it was a repeat at
+ * the bottom). The streak and today's ring live in the main column, so they
  * aren't repeated here. TodayView hides the column when nothing is due.
  */
 export default function TodayRail() {
@@ -32,7 +33,7 @@ export default function TodayRail() {
   if (deadlines.length === 0) return null;
 
   return (
-    <aside aria-label="Due next" className="self-start @3xl/main:sticky @3xl/main:top-6 @3xl/main:pt-2">
+    <aside aria-label="Due next" className="hidden self-start @3xl/main:sticky @3xl/main:top-6 @3xl/main:block @3xl/main:pt-2">
       <ul className="flex flex-col gap-4">
         {deadlines.map((task) => (
           <li key={task.id} className="min-w-0">

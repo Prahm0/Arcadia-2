@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent, type PointerEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type FocusEvent, type PointerEvent, type ReactNode } from "react";
 import { api, saveCsrf } from "@/lib/api/client";
 import { analytics, resetAnalytics } from "@/lib/analytics/events";
-import type { AuthUser, Notice, PlannerEvent } from "@/lib/api/types";
+import type { AuthUser, Notice } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { hasCompletedStudyBlock, recordFirstStudyBlock } from "@/lib/app/firstStudyBlock";
@@ -13,7 +13,6 @@ import { useStreak } from "@/lib/app/useStreak";
 import { useSessionReminders } from "@/lib/app/useSessionReminders";
 import { useSessionStartWatcher } from "@/lib/app/useSessionStartWatcher";
 import { useAppShortcuts } from "@/lib/app/useAppShortcuts";
-import { dateKey, formatClock, formatDurationMinutes } from "@/lib/api/time";
 import ArcadFloatingButton from "./ArcadFloatingButton";
 import ContextMenuHost from "./ContextMenu";
 import GuestBanner from "./GuestBanner";
@@ -209,14 +208,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
     >
       <FirstStudyBlockMarker />
       <OfflineBanner />
-      <MenuBar
-        sidebarOpen={sidebarOpen}
-        onToggleSidebar={toggleSidebar}
-        onNewTask={openNewTask}
-        onShowShortcuts={openShortcuts}
-        onSearch={openSearch}
-        onSignOut={() => void signOut()}
-      />
+      <MenuBar />
 
       {/* Mobile top bar, brand + streak chip. Nav lives at the bottom. */}
       <div
@@ -427,8 +419,6 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
             })}
           </nav>
 
-          <SidebarPlanCue />
-
           <div className="mt-auto flex flex-col gap-1 px-2 pb-3 pt-4">
             {user?.tier === "pro" || user?.tier === "max" ? (
               <Link
@@ -488,53 +478,6 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
                 Upgrade to Pro
               </Link>
             )}
-            {user && !isGuestEmail(user.email) && !user.hasSubscription ? (
-              <Link
-                href="/app/invite"
-                aria-current={pathname.startsWith("/app/invite") ? "page" : undefined}
-                className="ui-hover mt-1 flex items-center justify-between gap-2 rounded-lg border px-3.5 py-2.5"
-                style={{
-                  borderColor: "color-mix(in srgb, var(--app-arcad) 26%, var(--app-border))",
-                  background: "color-mix(in srgb, var(--app-arcad-soft) 72%, transparent)",
-                }}
-              >
-                <span className="flex min-w-0 items-center gap-2.5">
-                  <span
-                    className="grid h-7 w-7 shrink-0 place-items-center rounded-full"
-                    style={{ background: "var(--app-arcad)", color: "var(--app-arcad-on)" }}
-                  >
-                    <svg aria-hidden="true" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="6.25" cy="10" r="2.25" />
-                      <circle cx="13.75" cy="6.25" r="2.25" />
-                      <circle cx="13.75" cy="13.75" r="2.25" />
-                      <path d="M8.25 8.9l3.5-1.55M8.25 11.1l3.5 1.55" />
-                    </svg>
-                  </span>
-                  <span className="flex min-w-0 flex-col leading-tight">
-                    <span className="text-[13px] font-semibold" style={{ color: "var(--app-arcad-strong)" }}>
-                      Invite friends
-                    </span>
-                    <span className="truncate text-[11px]" style={{ color: "var(--app-text-muted)" }}>
-                      Earn 7 days of Pro per friend
-                    </span>
-                  </span>
-                </span>
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 20 20"
-                  width="13"
-                  height="13"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.7"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{ color: "var(--app-text-faint)" }}
-                >
-                  <path d="M7 4l6 6-6 6" />
-                </svg>
-              </Link>
-            ) : null}
             {user ? (
               <div
                 className="mt-1 flex items-center gap-1 border-t pt-2"
@@ -789,108 +732,7 @@ function SidebarRail({
 
 const RAIL_BUTTON = "grid h-9 w-9 shrink-0 place-items-center rounded-lg [&>svg]:h-[18px] [&>svg]:w-[18px]";
 
-/**
- * The sidebar should do more than list destinations. This small live cue keeps
- * the plan's next useful action visible wherever a student is in the app.
- */
-function SidebarPlanCue() {
-  const { data } = useDashboardData();
-  const [now, setNow] = useState(() => Date.now());
-  const timezone = data.profile?.timezone || data.user.timezone || "Australia/Brisbane";
 
-  useEffect(() => {
-    const interval = window.setInterval(() => setNow(Date.now()), 60_000);
-    return () => window.clearInterval(interval);
-  }, []);
-
-  const nextBlock = useMemo(
-    () => findNextStudyBlock(data.events, now),
-    [data.events, now],
-  );
-  const todayKey = dateKey(new Date(now).toISOString(), timezone);
-  const ring = useMemo(() => {
-    const blocks = data.events.filter((event) => event.category === "study" && dateKey(event.startAt, timezone) === todayKey && event.status !== "cancelled");
-    const goal = Math.round(blocks.reduce((sum, event) => sum + (Date.parse(event.endAt) - Date.parse(event.startAt)), 0) / 60_000);
-    const completed = Math.round(blocks.filter((event) => event.outcome === "completed").reduce((sum, event) => sum + (Date.parse(event.endAt) - Date.parse(event.startAt)), 0) / 60_000);
-    const focused = Number(data.analytics.todayMinutes ?? 0);
-    return goal > 0 ? { done: Math.max(completed, focused), goal } : null;
-  }, [data.analytics.todayMinutes, data.events, timezone, todayKey]);
-
-  if (!nextBlock) {
-    return (
-      <section
-        className="mx-2 mt-4 rounded-lg border px-3 py-3"
-        aria-label="Your study plan"
-        style={{
-          background: "color-mix(in oklab, var(--app-accent) 5%, var(--app-surface))",
-          borderColor: "color-mix(in oklab, var(--app-accent) 18%, var(--app-border))",
-        }}
-      >
-        <p className="text-[10px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-accent-strong)" }}>
-          Your plan
-        </p>
-        <p className="mt-1.5 text-[12.5px] leading-5" style={{ color: "var(--app-text-soft)" }}>
-          Add a deadline or study block and Arcadia will keep your next step here.
-        </p>
-        <Link
-          href="/app/schedule"
-          className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold"
-          style={{ color: "var(--app-accent-strong)" }}
-        >
-          Build your plan
-          <span aria-hidden="true">→</span>
-        </Link>
-      </section>
-    );
-  }
-
-  const beginsNow = new Date(nextBlock.startAt).getTime() <= now;
-  const today = dateKey(new Date(now).toISOString(), timezone);
-  const blockDay = dateKey(nextBlock.startAt, timezone);
-  const minutes = Math.max(
-    1,
-    Math.round((new Date(nextBlock.endAt).getTime() - new Date(nextBlock.startAt).getTime()) / 60_000),
-  );
-  const timeLabel = beginsNow
-    ? "Ready when you are"
-    : `${blockDay === today ? "Today" : "Later"} · ${formatClock(nextBlock.startAt, timezone)} · ${formatDurationMinutes(minutes)}`;
-  const href = beginsNow ? `/app/sessions?eventId=${nextBlock.id}&start=1` : `/app/sessions?eventId=${nextBlock.id}`;
-
-  return (
-    <Link
-      href={href}
-      className="group mx-2 mt-4 block rounded-lg border px-3 py-3 transition-colors"
-      aria-label={`${beginsNow ? "Start" : "Open"} your next study block: ${nextBlock.title}`}
-      style={{
-        background: "color-mix(in oklab, var(--app-accent) 7%, var(--app-surface))",
-        borderColor: "color-mix(in oklab, var(--app-accent) 25%, var(--app-border))",
-      }}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-2"><span className="grid h-7 w-7 place-items-center rounded-full text-[9px] font-semibold tabular-nums" style={{ background: ring ? `conic-gradient(var(--app-accent) ${Math.min(1, ring.done / ring.goal) * 360}deg, var(--app-border) 0deg)` : "var(--app-border)" }}><span className="grid h-5 w-5 place-items-center rounded-full" style={{ background: "var(--app-surface)", color: "var(--app-text-muted)" }}>{ring ? `${ring.done}` : "✦"}</span></span><p className="text-[10px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-accent-strong)" }}>{beginsNow ? "Your block is ready" : "Your next block"}</p></span>
-        <span className="text-[14px] transition-transform group-hover:translate-x-0.5" aria-hidden="true" style={{ color: "var(--app-accent-strong)" }}>→</span>
-      </div>
-      <p className="mt-1.5 truncate text-[13.5px] font-semibold" style={{ color: "var(--app-text)" }}>
-        {nextBlock.title}
-      </p>
-      <p className="mt-0.5 truncate text-[11.5px]" style={{ color: "var(--app-text-muted)" }}>
-        {nextBlock.subject ? `${nextBlock.subject} · ` : ""}{timeLabel}
-      </p>
-      <p className="mt-2 text-[12px] font-medium" style={{ color: "var(--app-accent-strong)" }}>
-        {ring ? `${ring.done} of ${ring.goal} min today · ${beginsNow ? "Start session" : "Review block"}` : beginsNow ? "Start session" : "Review block"}
-      </p>
-    </Link>
-  );
-}
-
-function findNextStudyBlock(events: PlannerEvent[], now: number) {
-  return events
-    .filter((event) => {
-      if (event.category !== "study" || event.status === "cancelled" || event.outcome !== "planned") return false;
-      return new Date(event.endAt).getTime() > now;
-    })
-    .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())[0];
-}
 
 const SIDEBAR_KEY = "arcadia:sidebar";
 

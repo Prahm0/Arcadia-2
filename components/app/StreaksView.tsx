@@ -13,7 +13,6 @@ import AppButton from "./AppButton";
 import ShareCard from "./ShareCard";
 import StreakChain from "./streaks/StreakChain";
 import YourSky, { type FocusTotals } from "./sky/YourSky";
-import RewardStory from "./RewardStory";
 
 interface AnalyticsResponse {
   sky: FocusTotals;
@@ -72,10 +71,8 @@ export default function StreaksView() {
     <>
       <PageHeader
         width={1140}
-        eyebrow="Progress"
         title="Streaks"
         meta={meta}
-        tour="streaks"
         action={canShareWeek ? (
           <AppButton onClick={() => setShareOpen(true)} icon={<ShareIcon />}>Share my week</AppButton>
         ) : undefined}
@@ -85,7 +82,6 @@ export default function StreaksView() {
         {error ? (
           <p className="mb-4 text-[13px]" style={{ color: "var(--app-danger)" }}>{error}</p>
         ) : null}
-        <RewardStory className="mb-5" />
         <StreakChain streak={streak} today={today} />
         <YourSky totals={totals} totalsLoading={loading} subjectColours={subjectColours} />
         <AchievementsCollection achievements={achievements} />

@@ -6,6 +6,7 @@ import { resetAnalytics } from "@/lib/analytics/events";
 import type { CalendarFeed } from "@/lib/api/types";
 import { updateProfile } from "@/lib/api/profile";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
+import { useStudySky } from "@/lib/app/StudySkyProvider";
 import { useTheme, type ThemeMode } from "@/lib/app/theme";
 import { isSoundEnabled, playCompletionTick, setSoundEnabled } from "@/lib/app/completion";
 import { is24Hour, set24Hour } from "@/lib/app/timeFormat";
@@ -43,7 +44,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { isGuestEmail } from "@/lib/auth/guest";
 import DeleteAccountModal from "./DeleteAccountModal";
-import { isNative, useNativeIOS } from "@/lib/capacitor/platform";
+import { useNativeIOS } from "@/lib/capacitor/platform";
 import { getIosSubscriptionManagementUrl, logOutRevenueCat } from "@/lib/capacitor/revenuecat";
 import { DeveloperFeedback, FeedbackForm } from "./Feedback";
 import CalendarExport from "./CalendarExport";
@@ -78,6 +79,7 @@ export default function SettingsView() {
     }
   }
   const { mode, setMode } = useTheme();
+  const { sky, update: updateSky } = useStudySky();
 
   useEffect(() => {
     if (window.location.hash !== "#help-feedback") return;
@@ -95,19 +97,16 @@ export default function SettingsView() {
   const [blockedPeople, setBlockedPeople] = useState<BlockedPerson[]>([]);
   const [blockedPeopleLoading, setBlockedPeopleLoading] = useState(true);
   const [unblockingUserId, setUnblockingUserId] = useState<string | null>(null);
-  const [soundOn, setSoundOn] = useState(true);
-  const [remindersOn, setRemindersOn] = useState(false);
-  const [permission, setPermission] = useState<NotificationPermissionState>("default");
-  const [leadMin, setLeadMin] = useState(10);
-  const [use24h, setUse24h] = useState(false);
+  // Settings only mounts in the browser, after the dashboard loads, so these
+  // device preferences can be read straight away.
+  const [soundOn, setSoundOn] = useState(isSoundEnabled);
+  const [remindersOn, setRemindersOn] = useState(isReminderEnabled);
+  const [permission, setPermission] = useState<NotificationPermissionState>(getPermissionState);
+  const [leadMin, setLeadMin] = useState(getLeadMinutes);
+  const [use24h, setUse24h] = useState(is24Hour);
 
   useEffect(() => {
     api<AccountResponse>("/api/account").then((r) => setAccount(r.account)).catch(() => {});
-    setSoundOn(isSoundEnabled());
-    setRemindersOn(isReminderEnabled());
-    setPermission(getPermissionState());
-    setLeadMin(getLeadMinutes());
-    setUse24h(is24Hour());
   }, []);
 
   useEffect(() => {
@@ -161,12 +160,11 @@ export default function SettingsView() {
   const google = data.google ?? { connected: false, lastSyncAt: null };
   const isGuest = isGuestEmail(data.user.email);
   const [googleBusy, setGoogleBusy] = useState<"sync" | "disconnect" | null>(null);
-  const [googleNotice, setGoogleNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
+  const [googleNotice, setGoogleNotice] = useState<{ tone: "info" | "error"; text: string } | null>(googleRedirectNotice);
 
   const tier = data.user.tier ?? "free";
   const hasPaidPlan = tier === "pro" || tier === "max";
   const hasSubscription = Boolean(data.user.hasSubscription);
-  const nativeShell = isNative();
   const nativeIOS = useNativeIOS();
   const [pushEndpoint, setPushEndpoint] = useState<string | null>(null);
   const [pushPreferences, setPushPreferences] = useState<PushPreferences>(DEFAULT_PUSH_PREFERENCES);
@@ -385,21 +383,13 @@ export default function SettingsView() {
     }
   }
 
-  // When the OAuth callback redirects back to "/", it appends ?google=connected
-  // or ?google=denied. Surface that once, then strip the param.
+  // The OAuth callback comes back with ?google=connected (or upgrade, denied):
+  // its notice is read on first render; here the param is stripped once.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const flag = params.get("google");
+    const flag = new URLSearchParams(window.location.search).get("google");
     if (!flag) return;
-    if (flag === "connected") {
-      setGoogleNotice({ tone: "info", text: "Google Calendar connected. Fixed events will appear on Schedule after the first sync." });
-      void reload();
-    } else if (flag === "upgrade") {
-      setGoogleNotice({ tone: "error", text: "Google Calendar sync needs a Pro or Max plan." });
-    } else if (flag === "denied") {
-      setGoogleNotice({ tone: "error", text: "Google didn't grant access. You can try again anytime." });
-    }
+    if (flag === "connected") void reload();
     const url = new URL(window.location.href);
     url.searchParams.delete("google");
     window.history.replaceState({}, "", url.toString());
@@ -408,6 +398,7 @@ export default function SettingsView() {
   function connectGoogle() {
     if (typeof window === "undefined") return;
     // /api/google/connect issues a redirect, so navigate the whole tab there.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- an API route, not a page
     window.location.href = "/api/google/connect";
   }
 
@@ -506,8 +497,7 @@ export default function SettingsView() {
   return (
     <>
       <PageHeader width={720}
-        eyebrow="Settings"
-        title="Account & preferences"
+        title="Settings"
         meta={
           account
             ? isGuest
@@ -515,14 +505,6 @@ export default function SettingsView() {
               : `Signed in as ${account.email}`
             : undefined
         }
-        action={nativeShell ? (
-          <span
-            className="rounded-md px-2.5 py-1 text-[11px] font-medium"
-            style={{ background: "var(--app-accent-soft)", color: "var(--app-accent-strong)" }}
-          >
-            Arcadia iOS
-          </span>
-        ) : undefined}
       />
 
       {isGuest ? (
@@ -535,7 +517,7 @@ export default function SettingsView() {
             }}
           >
             <p className="text-[14px] font-medium" style={{ color: "var(--app-accent-strong)" }}>
-              You're using a guest account.
+              You&apos;re using a guest account.
             </p>
             <p className="mt-1.5 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
               Your tasks, focus streak and Arcad chats live only in this session. Create an account to keep them.
@@ -555,23 +537,8 @@ export default function SettingsView() {
           <div className="flex flex-col gap-4">
             <Field label="Email">
               <Input value={isGuest ? "" : data.user.email} onChange={() => {}} disabled />
-              <Hint>
-                {isGuest
-                  ? "Guest accounts have no email. Create an account to add one and save your progress."
-                  : "Email changes go through verification, use the change-email flow."}
-              </Hint>
+              {isGuest ? <Hint>Guest accounts have no email. Create an account to add one and save your progress.</Hint> : null}
             </Field>
-            <div
-              className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"
-              style={{ borderColor: "var(--app-border)" }}
-            >
-              <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-                Your name, subjects, goals and what Arcad knows about you are on your profile.
-              </p>
-              <AppButton variant="secondary" onClick={() => router.push("/app/profile")}>
-                Open profile
-              </AppButton>
-            </div>
             {!isGuest && !data.user.hasSubscription ? (
               <div
                 className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"
@@ -616,6 +583,16 @@ export default function SettingsView() {
               </button>
             ))}
           </div>
+          {sky ? (
+            <div className="mt-4">
+              <PreferenceToggle
+                label="Ambient motion"
+                detail="Slow drifting stars on your streak cards."
+                checked={sky.preferences.ambientMotion}
+                onChange={(ambientMotion) => void updateSky({ ambientMotion })}
+              />
+            </div>
+          ) : null}
         </Card>
 
         {data.terms?.length ? (
@@ -887,7 +864,7 @@ export default function SettingsView() {
                 Completion tick
               </p>
               <p className="mt-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-                A quiet click when you mark a study block or task done. Off doesn't affect the visual burst.
+                A quiet click when you mark a study block or task done. Off doesn&apos;t affect the visual burst.
               </p>
             </div>
             <button
@@ -915,7 +892,7 @@ export default function SettingsView() {
             <SectionHeader label="Schedule reminders" />
             {!notificationsSupported() ? (
               <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
-                This browser doesn't support notifications. On iOS Safari, add the app to your Home Screen to unlock them.
+                This browser doesn&apos;t support notifications. On iOS Safari, add the app to your Home Screen to unlock them.
               </p>
             ) : (
               <>
@@ -1466,4 +1443,14 @@ function relativeTime(iso: string): string {
   if (hr < 24) return `${hr} hr ago`;
   const day = Math.round(hr / 24);
   return `${day} day${day === 1 ? "" : "s"} ago`;
+}
+
+/** The notice for ?google=… after the Google Calendar OAuth redirect, if there is one. */
+function googleRedirectNotice(): { tone: "info" | "error"; text: string } | null {
+  if (typeof window === "undefined") return null;
+  const flag = new URLSearchParams(window.location.search).get("google");
+  if (flag === "connected") return { tone: "info", text: "Google Calendar connected. Fixed events will appear on Schedule after the first sync." };
+  if (flag === "upgrade") return { tone: "error", text: "Google Calendar sync needs a Pro or Max plan." };
+  if (flag === "denied") return { tone: "error", text: "Google didn't grant access. You can try again anytime." };
+  return null;
 }

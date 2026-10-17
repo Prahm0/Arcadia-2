@@ -85,7 +85,6 @@ export default function InviteFriendsView() {
     <>
       <PageHeader
         width={760}
-        eyebrow="Pass it on"
         title="Invite friends"
         meta="Invite a friend and earn more time to plan."
       />

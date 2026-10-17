@@ -32,7 +32,6 @@ export default function FilesView() {
   return (
     <>
       <PageHeader width={820}
-        eyebrow="Resources"
         title="Files"
         meta={state.status === "ready" && subjects.length ? `${count} ${count === 1 ? "file" : "files"} across ${subjects.length} ${subjects.length === 1 ? "subject" : "subjects"}` : undefined}
         action={
@@ -88,9 +87,9 @@ export default function FilesView() {
   );
 }
 
-/** "Syllabus and 3 notes", "No syllabus yet · 1 note". */
-function describe(syllabus: number, notes: number): string {
+/** "Syllabus and 3 notes", "No syllabus yet · 1 note"; nothing when empty, since the section already says "No files yet". */
+function describe(syllabus: number, notes: number): string | undefined {
   const noteText = notes === 1 ? "1 note or handout" : `${notes} notes and handouts`;
   if (syllabus) return notes ? `Syllabus and ${noteText}` : "Syllabus, no notes yet";
-  return notes ? `No syllabus yet · ${noteText}` : "Nothing here yet";
+  return notes ? `No syllabus yet · ${noteText}` : undefined;
 }

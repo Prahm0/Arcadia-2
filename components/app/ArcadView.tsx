@@ -15,13 +15,11 @@ import ArcadOrb from "./ArcadOrb";
 import MissedRecoveryCards from "./MissedRecoveryCards";
 import MonthPlanPanel from "./MonthPlanPanel";
 import ProactiveArcadCards from "./ProactiveArcadCards";
-import PageTour from "./tour/PageTour";
 import ChangeCard, { SKIPPED_NOTICE } from "./arcad/ChangeCard";
 import ChatRail, { PANEL_ICON } from "./arcad/ChatRail";
 import Composer, { type ComposerHandle } from "./arcad/Composer";
 import { MessageRow, ThinkingRow } from "./arcad/ChatMessage";
 import type { ArcadUsage, ChatMessage, Conversation, Proposal, SendError } from "./arcad/types";
-import { subjectCount } from "@/lib/app/subjectCount";
 
 type View = "chat" | "month";
 
@@ -539,7 +537,6 @@ function ArcadPage() {
           <p className="min-w-0 flex-1 truncate px-1.5 text-[14px] font-medium" style={{ color: "var(--app-text)" }}>
             {activeTitle}
           </p>
-          <PageTour id="arcad" />
           <IconButton label="New chat" className={railCollapsed ? undefined : "xl:hidden"} onClick={() => startNewChat()}>
             <path d="M14.5 3.5l2 2-8 8H6.5v-2l8-8zM9 4H5a1.5 1.5 0 00-1.5 1.5v9A1.5 1.5 0 005 16h9a1.5 1.5 0 001.5-1.5V11" />
           </IconButton>
@@ -592,7 +589,6 @@ function ArcadPage() {
                   placeholder="Tell Arcad what's coming up"
                   autoFocus
                 />
-                <KnowsLine data={data} />
               </div>
 
               <div className="mt-8">
@@ -737,23 +733,6 @@ function proposalsFor(message: ChatMessage, messages: ChatMessage[], proposals: 
     // A second's slack either side: the proposal row and the reply are written moments apart.
     return made > previousAt + 1000 && (made <= at + 1000 || isLast);
   });
-}
-
-/** What Arcad works from, so it's clear it isn't guessing. */
-function KnowsLine({ data }: { data: ReturnType<typeof useDashboardData>["data"] }) {
-  const subjects = subjectCount(data);
-  const open = data.tasks.filter((t) => t.status === "pending").length;
-  const parts = [
-    subjects ? `your ${subjects} subject${subjects === 1 ? "" : "s"}` : null,
-    open ? `${open} deadline${open === 1 ? "" : "s"}` : null,
-    "your week",
-  ].filter(Boolean) as string[];
-  const list = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}` : parts[0];
-  return (
-    <p className="mt-2.5 text-center text-[12px]" style={{ color: "var(--app-text-faint)" }}>
-      Arcad works from {list}. It plans the work, it won&apos;t do it for you.
-    </p>
-  );
 }
 
 function Suggestions({ starters, onPick }: { starters: Starter[]; onPick: (starter: Starter) => void }) {

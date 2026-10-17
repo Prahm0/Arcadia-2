@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import type { PlannerEvent } from "@/lib/api/types";
@@ -100,26 +100,24 @@ function FocusViewInner({ session }: { session: FocusSession }) {
     setStudyWithMeOpen(true);
   }
 
-  const loadRecents = useCallback(async () => {
-    try {
-      const res = await api<{ sessions: StudySession[] }>("/api/study-sessions");
-      // The endpoint returns the last 30 days unordered; newest first is what
-      // a "recents" list means.
-      setRecents(
-        [...(res.sessions ?? [])].sort(
-          (a, b) => Date.parse(b.endedAt) - Date.parse(a.endedAt),
-        ),
-      );
-      setRecentsError(false);
-    } catch {
-      setRecentsError(true);
-    }
-  }, []);
 
   // Again each time the session logs one, so it's at the top already.
   useEffect(() => {
-    void loadRecents();
-  }, [loadRecents, session.logged]);
+    let active = true;
+    fetchRecents().then(
+      (sessions) => {
+        if (!active) return;
+        setRecents(sessions);
+        setRecentsError(false);
+      },
+      () => {
+        if (active) setRecentsError(true);
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [session.logged]);
 
   // "Start now" from Today: the block moves to now, and the timer runs
   // straight away. The flag comes off the URL so a reload doesn't restart it.
@@ -164,7 +162,6 @@ function FocusViewInner({ session }: { session: FocusSession }) {
         title="Sessions"
         meta={`${phase === "break" ? "On a break · " : ""}${todayMinutes} min focused today`}
         // No tour popping up over a session that has just started.
-        tour={linkedEvent ? undefined : "focus"}
         action={<SessionsSwitch />}
       />
 
@@ -742,4 +739,10 @@ function dayLabel(iso: string, timezone: string): string {
   if (fmt(when) === fmt(today)) return "Today";
   if (fmt(when) === fmt(yesterday)) return "Yesterday";
   return fmt(when);
+}
+
+/** The last 30 days of sessions, newest first (the endpoint returns them unordered). */
+async function fetchRecents(): Promise<StudySession[]> {
+  const res = await api<{ sessions: StudySession[] }>("/api/study-sessions");
+  return [...(res.sessions ?? [])].sort((a, b) => Date.parse(b.endedAt) - Date.parse(a.endedAt));
 }

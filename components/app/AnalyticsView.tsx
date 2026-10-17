@@ -82,10 +82,8 @@ export default function AnalyticsView() {
   return (
     <>
       <PageHeader width={1140}
-        eyebrow="Progress"
         title="Analytics"
         meta={`${period === "week" ? "Last 7 days" : "Last 30 days"}${analytics ? ` · ${formatMinutes(current.minutes)} of focused study` : ""}`}
-        tour="analytics"
         action={<AnalyticsPeriodPicker period={period} setPeriod={setPeriod} />}
       />
 

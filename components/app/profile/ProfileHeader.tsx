@@ -2,13 +2,9 @@
 
 import { courseByKey, courseFor, coursesFor } from "@/shared/education";
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { updateProfile } from "@/lib/api/profile";
 import { AU_STATES, countryName, countryOptions } from "@/lib/app/countries";
-import { useDashboardData } from "@/lib/app/DashboardProvider";
-import { isGuestEmail } from "@/lib/auth/guest";
-import AppButton, { appButtonClass } from "../AppButton";
-import PageTour from "../tour/PageTour";
+import AppButton from "../AppButton";
 import type { SectionProps } from "./ProfileView";
 import { ProfileSkyBanner } from "../sky/ProfileSky";
 import {
@@ -30,7 +26,6 @@ import {
  */
 export default function ProfileHeader({ data, replace, replanned }: SectionProps) {
   const { profile, stats } = data;
-  const { data: dashboard } = useDashboardData();
   const [editing, setEditing] = useState(false);
 
   const facts = [profile.grade, profile.school, profile.state, countryName(profile.country)].filter(Boolean);
@@ -73,12 +68,6 @@ export default function ProfileHeader({ data, replace, replanned }: SectionProps
           </p>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-center">
-          <PageTour id="profile" />
-          {!isGuestEmail(dashboard.user.email) && !dashboard.user.hasSubscription ? (
-            <Link href="/app/invite" className={appButtonClass("secondary")}>
-              Invite friends
-            </Link>
-          ) : null}
           <AppButton variant="secondary" onClick={() => setEditing(true)}>
             Edit profile
           </AppButton>

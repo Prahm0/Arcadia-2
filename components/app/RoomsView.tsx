@@ -86,7 +86,6 @@ export default function RoomsView() {
       <PageHeader width={960}
         title="Sessions"
         meta={loading ? undefined : `${rooms.length} ${rooms.length === 1 ? "room" : "rooms"}`}
-        tour="rooms"
         action={<SessionsSwitch />}
       />
 

@@ -1,10 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
-import { CATEGORY_COLOR } from "@/lib/app/categoryColors";
 import { openArcad } from "@/lib/app/commands";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import type { DayItem, PlannerEvent, PlannerTask, PriorityPick } from "@/lib/api/types";
@@ -17,7 +15,6 @@ import {
 } from "@/lib/api/time";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
-import CompletionBurst from "./CompletionBurst";
 import { showContextMenu } from "./ContextMenu";
 import DailyCheckInCard from "./DailyCheckInCard";
 import HolidayCard from "./HolidayCard";
@@ -29,7 +26,6 @@ import StartNowCard from "./StartNowCard";
 import TodayRail from "./TodayRail";
 import SundayReviewInline from "./SundayReviewInline";
 import { subjectColour } from "@/lib/app/subjectColour";
-import { SubjectTag } from "./cards/shared";
 import { playCompletionTick } from "@/lib/app/completion";
 import { noteWin } from "@/lib/capacitor/ratingPrompt";
 import BlockDoneMoment from "./BlockDoneMoment";
@@ -41,11 +37,11 @@ import { noteEntries, type NoteEntry } from "@/lib/app/todayNote";
 import { startOfDayMs } from "./schedule/calendar";
 import AddLine, { type NoteTarget } from "./today/AddLine";
 import LineRow from "./today/LineRow";
+import { matchSubject } from "@/lib/app/quickAdd";
 import GapSuggestion from "./today/GapSuggestion";
 import BlockingBar from "./today/BlockingBar";
 import TodayProgress from "./TodayProgress";
 
-const CATEGORY_BAR = CATEGORY_COLOR;
 
 type EventSheetMode = "details" | "reschedule" | "miss-reason";
 
@@ -390,6 +386,7 @@ function TodayCard(props: TodayCardProps) {
     laterEvents, inProgressIds, busyId, celebrate, timezone, hasTasks,
     onNewTask, onComplete, onMiss, onOpen, entries, today, onLine, dayStartMs, priorityPicks,
   } = props;
+  const { subjects } = useDashboardData().data;
   // When Arcad replans or a line moves the plan, everything slides into its new place.
   const blockList = useRef<HTMLUListElement>(null);
   useFlip(blockList, entries.map((entry) => (entry.kind === "block" ? `${entry.key}@${entry.event.startAt}` : entry.key)).join("|"));
@@ -423,34 +420,56 @@ function TodayCard(props: TodayCardProps) {
         <FirstRunActions onNewTask={onNewTask} />
       ) : (
         <ul ref={blockList} className="flex flex-col px-2 pb-3 sm:px-3" aria-label="Today">
-          {entries.map((entry) =>
-            entry.kind === "block" && !entry.mine ? (
-              <FocusRow
-                key={entry.key}
-                event={entry.event}
-                timezone={timezone}
-                busy={busyId === entry.event.id}
-                celebrateTrigger={celebrate?.id === entry.event.id ? celebrate.at : 0}
-                onComplete={() => onComplete(entry.event)}
-                onMiss={() => onMiss(entry.event)}
-                onOpen={(mode) => onOpen(entry.event, mode)}
-              />
-            ) : (
+          {entries.map((entry) => {
+            if (entry.kind === "block" && !entry.mine) {
+              const event = entry.event;
+              const actionable = event.outcome === "planned";
+              const minutes = Math.round((Date.parse(event.endAt) - Date.parse(event.startAt)) / 60000);
+              return (
+                <LineRow
+                  key={entry.key}
+                  flipId={event.id}
+                  // Arcad's topic once it's set up, a deadline's name, else the subject.
+                  title={event.plan?.topic ?? (event.taskId ? event.title : event.subject || event.title)}
+                  time={formatClock(event.startAt, timezone)}
+                  subtime={formatDurationMinutes(minutes)}
+                  dot={subjectColour(subjects, event.subject)}
+                  spark
+                  note=""
+                  done={event.outcome === "completed"}
+                  muted={event.outcome === "missed"}
+                  busy={busyId === event.id}
+                  href={actionable ? `/app/sessions?eventId=${encodeURIComponent(event.id)}` : undefined}
+                  celebrate={celebrate?.id === event.id ? celebrate.at : 0}
+                  actions={actionable ? [
+                    { label: "Missed", onSelect: () => onMiss(event) },
+                    ...(event.editable !== false ? [{ label: "Move", onSelect: () => onOpen(event, "reschedule") }] : []),
+                  ] : [{ label: "Details", onSelect: () => onOpen(event, "details") }]}
+                  onToggle={() => onComplete(event)}
+                />
+              );
+            }
+            const title = entry.kind === "item" ? entry.item.text : entry.event.title;
+            const subject = entry.kind === "item" ? entry.item.subject : entry.event.subject;
+            return (
               <LineRow
                 key={entry.key}
                 flipId={entry.key}
-                title={entry.kind === "item" ? entry.item.text : entry.event.title}
+                title={title}
                 time={lineTime(entry, timezone)}
+                dot={subjectColour(subjects, subject ?? matchSubject(title, subjects.map((item) => item.name)))}
                 note={entry.kind === "item" ? entry.item.note : entry.event.note ?? ""}
                 done={entry.kind === "item" ? entry.item.done : entry.event.outcome === "completed"}
                 busy={entry.kind === "block" && busyId === entry.event.id}
+                actions={[
+                  { label: "Tomorrow", onSelect: () => void onLine.tomorrow(entry) },
+                  { label: "Delete", onSelect: () => void onLine.remove(entry), danger: true },
+                ]}
                 onToggle={() => void onLine.toggle(entry)}
-                onTomorrow={() => void onLine.tomorrow(entry)}
-                onDelete={() => void onLine.remove(entry)}
                 onNote={(note) => void onLine.note(entry, note)}
               />
-            ),
-          )}
+            );
+          })}
         </ul>
       )}
 
@@ -499,151 +518,6 @@ function TodayCard(props: TodayCardProps) {
         </div>
       ) : null}
     </div>
-  );
-}
-
-function FocusRow({
-  event, timezone, busy, celebrateTrigger, onComplete, onMiss, onOpen,
-}: {
-  event: PlannerEvent;
-  timezone: string;
-  busy: boolean;
-  celebrateTrigger: number;
-  onComplete: () => void;
-  onMiss: () => void;
-  onOpen: (mode: EventSheetMode) => void;
-}) {
-  const { subjects } = useDashboardData().data;
-  const router = useRouter();
-  const isDone = event.outcome === "completed";
-  const isMissed = event.outcome === "missed";
-  const isActionable = !isDone && !isMissed;
-  const minutes = Math.round((Date.parse(event.endAt) - Date.parse(event.startAt)) / 60000);
-  const startClock = formatClock(event.startAt, timezone);
-  const focusHref = `/app/sessions?eventId=${encodeURIComponent(event.id)}`;
-  const colour = subjectColour(subjects, event.subject) ?? CATEGORY_BAR[event.category] ?? "";
-  // Arcad's topic once it's set up; a deadline's own name; otherwise the
-  // subject label above says it all until Arcad sets the session up.
-  const title = event.plan?.topic ?? (event.taskId ? event.title : null);
-
-  const rowContent = (
-    <>
-      <span className="min-w-0 flex-1">
-        <span className="block" style={{ opacity: isDone || isMissed ? 0.5 : 1 }}>
-          <SubjectTag size="sm" subject={{ name: event.subject || "Study", colour: event.category === "study" ? colour : "" }} />
-        </span>
-        {title ? (
-          <span
-            className={cn(
-              "mt-0.5 block truncate text-[16px] font-medium transition-opacity",
-              (isDone || isMissed) && "line-through",
-            )}
-            style={{
-              color: "var(--app-text)",
-              opacity: isDone ? 0.4 : isMissed ? 0.35 : 1,
-            }}
-          >
-            {title}
-          </span>
-        ) : (
-          <span className="mt-0.5 block truncate text-[14px]" style={{ color: "var(--app-text-muted)", opacity: isDone || isMissed ? 0.5 : 1 }}>
-            Arcad sets this up when you start
-          </span>
-        )}
-      </span>
-      <span className="flex shrink-0 flex-col items-end gap-1">
-        <span className="tabular-nums text-[13px]" style={{ color: "var(--app-text)" }}>
-          {formatDurationMinutes(minutes)}
-        </span>
-        <span className="text-[11px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
-          {startClock}
-        </span>
-      </span>
-      {isActionable ? (
-        <span
-          aria-hidden="true"
-          className="ml-2 hidden shrink-0 text-[11px] opacity-0 transition-opacity group-hover:opacity-100 sm:block"
-          style={{ color: "var(--app-text-muted)" }}
-        >
-          Focus →
-        </span>
-      ) : null}
-    </>
-  );
-
-  return (
-    <li
-      data-flip-id={event.id}
-      className="group flex items-center gap-1 rounded-md pr-2 transition-colors duration-200 hover:bg-[color:var(--app-surface-soft)]"
-      onContextMenu={(e) =>
-        showContextMenu(
-          e,
-          [
-            isActionable && { kind: "item", label: "Start session", onSelect: () => router.push(focusHref) },
-            isActionable && { kind: "item", label: "Open in new tab", onSelect: () => window.open(focusHref, "_blank", "noopener") },
-            { kind: "item", label: "Session details", onSelect: () => onOpen("details") },
-            { kind: "separator" },
-            isActionable && !busy && { kind: "item", label: "Mark done", onSelect: onComplete },
-            isActionable && !busy && { kind: "item", label: "Missed…", onSelect: onMiss },
-            isActionable && event.editable !== false && { kind: "item", label: "Reschedule…", onSelect: () => onOpen("reschedule") },
-          ],
-          title ?? event.subject ?? event.title,
-        )
-      }
-    >
-      {isActionable ? (
-        <Link
-          href={focusHref}
-          className="flex min-w-0 flex-1 items-center gap-4 rounded-md px-3 py-3.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--app-accent)]"
-          aria-label={`Open ${event.subject ?? "study"} session${title ? `: ${title}` : ""}`}
-        >
-          {rowContent}
-        </Link>
-      ) : (
-        <div className="flex min-w-0 flex-1 items-center gap-4 rounded-md px-3 py-3.5 text-left">
-          {rowContent}
-        </div>
-      )}
-      <span className="flex shrink-0 items-center">
-        {isMissed ? (
-          <span className="mr-1 text-[11px] font-medium" style={{ color: "var(--app-text-muted)" }}>Missed</span>
-        ) : !isDone ? (
-          <button
-            type="button"
-            onClick={onMiss}
-            disabled={busy}
-            className="mr-1 text-[11px] opacity-0 transition-opacity group-hover:opacity-100 hover:underline"
-            style={{ color: "var(--app-text-muted)" }}
-          >
-            Missed
-          </button>
-        ) : null}
-
-        <button
-          type="button"
-          onClick={onComplete}
-          disabled={busy || isDone || isMissed}
-          aria-label={`Mark ${title ?? event.subject ?? event.title} as done`}
-          className="flex size-11 items-center justify-center rounded-md transition-colors sm:size-9"
-        >
-          <CompletionBurst trigger={celebrateTrigger}>
-            <span
-              aria-hidden="true"
-              className="grid size-[24px] place-items-center rounded-full transition-colors duration-200 sm:size-[20px]"
-              style={{
-                background: isDone ? "var(--app-accent)" : "var(--app-surface)",
-                border: `1.5px solid ${isDone ? "var(--app-accent)" : "var(--app-border-strong)"}`,
-                color: isDone ? "var(--app-accent-on)" : "transparent",
-              }}
-            >
-              <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                <path d="M1 4l2.5 2.5L9 1" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </span>
-          </CompletionBurst>
-        </button>
-      </span>
-    </li>
   );
 }
 

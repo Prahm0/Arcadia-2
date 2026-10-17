@@ -70,7 +70,7 @@ export default function CardsView({ startCreating = false }: { startCreating?: b
   return (
     <>
       <PageHeader width={820}
-        title="Cards"
+        title="Flashcards"
         meta={
           state.status !== "ready" || decks.length === 0
             ? undefined

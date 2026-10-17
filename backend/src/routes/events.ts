@@ -6,7 +6,7 @@ import { serialiseEvent } from "../lib/serialise";
 import { planIsCurrent, planSession, type Checkout, type SessionPlan } from "../lib/session-plan";
 import { effectiveTier, isPaidTier } from "../lib/tiers";
 import { DAY, MINUTE } from "../lib/time";
-import { awardXp } from "../lib/rewards";
+import { awardXp, lineXp } from "../lib/rewards";
 import { replan } from "../lib/replan";
 import { releaseFromLayout } from "../lib/scheduler";
 import { clearLog, findSubject, replaceLog } from "../lib/study-log";
@@ -170,7 +170,9 @@ events.post("/:id/outcome", async (c) => {
   if (event.category === "study") await logOutcome(database, userId, event, outcome);
   const rewards = outcome === "completed" && event.outcome !== "completed" && event.category === "study"
     ? await awardXp(database, userId, "study_block", event.id, XP.studyBlock)
-    : [];
+    : event.source === "note" && (outcome === "completed") !== (event.outcome === "completed")
+      ? await lineXp(database, userId, event.id, outcome === "completed")
+      : [];
   if (outcome === "planned" && event.outcome === "completed") {
     await database.delete(schema.xpEvents).where(and(eq(schema.xpEvents.userId, userId), eq(schema.xpEvents.source, "study_block"), eq(schema.xpEvents.sourceId, event.id)));
   }

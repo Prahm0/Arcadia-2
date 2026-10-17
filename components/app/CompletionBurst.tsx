@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 interface CompletionBurstProps {
   /** Increment this to trigger a burst. Any monotonic value (Date.now()) works. */
   trigger: number;
   children: ReactNode;
   className?: string;
+  /** The burst's colour, e.g. the subject's. Defaults to the accent. */
+  colour?: string | null;
 }
 
 /**
@@ -17,21 +19,19 @@ interface CompletionBurstProps {
  * The burst is 6 tiny 4-point stars matching the landing page's mark, radiating
  * out and fading. The spring is a lightweight scale keyframe: 1 → 1.3 → 1.
  */
-export default function CompletionBurst({ trigger, children, className }: CompletionBurstProps) {
-  const [active, setActive] = useState(false);
-  const previous = useRef(trigger);
+export default function CompletionBurst({ trigger, children, className, colour }: CompletionBurstProps) {
+  // The burst plays while `trigger` is ahead of the last one it played for.
+  const [playedFor, setPlayedFor] = useState(trigger);
+  const active = trigger !== 0 && trigger !== playedFor;
 
   useEffect(() => {
-    if (trigger === previous.current) return;
-    previous.current = trigger;
-    if (!trigger) return;
-    setActive(true);
-    const timeout = window.setTimeout(() => setActive(false), 420);
+    if (!active) return;
+    const timeout = window.setTimeout(() => setPlayedFor(trigger), 420);
     return () => window.clearTimeout(timeout);
-  }, [trigger]);
+  }, [active, trigger]);
 
   return (
-    <span className={`relative inline-flex ${className ?? ""}`} style={{ display: "inline-flex" }}>
+    <span className={`relative inline-flex ${className ?? ""}`} style={{ display: "inline-flex", ...(colour ? { ["--burst-colour" as string]: colour } : {}) }}>
       <span
         className={active ? "arcadia-completion-spring" : undefined}
         style={{ display: "inline-flex" }}

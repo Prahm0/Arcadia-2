@@ -28,6 +28,8 @@ import SundayReviewInline from "./SundayReviewInline";
 import { subjectColour } from "@/lib/app/subjectColour";
 import { playCompletionTick } from "@/lib/app/completion";
 import { noteWin } from "@/lib/capacitor/ratingPrompt";
+import { success } from "@/lib/capacitor/haptics";
+import { comboCount, isPerfectDay, splitDone } from "@/lib/app/celebrate";
 import BlockDoneMoment from "./BlockDoneMoment";
 import { blockDoneDecision } from "@/lib/app/blockDone";
 import { finishBlock, useFocusGuardStatus, type BlockReport } from "@/lib/capacitor/focusGuard";
@@ -41,9 +43,12 @@ import { matchSubject } from "@/lib/app/quickAdd";
 import GapSuggestion from "./today/GapSuggestion";
 import BlockingBar from "./today/BlockingBar";
 import TodayProgress from "./TodayProgress";
+import EmptyArt from "./EmptyArt";
 
 
 type EventSheetMode = "details" | "reschedule" | "miss-reason";
+
+const readNow = () => Date.now();
 
 export default function TodayView() {
   const { data, patch, reload } = useDashboardData();
@@ -55,7 +60,11 @@ export default function TodayView() {
   const [lifeAutoReason, setLifeAutoReason] = useState<string | null>(null);
   const [lifeAutoDeadline, setLifeAutoDeadline] = useState<{ title: string; subject: string | null; dueAt: string } | null>(null);
   const [celebrateId, setCelebrateId] = useState<{ id: string; at: number } | null>(null);
-  const [xpReward, setXpReward] = useState<number | null>(null);
+  // One floating line at a time: "+10 XP", "2 in a row", "Perfect day".
+  const [toast, setToast] = useState<{ text: string; big?: boolean; at: number } | null>(null);
+  const tickTimes = useRef<number[]>([]);
+  // Rows ticked a moment ago stay put while their burst plays, then join Done.
+  const [settling, setSettling] = useState<ReadonlySet<string>>(new Set());
   // The full-screen "block done" moment, with the data it was opened from.
   const lastMomentAt = useRef(0);
   const [doneMoment, setDoneMoment] = useState<{ event: PlannerEvent; task: PlannerTask | undefined; blocks: PlannerEvent[]; report?: BlockReport } | null>(null);
@@ -137,6 +146,32 @@ export default function TodayView() {
   const remaining = studyBlocks.filter((event) => event.outcome === "planned");
   const completed = studyBlocks.filter((event) => event.outcome === "completed");
 
+  function showToast(text: string, big = false) {
+    const at = readNow();
+    setToast({ text, big, at });
+    window.setTimeout(() => setToast((current) => (current?.at === at ? null : current)), 1150);
+  }
+
+  /** Everything a tick sets off, on top of the burst: haptic, settle, then combo, perfect day or XP. */
+  function celebrateTick(key: string, xp: number) {
+    void success();
+    setSettling((current) => new Set(current).add(key));
+    window.setTimeout(() => setSettling((current) => {
+      const next = new Set(current);
+      next.delete(key);
+      return next;
+    }), 650);
+    const at = readNow();
+    tickTimes.current = [...tickTimes.current.filter((time) => at - time < 3 * 3_600_000), at];
+    const rows = entries.map((entry) => ({
+      done: entry.kind === "item" ? entry.item.done || entry.key === key : entry.event.outcome === "completed" || entry.key === key,
+    }));
+    const combo = comboCount(tickTimes.current);
+    if (isPerfectDay(rows)) showToast("Perfect day ✦", true);
+    else if (combo >= 2) showToast(`${combo} in a row${xp ? ` · +${xp} XP` : ""}`);
+    else if (xp) showToast(`+${xp} XP`);
+  }
+
   async function markOutcome(event: PlannerEvent, outcome: "completed" | "missed") {
     setBusyId(event.id);
     if (outcome === "completed") {
@@ -175,10 +210,7 @@ export default function TodayView() {
         ),
       }));
       const earned = result.rewards?.reduce((sum, reward) => sum + reward.xp, 0) ?? 0;
-      if (earned > 0) {
-        setXpReward(earned);
-        window.setTimeout(() => setXpReward(null), 1200);
-      }
+      if (outcome === "completed") celebrateTick(entries.find((entry) => entry.kind === "block" && entry.event.id === event.id)?.key ?? event.id, earned);
       setProgressRefresh((value) => value + 1);
     } catch (error) {
       // The tick didn't save, so there's nothing to celebrate.
@@ -196,9 +228,14 @@ export default function TodayView() {
     toggle: async (entry) => {
       if (entry.kind === "item") {
         const done = !entry.item.done;
-        if (done) playCompletionTick();
+        if (done) {
+          playCompletionTick();
+          setCelebrateId((previous) => ({ id: entry.item.id, at: (previous?.at ?? 0) + 1 }));
+        }
         patchItem(entry.item.id, { done });
-        await api(`/api/today/items/${encodeURIComponent(entry.item.id)}`, { method: "PATCH", body: JSON.stringify({ done }) });
+        const result = await api<{ rewards?: Array<{ xp: number }> }>(`/api/today/items/${encodeURIComponent(entry.item.id)}`, { method: "PATCH", body: JSON.stringify({ done }) });
+        if (done) celebrateTick(entry.key, result.rewards?.reduce((sum, reward) => sum + reward.xp, 0) ?? 0);
+        setProgressRefresh((value) => value + 1);
         return;
       }
       if (entry.event.outcome !== "completed") return markOutcome(entry.event, "completed");
@@ -279,21 +316,27 @@ export default function TodayView() {
           </>
         }
       />
-      {xpReward !== null ? (
-        <div className="pointer-events-none fixed left-1/2 top-24 z-[100] -translate-x-1/2 app-pop rounded-full px-4 py-2 text-sm font-semibold shadow-lg" style={{ background: "var(--app-arcad)", color: "white" }}>
-          +{xpReward} XP
+      {toast ? (
+        <div
+          key={toast.at}
+          role="status"
+          className={`arcadia-toast top-24 rounded-full font-semibold shadow-lg ${toast.big ? "px-6 py-3 text-[17px]" : "px-4 py-2 text-sm"}`}
+          style={{ background: "var(--app-arcad)", color: "var(--app-arcad-on)" }}
+        >
+          {toast.text}
         </div>
       ) : null}
 
       <div className={`mx-auto grid w-full gap-8 px-6 pb-10 pt-6 sm:px-10 ${data.focusTasks.length > 0 ? "max-w-[1160px] @3xl/main:grid-cols-[minmax(0,1fr)_260px]" : "max-w-[720px]"}`}>
         <section className="min-w-0">
           <StartNowCard />
-          <TodayProgress refreshKey={progressRefresh} compact />
+          <TodayProgress refreshKey={progressRefresh} localDoneMinutes={completed.reduce((sum, event) => sum + Math.round((Date.parse(event.endAt) - Date.parse(event.startAt)) / 60000), 0)} compact />
           <TodayCard
             laterEvents={laterEvents}
             inProgressIds={inProgressIds}
             busyId={busyId}
             celebrate={celebrateId}
+            settling={settling}
             timezone={timezone}
             hasTasks={data.tasks.length > 0}
             entries={entries}
@@ -367,6 +410,7 @@ interface TodayCardProps {
   inProgressIds: Set<string>;
   busyId: string | null;
   celebrate: { id: string; at: number } | null;
+  settling: ReadonlySet<string>;
   timezone: string;
   hasTasks: boolean;
   onNewTask: () => void;
@@ -383,10 +427,20 @@ interface TodayCardProps {
 
 function TodayCard(props: TodayCardProps) {
   const {
-    laterEvents, inProgressIds, busyId, celebrate, timezone, hasTasks,
+    laterEvents, inProgressIds, busyId, celebrate, settling, timezone, hasTasks,
     onNewTask, onComplete, onMiss, onOpen, entries, today, onLine, dayStartMs, priorityPicks,
   } = props;
   const { subjects } = useDashboardData().data;
+  // Lines added after the page opened drop in; the ones already there just stagger in.
+  const [mountedAt] = useState(readNow);
+  const { open, done } = splitDone(
+    entries.map((entry) => ({
+      key: entry.key,
+      done: entry.kind === "item" ? entry.item.done : entry.event.outcome !== "planned",
+      entry,
+    })),
+    settling,
+  );
   // When Arcad replans or a line moves the plan, everything slides into its new place.
   const blockList = useRef<HTMLUListElement>(null);
   useFlip(blockList, entries.map((entry) => (entry.kind === "block" ? `${entry.key}@${entry.event.startAt}` : entry.key)).join("|"));
@@ -419,8 +473,17 @@ function TodayCard(props: TodayCardProps) {
         // Fresh account: a few concrete ways to seed a plan under the line.
         <FirstRunActions onNewTask={onNewTask} />
       ) : (
-        <ul ref={blockList} className="flex flex-col px-2 pb-3 sm:px-3" aria-label="Today">
-          {entries.map((entry) => {
+        <ul ref={blockList} className="arcadia-stagger flex flex-col px-2 pb-3 sm:px-3" aria-label="Today">
+          {[...open, ...(done.length ? [null] : []), ...done].map((row, index) => {
+            if (!row) {
+              return (
+                <li key="done-heading" data-flip-id="done-heading" className="px-3 pb-1 pt-4 text-[12px] font-medium" style={{ color: "var(--app-text-muted)", ["--i" as string]: index }}>
+                  Done
+                </li>
+              );
+            }
+            const entry = row.entry;
+            const fresh = Date.parse((entry.kind === "item" ? entry.item.createdAt : entry.event.createdAt) ?? "") > mountedAt;
             if (entry.kind === "block" && !entry.mine) {
               const event = entry.event;
               const actionable = event.outcome === "planned";
@@ -441,6 +504,7 @@ function TodayCard(props: TodayCardProps) {
                   busy={busyId === event.id}
                   href={actionable ? `/app/sessions?eventId=${encodeURIComponent(event.id)}` : undefined}
                   celebrate={celebrate?.id === event.id ? celebrate.at : 0}
+                  index={index}
                   actions={actionable ? [
                     { label: "Missed", onSelect: () => onMiss(event) },
                     ...(event.editable !== false ? [{ label: "Move", onSelect: () => onOpen(event, "reschedule") }] : []),
@@ -461,6 +525,9 @@ function TodayCard(props: TodayCardProps) {
                 note={entry.kind === "item" ? entry.item.note : entry.event.note ?? ""}
                 done={entry.kind === "item" ? entry.item.done : entry.event.outcome === "completed"}
                 busy={entry.kind === "block" && busyId === entry.event.id}
+                celebrate={celebrate && celebrate.id === (entry.kind === "item" ? entry.item.id : entry.event.id) ? celebrate.at : 0}
+                fresh={fresh}
+                index={index}
                 actions={[
                   { label: "Tomorrow", onSelect: () => void onLine.tomorrow(entry) },
                   { label: "Delete", onSelect: () => void onLine.remove(entry), danger: true },
@@ -598,6 +665,7 @@ function timeOfDayGreeting(now: Date, timezone: string): string {
 function FirstRunActions({ onNewTask }: { onNewTask: () => void }) {
   return (
     <div className="px-5 pb-6 pt-4 sm:px-6">
+      <EmptyArt className="mx-auto mb-2" />
       <ul className="flex flex-col divide-y" style={{ borderColor: "var(--app-border)" }}>
         <FirstRunRow
           onClick={onNewTask}

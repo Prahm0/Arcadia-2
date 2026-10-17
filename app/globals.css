@@ -1511,7 +1511,7 @@ html[data-app-theme] .type-mono-label {
   position: absolute;
   width: 6px;
   height: 6px;
-  background: var(--app-accent);
+  background: var(--burst-colour, var(--app-accent));
   /* Four-point star (matches the landing page's mark), rendered with clip-path
      so we don't need SVG per particle. */
   clip-path: polygon(50% 0%, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0% 50%, 40% 40%);
@@ -1523,6 +1523,64 @@ html[data-app-theme] .type-mono-label {
   .arcadia-completion-dot {
     animation: none;
   }
+}
+
+/* Today feels alive: every animation is under 400ms, transform and opacity
+   only (60fps), never blocks input, and stops under reduced motion. */
+@keyframes arcadia-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes arcadia-drop {
+  0% { opacity: 0; transform: translateY(-12px) scale(0.98); }
+  60% { opacity: 1; transform: translateY(2px) scale(1.005); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes arcadia-pop-in {
+  0% { opacity: 0; transform: scale(0.5); }
+  70% { opacity: 1; transform: scale(1.15); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes arcadia-float-up {
+  0% { opacity: 0; transform: translate(-50%, 8px) scale(0.9); }
+  25% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -22px); }
+}
+@keyframes arcadia-fade {
+  0%, 100% { opacity: 0; transform: translateX(-50%); }
+  15%, 80% { opacity: 1; transform: translateX(-50%); }
+}
+@keyframes arcadia-flicker {
+  0%, 100% { transform: scale(var(--flame, 1)) rotate(-2deg); }
+  50% { transform: scale(calc(var(--flame, 1) * 1.06)) rotate(2deg); }
+}
+/* Lists come in one row after another; the delay is capped so long lists don't wait. */
+.arcadia-stagger > * {
+  animation: arcadia-rise 260ms var(--ease-out-expo) backwards;
+  animation-delay: calc(min(var(--i, 0), 8) * 28ms);
+}
+.arcadia-drop { animation: arcadia-drop 380ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards; }
+.arcadia-pop-in { animation: arcadia-pop-in 320ms cubic-bezier(0.34, 1.56, 0.64, 1) 140ms both; }
+/* "backwards", not "both": once done it leaves no transform, which would trap fixed sheets and toasts. */
+.arcadia-page { animation: arcadia-rise 220ms var(--ease-out-expo) backwards; }
+.arcadia-toast {
+  position: fixed;
+  left: 50%;
+  z-index: 100;
+  pointer-events: none;
+  animation: arcadia-float-up 1100ms var(--ease-out-expo) both;
+}
+.arcadia-flame {
+  display: inline-block;
+  transform-origin: 50% 90%;
+  transform: scale(var(--flame, 1));
+  animation: arcadia-flicker 2.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .arcadia-stagger > *, .arcadia-drop, .arcadia-pop-in, .arcadia-page { animation: none; }
+  .arcadia-toast { animation-name: arcadia-fade; }
+  .arcadia-flame { animation: none; }
 }
 
 /* Fragments that resolve into place, driven by a single --p custom property on the parent. */

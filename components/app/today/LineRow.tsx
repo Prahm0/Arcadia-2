@@ -36,6 +36,8 @@ export default function LineRow({
   busy,
   href,
   celebrate = 0,
+  fresh,
+  index = 0,
   actions,
   onToggle,
   onNote,
@@ -58,6 +60,10 @@ export default function LineRow({
   /** Tapping the title goes here instead of opening the note. */
   href?: string;
   celebrate?: number;
+  /** Just added: it drops in, and its time and subject pop into place. */
+  fresh?: boolean;
+  /** Position in the list, for the staggered entrance. */
+  index?: number;
   actions: RowAction[];
   onToggle: () => void;
   onNote?: (note: string) => void;
@@ -143,13 +149,13 @@ export default function LineRow({
 
   const titleContent = (
     <>
-      <span className="w-[62px] shrink-0 pt-px text-[12.5px] tabular-nums leading-snug" style={{ color: "var(--app-text-muted)" }}>
+      <span className={`w-[62px] shrink-0 pt-px text-[12.5px] tabular-nums leading-snug ${fresh && time ? "arcadia-pop-in" : ""}`} style={{ color: "var(--app-text-muted)" }}>
         {time}
         {subtime ? <span className="block text-[11px]" style={{ color: "var(--app-text-faint)" }}>{subtime}</span> : null}
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
-          {dot ? <span aria-hidden="true" className="size-[7px] shrink-0 rounded-full" style={{ background: dot, opacity: faded ? 0.5 : 1 }} /> : null}
+          {dot ? <span aria-hidden="true" className={`size-[7px] shrink-0 rounded-full ${fresh ? "arcadia-pop-in" : ""}`} style={{ background: dot, opacity: faded ? 0.5 : 1 }} /> : null}
           <span
             className="min-w-0 text-[15px] leading-snug"
             style={{ color: faded ? "var(--app-text-muted)" : "var(--app-text)", textDecoration: done ? "line-through" : undefined }}
@@ -175,7 +181,8 @@ export default function LineRow({
   return (
     <li
       data-flip-id={flipId}
-      className="group relative overflow-hidden rounded-md"
+      className={`group relative overflow-hidden rounded-md ${fresh ? "arcadia-drop" : ""}`}
+      style={{ ["--i" as string]: index }}
       onContextMenu={(event) => {
         // A long press on a phone opens the swipe actions instead.
         if (lastPointer.current !== "mouse") {
@@ -239,7 +246,7 @@ export default function LineRow({
           aria-pressed={done}
           className="flex size-11 shrink-0 items-center justify-center self-center rounded-md sm:size-9"
         >
-          <CompletionBurst trigger={celebrate}>
+          <CompletionBurst trigger={celebrate} colour={dot}>
             <span
               aria-hidden="true"
               className="grid size-[24px] place-items-center rounded-full transition-colors duration-200 sm:size-[20px]"

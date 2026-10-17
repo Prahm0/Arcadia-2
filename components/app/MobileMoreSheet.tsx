@@ -18,13 +18,13 @@ function icon(path: ReactNode) {
   );
 }
 
-// Sessions has its own tab in the bar. The rest is grouped so each page has a
+// Arcad has its own tab in the bar. The rest is grouped so each page has a
 // clear home, with the study tools (useful, but not everyone's) last.
 const GROUPS: Array<{ title: string; items: MoreItem[] }> = [
   {
     title: "Plan",
     items: [
-      { label: "Arcad", href: "/app/arcad", icon: icon(<path d="M3.5 5h13v8.5H7L3.5 16.5V5z" />) },
+      { label: "Sessions", href: "/app/sessions", icon: icon(<><circle cx="10" cy="10" r="7" /><circle cx="10" cy="10" r="3" /></>) },
       { label: "Deadlines", href: "/app/deadlines", icon: icon(<><circle cx="10" cy="10" r="7" /><path d="M10 6v4l3 2" /></>) },
       { label: "Weekly review", href: "/app/review", icon: icon(<><path d="M4 5h12M4 10h8M4 15h12" /><circle cx="15" cy="10" r="1" fill="currentColor" /></>) },
     ],

@@ -180,13 +180,26 @@ export default function TodayView() {
 
   const greeting = timeOfDayGreeting(now, timezone);
   const firstName = data.user.name.split(" ")[0];
+  // One line that reads the day back, like a friend would.
+  const nextDue = data.tasks
+    .filter((task) => task.status === "pending" && Date.parse(task.dueAt) > now.getTime())
+    .sort((a, b) => Date.parse(a.dueAt) - Date.parse(b.dueAt))[0];
+  const summary =
+    studyBlocks.length === 0
+      ? "Nothing planned today. Enjoy it."
+      : remaining.length === 0
+        ? "All done for today. Nice work."
+        : `${remaining.length === 1 ? "One block" : `${numberWord(remaining.length)} blocks`} ${completed.length ? "left" : "today"}${
+            nextDue ? `. ${nextDue.title} is due ${formatDueDay(nextDue.dueAt, timezone, now)}.` : "."
+          }`;
 
   return (
     <>
+      <DaylightGlow hour={localHour(now, timezone)} />
       <PageHeader
-        notices
-        title="Today"
-        meta={`${greeting}, ${firstName} · ${formatFriendlyDate(now.toISOString(), timezone)}`}
+        eyebrow={formatFriendlyDate(now.toISOString(), timezone)}
+        title={`${greeting}, ${firstName}`}
+        meta={summary}
         tour="today"
         action={
           <>
@@ -209,7 +222,6 @@ export default function TodayView() {
           </>
         }
       />
-      <TodayProgress refreshKey={progressRefresh} compact />
       {xpReward !== null ? (
         <div className="pointer-events-none fixed left-1/2 top-24 z-[100] -translate-x-1/2 app-pop rounded-full px-4 py-2 text-sm font-semibold shadow-lg" style={{ background: "var(--app-arcad)", color: "white" }}>
           +{xpReward} XP
@@ -219,6 +231,7 @@ export default function TodayView() {
       <div className="mx-auto grid w-full max-w-[1160px] gap-8 px-6 pb-10 pt-6 sm:px-10 @3xl/main:grid-cols-[minmax(0,1fr)_320px]">
         <section className="min-w-0">
           <StartNowCard />
+          <TodayProgress refreshKey={progressRefresh} compact />
           <TodayCard
             date={formatFriendlyDate(now.toISOString(), timezone)}
             weekProgress={weekProgress}
@@ -253,6 +266,7 @@ export default function TodayView() {
             <SundayReviewInline />
             <ProactiveArcadCards limit={1} />
           </div>
+          <TellArcad />
         </section>
 
         <TodayRail />
@@ -310,7 +324,7 @@ function TodayCard(props: TodayCardProps) {
 
   return (
     <div
-      className="w-full rounded-lg surface-card"
+      className="w-full rounded-[24px] surface-card"
       style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
     >
       {/* The page header already carries the date on phones. */}
@@ -337,10 +351,10 @@ function TodayCard(props: TodayCardProps) {
       </div>
 
       <div className="px-5 pt-6 sm:px-6">
-        <h2 className="text-[26px] font-medium leading-none tracking-[-0.02em] sm:text-[30px]" style={{ color: "var(--app-text)" }}>
-          Focus
+        <h2 className="text-[18px] font-semibold leading-none tracking-[-0.01em]" style={{ color: "var(--app-text)" }}>
+          Today&apos;s plan
         </h2>
-        <p className="mt-2 text-[15px]" style={{ color: "var(--app-text-muted)" }}>
+        <p className="mt-1.5 text-[14px]" style={{ color: "var(--app-text-muted)" }}>
           {studyBlocks.length === 0
             ? hasTasks
               ? "Nothing scheduled today, the plan is clear."
@@ -566,11 +580,11 @@ function FocusRow({
           <CompletionBurst trigger={celebrateTrigger}>
             <span
               aria-hidden="true"
-              className="grid size-[22px] place-items-center rounded-[5px] transition-colors duration-200 sm:size-[18px]"
+              className="grid size-[24px] place-items-center rounded-full transition-colors duration-200 sm:size-[20px]"
               style={{
-                background: isDone ? "var(--app-text)" : "var(--app-surface)",
-                border: `1px solid ${isDone ? "var(--app-text)" : "var(--app-border-strong)"}`,
-                color: isDone ? "var(--app-bg)" : "transparent",
+                background: isDone ? "var(--app-accent)" : "var(--app-surface)",
+                border: `1.5px solid ${isDone ? "var(--app-accent)" : "var(--app-border-strong)"}`,
+                color: isDone ? "var(--app-accent-on)" : "transparent",
               }}
             >
               <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
@@ -582,6 +596,64 @@ function FocusRow({
       </span>
     </li>
   );
+}
+
+/**
+ * A soft wash of light at the top of Today that follows the student's day:
+ * fresh green in the morning, warm gold in the afternoon, peach in the
+ * evening, starlight at night. Decoration only, behind everything.
+ */
+function DaylightGlow({ hour }: { hour: number }) {
+  const tint =
+    hour >= 5 && hour < 11
+      ? "rgba(127, 176, 132, 0.22)"
+      : hour >= 11 && hour < 17
+        ? "rgba(233, 196, 106, 0.2)"
+        : hour >= 17 && hour < 21
+          ? "rgba(238, 150, 112, 0.18)"
+          : "rgba(140, 156, 255, 0.16)";
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none fixed inset-x-0 top-0 -z-[1] h-[420px]"
+      style={{ background: `radial-gradient(90% 100% at 70% 0%, ${tint}, transparent 70%)` }}
+    />
+  );
+}
+
+function localHour(now: Date, timezone: string): number {
+  return Number(new Intl.DateTimeFormat("en-AU", { timeZone: timezone, hour: "2-digit", hour12: false }).format(now)) % 24;
+}
+
+/** "Something changed? Tell Arcad": the fix-my-plan entry point, on Today itself. */
+function TellArcad() {
+  return (
+    <button
+      type="button"
+      onClick={() => openArcad()}
+      className="mt-6 flex h-[52px] w-full items-center gap-3 rounded-full px-5 text-left text-[15px] font-medium transition-opacity hover:opacity-90"
+      style={{ background: "var(--app-arcad-soft)", color: "var(--app-arcad-strong)" }}
+    >
+      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M9 2.5v13M2.5 9h13" /></svg>
+      <span className="flex-1">Something changed? Tell Arcad</span>
+      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><rect x="6.5" y="2" width="5" height="9" rx="2.5" /><path d="M3.5 8.5a5.5 5.5 0 0 0 11 0M9 14v2" /></svg>
+    </button>
+  );
+}
+
+const NUMBER_WORDS = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"];
+function numberWord(count: number): string {
+  return NUMBER_WORDS[count] ?? String(count);
+}
+
+/** "today", "tomorrow", "Wednesday" within a week, else "Wed 28 Oct". */
+function formatDueDay(iso: string, timezone: string, now: Date): string {
+  const day = (at: Date) => dateKey(at.toISOString(), timezone);
+  const due = new Date(iso);
+  if (day(due) === day(now)) return "today";
+  if (day(due) === day(new Date(now.getTime() + 86_400_000))) return "tomorrow";
+  const days = (Date.parse(iso) - now.getTime()) / 86_400_000;
+  return new Intl.DateTimeFormat("en-AU", days < 6 ? { weekday: "long", timeZone: timezone } : { weekday: "short", day: "numeric", month: "short", timeZone: timezone }).format(due);
 }
 
 function timeOfDayGreeting(now: Date, timezone: string): string {

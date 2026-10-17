@@ -7,7 +7,6 @@ import { formatClock } from "@/lib/api/time";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { studyTitle, subjectColour } from "@/lib/app/subjectColour";
 import { useSessionPlan } from "@/lib/app/useSessionPlan";
-import { SubjectTag } from "./cards/shared";
 import SyllabusNudge from "./SyllabusNudge";
 
 /**
@@ -38,77 +37,82 @@ export default function StartNowCard() {
       ? `In ${Math.max(1, startsIn)} min · ${formatClock(target.startAt, timezone)}`
       : `Next · ${formatClock(target.startAt, timezone)}`;
 
+  // The hero has its own colours (--app-hero*): deep sage by day, deep blue
+  // with a starlight button by night.
+  const on = "var(--app-hero-on)";
+  const soft = "color-mix(in oklab, var(--app-hero-on) 72%, transparent)";
+  const line = "color-mix(in oklab, var(--app-hero-on) 16%, transparent)";
   return (
     <section
       aria-label="Your next study session"
-      className="mb-8 overflow-hidden rounded-xl"
-      style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
+      className="mb-4 overflow-hidden rounded-[28px]"
+      style={{ background: "var(--app-hero)", color: on, boxShadow: "inset 0 0 0 1px var(--app-border)" }}
     >
-      <div>
-        <div className="min-w-0 p-6 sm:p-7">
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-            <SubjectTag subject={{ name: target.subject ?? "Study", colour: colour ?? "" }} />
-            <span className="ml-1">{when}</span>
-            <span aria-hidden="true">·</span>
-            <span className="tabular-nums">{minutes} min</span>
-          </p>
+      <div className="min-w-0 p-6 sm:p-7">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[13px] font-medium" style={{ color: soft }}>
+            {isNow ? "On now" : "Up next"} · {when.replace(/^(Now|In|Next) · /, "").replace(/^In /, "in ")} · {minutes} min
+          </span>
+          <span
+            className="rounded-full px-2.5 py-1 text-[12px] font-semibold"
+            style={{ background: line, color: on }}
+          >
+            <span aria-hidden="true" className="mr-1.5 inline-block size-2 rounded-full align-middle" style={{ background: colour ?? soft }} />
+            {target.subject ?? "Study"}
+          </span>
+        </div>
 
-          {plan ? (
-            <>
-              <h2 className="mt-4 text-[28px] font-semibold leading-[1.1] tracking-[-0.025em]" style={{ color: "var(--app-text)" }}>
-                {plan.topic}
-              </h2>
-              {plan.why ? (
-                <p className="mt-1.5 text-[15px]" style={{ color: "var(--app-text-muted)" }}>
-                  {plan.why}
-                </p>
-              ) : null}
-              <ol className="mt-5 flex flex-col">
-                {plan.steps.map((step, index) => (
-                  <li
-                    key={index}
-                    className="flex items-baseline gap-4 border-t py-2.5 text-[14px]"
-                    style={{ borderColor: "var(--app-border)" }}
-                  >
-                    <span style={{ color: "var(--app-text)" }} className="min-w-0 flex-1">{step.text}</span>
-                    <span className="shrink-0 tabular-nums text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-                      {step.minutes} min
-                    </span>
-                  </li>
-                ))}
-              </ol>
-              <SyllabusNudge plan={plan} />
-            </>
-          ) : (
-            <div className="mt-2" role="status">
-              <h2 className="mt-2 text-[28px] font-semibold leading-[1.1] tracking-[-0.025em]" style={{ color: "var(--app-text)" }}>
-                {studyTitle(target)}
-              </h2>
-              <p className="mt-1 text-[14px]" style={{ color: "var(--app-text-muted)" }}>
-                {loading ? "Arcad's setting this one up…" : "Arcad will set this up when you start."}
+        {plan ? (
+          <>
+            <h2 className="mt-3 text-[26px] font-semibold leading-[1.1] tracking-[-0.02em] sm:text-[28px]">{plan.topic}</h2>
+            {plan.why ? (
+              <p className="mt-1.5 text-[14.5px]" style={{ color: soft }}>
+                {plan.why}
               </p>
-            </div>
-          )}
-
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            <Link
-              href={`/app/sessions?eventId=${encodeURIComponent(target.id)}&start=1`}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md px-5 text-[14px] font-medium transition-colors hover:bg-[var(--app-accent-strong)]"
-              style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}
-            >
-              <svg viewBox="0 0 20 20" width="14" height="14" fill="currentColor" aria-hidden="true">
-                <path d="M6 4.5v11l9-5.5-9-5.5z" />
-              </svg>
-              {isNow ? (target.startedAt ? "Back to it" : "Start now") : "Start early"}
-            </Link>
-            <Link
-              href={`/app/sessions?eventId=${encodeURIComponent(target.id)}`}
-              className="text-[13px] ui-hover rounded-md px-2 py-1"
-              style={{ color: "var(--app-text-muted)" }}
-            >
-              See the plan
-            </Link>
+            ) : null}
+            <ol className="mt-4 flex flex-col">
+              {plan.steps.map((step, index) => (
+                <li
+                  key={index}
+                  className="flex items-baseline gap-4 py-2 text-[14px]"
+                  style={{ borderTop: `1px solid ${line}` }}
+                >
+                  <span className="min-w-0 flex-1">{step.text}</span>
+                  <span className="shrink-0 tabular-nums text-[13px]" style={{ color: soft }}>
+                    {step.minutes} min
+                  </span>
+                </li>
+              ))}
+            </ol>
+            <SyllabusNudge plan={plan} />
+          </>
+        ) : (
+          <div role="status">
+            <h2 className="mt-3 text-[26px] font-semibold leading-[1.1] tracking-[-0.02em] sm:text-[28px]">{studyTitle(target)}</h2>
+            <p className="mt-1.5 text-[14px]" style={{ color: soft }}>
+              {loading ? "Arcad's setting this one up…" : "Arcad will set this up when you start."}
+            </p>
           </div>
+        )}
+
+        <div className="mt-6 flex flex-wrap items-center gap-4">
+          <Link
+            href={`/app/sessions?eventId=${encodeURIComponent(target.id)}&start=1`}
+            className="ui-press inline-flex h-12 items-center justify-center gap-2.5 rounded-full px-6 text-[16px] font-semibold transition-opacity hover:opacity-90"
+            style={{ background: "var(--app-hero-cta)", color: "var(--app-hero-cta-on)" }}
+          >
+            <svg viewBox="0 0 20 20" width="14" height="14" fill="currentColor" aria-hidden="true">
+              <path d="M6 4.5v11l9-5.5-9-5.5z" />
+            </svg>
+            {isNow ? (target.startedAt ? "Back to it" : "Start") : "Start early"}
+          </Link>
+          <Link
+            href={`/app/sessions?eventId=${encodeURIComponent(target.id)}`}
+            className="text-[14px] font-medium transition-opacity hover:opacity-80"
+            style={{ color: soft }}
+          >
+            See the plan
+          </Link>
         </div>
       </div>
     </section>

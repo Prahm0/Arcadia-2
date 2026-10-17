@@ -14,7 +14,7 @@ import { ThemeProvider } from "@/lib/app/theme";
 // Stamps the theme before first paint. It has to run as markup rather than in
 // an effect, otherwise the first frame is painted with the landing's black body
 // and the app palette snaps in a moment later. Kept in sync with lib/app/theme.
-const noFlash = `(function(){try{var m=localStorage.getItem("arcadia:theme");var t=(m==="light"||m==="dark")?m:(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");var e=document.documentElement;e.setAttribute("data-app-theme",t);e.style.colorScheme=t;}catch(_){}})();`;
+const noFlash = `(function(){try{var m=localStorage.getItem("arcadia:theme");var t=(m==="light"||m==="dark")?m:(m==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");var e=document.documentElement;e.setAttribute("data-app-theme",t);e.style.colorScheme=t;}catch(_){}})();`;
 
 export default function ProductLayout({ children }: { children: ReactNode }) {
   return (

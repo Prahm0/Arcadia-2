@@ -53,34 +53,38 @@
      shadows. Depth is reserved for things that float (menus, sheets,
      dialogs) — see the --elev-* scale below. Dark overrides live under
      [data-app-theme="dark"]. */
-  --app-bg: #f6f5f2;              /* page ground, a breath warmer than white */
-  --app-surface: #ffffff;         /* panels, cards, the menu bar */
-  --app-surface-soft: #f0eee9;    /* sidebar, insets, input fills */
+  --app-bg: #f3f1ea;              /* sage-cream ground */
+  --app-surface: #ffffff;         /* cards, the menu bar */
+  --app-surface-soft: #ebe8de;    /* sidebar, insets, input fills */
   --app-elev: #ffffff;            /* floating layers */
-  --app-border: #e4e0d9;          /* hairlines between everything */
-  --app-border-strong: #cfc9bf;   /* inputs, hovered borders */
-  --app-text: #100f0d;            /* 19:1 on the card */
-  --app-text-soft: #35322c;
-  --app-text-muted: #5f5a52;
-  --app-text-faint: #98928a;
-  /* Ink, not a brand colour. Primary actions, selection and progress are
-     near-black on the warm paper, the way a notebook reads; colour in the
-     app comes from the student's subjects and events, and violet is kept
-     for Arcad alone so it still means "this is Arcad". */
-  --app-accent: #1f1e1b;
-  --app-accent-soft: rgba(31, 30, 27, 0.06);
-  --app-accent-strong: #45423b;   /* hover on ink fills; 10:1 as text */
-  --app-accent-on: #fbfaf7;       /* text/icons sitting ON --app-accent */
+  --app-border: #e3dfd3;          /* hairlines between everything */
+  --app-border-strong: #cdc8ba;   /* inputs, hovered borders */
+  --app-text: #1d2a22;            /* deep green-black, 14:1 on the card */
+  --app-text-soft: #33413a;
+  --app-text-muted: #56655a;
+  --app-text-faint: #949d93;
+  /* Sage. Primary actions, selection and progress are a deep, calm green
+     on the cream ground; colour elsewhere comes from the student's subjects,
+     and violet is kept for Arcad alone so it still means "this is Arcad". */
+  --app-accent: #2f4a3a;
+  --app-accent-soft: rgba(47, 74, 58, 0.08);
+  --app-accent-strong: #23392d;   /* hover on sage fills */
+  --app-accent-on: #f3f1ea;       /* text/icons sitting ON --app-accent */
   --app-danger: #b03030;
-  --app-success: #1f8a4c;
+  --app-success: #3f8a55;
   --app-warning: #8a5a0b;         /* amber, for things that need a decision */
   --app-warning-soft: rgba(196, 138, 30, 0.14);
   --app-gold: #8a6410;            /* developer accounts */
   --app-gold-soft: rgba(212, 160, 23, 0.12);
   --app-gold-border: rgba(184, 134, 11, 0.45);
-  --app-arcad: #6a49f5;           /* reserved for Arcad, the AI companion */
-  --app-arcad-soft: rgba(106, 73, 245, 0.1);
-  --app-arcad-strong: #5636d8;
+  /* Today's "up next" card: deep sage by day. */
+  --app-hero: #2f4a3a;
+  --app-hero-on: #f3f1ea;
+  --app-hero-cta: #f3f1ea;
+  --app-hero-cta-on: #2f4a3a;
+  --app-arcad: #6a5ad8;           /* reserved for Arcad, the AI companion */
+  --app-arcad-soft: rgba(106, 90, 216, 0.12);
+  --app-arcad-strong: #4a3f8c;
   --app-arcad-on: #f6f2ff;
 
   /* Event categories. Mid-tones read under 3:1 on white, so light mode gets
@@ -99,7 +103,7 @@
 :root {
   /* Small labels (eyebrows, legends). The product swaps in mono. */
   --font-label: var(--font-sans);
-  --shadow-rgb: 32, 26, 20;
+  --shadow-rgb: 38, 56, 44;
   --elev-1: 0 0 0 1px var(--app-border), 0 1px 2px rgba(var(--shadow-rgb), 0.04);
   --elev-2:
     0 0 0 1px var(--app-border), 0 6px 16px -4px rgba(var(--shadow-rgb), 0.12),
@@ -111,29 +115,34 @@
   --elev-inset-strong: inset 0 0 0 1px var(--app-border-strong);
 }
 
-/* Dark theme: neutral near-black, not the warm brown-grey every AI chat
-   app ships. Surfaces get lighter as they rise (never darker), hairlines
-   and secondary text are white at an opacity so they sit on any layer, and
-   the only colour left is what carries meaning.
+/* Dark theme: midnight blue with starlight gold, the night sky Arcadia is
+   named for, rather than near-black. Surfaces get lighter as they rise,
+   hairlines and secondary text are tinted light at an opacity so they sit
+   on any layer.
    Applied via [data-app-theme="dark"] on <html>. */
 [data-app-theme="dark"] {
   --shadow-rgb: 0, 0, 0;
-  --app-bg: #09090a;
-  --app-surface: #161618;         /* cards: a clear step up from the page */
-  --app-surface-soft: #1d1d20;    /* insets, input fills, sidebar */
-  --app-elev: #202023;            /* menus, sheets, dialogs */
-  --app-border: rgba(255, 255, 255, 0.075);
-  --app-border-strong: rgba(255, 255, 255, 0.14);
-  --app-text: #f5f5f7;
-  --app-text-soft: rgba(235, 235, 245, 0.82);
-  --app-text-muted: rgba(235, 235, 245, 0.6);
-  --app-text-faint: rgba(235, 235, 245, 0.32);
-  --app-accent: #f5f5f7;
-  --app-accent-soft: rgba(255, 255, 255, 0.08);
-  --app-accent-strong: #ffffff;
-  --app-accent-on: #09090a;
-  --app-danger: #ff6961;
-  --app-success: #4cc97a;
+  --app-bg: #0f1527;              /* midnight, not black */
+  --app-surface: #172036;
+  --app-surface-soft: #1d2742;
+  --app-elev: #222c4a;            /* menus, sheets, dialogs */
+  --app-border: rgba(200, 211, 255, 0.08);
+  --app-border-strong: rgba(200, 211, 255, 0.16);
+  --app-text: #eef1f8;
+  --app-text-soft: rgba(230, 235, 250, 0.84);
+  --app-text-muted: #9aa6c4;
+  --app-text-faint: rgba(200, 211, 255, 0.34);
+  /* By night the card is a deeper blue with a starlight button. */
+  --app-hero: #1d2742;
+  --app-hero-on: #eef1f8;
+  --app-hero-cta: #f2d78b;
+  --app-hero-cta-on: #1b1a12;
+  --app-accent: #f2d78b;          /* starlight gold */
+  --app-accent-soft: rgba(242, 215, 139, 0.12);
+  --app-accent-strong: #f7e3a8;
+  --app-accent-on: #1b1a12;
+  --app-danger: #ff7a70;
+  --app-success: #7fd39a;
   --app-warning: #ffb340;
   --app-warning-soft: rgba(255, 179, 64, 0.14);
   --app-gold: #f2c75c;
@@ -145,7 +154,7 @@
   --app-arcad-on: #1a1330;
 
   --app-cat-school: #9ba3af;
-  --app-cat-sport: #4cc97a;
+  --app-cat-sport: #7fd39a;
   --app-cat-extra: #ff9f43;
   --app-cat-rose: #ff6b9a;
   --app-cat-plum: #b99aff;
@@ -159,9 +168,15 @@
    Inter for the interface, JetBrains Mono only where a value is a value —
    timers, codes, counts. No display serif: the product is a tool. */
 html[data-app-theme] {
-  --font-label: var(--font-mono);
+  /* DM Sans, the same warm face as the landing, and sans labels: monospace
+     eyebrows made the product read like a developer tool. */
+  --font-label: var(--font-sans);
   --font-sans:
-    var(--font-ui), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Softer, rounder surfaces throughout the product. */
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
   --font-mono:
     var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --font-serif: var(--font-sans);
@@ -180,7 +195,7 @@ html[data-app-theme] {
   }
 
   .app-mobile-nav {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
   }
 }
 
@@ -1694,7 +1709,8 @@ html[data-app-theme] .type-mono-label {
 /* Mobile tab bar height. While the on-screen keyboard is open the bar hides
    (like native apps) and layouts that reserve room for it reclaim it. */
 :root {
-  --mobile-nav-h: 72px;
+  /* The floating pill: 64px plus its 10px margin and a little air. */
+  --mobile-nav-h: 84px;
 }
 html.keyboard-open {
   --mobile-nav-h: 0px;

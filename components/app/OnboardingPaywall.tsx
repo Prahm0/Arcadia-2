@@ -42,7 +42,7 @@ const PLANS: {
     price: PRO_MONTHLY,
     blurb: "Planning on autopilot, Arcad in the loop.",
     features: [
-      "20 Arcad messages a day, 10x the free plan",
+      "20 Arcad messages a day",
       "Google, Apple and Canvas calendar sync",
       "Upload notes and PDFs, Arcad answers from them",
       "Full analytics, up to 3 flashcard decks",

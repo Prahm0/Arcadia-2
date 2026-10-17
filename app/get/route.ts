@@ -1,5 +1,5 @@
 import { after, type NextRequest, NextResponse } from "next/server";
-import { SOURCE_COOKIE, appStoreCampaignUrl, campaignKey } from "@/lib/appStore";
+import { SOURCE_COOKIE, appStoreCampaignUrl, campaignKey, campaignToken } from "@/lib/appStore";
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY ?? "phc_kWBHKrQWB7pvNdMT4GhnXRtnxZrzqR9x6r2VPEtAjYJA";
 const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posthog.com";
@@ -7,8 +7,10 @@ const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posth
 /**
  * The one link for bios and creators: arcadiahq.app/get?c=<creator>.
  *
- * iPhones go straight to the App Store (tagged with the creator's campaign
- * when the provider token is set); everything else lands on the website with
+ * iPhones go straight to the App Store, tagged with a campaign (ct): the
+ * link's utm_source or ref if it has one, else the creator, else "bio", so
+ * App Analytics shows which creator or video sent each download. Everything
+ * else lands on the website with
  * the creator as utm_source, the same tagging creator links already used.
  * Every click is counted in PostHog either way, so a creator's reach shows up
  * even when the person installs the app instead of signing up on the web.
@@ -19,7 +21,9 @@ export async function GET(request: NextRequest) {
   // iPadOS Safari reports itself as a Mac, so iPads go to the website, where
   // the App Store badge is the first button anyway.
   const iPhone = /iPhone|iPod/i.test(agent) || (/iPad/i.test(agent) && !/Macintosh/i.test(agent));
-  const appStore = iPhone ? appStoreCampaignUrl(creator) : null;
+  const params = request.nextUrl.searchParams;
+  const campaign = campaignToken(params.get("utm_source")) || campaignToken(params.get("ref")) || campaignToken(creator) || "bio";
+  const appStore = iPhone ? appStoreCampaignUrl(campaign) : null;
 
   const web = new URL("/", request.nextUrl.origin);
   web.searchParams.set("utm_source", creator);

@@ -6,9 +6,11 @@ import UserNotifications
 ///
 /// - "Back to Arcadia": closes the blocked app and sends a notification that
 ///   opens Arcadia (a block screen can't open another app itself).
-/// - "5 more minutes": the first tap only asks for a second one; the second
-///   opens the apps for five minutes, logs it against the block, and has
-///   FocusMonitor block them again afterwards.
+/// - "5 more minutes": Opal style friction. The first tap starts a wait (5
+///   seconds unless the student chose longer in Arcadia); a tap during the
+///   wait does nothing; a tap after it, within a minute, opens the apps for
+///   five minutes, logs it against the block, and has FocusMonitor block them
+///   again afterwards.
 class ShieldActionExtension: ShieldActionDelegate {
     /// Must match FocusGuardPlugin.
     private let defaults = UserDefaults(suiteName: "group.app.arcadiahq.arcadia") ?? .standard
@@ -35,17 +37,29 @@ class ShieldActionExtension: ShieldActionDelegate {
             completionHandler(.close)
         case .secondaryButtonPressed:
             let now = Date().timeIntervalSince1970 * 1000
-            if now - defaults.double(forKey: "focusGuard.confirmSnoozeAt") < 10_000 {
+            let wait = unlockWaitMs()
+            let since = now - defaults.double(forKey: "focusGuard.confirmSnoozeAt")
+            if since >= wait && since <= wait + 60_000 {
+                // Waited it out: open the apps.
                 defaults.removeObject(forKey: "focusGuard.confirmSnoozeAt")
                 completionHandler(snooze(now: now) ? .none : .close)
+            } else if since < wait {
+                // Still waiting: nothing happens yet.
+                completionHandler(.defer)
             } else {
-                // First tap: redraw the screen asking for a second one.
+                // First tap: start the wait and redraw the screen to say so.
                 defaults.set(now, forKey: "focusGuard.confirmSnoozeAt")
                 completionHandler(.defer)
             }
         @unknown default:
             completionHandler(.close)
         }
+    }
+
+    /// The wait the student chose in Arcadia (Settings > App blocking), 5 seconds by default.
+    private func unlockWaitMs() -> Double {
+        let seconds = defaults.object(forKey: "focusGuard.unlockWaitSeconds") == nil ? 5 : defaults.double(forKey: "focusGuard.unlockWaitSeconds")
+        return max(0, seconds) * 1000
     }
 
     /// Opens the apps for five minutes and schedules the shield's return.

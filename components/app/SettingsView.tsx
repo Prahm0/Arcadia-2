@@ -41,6 +41,7 @@ import { unlinkNativePush } from "@/lib/capacitor/nativePush";
 import PageHeader from "./PageHeader";
 import AppButton, { appButtonClass } from "./AppButton";
 import SettingRow, { SettingIcons } from "./SettingRow";
+import BlockTimesEditor from "./BlockTimesEditor";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { isGuestEmail } from "@/lib/auth/guest";
@@ -1291,6 +1292,7 @@ function FocusGuardSection() {
             </div>
           </div>
         ) : null}
+        {status.blockingSupported && picked ? <BlockTimesEditor /> : null}
         <PreferenceToggle
           label="Nudge me if I leave"
           detail="One nudge if you leave Arcadia mid-focus (locking your phone is fine), and a heads-up when the timer's done."

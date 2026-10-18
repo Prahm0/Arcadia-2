@@ -37,7 +37,11 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
     private func screen() -> ShieldConfiguration {
         let now = Date().timeIntervalSince1970 * 1000
         let current = currentBlock(now: now)
-        let confirming = now - defaults.double(forKey: "focusGuard.confirmSnoozeAt") < 10_000
+        let waitSeconds = defaults.object(forKey: "focusGuard.unlockWaitSeconds") == nil ? 5 : defaults.double(forKey: "focusGuard.unlockWaitSeconds")
+        let since = now - defaults.double(forKey: "focusGuard.confirmSnoozeAt")
+        // Inside the wait, or the minute after it when a tap opens the apps.
+        let confirming = since < waitSeconds * 1000 + 60_000
+        let stillWaiting = since < waitSeconds * 1000
 
         // A redraw after the first "5 more minutes" tap isn't a new try.
         if let current = current, !confirming {
@@ -71,7 +75,10 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
             // Only study blocks can be snoozed; a timer the student started they can pause in Arcadia.
             secondaryButtonLabel: current == nil
                 ? nil
-                : ShieldConfiguration.Label(text: confirming ? "Tap again for 5 more minutes" : "5 more minutes", color: cream)
+                : ShieldConfiguration.Label(
+                    text: !confirming ? "5 more minutes" : stillWaiting ? "Wait \(Int(waitSeconds))s, then tap again" : "Tap to open for 5 minutes",
+                    color: cream
+                )
         )
     }
 

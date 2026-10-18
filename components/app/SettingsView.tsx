@@ -40,6 +40,7 @@ import {
 import { unlinkNativePush } from "@/lib/capacitor/nativePush";
 import PageHeader from "./PageHeader";
 import AppButton, { appButtonClass } from "./AppButton";
+import SettingRow, { SettingIcons } from "./SettingRow";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { isGuestEmail } from "@/lib/auth/guest";
@@ -540,26 +541,16 @@ export default function SettingsView() {
               {isGuest ? <Hint>Guest accounts have no email. Create an account to add one and save your progress.</Hint> : null}
             </Field>
             {!isGuest && !data.user.hasSubscription ? (
-              <div
-                className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"
-                style={{ borderColor: "var(--app-border)" }}
-              >
-                <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-                  Invite a friend and earn 7 days of Pro when they finish setup.
-                </p>
-                <AppButton variant="secondary" onClick={() => router.push("/app/invite")}>
-                  Invite friends
-                </AppButton>
+              <div className="border-t pt-4" style={{ borderColor: "var(--app-border)" }}>
+                <SettingRow icon={SettingIcons.friends} title="Invite friends" detail="Earn 7 days of Pro when a friend finishes setup.">
+                  <AppButton variant="secondary" onClick={() => router.push("/app/invite")}>Invite friends</AppButton>
+                </SettingRow>
               </div>
             ) : null}
-            <div
-              className="flex flex-wrap items-center justify-between gap-3 border-t pt-4"
-              style={{ borderColor: "var(--app-border)" }}
-            >
-              <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-                Sign out of this device. Your data stays safe on the server.
-              </p>
-              <AppButton variant="secondary" onClick={signOut}>Sign out</AppButton>
+            <div className="border-t pt-4" style={{ borderColor: "var(--app-border)" }}>
+              <SettingRow icon={SettingIcons.exit} title="Sign out" detail="Signs out this device. Your data stays safe.">
+                <AppButton variant="secondary" onClick={signOut}>Sign out</AppButton>
+              </SettingRow>
             </div>
           </div>
         </Card>
@@ -669,54 +660,24 @@ export default function SettingsView() {
         <Card id="calendars" className="scroll-mt-24">
           <SectionHeader label="Google Calendar" />
           {!hasPaidPlan ? <PlanGate onUpgrade={() => router.push("/app/pricing")} /> : null}
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span
-                  aria-hidden="true"
-                  className="size-2 rounded-full"
-                  style={{ background: google.connected ? "var(--app-success)" : "var(--app-text-faint)" }}
-                />
-                <p className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>
-                  {google.connected ? "Connected" : "Not connected"}
-                </p>
-              </div>
-              <p className="mt-1.5 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-                {google.connected
-                  ? google.lastSyncAt
-                    ? `Last sync ${relativeTime(google.lastSyncAt)}. Imported events show as fixed on Schedule.`
-                    : "Just connected. First sync is running in the background, refresh in a minute."
-                  : "Import school, work, and personal events so Arcadia plans study around them. Read-only, so nothing in Google changes. To see your study blocks in Google, use Add to your calendar above."}
-              </p>
-            </div>
-            <div className="flex flex-shrink-0 items-center gap-2">
-              {google.connected ? (
-                <>
-                  <AppButton
-                    type="button"
-                    variant="secondary"
-                    onClick={syncGoogle}
-                    loading={googleBusy === "sync"}
-                    disabled={!hasPaidPlan}
-                  >
-                    Sync now
-                  </AppButton>
-                  <AppButton
-                    type="button"
-                    variant="ghost"
-                    onClick={disconnectGoogle}
-                    loading={googleBusy === "disconnect"}
-                  >
-                    Disconnect
-                  </AppButton>
-                </>
-              ) : (
-                <AppButton type="button" variant="primary" onClick={connectGoogle} disabled={!hasPaidPlan}>
-                  Connect Google Calendar
-                </AppButton>
-              )}
-            </div>
-          </div>
+          <SettingRow
+            icon={SettingIcons.calendar}
+            title={google.connected ? "Connected" : "Bring in your Google events"}
+            detail={google.connected
+              ? google.lastSyncAt
+                ? `Last sync ${relativeTime(google.lastSyncAt)}. Imported events show as fixed on Schedule.`
+                : "Just connected. The first sync is running, refresh in a minute."
+              : "School, work and personal events, so Arcadia plans around them. Read-only: nothing in Google changes."}
+          >
+            {google.connected ? (
+              <>
+                <AppButton type="button" variant="secondary" onClick={syncGoogle} loading={googleBusy === "sync"} disabled={!hasPaidPlan}>Sync now</AppButton>
+                <AppButton type="button" variant="ghost" onClick={disconnectGoogle} loading={googleBusy === "disconnect"}>Disconnect</AppButton>
+              </>
+            ) : (
+              <AppButton type="button" variant="primary" onClick={connectGoogle} disabled={!hasPaidPlan}>Connect</AppButton>
+            )}
+          </SettingRow>
           {googleNotice ? (
             <p
               className="mt-3 text-[13px]"
@@ -971,25 +932,17 @@ export default function SettingsView() {
           <Card>
             <SectionHeader label="Push check-ins" />
             {!hasPaidPlan ? (
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-[13.5px] leading-5" style={{ color: "var(--app-text-muted)" }}>
-                  Get a check-in before study or sleep and follow-ups when a study session needs logging. Included with Pro and Max.
-                </p>
+              <SettingRow icon={SettingIcons.bell} title="Check-ins on this device" detail="A nudge before study or sleep, and when a session needs logging. Included with Pro and Max.">
                 <AppButton type="button" variant="secondary" onClick={() => router.push("/app/pricing")}>See plans</AppButton>
-              </div>
+              </SettingRow>
             ) : !pushCheckinsSupported() ? (
               <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
                 This browser doesn&apos;t support push check-ins. On iPhone, add Arcadia to your Home Screen first.
               </p>
             ) : !pushEndpoint ? (
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-[13.5px] leading-5" style={{ color: "var(--app-text-muted)" }}>
-                  Receive check-ins even when Arcadia is closed. You can choose which reminders you get after enabling it.
-                </p>
-                <AppButton type="button" variant="primary" onClick={() => void enablePush()} loading={pushBusy}>
-                  Enable check-ins
-                </AppButton>
-              </div>
+              <SettingRow icon={SettingIcons.bell} title="Check-ins on this device" detail="Get them even when Arcadia is closed. Choose which ones after you turn them on.">
+                <AppButton type="button" variant="primary" onClick={() => void enablePush()} loading={pushBusy}>Turn on</AppButton>
+              </SettingRow>
             ) : (
               <div className="flex flex-col gap-5">
                 <PreferenceToggle
@@ -1058,41 +1011,17 @@ export default function SettingsView() {
           <Card id="billing" className="scroll-mt-24">
             <SectionHeader label="Plan & billing" />
             <div className="flex flex-col gap-3">
-              <div className="flex items-baseline justify-between">
-                <div>
-                  <p className="text-[14px] font-semibold" style={{ color: "var(--app-text)" }}>
-                    Arcadia {data.user.developerAccess ? `Developer · ${tier === "free" ? "Free" : tier === "pro" ? "Pro" : "Max"}` : tier === "free" ? "Free" : tier === "pro" ? "Pro" : "Max"}
-                  </p>
-                  <p className="mt-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-                    {data.user.developerAccess
-                      ? "Developer access lets you switch feature tiers for free. Any existing subscription is billed separately."
-                      : tier === "free"
-                      ? "2 Arcad messages per day. Upgrade any time."
-                      : tier === "pro"
-                      ? "20 Arcad messages per day, calendar sync, uploads."
-                      : "100 Arcad messages per day, unlimited flashcard decks."}
-                  </p>
-                </div>
-              </div>
-              {data.user.developerAccess ? (
-                <label className="flex flex-col gap-1.5 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
-                  Developer test plan
-                  <select
-                    value={tier}
-                    disabled={developerTierBusy}
-                    onChange={(event) => void changeDeveloperTier(event.target.value as "free" | "pro" | "max")}
-                    className="w-full max-w-xs rounded-md px-3 py-2 text-[13.5px] outline-none disabled:opacity-60"
-                    style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
-                  >
-                    <option value="free">Free</option>
-                    <option value="pro">Pro</option>
-                    <option value="max">Max</option>
-                  </select>
-                </label>
-              ) : null}
-              <div className="flex items-center justify-between pt-2">
-                <Notice notice={billingNotice} />
-                <div className="flex flex-wrap justify-end gap-2">
+              <SettingRow
+                icon={SettingIcons.star}
+                title={`Arcadia ${data.user.developerAccess ? `Developer · ${tier === "free" ? "Free" : tier === "pro" ? "Pro" : "Max"}` : tier === "free" ? "Free" : tier === "pro" ? "Pro" : "Max"}`}
+                detail={data.user.developerAccess
+                  ? "Developer access lets you switch feature tiers for free. Any existing subscription is billed separately."
+                  : tier === "free"
+                  ? "2 Arcad messages per day. Upgrade any time."
+                  : tier === "pro"
+                  ? "20 Arcad messages per day, calendar sync, uploads."
+                  : "100 Arcad messages per day, unlimited flashcard decks."}
+              >
                   {tier === "free" && !data.user.developerAccess ? (
                     <AppButton
                       variant="primary"
@@ -1117,8 +1046,24 @@ export default function SettingsView() {
                       {nativeIOS ? "Manage in App Store" : "Manage subscription"}
                     </AppButton>
                   ) : null}
-                </div>
-              </div>
+              </SettingRow>
+              <Notice notice={billingNotice} />
+              {data.user.developerAccess ? (
+                <label className="flex flex-col gap-1.5 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
+                  Developer test plan
+                  <select
+                    value={tier}
+                    disabled={developerTierBusy}
+                    onChange={(event) => void changeDeveloperTier(event.target.value as "free" | "pro" | "max")}
+                    className="w-full max-w-xs rounded-md px-3 py-2 text-[13.5px] outline-none disabled:opacity-60"
+                    style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
+                  >
+                    <option value="free">Free</option>
+                    <option value="pro">Pro</option>
+                    <option value="max">Max</option>
+                  </select>
+                </label>
+              ) : null}
               {nativeIOS && hasSubscription && data.user.billingProvider !== "app_store" ? (
                 <p className="text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
                   This plan was purchased outside the App Store. Manage it where you bought it.
@@ -1174,17 +1119,9 @@ export default function SettingsView() {
         {(
           <Card>
             <SectionHeader label="Danger zone" />
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>Delete account</p>
-                <p className="mt-1 text-[13px] leading-5" style={{ color: "var(--app-text-muted)" }}>
-                  {isGuest ? "Permanently remove this guest account and its plan." : "Permanently remove your account and all Arcadia data."}
-                </p>
-              </div>
-              <AppButton variant="danger" onClick={() => setDeleteAccountOpen(true)}>
-                Delete account
-              </AppButton>
-            </div>
+            <SettingRow icon={SettingIcons.trash} title="Delete account" detail={isGuest ? "Permanently remove this guest account and its plan." : "Permanently remove your account and all Arcadia data."}>
+              <AppButton variant="danger" onClick={() => setDeleteAccountOpen(true)}>Delete account</AppButton>
+            </SettingRow>
           </Card>
         )}
       </div>
@@ -1216,6 +1153,7 @@ function Card({
   return (
     <div
       id={id}
+      data-settings-card
       className={`rounded-lg p-6${className ? ` ${className}` : ""}`}
       style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
     >

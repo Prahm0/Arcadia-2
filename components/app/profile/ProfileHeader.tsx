@@ -1,12 +1,12 @@
 "use client";
 
 import { courseByKey, courseFor, coursesFor } from "@/shared/education";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { api } from "@/lib/api/client";
 import { updateProfile } from "@/lib/api/profile";
 import { AU_STATES, countryName, countryOptions } from "@/lib/app/countries";
 import AppButton from "../AppButton";
 import type { SectionProps } from "./ProfileView";
-import { ProfileSkyBanner } from "../sky/ProfileSky";
 import {
   Avatar,
   ColourSwatches,
@@ -33,12 +33,17 @@ export default function ProfileHeader({ data, replace, replanned }: SectionProps
     new Date(profile.joinedAt),
   );
 
+  // Level and streak at a glance; the rest of the numbers live on Progress.
+  const [level, setLevel] = useState<{ level: number; title: string } | null>(null);
+  useEffect(() => {
+    let active = true;
+    void api<{ level: number; title: string }>("/api/progress").then((value) => { if (active) setLevel(value); }).catch(() => {});
+    return () => { active = false; };
+  }, []);
   const numbers = [
-    { label: "Current streak", value: String(stats.currentStreak), unit: stats.currentStreak === 1 ? "day" : "days" },
-    { label: "Best streak", value: String(stats.longestStreak), unit: stats.longestStreak === 1 ? "day" : "days" },
+    { label: "Level", value: level ? String(level.level) : "–", unit: level?.title ?? "" },
+    { label: "Streak", value: String(stats.currentStreak), unit: stats.currentStreak === 1 ? "day" : "days" },
     { label: "This week", value: formatHoursMinutes(stats.weekFocusMinutes), unit: "focused" },
-    { label: "All time", value: formatHoursMinutes(stats.totalFocusMinutes), unit: "focused" },
-    { label: "Sessions", value: String(stats.totalSessions), unit: "logged" },
   ];
 
   return (
@@ -47,7 +52,6 @@ export default function ProfileHeader({ data, replace, replanned }: SectionProps
       className="rounded-lg"
       style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
     >
-      <ProfileSkyBanner />
       <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:p-6">
         <Avatar name={profile.name} colour={profile.avatarColour} size={80} developer={profile.developerAccess} />
         <div className="min-w-0 flex-1">
@@ -76,13 +80,13 @@ export default function ProfileHeader({ data, replace, replanned }: SectionProps
 
       {/* 1px gaps over a border-coloured ground draw the dividers at any column count. */}
       <dl
-        className="grid grid-cols-2 gap-px overflow-hidden rounded-b-lg border-t sm:grid-cols-5"
+        className="grid grid-cols-3 gap-px overflow-hidden rounded-b-lg border-t"
         style={{ background: "var(--app-border)", borderColor: "var(--app-border)" }}
       >
-        {numbers.map((item, index) => (
+        {numbers.map((item) => (
           <div
             key={item.label}
-            className={index === numbers.length - 1 ? "col-span-2 px-5 py-4 sm:col-span-1 sm:px-6" : "px-5 py-4 sm:px-6"}
+            className="min-w-0 px-4 py-4 sm:px-6"
             style={{ background: "var(--app-surface)" }}
           >
             <dt className="text-[12px]" style={{ color: "var(--app-text-muted)" }}>
@@ -92,7 +96,7 @@ export default function ProfileHeader({ data, replace, replanned }: SectionProps
               <span className="text-[20px] font-semibold tabular-nums" style={{ color: "var(--app-text)" }}>
                 {item.value}
               </span>
-              <span className="text-[12px]" style={{ color: "var(--app-text-muted)" }}>
+              <span className="truncate text-[12px]" style={{ color: "var(--app-text-muted)" }}>
                 {item.unit}
               </span>
             </dd>

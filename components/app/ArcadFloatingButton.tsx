@@ -123,6 +123,23 @@ export default function ArcadFloatingButton() {
     return () => window.removeEventListener(OPEN_ARCAD_EVENT, onOpen);
   });
 
+  // While the sheet covers a phone screen the page behind it stays put, iOS
+  // Safari and the app included: the body is pinned where it was and put
+  // back at the same scroll position when the sheet closes.
+  const sheetCovers = mounted && !docked;
+  useEffect(() => {
+    if (!sheetCovers || !window.matchMedia("(max-width: 639px)").matches) return;
+    const y = window.scrollY;
+    const body = document.body.style;
+    const saved = { position: body.position, top: body.top, left: body.left, right: body.right, overflow: body.overflow };
+    Object.assign(body, { position: "fixed", top: `-${y}px`, left: "0", right: "0", overflow: "hidden" });
+    return () => {
+      Object.assign(body, saved);
+      // "instant": the page has smooth scrolling on, which would glide back from the top.
+      window.scrollTo({ top: y, behavior: "instant" });
+    };
+  }, [sheetCovers]);
+
   if (pathname?.startsWith("/app/arcad")) return null;
   // Hide during onboarding, the floating orb overlaps the Continue
   // button on mobile, and Arcad can't help before there's a plan anyway.
@@ -382,7 +399,7 @@ export default function ArcadFloatingButton() {
 
       <div className="h-px shrink-0" style={{ background: "var(--app-border)" }} />
 
-      <div ref={listRef} className="flex-1 overflow-y-auto px-5 py-5">
+      <div ref={listRef} className="flex-1 overflow-y-auto overscroll-contain px-5 py-5">
         {loading ? (
           <div className="flex items-center gap-2 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
             <ArcadOrb size={22} state="thinking" />
@@ -557,21 +574,24 @@ export default function ArcadFloatingButton() {
     <>
       {launcher}
       {mounted ? (
-        <aside
-          ref={panelRef}
-          aria-label="Arcad side panel"
-          className="fixed bottom-2 right-2 top-2 z-50 flex w-[min(420px,calc(100vw-16px))] flex-col overflow-hidden rounded-xl"
-          style={{
-            background: "var(--app-elev)",
-            color: "var(--app-text)",
-            boxShadow: "var(--elev-3)",
-            transform: open ? "translateX(0)" : "translateX(calc(100% + 16px))",
-            opacity: open ? 1 : 0.96,
-            transition: "transform 300ms var(--ease-out-expo), opacity 220ms ease",
-          }}
-        >
-          {body}
-        </aside>
+        <>
+          {/* Phones: a scrim behind the sheet; tapping it closes the chat. */}
+          <div
+            aria-hidden="true"
+            onClick={hidePanel}
+            className="fixed inset-0 z-40 sm:hidden"
+            style={{ background: "rgba(10, 18, 14, 0.32)", opacity: open ? 1 : 0, transition: "opacity 240ms ease" }}
+          />
+          <aside
+            ref={panelRef}
+            aria-label="Arcad side panel"
+            data-open={open ? "" : undefined}
+            className="arcad-sheet fixed z-50 flex flex-col overflow-hidden"
+            style={{ background: "var(--app-elev)", color: "var(--app-text)", boxShadow: "var(--elev-3)" }}
+          >
+            {body}
+          </aside>
+        </>
       ) : null}
     </>
   );

@@ -10,7 +10,7 @@ import GoalsSection from "./GoalsSection";
 import ProfileHeader from "./ProfileHeader";
 import RoutineSection from "./RoutineSection";
 import SubjectsSection from "./SubjectsSection";
-import ProfileSky from "../sky/ProfileSky";
+import YourCardsRow from "../sky/ProfileSky";
 
 export interface SectionProps {
   data: ProfileResponse;
@@ -75,7 +75,7 @@ export default function ProfileView() {
   return (
     <div className="mx-auto flex w-full max-w-[960px] flex-col gap-5 px-4 py-6 sm:px-8 sm:py-8">
       <ProfileHeader {...props} />
-      <ProfileSky />
+      <YourCardsRow />
       <SubjectsSection {...props} />
       <CocurricularsSection {...props} />
       <GoalsSection {...props} />

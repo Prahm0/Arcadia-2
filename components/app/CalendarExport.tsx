@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api/client";
 import AppButton from "./AppButton";
+import SettingRow, { SettingIcons } from "./SettingRow";
 
 interface ExportLink {
   url: string | null;
@@ -135,19 +136,14 @@ export default function CalendarExport({ isGuest }: { isGuest: boolean }) {
 
   return (
     <>
-      <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-        See your study blocks and deadlines in Google Calendar or Apple Calendar. It&apos;s a private link, so it
-        keeps up when Arcad moves things around.
-      </p>
-
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      <SettingRow icon={SettingIcons.link} title="Your plan in your calendar" detail="Study blocks and deadlines in Google or Apple Calendar, kept up to date with a private link.">
         <AppButton type="button" variant="primary" onClick={addToGoogle} loading={busy === "google"} disabled={loading}>
-          Add to Google Calendar
+          Add to Google
         </AppButton>
         <AppButton type="button" variant="secondary" onClick={addToApple} loading={busy === "apple"} disabled={loading}>
-          Add to Apple Calendar
+          Add to Apple
         </AppButton>
-      </div>
+      </SettingRow>
 
       {link?.url ? (
         <div className="mt-5 flex flex-col gap-3 border-t pt-4" style={{ borderColor: "var(--app-border)" }}>

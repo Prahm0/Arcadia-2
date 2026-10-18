@@ -22,7 +22,8 @@ export default function AuthShell({ eyebrow, title, subtitle, children, footer }
       className="relative isolate flex min-h-svh flex-col"
       style={{ background: "var(--app-bg)", color: "var(--app-text)" }}
     >
-      <header className="mx-auto flex w-full max-w-[1440px] items-center justify-between px-5 pt-6 sm:px-8 lg:px-12">
+      {/* In the iPhone app the page runs under the status bar, so the header starts below it. */}
+      <header className="mx-auto flex w-full max-w-[1440px] items-center justify-between px-5 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] sm:px-8 lg:px-12">
         <Link
           href="/"
           className="flex items-center gap-2 text-[15px] font-medium tracking-[-0.01em]"
@@ -42,7 +43,7 @@ export default function AuthShell({ eyebrow, title, subtitle, children, footer }
         </span>
       </header>
 
-      <div className="flex flex-1 items-center justify-center px-5 py-14 sm:px-8">
+      <div className="flex flex-1 items-center justify-center px-5 pt-14 pb-[calc(env(safe-area-inset-bottom,0px)+3.5rem)] sm:px-8">
         <div className="surface-card w-full max-w-[440px] rounded-lg p-7 sm:p-9">
           <h1 className="text-[32px] leading-[1.1] tracking-[-0.02em] sm:text-[38px]">{title}</h1>
           <p className="mt-3 text-[15px] leading-[1.55]" style={{ color: "var(--app-text-muted)" }}>

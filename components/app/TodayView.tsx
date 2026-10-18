@@ -583,7 +583,10 @@ function TodayCard(props: TodayCardProps) {
                   index={index}
                   actions={actionable ? [
                     { label: "Missed", onSelect: () => onMiss(event) },
-                    ...(event.editable !== false ? [{ label: "Move", onSelect: () => onOpen(event, "reschedule") }] : []),
+                    ...(event.editable !== false ? [
+                      { label: "Move", onSelect: () => onOpen(event, "reschedule") },
+                      { label: "Remove", onSelect: () => void onLine.remove(entry), danger: true },
+                    ] : []),
                   ] : [{ label: "Details", onSelect: () => onOpen(event, "details") }]}
                   onToggle={() => onComplete(event)}
                 />

@@ -580,7 +580,7 @@ export default function SettingsView() {
             <div className="mt-4">
               <PreferenceToggle
                 label="Ambient motion"
-                detail="Slow drifting stars on your streak cards."
+                detail="Slow drifting stars in your constellations."
                 checked={sky.preferences.ambientMotion}
                 onChange={(ambientMotion) => void updateSky({ ambientMotion })}
               />

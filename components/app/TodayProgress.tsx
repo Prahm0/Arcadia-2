@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import { nextLevelUnlock } from "@/shared/progress";
 import { useStreak } from "@/lib/app/useStreak";
-import RewardStory from "./RewardStory";
 import CompletionBurst from "./CompletionBurst";
 import { flameScale } from "@/lib/app/celebrate";
 
@@ -41,7 +40,6 @@ export default function TodayProgress({ refreshKey = 0, compact = false, localDo
     <div className="min-w-0 flex-1"><p className="text-[12px] font-semibold" style={{ color: "var(--app-text)" }}>{ringLabel}</p><div className="mt-1 h-1.5 overflow-hidden rounded-full" style={{ background: "var(--app-border)" }}><div className="h-full rounded-full" style={{ width: `${ratio * 100}%`, background: "var(--app-arcad)", transition: "width 300ms ease" }} /></div></div>
     {compact ? null : <div className="text-right"><p className="text-[12px] font-semibold" style={{ color: "var(--app-text)" }}>Lv {progress.level} · {progress.title}</p><p className="text-[11px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>{progress.levelProgress.current}/{progress.levelProgress.needed} XP</p><p className="mt-0.5 hidden max-w-40 text-[10px] leading-3 sm:block" style={{ color: "var(--app-text-faint)" }}>{nextLevelUnlock(progress.level)}</p></div>}
     </div>
-    {compact ? null : <RewardStory className="mt-3" />}
     </div>
     {levelUpToast(levelUp, () => setLevelUp(null))}
   </>;
@@ -111,21 +109,20 @@ function TodayRings({ ring }: { ring: Progress["todayRing"] }) {
         className="flex flex-col justify-center gap-1.5 rounded-[24px] p-4"
         style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
       >
-        <p className="text-[20px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-text)" }}>
-          {streak.current > 0 ? <span aria-hidden="true" className="arcadia-flame mr-1" style={{ ["--flame" as string]: flameScale(streak.current) }}>🔥</span> : null}
-          {streak.current} {streak.current === 1 ? "day" : "days"}
+        <p className="flex items-center justify-between gap-2 text-[13px] font-semibold leading-tight" style={{ color: "var(--app-text)" }}>
+          <span>Study days</span>
+          {streak.current > 0 ? <span className="text-[12px] tabular-nums"><span aria-hidden="true" className="arcadia-flame mr-1" style={{ ["--flame" as string]: flameScale(streak.current) }}>🔥</span>{streak.current}</span> : null}
         </p>
-        <div aria-hidden="true" className="flex gap-1.5">
+        <div aria-hidden="true" className="flex gap-1.5 text-[15px] leading-none">
           {Array.from({ length: dots }, (_, index) => (
             <span
               key={index}
-              className="size-3.5 rounded-full"
-              style={{ background: index < Math.min(streak.current, dots) ? "#e9c46a" : "var(--app-surface-soft)" }}
-            />
+              style={{ color: index < Math.min(streak.current, dots) ? "var(--app-gold)" : "var(--app-text-faint)" }}
+            >✦</span>
           ))}
         </div>
         <p className="text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
-          {streak.current === 0 ? "Finish today's plan to start one" : "Keep it going today"}
+          {streak.current === 0 ? "Your first star is waiting" : "Keep your stars lit"}
         </p>
       </section>
     </div>

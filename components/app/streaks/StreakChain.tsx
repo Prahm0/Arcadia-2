@@ -1,21 +1,19 @@
 "use client";
 
 import { useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
-import Link from "next/link";
 import { formatMinutes } from "@/lib/api/time";
 import { STREAK_GOLD } from "@/shared/constellations";
-import { CONSISTENCY_THRESHOLD, START_STREAK_HINT, type DayConsistency, type StreakSummary } from "@/lib/app/streaks";
+import { CONSISTENCY_THRESHOLD, type DayConsistency, type StreakSummary } from "@/lib/app/streaks";
 
 /** Two weeks: enough to see a run form and where the last one broke. */
-const DAYS = 14;
+const DAYS = 7;
 /** A gentle wave, so the run of days reads as a constellation rather than a chart. */
-const WAVE = [68, 50, 62, 40, 56, 44, 66, 48, 60, 38, 54, 42, 64, 46];
+const WAVE = [60, 42, 56, 38, 54, 44, 60];
 const GOLD = STREAK_GOLD;
 // Recovered days keep the same gold; the caption says what happened.
 const SAGE = GOLD;
 const STAR = "#fff8ea";
 /** The panel is always night-dark, so its buttons don't follow the app theme. */
-const BUTTON = "inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-md px-3.5 text-[13px] font-medium transition-colors duration-100";
 const SPARKLE = "M12 0C12 7.6 16.4 12 24 12C16.4 12 12 16.4 12 24C12 16.4 7.6 12 0 12C7.6 12 12 7.6 12 0Z";
 
 type State = "kept" | "recovered" | "missed" | "pending" | "rest";
@@ -38,7 +36,6 @@ export default function StreakChain({ streak, today }: { streak: StreakSummary; 
   const links = useMemo(() => buildLinks(days, streak, today), [days, streak, today]);
   const [selected, setSelected] = useState(DAYS - 1);
   const buttons = useRef<Array<HTMLButtonElement | null>>([]);
-  const shown = days[selected];
 
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
     const moves: Record<string, number> = {
@@ -50,9 +47,6 @@ export default function StreakChain({ streak, today }: { streak: StreakSummary; 
     setSelected(next);
     buttons.current[next]?.focus();
   };
-
-  const target = streak.nextMilestone;
-  const progress = target ? Math.min(1, streak.current / target) : 1;
 
   return (
     <section
@@ -67,32 +61,11 @@ export default function StreakChain({ streak, today }: { streak: StreakSummary; 
           background: `radial-gradient(60% 90% at 78% 40%, color-mix(in srgb, ${GOLD} 9%, transparent), transparent 70%), radial-gradient(40% 70% at 12% 90%, #26334770, transparent 70%)`,
         }}
       />
-      <div className="grid gap-6 px-6 pb-4 pt-6 sm:px-8 sm:pt-8 @3xl/main:grid-cols-[220px_minmax(0,1fr)] @3xl/main:gap-10">
-        <div>
-          <p className="text-[10px] uppercase tracking-[.16em] text-[#a8b4c4]">Current streak</p>
-          <p className="mt-3 flex items-baseline gap-2">
-            <span key={streak.current} className="app-pop inline-block text-[56px] font-semibold leading-none tracking-[-0.04em] tabular-nums">
-              {streak.current}
-            </span>
-            <span className="text-[15px] text-[#b6bfcb]">{streak.current === 1 ? "day" : "days"}</span>
-          </p>
-          <p className="mt-3 text-[13px] leading-[1.5] text-[#b6bfcb]">
-            {streak.current === 0
-              ? START_STREAK_HINT
-              : target && streak.daysToNext
-                ? `${streak.daysToNext} more ${streak.daysToNext === 1 ? "day" : "days"} to a ${target}-day streak.`
-                : "Past every milestone. Keep the chain going."}
-          </p>
-          {streak.current > 0 && target ? (
-            <span className="mt-3 block h-[3px] overflow-hidden rounded-full bg-[#ffffff1a]" aria-hidden="true">
-              <span className="block h-full rounded-full transition-[width] duration-700" style={{ width: `${progress * 100}%`, background: GOLD }} />
-            </span>
-          ) : null}
-          {streak.longest > 0 ? (
-            <p className="mt-3 text-[12px] tabular-nums text-[#99a7ba]">Best {streak.longest} {streak.longest === 1 ? "day" : "days"}</p>
-          ) : null}
+      <div className="px-6 pb-5 pt-5 sm:px-8">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-[#a8b4c4]">Study days</p>
+          <p className="text-[12px] font-medium tabular-nums text-[#dfe6d5]">🔥 {streak.current}</p>
         </div>
-
         <div className="min-w-0">
           <div
             role="group"
@@ -138,21 +111,6 @@ export default function StreakChain({ streak, today }: { streak: StreakSummary; 
         </div>
       </div>
 
-      {/* Fixed height so picking a day without an action doesn't shift the page. */}
-      <div className="flex min-h-[68px] flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-[#ffffff14] px-6 py-4 sm:px-8">
-        <p aria-live="polite" className="min-w-0 text-[13px] leading-[1.5] text-[#d5dbe3]">
-          <span className="font-medium text-[#f1f3f6]">{shown.isToday ? "Today" : longDate(shown.key)}</span>
-          {" · "}
-          {caption(shown)}
-        </p>
-        {shown.isToday && shown.state !== "kept" && shown.state !== "recovered" ? (
-          shown.state === "rest" ? (
-            <Link href="/app/schedule" className={`${BUTTON} bg-[#ffffff14] text-[#f1f3f6] hover:bg-[#ffffff24]`}>Plan today</Link>
-          ) : (
-            <Link href="/app/sessions" className={`${BUTTON} bg-[#f1f3f6] text-[#0c1017] hover:bg-white`}>Start session</Link>
-          )
-        ) : null}
-      </div>
     </section>
   );
 }
@@ -266,10 +224,10 @@ function caption(day: ChainDay): string {
   const threshold = Math.round(CONSISTENCY_THRESHOLD * 100);
   if (!record || record.plannedMinutes === 0) {
     return day.isToday
-      ? "Nothing planned, so your streak is safe. Plan a block to add today to the chain."
+      ? "Nothing planned, so your streak is safe."
       : "Nothing planned. Rest days don't break a streak.";
   }
-  const done = `${formatMinutes(record.actualMinutes)} of ${formatMinutes(record.plannedMinutes)} planned`;
+  const done = `${record.actualMinutes} of ${record.plannedMinutes} planned minutes`;
   if (record.protectedByRecovery) return `${done}. Protected by Life happened: you adjusted your plan and still studied, so it counted.`;
   if (day.state === "recovered") return `${done}. A block slipped, but you still did ${Math.round(record.ratio * 100)}%, so it counted.`;
   if (day.state === "kept") return `${done}. Counted.`;
@@ -277,7 +235,7 @@ function caption(day: ChainDay): string {
     const need = Math.max(0, Math.ceil(record.plannedMinutes * CONSISTENCY_THRESHOLD) - record.actualMinutes);
     return `${done}. ${formatMinutes(need)} more locks it in.`;
   }
-  return `${done}. Under ${threshold}%, so the chain broke here.`;
+  return `${done}. Under ${threshold}%, so this day did not count.`;
 }
 
 function point(index: number) {

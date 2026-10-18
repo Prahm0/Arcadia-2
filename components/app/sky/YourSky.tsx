@@ -1,13 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { useStudySky } from "@/lib/app/StudySkyProvider";
-import { formatMinutes } from "@/lib/api/time";
-import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
-import { constellationById, focusTime, milestoneLabel, type ConstellationDefinition, type ConstellationId, type SkyCard } from "@/shared/constellations";
+import { constellationById, type ConstellationDefinition, type ConstellationId, type SkyCard } from "@/shared/constellations";
 import AppButton, { appButtonClass } from "../AppButton";
-import { SubjectTag } from "../cards/shared";
 import ConstellationArtwork from "./ConstellationArtwork";
 import ConstellationCard, { skyDate } from "./ConstellationCard";
 import SkyDialog from "./SkyDialog";
@@ -19,33 +16,13 @@ export interface FocusTotals {
   subjects: Array<{ subject: string; minutes: number; sessions: number }>;
 }
 
-type Filter = "all" | "collected" | "forming" | "favourites";
-const FILTERS: Array<{ id: Filter; label: string }> = [
-  { id: "all", label: "All" },
-  { id: "collected", label: "Collected" },
-  { id: "forming", label: "Forming" },
-  { id: "favourites", label: "Favourites" },
-];
-
-/**
- * The long game under the streak: every minute of focus lights stars in the
- * constellations, and a finished one becomes a card that's yours for good.
- * A streak can break; these never go out.
- */
 export default function YourSky({
-  totals,
-  totalsLoading,
-  subjectColours,
+  ring,
 }: {
-  totals: FocusTotals;
-  totalsLoading: boolean;
-  subjectColours: Map<string, string>;
+  ring: { done: number; planned: number; ratio: number };
 }) {
   const { sky, loading, error, refresh, update, acknowledge } = useStudySky();
-  const [filter, setFilter] = useState<Filter>("all");
-  // The collection folds to its first row; 92 cards is a lot to scroll past on Progress.
   const [showAll, setShowAll] = useState(false);
-  const [selected, setSelected] = useState(0);
   const [detailId, setDetailId] = useState<ConstellationId | null>(null);
   const [replay, setReplay] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -68,37 +45,24 @@ export default function YourSky({
     setActionError(null);
   }
   function browse() {
-    setFilter("all");
+    setShowAll(true);
     document.getElementById("constellations")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   const cards = sky?.cards ?? [];
-  const owned = cards.filter((card) => card.earnedAt !== null);
-  const unseen = owned.filter((card) => !card.seen);
-  const starsLit = cards.reduce((sum, card) => sum + card.milestones.filter((star) => star.earnedAt !== null).length, 0);
   const followed = cards.find((card) => card.id === sky?.preferences.followed) ?? cards[0];
   const definition = followed ? constellationById(followed.id)! : null;
   const count = followed?.milestones.filter((star) => star.earnedAt !== null).length ?? 0;
-  const next = followed?.milestones.find((star) => star.earnedAt === null);
-  const inspected = followed?.milestones[Math.min(selected, followed.milestones.length - 1)];
   const detail = cards.find((card) => card.id === detailId);
   const detailDefinition = detail ? constellationById(detail.id)! : null;
-  const listed = cards
-    .filter((card) =>
-      filter === "collected" ? card.earnedAt !== null
-        : filter === "forming" ? card.earnedAt === null
-          : filter === "favourites" ? sky?.preferences.favourites.includes(card.id)
-            : true)
-    // Collected first, newest first; then what's still forming, in its usual order.
-    .sort((a, b) => (b.addedAt ?? 0) - (a.addedAt ?? 0));
+  const listed = [...cards].sort((a, b) => (b.addedAt ?? 0) - (a.addedAt ?? 0));
 
   return (
     <>
       <section id="sky" aria-labelledby="sky-heading" className="mt-10 scroll-mt-6">
         <Heading
           id="sky-heading"
-          title="Streak cards"
-          body="Every minute of focus lights stars on your streak cards. Unlike a daily streak, they never go out."
+          title="Your constellation"
         />
 
         {error || (actionError && !detail) ? (
@@ -110,179 +74,116 @@ export default function YourSky({
 
         {!sky || !followed || !definition ? (
           <div role="status" className="grid min-h-[320px] place-items-center rounded-xl text-[13px]" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)", color: "var(--app-text-muted)" }}>
-            {loading ? "Loading your streaks…" : "Your streak cards will appear when the connection returns."}
+            {loading ? "Loading your constellation…" : "Your constellation will appear when the connection returns."}
           </div>
         ) : (
-          <div className="overflow-hidden rounded-xl" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)", color: "var(--app-text)" }}>
-            <div className="grid @3xl/main:grid-cols-[minmax(0,1.5fr)_minmax(300px,1fr)]">
+          <div className="overflow-hidden rounded-2xl border" style={{ background: "var(--app-surface)", borderColor: "var(--app-border)", boxShadow: "var(--elev-1)", color: "var(--app-text)" }}>
+            <div className="grid @3xl/main:grid-cols-[minmax(0,1.3fr)_minmax(300px,.85fr)]">
               <div className="relative bg-[#0c1017]">
                 <div className="flex justify-between gap-3 px-6 pt-6 text-[10px] uppercase tracking-[.16em] text-[#a8b4c4]">
-                  <span>{definition.family}</span>
-                  <span className="tabular-nums">{followed.earnedAt ? "Collected" : "Following"} · {String(count).padStart(2, "0")} / {String(definition.points.length).padStart(2, "0")}</span>
+                  <span>{definition.name}</span>
+                  <span className="tabular-nums">{count} / {definition.points.length}</span>
                 </div>
                 <ConstellationArtwork
                   key={definition.id}
                   definition={definition}
                   card={followed}
-                  interactive
                   ambient={sky.preferences.ambientMotion}
-                  selected={inspected?.index}
-                  onSelect={setSelected}
                 />
-                <p className="px-6 pb-5 text-[11px] text-[#a8b4c4]">Select a star to see its story.</p>
               </div>
 
               <div className="flex flex-col justify-center p-6 sm:p-8">
-                <p className="text-[11px] uppercase tracking-[.13em]" style={{ color: "var(--app-text-muted)" }}>
-                  {followed.earnedAt ? "Yours to keep" : "Next streak card"}
+                <p className="text-[11px] font-semibold uppercase tracking-[.13em]" style={{ color: "var(--app-accent-strong)" }}>Building now</p>
+                <h3 className="mt-2 text-[30px] font-semibold tracking-[-.04em]">{definition.name}</h3>
+                <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--app-text-muted)" }}>
+                  {count} of {definition.points.length} stars · {ring.planned > 0 && ring.ratio < 1 ? "next star tonight if you close your ring" : ring.planned > 0 ? "today's ring is closed" : "add a study block to begin"}.
                 </p>
-                <h3 className="mt-2 text-[26px] font-medium tracking-[-.035em]">{definition.name}</h3>
-                <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--app-text-muted)" }}>{definition.story}</p>
 
-                <div className="my-6">
-                  <div className="mb-2 flex justify-between text-[12px] tabular-nums">
-                    <span>{count} of {definition.points.length} stars lit</span>
-                    <span>{Math.round((count / definition.points.length) * 100)}%</span>
+                <div className="my-6 flex items-center gap-4 rounded-xl px-4 py-3" style={{ background: "var(--app-surface-soft)" }}>
+                  <TodayRing ratio={ring.ratio} />
+                  <div>
+                    <p className="text-[13px] font-semibold" style={{ color: "var(--app-text)" }}>Today&apos;s ring</p>
+                    <p className="mt-0.5 text-[12px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>{ring.done} of {ring.planned} study blocks</p>
                   </div>
-                  <div className="h-1 rounded-full" style={{ background: "var(--app-surface-soft)" }}>
-                    <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${(count / definition.points.length) * 100}%`, background: definition.colour }} />
-                  </div>
-                  <p className="mt-4 text-[13px] leading-relaxed" style={{ color: "var(--app-text-soft)" }}>
-                    {next ? `Next star: ${milestoneLabel(definition, next.index)}.` : "Complete. It's saved to your collection."}
-                  </p>
-                  {next ? (
-                    <p className="mt-1 text-[12px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>
-                      {progress(definition, followed.value, definition.thresholds[next.index])}. No deadline.
-                    </p>
-                  ) : null}
-                </div>
-
-                <div aria-live="polite" className="mb-6 rounded-lg px-4 py-3" style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)" }}>
-                  <p className="text-[12.5px] font-medium">{inspected ? milestoneLabel(definition, inspected.index) : ""}</p>
-                  <p className="mt-1 text-[12px] leading-relaxed" style={{ color: "var(--app-text-muted)" }}>
-                    {inspected?.earnedAt ? `Lit ${skyDate(inspected.earnedAt)}. Yours to keep.` : definition.requirement}
-                  </p>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
                   {followed.earnedAt ? (
-                    <AppButton variant="primary" onClick={() => open(followed)}>View your card</AppButton>
+                    <AppButton variant="primary" onClick={() => open(followed)}>View constellation</AppButton>
                   ) : (
                     <Link href="/app/sessions" className={appButtonClass("primary")}>Start session</Link>
                   )}
-                  <AppButton onClick={browse}>Change card</AppButton>
+                  <AppButton onClick={browse}>Your collection</AppButton>
                 </div>
                 {!followed.earnedAt ? (
                   <button type="button" className="mt-4 self-start text-[12px] underline underline-offset-4" onClick={() => open(followed)} style={{ color: "var(--app-text-muted)" }}>
-                    Preview the card and rewards
+                    Preview constellation
                   </button>
                 ) : null}
               </div>
             </div>
 
-            <div className="border-t px-6 py-5 sm:px-8" style={{ borderColor: "var(--app-border)" }}>
-              <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
-                <Stat label="Sessions" value={totalsLoading ? "–" : String(totals.sessions)} />
-                <Stat label="Time focused" value={totalsLoading ? "–" : formatMinutes(totals.minutes)} />
-                <Stat label="Stars lit" value={String(starsLit)} />
-                <Stat label="Cards collected" value={`${owned.length} of ${cards.length}`} />
-              </dl>
-              {totals.subjects.length > 0 ? (
-                <ul aria-label="Where your focus went" className="mt-4 flex flex-wrap gap-1.5">
-                  {totals.subjects.map((subject, index) => (
-                    <li key={subject.subject} className="max-w-full">
-                      <SubjectTag
-                        size="sm"
-                        subject={{
-                          name: `${subject.subject} · ${formatMinutes(subject.minutes)}`,
-                          colour: subjectColours.get(subject.subject) ?? SUBJECT_COLORS[index % SUBJECT_COLORS.length],
-                        }}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
           </div>
         )}
-
-        {unseen.length ? (
-          <div className="mt-5 flex flex-wrap items-center gap-2">
-            <p className="mr-1 text-[13px] font-medium" style={{ color: "var(--app-text)" }}>New in your collection</p>
-            {/* A long study history can form dozens of cards at once; show a few. */}
-            {unseen.slice(0, 4).map((card) => (
-              <AppButton key={card.id} onClick={() => open(card)}>✦ {constellationById(card.id)!.name}</AppButton>
-            ))}
-            {unseen.length > 4 ? (
-              <AppButton variant="ghost" onClick={() => { setFilter("collected"); document.getElementById("constellations")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>
-                +{unseen.length - 4} more
-              </AppButton>
-            ) : null}
-          </div>
-        ) : null}
       </section>
 
       {sky ? (
         <section id="constellations" aria-labelledby="constellations-heading" className="mt-10 scroll-mt-6">
           <Heading
             id="constellations-heading"
-            title="All streak cards"
-            body="A handful of cards for different ways of studying, then all 88 constellations of the night sky, formed one after another as your focus adds up. Following a card just brings it into view."
-            aside={
-              <div role="group" aria-label="Show" className="flex flex-wrap gap-1">
-                {FILTERS.map((item) => (
+            title="Your collection"
+          />
+          {listed.length ? (
+            <>
+              <div className="grid grid-cols-2 gap-3 sm:hidden">
+                {(showAll ? listed : listed.slice(0, 2)).map((card) => (
                   <button
-                    key={item.id}
+                    key={card.id}
                     type="button"
-                    aria-pressed={filter === item.id}
-                    onClick={() => setFilter(item.id)}
-                    className="h-8 rounded-md px-3 text-[12.5px] font-medium tabular-nums transition-colors"
-                    style={filter === item.id
-                      ? { background: "var(--app-surface)", color: "var(--app-text)", boxShadow: "var(--elev-1)" }
-                      : { color: "var(--app-text-muted)" }}
+                    className={styles.cardButton}
+                    aria-label={`View ${constellationById(card.id)!.name}${card.earnedAt ? ", collected" : ", locked"}`}
+                    onClick={() => open(card)}
                   >
-                    {item.label}{item.id === "collected" ? ` · ${owned.length}` : ""}
+                    <ConstellationCard card={card} />
                   </button>
                 ))}
               </div>
-            }
-          />
-          {listed.length ? (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 @3xl/main:grid-cols-4">
-              {(showAll ? listed : listed.slice(0, 4)).map((card) => (
-                <button
-                  key={card.id}
-                  type="button"
-                  className={styles.cardButton}
-                  aria-label={`View ${constellationById(card.id)!.name}${card.earnedAt ? ", collected" : ", locked"}`}
-                  onClick={() => open(card)}
-                >
-                  <ConstellationCard card={card} featured={sky.preferences.featured === card.id} following={sky.preferences.followed === card.id} />
-                </button>
-              ))}
-              {listed.length > 4 ? (
-                <div className="col-span-full">
+              <div className="hidden grid-cols-4 gap-4 sm:grid">
+                {(showAll ? listed : listed.slice(0, 4)).map((card) => (
+                  <button
+                    key={card.id}
+                    type="button"
+                    className={styles.cardButton}
+                    aria-label={`View ${constellationById(card.id)!.name}${card.earnedAt ? ", collected" : ", locked"}`}
+                    onClick={() => open(card)}
+                  >
+                    <ConstellationCard card={card} />
+                  </button>
+                ))}
+              </div>
+              {listed.length > 2 ? (
+                <div className="mt-4 sm:hidden">
                   <AppButton variant="ghost" onClick={() => setShowAll((value) => !value)}>
-                    {showAll ? "Show fewer" : `Show all ${listed.length}`}
+                    {showAll ? "Show less" : "See all"}
                   </AppButton>
                 </div>
               ) : null}
-            </div>
+              {listed.length > 4 ? (
+                <div className="mt-4 hidden sm:block">
+                  <AppButton variant="ghost" onClick={() => setShowAll((value) => !value)}>
+                    {showAll ? "Show less" : "See all"}
+                  </AppButton>
+                </div>
+              ) : null}
+            </>
           ) : (
             <div className="rounded-xl border border-dashed p-8 text-center" style={{ borderColor: "var(--app-border)", color: "var(--app-text)" }}>
               <h3 className="text-[17px] font-medium">
-                {filter === "favourites" ? "Keep your favourites close" : filter === "forming" ? "Every card is collected for now" : "Your first card is taking shape"}
+                Your first constellation is taking shape
               </h3>
               <p className="mx-auto mt-2 max-w-sm text-[13px] leading-relaxed" style={{ color: "var(--app-text-muted)" }}>
-                {filter === "favourites"
-                  ? "Open a collected card to add it to your favourites."
-                  : filter === "forming"
-                    ? "Everything you've formed is yours to keep."
-                    : "Every saved minute brings First Light closer. Your progress stays with you."}
+                Focus minutes light stars. Complete a constellation and keep it here.
               </p>
-              <div className="mt-5">
-                <AppButton onClick={() => setFilter("all")}>Show all</AppButton>
-              </div>
             </div>
           )}
         </section>
@@ -299,15 +200,15 @@ export default function YourSky({
             </div>
             <div>
               <p className="text-[11px] uppercase tracking-widest" style={{ color: "var(--app-text-muted)" }}>
-                {detailDefinition.family} · {detail.earnedAt ? "Collected" : "Reward preview"}
+                {detailDefinition.family} · {detail.earnedAt ? "Collected" : "Preview"}
               </p>
               <h3 className="mt-3 text-[26px] font-medium tracking-[-.03em]">{detailDefinition.name}</h3>
               <p className="mt-3 text-[14px] leading-relaxed" style={{ color: "var(--app-text-soft)" }}>{detailDefinition.description}</p>
               {detailDefinition.atlas ? <SkyFacts definition={detailDefinition} /> : null}
               <p className="mt-4 text-[13px] leading-relaxed" style={{ color: "var(--app-text-muted)" }}>{detailDefinition.requirement}</p>
               <div className="my-6 border-y py-4 text-[12px] leading-relaxed" style={{ borderColor: "var(--app-border)", color: "var(--app-text-muted)" }}>
-                <p className="font-medium" style={{ color: "var(--app-text)" }}>Your rewards</p>
-                <p className="mt-1">A permanent card, profile emblem and backdrop.</p>
+                <p className="font-medium" style={{ color: "var(--app-text)" }}>Your constellation</p>
+                <p className="mt-1">Keep it in your collection and show it on your profile.</p>
                 {detail.earnedAt ? (
                   <p className="mt-2">
                     Formed {skyDate(detail.earnedAt)}
@@ -320,7 +221,7 @@ export default function YourSky({
                 {detail.earnedAt ? (
                   <>
                     <AppButton variant="primary" disabled={busy} onClick={() => void act(() => update({ featured: detail.id }))}>
-                      {sky.preferences.featured === detail.id ? "Featured on profile" : "Feature on profile"}
+                      {sky.preferences.featured === detail.id ? "Shown on profile" : "Show on profile"}
                     </AppButton>
                     <AppButton
                       disabled={busy}
@@ -340,12 +241,11 @@ export default function YourSky({
                     disabled={busy}
                     onClick={() => void act(async () => {
                       await update({ followed: detail.id });
-                      setSelected(0);
                       setDetailId(null);
                       document.getElementById("sky")?.scrollIntoView({ behavior: "smooth", block: "start" });
                     })}
                   >
-                    {sky.preferences.followed === detail.id ? "Continue this card" : "Follow this card"}
+                    {sky.preferences.followed === detail.id ? "Building this constellation" : "Build this constellation"}
                   </AppButton>
                 )}
               </div>
@@ -365,33 +265,26 @@ export default function YourSky({
   );
 }
 
-function Heading({ id, title, body, aside }: { id: string; title: string; body: string; aside?: ReactNode }) {
+function Heading({ id, title, body }: { id: string; title: string; body?: string }) {
   return (
     <div className="mb-4 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
       <div className="min-w-0 max-w-2xl">
         <h2 id={id} className="text-[20px] font-semibold tracking-[-0.02em]" style={{ color: "var(--app-text)" }}>{title}</h2>
-        <p className="mt-1 text-[13.5px] leading-relaxed" style={{ color: "var(--app-text-muted)" }}>{body}</p>
+        {body ? <p className="mt-1 text-[13.5px] leading-relaxed" style={{ color: "var(--app-text-muted)" }}>{body}</p> : null}
       </div>
-      {aside}
     </div>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function TodayRing({ ratio }: { ratio: number }) {
+  const radius = 24;
+  const circumference = 2 * Math.PI * radius;
   return (
-    <div className="min-w-0">
-      <dt className="text-[12px]" style={{ color: "var(--app-text-muted)" }}>{label}</dt>
-      <dd className="mt-1 truncate text-[18px] font-semibold tabular-nums tracking-[-0.02em]" style={{ color: "var(--app-text)" }}>{value}</dd>
-    </div>
+    <svg aria-hidden="true" className="shrink-0 -rotate-90" height="58" viewBox="0 0 58 58" width="58">
+      <circle cx="29" cy="29" fill="none" r={radius} stroke="var(--app-border)" strokeWidth="6" />
+      <circle cx="29" cy="29" fill="none" r={radius} stroke="var(--app-gold)" strokeDasharray={circumference} strokeDashoffset={circumference * (1 - Math.min(1, ratio))} strokeLinecap="round" strokeWidth="6" className="motion-safe:transition-[stroke-dashoffset] motion-safe:duration-700" />
+    </svg>
   );
-}
-
-function progress(definition: ConstellationDefinition, value: number, target: number) {
-  if (definition.atlas) return `${focusTime(value)} of ${focusTime(target)} focused`;
-  if (definition.metric === "minutes") return `${value} / ${target} minutes`;
-  if (definition.metric === "days") return `${value} / ${target} study days`;
-  if (definition.metric === "subjects") return `${value} / ${target} subjects with 10 minutes`;
-  return `${value} / ${target} sessions`;
 }
 
 const HEMISPHERE = { Northern: "Northern sky", Southern: "Southern sky", Equator: "Along the equator" } as const;
@@ -405,7 +298,7 @@ function SkyFacts({ definition }: { definition: ConstellationDefinition }) {
     ["Share of the sky", `${atlas.areaPercent.toFixed(1)}%`],
     ["Hemisphere", HEMISPHERE[atlas.hemisphere]],
     ["Best seen", `${atlas.bestMonth} evenings`],
-    ["Card", `${atlas.order + 1} of 88`],
+    ["Atlas", `${atlas.order + 1} of 88`],
   ];
   return (
     <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">

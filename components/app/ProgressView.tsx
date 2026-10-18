@@ -5,12 +5,9 @@ import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { useStreak } from "@/lib/app/useStreak";
 import { useStudySky } from "@/lib/app/StudySkyProvider";
-import { SUBJECT_COLORS } from "@/lib/app/categoryColors";
 import { reviewLeads, weekProgress } from "@/lib/app/weekProgress";
-import { dateKey, formatMinutes } from "@/lib/api/time";
+import { dateKey } from "@/lib/api/time";
 import { nextLevelUnlock } from "@/shared/progress";
-import { flameScale } from "@/lib/app/celebrate";
-import CountUp from "./CountUp";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import ShareCard from "./ShareCard";
@@ -60,15 +57,12 @@ export default function ProgressView() {
 
   const timezone = data.profile?.timezone || data.user.timezone || "Australia/Sydney";
   const today = dateKey(new Date().toISOString(), timezone);
-  const week = useMemo(() => weekProgress(data.events, timezone, today), [data.events, timezone, today]);
   const leads = reviewLeads(today);
-  const subjectColours = new Map(
-    data.subjects.map((subject, index) => [subject.name, subject.colour || SUBJECT_COLORS[index % SUBJECT_COLORS.length]]),
-  );
-  const totals = analytics?.sky ?? { sessions: 0, minutes: 0, subjects: [] };
   const weekly = analytics?.current ?? { minutes: 0, sessions: 0 };
   const previous = analytics?.previous ?? { minutes: 0, sessions: 0 };
+  const totals = analytics?.sky ?? { minutes: 0, sessions: 0, subjects: [] };
   const collected = sky?.cards.filter((card) => card.earnedAt !== null).length ?? 0;
+  const todayProgress = useMemo(() => dayProgress(data.events, timezone, today), [data.events, timezone, today]);
 
   const review = (
     <section className="mt-6">
@@ -95,45 +89,27 @@ export default function ProgressView() {
       />
 
       <div className="mx-auto w-full max-w-[1000px] px-6 pb-16 pt-6 sm:px-10">
-        <section aria-label="This week" className="arcadia-stagger grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <Stat label="This week" wide>
-            <div className="flex items-center gap-4">
-              <WeekRing ratio={week.ratio} />
-              <div>
-                <p className="text-[26px] font-semibold tabular-nums leading-none" style={{ color: "var(--app-text)" }}><CountUp value={week.done} /><span className="text-[15px] font-medium" style={{ color: "var(--app-text-muted)" }}> of {week.planned}</span></p>
-                <p className="mt-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>blocks done</p>
-              </div>
-            </div>
-          </Stat>
-          <Stat label="Streak">
-            <p className="text-[26px] font-semibold tabular-nums leading-none" style={{ color: "var(--app-text)" }}>
-              <span aria-hidden="true" className="arcadia-flame mr-1" style={{ ["--flame" as string]: flameScale(streak.current) }}>🔥</span><CountUp value={streak.current} /> {streak.current === 1 ? "day" : "days"}
-            </p>
-            <p className="mt-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>{streak.longest > streak.current ? `Best ${streak.longest}` : streak.current > 0 ? "Your best yet" : "Finish today's plan to start one"}</p>
-          </Stat>
-          <Stat label="Focused">
-            <p className="text-[26px] font-semibold tabular-nums leading-none" style={{ color: "var(--app-text)" }}><CountUp value={Math.max(week.minutes, weekly.minutes)} format={formatMinutes} /></p>
-            <p className="mt-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>{previous.minutes > 0 ? `${formatMinutes(previous.minutes)} last week` : "this week"}</p>
-          </Stat>
-        </section>
-
-        {leads ? review : null}
+        <YourSky
+          ring={todayProgress}
+        />
 
         {progress ? (
-          <section className="mt-6 rounded-xl border p-5" style={{ background: "var(--app-surface)", borderColor: "var(--app-border)" }}>
-            <div className="flex items-baseline justify-between gap-3">
-              <h2 className="text-[17px] font-semibold" style={{ color: "var(--app-text)" }}>Level {progress.level} · {progress.title}</h2>
-              <p className="text-[13px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>{progress.levelProgress.current}/{progress.levelProgress.needed} XP</p>
+          <section aria-label="Level progress" className="mt-5 flex items-center gap-4 rounded-xl border px-5 py-4" style={{ background: "var(--app-surface)", borderColor: "var(--app-border)" }}>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline justify-between gap-3 text-[12px]">
+                <p className="truncate font-semibold" style={{ color: "var(--app-text)" }}>Level {progress.level} · {progress.title}</p>
+                <p className="shrink-0 tabular-nums" style={{ color: "var(--app-text-muted)" }}>{progress.levelProgress.current}/{progress.levelProgress.needed} XP</p>
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full" style={{ background: "var(--app-surface-soft)" }}>
+                <div className="h-full rounded-full" style={{ width: `${Math.min(100, (progress.levelProgress.current / Math.max(1, progress.levelProgress.needed)) * 100)}%`, background: "var(--app-gold)" }} />
+              </div>
             </div>
-            <div className="mt-3 h-2 overflow-hidden rounded-full" style={{ background: "var(--app-surface-soft)" }}>
-              <div className="h-full rounded-full" style={{ width: `${Math.min(100, (progress.levelProgress.current / Math.max(1, progress.levelProgress.needed)) * 100)}%`, background: "var(--app-arcad)" }} />
-            </div>
-            <p className="mt-2 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>{nextLevelUnlock(progress.level)} · {collected} {collected === 1 ? "star card" : "star cards"} collected</p>
+            <p className="hidden text-right text-[11px] leading-4 sm:block" style={{ color: "var(--app-text-muted)" }}>{nextLevelUnlock(progress.level)} · {collected} collected</p>
           </section>
         ) : null}
 
         <div className="mt-6"><StreakChain streak={streak} today={today} /></div>
-        <YourSky totals={totals} totalsLoading={!analytics} subjectColours={subjectColours} />
+        {leads ? review : null}
         <div className="mt-6"><ConsistencyHeatmap /></div>
         {progress ? <Achievements achievements={progress.achievements} /> : null}
         {leads ? null : review}
@@ -156,24 +132,17 @@ export default function ProgressView() {
   );
 }
 
-function Stat({ label, wide, children }: { label: string; wide?: boolean; children: React.ReactNode }) {
-  return (
-    <div className={`rounded-xl border p-5 ${wide ? "col-span-2 sm:col-span-1" : ""}`} style={{ background: "var(--app-surface)", borderColor: "var(--app-border)" }}>
-      <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-text-muted)" }}>{label}</p>
-      {children}
-    </div>
-  );
-}
-
-function WeekRing({ ratio }: { ratio: number }) {
-  const r = 22;
-  const c = 2 * Math.PI * r;
-  return (
-    <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true" className="-rotate-90">
-      <circle cx="28" cy="28" r={r} fill="none" strokeWidth="7" style={{ stroke: "var(--app-surface-soft)" }} />
-      <circle cx="28" cy="28" r={r} fill="none" strokeWidth="7" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - Math.min(1, ratio))} style={{ stroke: "var(--app-accent)", transition: "stroke-dashoffset 600ms var(--ease-out-expo)" }} />
-    </svg>
-  );
+function dayProgress(events: Parameters<typeof weekProgress>[0], timezone: string, today: string) {
+  let planned = 0;
+  let done = 0;
+  for (const event of events) {
+    if (event.category !== "study") continue;
+    const day = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(event.startAt));
+    if (day !== today) continue;
+    planned += 1;
+    if (event.outcome === "completed") done += 1;
+  }
+  return { done, planned, ratio: planned ? done / planned : 0 };
 }
 
 function Achievements({ achievements }: { achievements: Achievement[] }) {

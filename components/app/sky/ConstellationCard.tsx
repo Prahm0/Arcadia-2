@@ -9,11 +9,12 @@ export function skyDate(timestamp: number) { return new Date(timestamp).toLocale
 
 const HEMISPHERE = { Northern: "Northern sky", Southern: "Southern sky", Equator: "On the equator" } as const;
 
-export default function ConstellationCard({ card, preview = false, featured = false, following = false, showcase = false }: {
-  card: SkyCard; preview?: boolean; featured?: boolean; following?: boolean;
+export default function ConstellationCard({ card, preview = false, following: _following = false, showcase = false }: {
+  card: SkyCard; preview?: boolean; following?: boolean;
   /** Shown on its own, as in the card dialog: the card drifts gently so its gloss keeps moving. */
   showcase?: boolean;
 }) {
+  void _following;
   const light = useCardLight<HTMLElement>(showcase);
   const definition = constellationById(card.id)!;
   const total = definition.points.length;
@@ -22,7 +23,7 @@ export default function ConstellationCard({ card, preview = false, featured = fa
   const collected = !preview && card.earnedAt !== null;
   // Grey until its last star is lit, the reward preview included.
   const locked = card.earnedAt === null;
-  const status = featured ? "Featured" : collected && !card.seen ? "New ✦" : following && !card.earnedAt ? "Following" : definition.atlas ? `Nº ${String(definition.atlas.order + 1).padStart(2, "0")}` : "✦";
+  const status = collected && !card.seen ? "New ✦" : definition.atlas ? `Nº ${String(definition.atlas.order + 1).padStart(2, "0")}` : "✦";
   const detail = definition.atlas ? `${definition.atlas.brightest} · ${HEMISPHERE[definition.atlas.hemisphere]}` : `${total} stars · Arcadia original`;
   return (
     <article ref={light} className={styles.card} data-preview={preview} data-collected={collected} data-locked={locked} style={{ "--sky-colour": definition.colour } as CSSProperties}>
@@ -47,7 +48,7 @@ export default function ConstellationCard({ card, preview = false, featured = fa
         <p className={styles.cardStory}>{definition.story}</p>
         <p className={styles.cardDetail}>{detail}</p>
         {preview ? (
-          <p className={styles.cardDate}>Reward preview</p>
+          <p className={styles.cardDate}>Preview</p>
         ) : collected ? (
           <p className={styles.cardDate}>✦ Formed {skyDate(card.earnedAt!)}</p>
         ) : (

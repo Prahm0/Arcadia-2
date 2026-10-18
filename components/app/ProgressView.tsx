@@ -5,15 +5,14 @@ import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { useStreak } from "@/lib/app/useStreak";
 import { useStudySky } from "@/lib/app/StudySkyProvider";
-import { reviewLeads } from "@/lib/app/weekProgress";
-import { dateKey } from "@/lib/api/time";
+import { reviewLeads, weekDays, weekProgress } from "@/lib/app/weekProgress";
+import { dateKey, formatMinutes } from "@/lib/api/time";
 import { nextLevelUnlock } from "@/shared/progress";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import ShareCard from "./ShareCard";
 import WeeklyReviewCard from "./WeeklyReviewCard";
 import ConsistencyHeatmap from "./ConsistencyHeatmap";
-import StreakChain from "./streaks/StreakChain";
 import YourSky, { type FocusTotals } from "./sky/YourSky";
 
 interface AnalyticsResponse {
@@ -35,10 +34,10 @@ interface ProgressResponse {
 }
 
 /**
- * Everything about how it's going, on one page. This week first: the ring of
- * blocks done, the streak and the minutes. Then the weekly review, which
- * leads on Sundays and Mondays and folds away the rest of the week. Levels,
- * stars and achievements sit lower down.
+ * How it's going, kept simple: this week's study time, blocks done and
+ * streak, with a bar for each day. Then the weekly review and the
+ * consistency map. Levels, achievements and constellations are extras,
+ * folded away at the bottom for anyone who wants them.
  */
 export default function ProgressView() {
   const { data } = useDashboardData();
@@ -62,6 +61,8 @@ export default function ProgressView() {
   const previous = analytics?.previous ?? { minutes: 0, sessions: 0 };
   const totals = analytics?.sky ?? { minutes: 0, sessions: 0, subjects: [] };
   const collected = sky?.cards.filter((card) => card.earnedAt !== null).length ?? 0;
+  const week = weekProgress(data.events, timezone, today);
+  const days = weekDays(data.events, timezone, today);
 
   const review = (
     <section className="mt-6">
@@ -88,7 +89,18 @@ export default function ProgressView() {
       />
 
       <div className="mx-auto w-full max-w-[1000px] px-6 pb-16 pt-6 sm:px-10">
-        <YourSky />
+        <ThisWeek
+          minutes={Math.max(weekly.minutes, week.minutes)}
+          lastWeek={previous.minutes}
+          done={week.done}
+          planned={week.planned}
+          streak={streak.current}
+          days={days}
+        />
+
+        {leads ? review : null}
+        <div className="mt-6"><ConsistencyHeatmap /></div>
+        {leads ? null : review}
 
         {progress ? (
           <section aria-label="Level progress" className="mt-5 flex items-center gap-4 rounded-xl border px-5 py-4" style={{ background: "var(--app-surface)", borderColor: "var(--app-border)" }}>
@@ -105,11 +117,14 @@ export default function ProgressView() {
           </section>
         ) : null}
 
-        <div className="mt-6"><StreakChain streak={streak} today={today} /></div>
-        {leads ? review : null}
-        <div className="mt-6"><ConsistencyHeatmap /></div>
-        {progress ? <Achievements achievements={progress.achievements} /> : null}
-        {leads ? null : review}
+        {progress && progress.achievements.length ? (
+          <Extra title="Achievements" detail={`${progress.achievements.filter((item) => item.unlockedAt).length} of ${progress.achievements.length}`}>
+            <Achievements achievements={progress.achievements} />
+          </Extra>
+        ) : null}
+        <Extra id="constellations" title="Constellations" detail={`${collected} collected`}>
+          <YourSky />
+        </Extra>
       </div>
 
       {shareOpen ? (
@@ -134,12 +149,8 @@ function Achievements({ achievements }: { achievements: Achievement[] }) {
   if (!achievements.length) return null;
   const unlocked = achievements.filter((achievement) => achievement.unlockedAt).length;
   return (
-    <section id="achievements" className="mt-6 rounded-xl border p-5" style={{ background: "var(--app-surface)", borderColor: "var(--app-border)" }}>
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-[17px] font-semibold" style={{ color: "var(--app-text)" }}>Achievements</h2>
-        <p className="text-[13px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>{unlocked}/{achievements.length}</p>
-      </div>
-      <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-3">
+    <section id="achievements" aria-label={`Achievements, ${unlocked} of ${achievements.length}`}>
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
         {achievements.map((achievement) => {
           const locked = !achievement.unlockedAt;
           return (
@@ -154,5 +165,70 @@ function Achievements({ achievements }: { achievements: Achievement[] }) {
         })}
       </div>
     </section>
+  );
+}
+
+/** This week at a glance: three numbers and a bar per day. */
+function ThisWeek({ minutes, lastWeek, done, planned, streak, days }: {
+  minutes: number;
+  lastWeek: number;
+  done: number;
+  planned: number;
+  streak: number;
+  days: Array<{ day: string; minutes: number; isToday: boolean; future: boolean }>;
+}) {
+  const most = Math.max(60, ...days.map((entry) => entry.minutes));
+  const change = lastWeek > 0 ? minutes - lastWeek : null;
+  return (
+    <section aria-label="This week" className="rounded-[24px] p-5 sm:p-6" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
+      <p className="text-[13px] font-semibold" style={{ color: "var(--app-text-muted)" }}>This week</p>
+      <div className="mt-3 grid grid-cols-3 gap-3">
+        <Stat value={formatMinutes(minutes)} label={change === null ? "studied" : change >= 0 ? `${formatMinutes(change)} more than last week` : `${formatMinutes(-change)} less than last week`} />
+        <Stat value={`${done}${planned ? `/${planned}` : ""}`} label="blocks done" />
+        <Stat value={`${streak} ${streak === 1 ? "day" : "days"}`} label="streak" />
+      </div>
+      <div className="mt-6 grid grid-cols-7 items-end gap-2" style={{ height: 120 }} aria-hidden="true">
+        {days.map((entry) => (
+          <div key={entry.day} className="flex h-full flex-col items-center justify-end gap-1.5">
+            <div
+              className="w-full max-w-[34px] rounded-[8px] transition-[height] duration-500"
+              style={{
+                height: `${Math.max(entry.minutes ? 8 : 4, (entry.minutes / most) * 92)}px`,
+                background: entry.minutes ? "var(--app-accent)" : "var(--app-surface-soft)",
+                opacity: entry.future ? 0.5 : 1,
+              }}
+            />
+            <span className="text-[11.5px] font-medium" style={{ color: entry.isToday ? "var(--app-text)" : "var(--app-text-muted)" }}>
+              {new Intl.DateTimeFormat("en-AU", { weekday: "narrow", timeZone: "UTC" }).format(new Date(`${entry.day}T12:00:00Z`))}
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Stat({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[24px] font-semibold leading-none tracking-[-0.02em] tabular-nums sm:text-[28px]" style={{ color: "var(--app-text)" }}>{value}</p>
+      <p className="mt-1.5 text-[12.5px] leading-snug" style={{ color: "var(--app-text-muted)" }}>{label}</p>
+    </div>
+  );
+}
+
+/** One of the extras at the bottom: a single row that opens to show it. */
+function Extra({ id, title, detail, children }: { id?: string; title: string; detail: string; children: React.ReactNode }) {
+  return (
+    <details id={id} className="group mt-3 rounded-xl border scroll-mt-6" style={{ background: "var(--app-surface)", borderColor: "var(--app-border)" }}>
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4" style={{ color: "var(--app-text)" }}>
+        <span className="text-[15px] font-semibold">{title}</span>
+        <span className="flex items-center gap-2 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
+          {detail}
+          <span aria-hidden="true" className="transition-transform group-open:rotate-90">›</span>
+        </span>
+      </summary>
+      <div className="px-4 pb-4 sm:px-5">{children}</div>
+    </details>
   );
 }

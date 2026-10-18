@@ -68,11 +68,8 @@ export default function ConsistencyHeatmap() {
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <p className="type-eyebrow" style={{ color: "var(--app-text-muted)" }}>
-            Consistency · last 90 days
-          </p>
-          <p className="mt-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-            Shaded by focused study minutes each day. Empty cells are days without any tracked study.
+          <p className="text-[15px] font-semibold" style={{ color: "var(--app-text)" }}>
+            Last 90 days
           </p>
         </div>
         {data ? (
@@ -170,7 +167,7 @@ export default function ConsistencyHeatmap() {
               More
             </div>
             <p className="text-[12px] tabular-nums" style={{ color: "var(--app-text-muted)" }} aria-live="polite">
-              {hovered ? `${formatDayLabel(hovered.date)} · ${formatMinutes(hovered.minutes)} · ${hovered.sessions} session${hovered.sessions === 1 ? "" : "s"}` : "Hover a cell for detail"}
+              {hovered ? `${formatDayLabel(hovered.date)} · ${formatMinutes(hovered.minutes)} · ${hovered.sessions} session${hovered.sessions === 1 ? "" : "s"}` : ""}
             </p>
           </div>
         </div>

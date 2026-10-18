@@ -45,6 +45,8 @@ import GapSuggestion from "./today/GapSuggestion";
 import BlockingBar from "./today/BlockingBar";
 import TodayProgress from "./TodayProgress";
 import EmptyArt from "./EmptyArt";
+import DayNav, { dayLabel } from "./today/DayNav";
+import { headlineText, isDayHeading, sectionText } from "@/shared/dayHeading";
 
 
 type EventSheetMode = "details" | "reschedule" | "miss-reason";
@@ -56,6 +58,10 @@ export default function TodayView() {
   const timezone = data.profile?.timezone || data.user.timezone || "Australia/Sydney";
   const now = new Date();
   const today = dateKey(now.toISOString(), timezone);
+  // The day on screen: today, or a day before or after it read back like a journal.
+  const [viewDay, setViewDay] = useState<string | null>(null);
+  const day = viewDay ?? today;
+  const isToday = day === today;
   const [busyId, setBusyId] = useState<string | null>(null);
   const [showLife, setShowLife] = useState(false);
   const [lifeAutoReason, setLifeAutoReason] = useState<string | null>(null);
@@ -118,19 +124,19 @@ export default function TodayView() {
 
   // The React Compiler memoizes this; a manual useMemo made it skip the component.
   const todaysEvents = data.events
-    .filter((event) => dateKey(event.startAt, timezone) === today)
+    .filter((event) => dateKey(event.startAt, timezone) === day)
     .sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt));
 
   const studyBlocks = todaysEvents.filter((event) => event.category === "study");
   // Today's note: Arcadia's blocks and the student's own lines, timed or not, in one list.
-  const dayStartMs = startOfDayMs(today, timezone);
+  const dayStartMs = startOfDayMs(day, timezone);
   const entries = noteEntries(
     todaysEvents.filter((event) => event.category === "study" || event.source === "note"),
-    (data.dayItems ?? []).filter((item) => item.day === today),
+    (data.dayItems ?? []).filter((item) => item.day === day),
     dayStartMs,
   );
   const laterCandidates = todaysEvents.filter(
-    (event) => event.category !== "study" && event.source !== "note" && Date.parse(event.endAt) >= now.getTime(),
+    (event) => isToday && event.category !== "study" && event.source !== "note" && Date.parse(event.endAt) >= now.getTime(),
   );
   // Old or overlapping schedule rebuilds may have left several sleep rows.
   // Show the generated nightly target once while leaving other events alone.
@@ -164,7 +170,7 @@ export default function TodayView() {
     }), 650);
     const at = readNow();
     tickTimes.current = [...tickTimes.current.filter((time) => at - time < 3 * 3_600_000), at];
-    const rows = entries.map((entry) => ({
+    const rows = entries.filter((entry) => !isHeading(entry)).map((entry) => ({
       done: entry.kind === "item" ? entry.item.done || entry.key === key : entry.event.outcome === "completed" || entry.key === key,
     }));
     const combo = comboCount(tickTimes.current);
@@ -222,7 +228,8 @@ export default function TodayView() {
     }
   }
 
-  const tomorrowKey = nextDayKey(today);
+  // On today a line moves to tomorrow; on any other day it comes to today.
+  const moveKey = isToday ? nextDayKey(today) : today;
 
   // The student's own lines: tick, move to tomorrow, delete, note.
   const lineActions: LineActions = {
@@ -246,11 +253,12 @@ export default function TodayView() {
     },
     tomorrow: async (entry) => {
       if (entry.kind === "item") {
-        patch((prev) => ({ ...prev, dayItems: (prev.dayItems ?? []).map((item) => (item.id === entry.item.id ? { ...item, day: tomorrowKey } : item)) }));
-        await api(`/api/today/items/${encodeURIComponent(entry.item.id)}`, { method: "PATCH", body: JSON.stringify({ day: tomorrowKey }) });
+        patch((prev) => ({ ...prev, dayItems: (prev.dayItems ?? []).map((item) => (item.id === entry.item.id ? { ...item, day: moveKey } : item)) }));
+        await api(`/api/today/items/${encodeURIComponent(entry.item.id)}`, { method: "PATCH", body: JSON.stringify({ day: moveKey }) });
         return;
       }
-      const shift = (iso: string) => new Date(Date.parse(iso) + 86_400_000).toISOString();
+      const days = Math.round((startOfDayMs(moveKey, timezone) - dayStartMs) / 86_400_000);
+      const shift = (iso: string) => new Date(Date.parse(iso) + days * 86_400_000).toISOString();
       patch((prev) => ({ ...prev, events: prev.events.map((event) => (event.id === entry.event.id ? { ...event, startAt: shift(event.startAt), endAt: shift(event.endAt) } : event)) }));
       await api(`/api/events/${encodeURIComponent(entry.event.id)}`, {
         method: "PATCH",
@@ -274,7 +282,7 @@ export default function TodayView() {
       const id = entry.kind === "item" ? entry.item.id : entry.event.id;
       await api(`/api/today/lines/${kind}/${encodeURIComponent(id)}`, {
         method: "PUT",
-        body: JSON.stringify({ day: today, title: parsed.title, subject: parsed.subject, start: parsed.start, end: parsed.end, evening: parsed.evening }),
+        body: JSON.stringify({ day, title: parsed.title, subject: parsed.subject, start: parsed.start, end: parsed.end, evening: parsed.evening }),
       });
       void reload();
     },
@@ -299,8 +307,13 @@ export default function TodayView() {
   const nextDue = data.tasks
     .filter((task) => task.status === "pending" && Date.parse(task.dueAt) > now.getTime())
     .sort((a, b) => Date.parse(a.dueAt) - Date.parse(b.dueAt))[0];
-  const summary =
-    studyBlocks.length === 0
+  const lineCount = entries.filter((entry) => !isHeading(entry)).length;
+  const doneCount = entries.filter((entry) => !isHeading(entry) && (entry.kind === "item" ? entry.item.done : entry.event.outcome === "completed")).length;
+  const summary = !isToday
+    ? lineCount === 0
+      ? day < today ? "Nothing written down this day." : "Nothing planned yet. Add a line below."
+      : `${doneCount} of ${lineCount} done.`
+    : studyBlocks.length === 0
       ? "Nothing planned today. Enjoy it."
       : remaining.length === 0
         ? "All done for today. Nice work."
@@ -312,10 +325,10 @@ export default function TodayView() {
     <>
       <DaylightGlow hour={localHour(now, timezone)} />
       <PageHeader
-        eyebrow={formatFriendlyDate(now.toISOString(), timezone)}
-        title={`${greeting}, ${firstName}`}
+        eyebrow={isToday ? formatFriendlyDate(now.toISOString(), timezone) : dayLabel(day, today).relative}
+        title={isToday ? `${greeting}, ${firstName}` : dayLabel(day, today).full}
         meta={summary}
-        action={
+        action={!isToday ? undefined :
           <>
             <AppButton
               variant="secondary"
@@ -340,8 +353,13 @@ export default function TodayView() {
 
       <div className={`mx-auto grid w-full gap-8 px-6 pb-10 pt-6 sm:px-10 ${data.focusTasks.length > 0 ? "max-w-[1160px] @3xl/main:grid-cols-[minmax(0,1fr)_260px]" : "max-w-[720px]"}`}>
         <section className="min-w-0">
-          <StartNowCard />
-          <TodayProgress refreshKey={progressRefresh} localDoneMinutes={completed.reduce((sum, event) => sum + Math.round((Date.parse(event.endAt) - Date.parse(event.startAt)) / 60000), 0)} compact />
+          <DayNav day={day} today={today} onChange={(next) => setViewDay(next === today ? null : next)} />
+          {isToday ? (
+            <>
+              <StartNowCard />
+              <TodayProgress refreshKey={progressRefresh} localDoneMinutes={completed.reduce((sum, event) => sum + Math.round((Date.parse(event.endAt) - Date.parse(event.startAt)) / 60000), 0)} compact />
+            </>
+          ) : null}
           <TodayCard
             laterEvents={laterEvents}
             inProgressIds={inProgressIds}
@@ -351,7 +369,8 @@ export default function TodayView() {
             timezone={timezone}
             hasTasks={data.tasks.length > 0}
             entries={entries}
-            today={today}
+            today={day}
+            isToday={isToday}
             dayStartMs={dayStartMs}
             priorityPicks={data.priorityPicks ?? []}
             onNewTask={requestAddToToday}
@@ -369,14 +388,18 @@ export default function TodayView() {
           {/* Then one suggestion at most, most useful first. Each card renders
               nothing when it has nothing to say, so only the first that does
               shows. Up to four used to stack above the student's next block. */}
-          <div className="mt-6 empty:hidden [&>*~*]:hidden">
-            <HolidayCard />
-            <NewTermCard onAdd={requestAddToToday} />
-            <DailyCheckInCard />
-            <SundayReviewInline />
-            <ProactiveArcadCards limit={1} />
-          </div>
-          <TellArcad />
+          {isToday ? (
+            <>
+              <div className="mt-6 empty:hidden [&>*~*]:hidden">
+                <HolidayCard />
+                <NewTermCard onAdd={requestAddToToday} />
+                <DailyCheckInCard />
+                <SundayReviewInline />
+                <ProactiveArcadCards limit={1} />
+              </div>
+              <TellArcad />
+            </>
+          ) : null}
         </section>
 
         <TodayRail />
@@ -427,7 +450,9 @@ interface TodayCardProps {
   onNewTask: () => void;
   /** Today's note, in order: blocks and the student's own lines. */
   entries: NoteEntry[];
+  /** The day on screen (YYYY-MM-DD). */
   today: string;
+  isToday: boolean;
   dayStartMs: number;
   priorityPicks: PriorityPick[];
   onLine: LineActions;
@@ -439,7 +464,7 @@ interface TodayCardProps {
 function TodayCard(props: TodayCardProps) {
   const {
     laterEvents, inProgressIds, busyId, celebrate, settling, timezone, hasTasks,
-    onNewTask, onComplete, onMiss, onOpen, entries, today, onLine, dayStartMs, priorityPicks,
+    onNewTask, onComplete, onMiss, onOpen, entries, today, isToday, onLine, dayStartMs, priorityPicks,
   } = props;
   const { subjects, rolledOver: justRolled } = useDashboardData().data;
   // "3 things moved over from yesterday": kept from the load that moved them, not cleared by the next reload.
@@ -447,10 +472,13 @@ function TodayCard(props: TodayCardProps) {
   if (justRolled && justRolled !== rolledOver) setRolledOver(justRolled);
   // Lines added after the page opened drop in; the ones already there just stagger in.
   const [mountedAt] = useState(readNow);
+  // A day with sections, or any day but today, reads top to bottom like the note it is.
+  const journal = !isToday || entries.some(isHeading);
+  const headline = entries.find((entry) => entry.kind === "item" && headlineText(entry.item.text) !== null);
   const { open, done } = splitDone(
-    entries.map((entry) => ({
+    entries.filter((entry) => entry !== headline).map((entry) => ({
       key: entry.key,
-      done: entry.kind === "item" ? entry.item.done : entry.event.outcome !== "planned",
+      done: !journal && (entry.kind === "item" ? entry.item.done : entry.event.outcome !== "planned"),
       entry,
     })),
     settling,
@@ -459,7 +487,7 @@ function TodayCard(props: TodayCardProps) {
   const blockList = useRef<HTMLUListElement>(null);
   useFlip(blockList, entries.map((entry) => (entry.kind === "block" ? `${entry.key}@${entry.event.startAt}` : entry.key)).join("|"));
   // A "- note" typed into the line attaches to the last of the student's own lines.
-  const lastMine = [...entries].reverse().find((entry) => entry.kind === "item" || entry.mine);
+  const lastMine = [...entries].reverse().find((entry) => !isHeading(entry) && (entry.kind === "item" || entry.mine));
   const lastLine: NoteTarget | null = !lastMine
     ? null
     : lastMine.kind === "item"
@@ -471,24 +499,40 @@ function TodayCard(props: TodayCardProps) {
       className="w-full rounded-[24px] surface-card"
       style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}
     >
+      {headline && headline.kind === "item" ? (
+        <div className="group flex items-start gap-3 px-5 pt-5 sm:px-6">
+          <p className="min-w-0 flex-1 text-[19px] font-semibold leading-snug tracking-[-0.01em]" style={{ color: "var(--app-text)" }}>
+            {headlineText(headline.item.text)}
+          </p>
+          <button
+            type="button"
+            aria-label="Remove headline"
+            onClick={() => void onLine.remove(headline)}
+            className="ui-press mt-1 rounded-full px-2 text-[13px] opacity-60 hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+            style={{ color: "var(--app-text-muted)" }}
+          >
+            ✕
+          </button>
+        </div>
+      ) : null}
       <div className="pt-3">
         <AddLine today={today} timezone={timezone} lastLine={lastLine} empty={entries.length === 0} />
-        {rolledOver ? (
+        {isToday && rolledOver ? (
           <p className="px-5 pb-1 pl-[58px] text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
             {rolledOver === 1 ? "One thing" : `${rolledOver} things`} moved over from yesterday.
           </p>
         ) : null}
       </div>
-      <BlockingBar timezone={timezone} />
-      <GapSuggestion
+      {isToday ? <BlockingBar timezone={timezone} /> : null}
+      {isToday ? <GapSuggestion
         events={[...entries.flatMap((entry) => (entry.kind === "block" ? [entry.event] : [])), ...laterEvents]}
         picks={priorityPicks}
         today={today}
         timezone={timezone}
         dayStartMs={dayStartMs}
-      />
+      /> : null}
 
-      {entries.length === 0 && !hasTasks ? (
+      {entries.length === 0 && !hasTasks && isToday ? (
         // Fresh account: a few concrete ways to seed a plan under the line.
         <FirstRunActions onNewTask={onNewTask} />
       ) : (
@@ -502,6 +546,20 @@ function TodayCard(props: TodayCardProps) {
               );
             }
             const entry = row.entry;
+            const section = entry.kind === "item" ? sectionText(entry.item.text) : null;
+            if (section !== null && entry.kind === "item") {
+              return (
+                <li
+                  key={entry.key}
+                  data-flip-id={entry.key}
+                  className="px-3 pb-1 pt-4 text-[12.5px] font-semibold uppercase tracking-[0.06em]"
+                  style={{ color: "var(--app-text-muted)", ["--i" as string]: index }}
+                  onContextMenu={(e) => showContextMenu(e, [{ kind: "item", label: "Delete", onSelect: () => void onLine.remove(entry), danger: true }])}
+                >
+                  {section}
+                </li>
+              );
+            }
             const fresh = Date.parse((entry.kind === "item" ? entry.item.createdAt : entry.event.createdAt) ?? "") > mountedAt;
             if (entry.kind === "block" && !entry.mine) {
               const event = entry.event;
@@ -548,7 +606,7 @@ function TodayCard(props: TodayCardProps) {
                 fresh={fresh}
                 index={index}
                 actions={[
-                  { label: "Tomorrow", onSelect: () => void onLine.tomorrow(entry) },
+                  { label: isToday ? "Tomorrow" : "Move to today", onSelect: () => void onLine.tomorrow(entry) },
                   { label: "Delete", onSelect: () => void onLine.remove(entry), danger: true },
                 ]}
                 onToggle={() => void onLine.toggle(entry)}
@@ -811,4 +869,9 @@ function nextDayKey(day: string): string {
   const at = new Date(`${day}T12:00:00Z`);
   at.setUTCDate(at.getUTCDate() + 1);
   return at.toISOString().slice(0, 10);
+}
+
+/** A headline ("!...") or section heading ("School:"): part of the note, never a thing to tick. */
+function isHeading(entry: NoteEntry): boolean {
+  return entry.kind === "item" && isDayHeading(entry.item.text);
 }

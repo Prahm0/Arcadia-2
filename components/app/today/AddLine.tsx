@@ -5,7 +5,8 @@ import { api } from "@/lib/api/client";
 import type { DayItem, PlannerEvent } from "@/lib/api/types";
 import { ADD_TO_TODAY_EVENT } from "@/lib/app/addToToday";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
-import { noteLine, parseDayPaste, parseLoggedLine } from "@/lib/app/dayLine";
+import { noteLine, parseDayPaste, parseLoggedLine, parseNotesHistory, type NotesDay } from "@/lib/app/dayLine";
+import { dateKey } from "@/lib/api/time";
 import { parseQuickAdd } from "@/lib/app/quickAdd";
 import { startOfDayMs } from "../schedule/calendar";
 
@@ -27,6 +28,11 @@ export default function AddLine({ today, timezone, lastLine, empty }: { today: s
   const input = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState("");
   const [hint, setHint] = useState<{ tone: "info" | "error"; text: string } | null>(null);
+  // Several days pasted from Notes, waiting for a yes before they're brought in.
+  const [pendingImport, setPendingImport] = useState<NotesDay[] | null>(null);
+  const [importing, setImporting] = useState(false);
+  const realToday = dateKey(new Date().toISOString(), timezone);
+  const isToday = today === realToday;
   // One small hint, the first time Today is empty; gone after the first line.
   const [firstUse, setFirstUse] = useState(false);
   useEffect(() => {
@@ -149,8 +155,42 @@ export default function AddLine({ today, timezone, lastLine, empty }: { today: s
     }
   }
 
+  /** Your Apple Notes days, each on its own date, as they were written. */
+  async function importDays(days: NotesDay[]) {
+    setImporting(true);
+    const subjects = data.subjects.map((subject) => subject.name);
+    let lines = 0;
+    try {
+      for (const entry of days) {
+        const parsed = parseDayPaste(entry.text, subjects);
+        if (!parsed.length) continue;
+        await api("/api/today/lines/batch", {
+          method: "POST",
+          body: JSON.stringify({
+            history: entry.day < realToday,
+            lines: parsed.map((line) => ({ day: entry.day, title: line.title, subject: line.subject, start: line.start, end: line.end, evening: line.evening, done: line.done, note: line.notes.join("\n") })),
+          }),
+        });
+        lines += parsed.length;
+      }
+      setPendingImport(null);
+      setHint({ tone: "info", text: `Brought in ${days.length} ${days.length === 1 ? "day" : "days"}, ${lines} lines. Go back a day to see them.` });
+      void reload();
+    } catch (error) {
+      setHint({ tone: "error", text: error instanceof Error && error.message ? error.message : "Couldn't bring those days in. Try again." });
+    } finally {
+      setImporting(false);
+    }
+  }
+
   /** A whole day from Notes: one line each, ✅ done, "- " notes under the line above. */
   async function addPasted(text: string) {
+    const days = parseNotesHistory(text, realToday);
+    if (days.length) {
+      used();
+      setPendingImport(days);
+      return;
+    }
     const lines = parseDayPaste(text, data.subjects.map((subject) => subject.name));
     if (!lines.length) return;
     used();
@@ -159,6 +199,7 @@ export default function AddLine({ today, timezone, lastLine, empty }: { today: s
       await api("/api/today/lines/batch", {
         method: "POST",
         body: JSON.stringify({
+          history: today < realToday,
           lines: lines.map((line) => ({ day: today, title: line.title, subject: line.subject, start: line.start, end: line.end, evening: line.evening, done: line.done, note: line.notes.join("\n") })),
         }),
       });
@@ -217,7 +258,7 @@ export default function AddLine({ today, timezone, lastLine, empty }: { today: s
               input.current?.blur();
             }
           }}
-          placeholder={showHint ? "Paste your plan from Notes, or type your first line" : "Add to today..."}
+          placeholder={showHint ? "Paste your plan from Notes, or type your first line" : isToday ? "Add to today..." : "Add to this day..."}
           autoComplete="off"
           autoCapitalize="sentences"
           enterKeyHint="enter"
@@ -225,6 +266,20 @@ export default function AddLine({ today, timezone, lastLine, empty }: { today: s
           style={{ color: "var(--app-text)" }}
         />
       </label>
+      {pendingImport ? (
+        <div role="status" className="mx-3 mb-2 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2.5 text-[13.5px]" style={{ background: "var(--app-surface-soft)", color: "var(--app-text)" }}>
+          <span className="min-w-0 flex-1">
+            Bring in {pendingImport.length} {pendingImport.length === 1 ? "day" : "days"} from Notes ({new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${pendingImport[0].day}T12:00:00Z`))}
+            {pendingImport.length > 1 ? ` to ${new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${pendingImport[pendingImport.length - 1].day}T12:00:00Z`))}` : ""})?
+          </span>
+          <button type="button" disabled={importing} onClick={() => void importDays(pendingImport)} className="ui-press h-8 rounded-full px-3.5 text-[13px] font-semibold disabled:opacity-60" style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}>
+            {importing ? "Bringing in..." : "Bring them in"}
+          </button>
+          <button type="button" disabled={importing} onClick={() => setPendingImport(null)} className="ui-press h-8 rounded-full px-3 text-[13px] font-medium" style={{ color: "var(--app-text-muted)" }}>
+            Cancel
+          </button>
+        </div>
+      ) : null}
       {hint ? (
         <p role="status" className="px-3 pb-1 pl-[46px] text-[12.5px]" style={{ color: hint.tone === "error" ? "var(--app-danger)" : "var(--app-text-muted)" }}>
           {hint.text}

@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lt, lte, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lt, lte, ne, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../db";
 import { rebuildSchedule, subjectKey, uniqueSubjects, weeklyBudget, type WeeklyBudget } from "../lib/scheduler";
@@ -12,7 +12,8 @@ import {
   serialiseTask,
   serialiseUser,
 } from "../lib/serialise";
-import { DAY, iso, localDateKey, startOfLocalDay } from "../lib/time";
+import { DAY, iso, localDateKey, localDayTime, startOfLocalDay } from "../lib/time";
+import { isDayHeading } from "../../../shared/dayHeading";
 import { termsAround } from "../lib/terms";
 import { computeStreaks, minutesBetween } from "../lib/analytics";
 import { loadPriorities, openTasks, topBySubject, withPriorities } from "../lib/priorities";
@@ -187,22 +188,32 @@ dashboard.get("/", async (c) => {
 
   // Unticked lines from earlier days roll over to today, the way a Notes
   // list carries on. Only the request that moves them reports how many.
-  const rolled = await database
-    .update(schema.dayItems)
-    .set({ day: todayKey })
-    .where(and(eq(schema.dayItems.userId, userId), lt(schema.dayItems.day, todayKey), eq(schema.dayItems.done, false)))
-    .returning({ id: schema.dayItems.id });
+  // Days brought in from Notes after the fact stay as they were written, and
+  // headlines ("!") and section headings ("School:") belong to their day.
+  const stale = await database
+    .select({ id: schema.dayItems.id, day: schema.dayItems.day, text: schema.dayItems.text, createdAt: schema.dayItems.createdAt })
+    .from(schema.dayItems)
+    .where(and(eq(schema.dayItems.userId, userId), lt(schema.dayItems.day, todayKey), eq(schema.dayItems.done, false)));
+  const rolling = stale
+    .filter((item) => !isDayHeading(item.text) && item.createdAt < localDayTime(item.day, 24 * 60, timezone))
+    .map((item) => item.id);
+  if (rolling.length) {
+    await database
+      .update(schema.dayItems)
+      .set({ day: todayKey })
+      .where(and(eq(schema.dayItems.userId, userId), inArray(schema.dayItems.id, rolling)));
+  }
 
-  // Today's note: untimed lines from yesterday through the week ahead.
+  // Today's note and the days around it: past days read back like a journal.
   const dayItemRows = await database
     .select()
     .from(schema.dayItems)
-    .where(and(eq(schema.dayItems.userId, userId), gte(schema.dayItems.day, localDateKey(start - DAY, timezone))));
+    .where(and(eq(schema.dayItems.userId, userId), gte(schema.dayItems.day, localDateKey(start - STREAK_HISTORY_DAYS * DAY, timezone))));
 
   return c.json({
     user: serialiseUser(user, profile ?? null),
     dayItems: dayItemRows.map(serialiseDayItem),
-    rolledOver: rolled.length,
+    rolledOver: rolling.length,
     // Open priorities, due first then outline order: Today suggests one in a gap.
     priorityPicks: openTasks(priorityRows).slice(0, 20),
     profile: serialiseProfile(profile ?? null),

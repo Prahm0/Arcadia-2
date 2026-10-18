@@ -44,6 +44,10 @@ interface LineContext {
   subjects: Set<string>;
   timezone: string;
   positions: Map<string, number>;
+  /** Lines saved together keep the order they were written in, a millisecond apart. */
+  clock: number;
+  /** Days brought in from Notes after the fact: saved as written, with no XP and no replan. */
+  history: boolean;
 }
 
 async function lineContext(database: Database, userId: string): Promise<LineContext> {
@@ -51,7 +55,7 @@ async function lineContext(database: Database, userId: string): Promise<LineCont
     database.select({ name: schema.subjects.name }).from(schema.subjects).where(eq(schema.subjects.userId, userId)),
     database.select({ timezone: schema.profiles.timezone }).from(schema.profiles).where(eq(schema.profiles.userId, userId)).limit(1),
   ]);
-  return { database, userId, subjects: new Set(subjectRows.map((row) => row.name)), timezone: profile[0]?.timezone ?? "Australia/Brisbane", positions: new Map() };
+  return { database, userId, subjects: new Set(subjectRows.map((row) => row.name)), timezone: profile[0]?.timezone ?? "Australia/Brisbane", positions: new Map(), clock: Date.now(), history: false };
 }
 
 /**
@@ -62,6 +66,7 @@ async function lineContext(database: Database, userId: string): Promise<LineCont
  */
 async function insertLine(context: LineContext, body: LineBody | null) {
   const { database, userId } = context;
+  const createdAt = context.clock++;
   const day = typeof body?.day === "string" && DAY_KEY.test(body.day) ? body.day : null;
   const title = text(body?.title, 200);
   if (!day || !title) return { error: "Type something to add." } as const;
@@ -92,9 +97,10 @@ async function insertLine(context: LineContext, body: LineBody | null) {
       editable: true,
       pinned: true,
       note,
+      createdAt,
       ...(done ? { status: "completed", outcome: "completed" } : {}),
     });
-    const rewards = done ? await lineXp(database, userId, id, true) : [];
+    const rewards = done && !context.history ? await lineXp(database, userId, id, true) : [];
     const [row] = await database.select().from(schema.events).where(eq(schema.events.id, id)).limit(1);
     return { kind: "event", event: serialiseEvent(row), rewards, timed: true } as const;
   }
@@ -119,9 +125,10 @@ async function insertLine(context: LineContext, body: LineBody | null) {
     evening: body?.evening === true,
     position,
     done,
-    doneAt: done ? Date.now() : null,
+    doneAt: done ? createdAt : null,
+    createdAt,
   });
-  const rewards = done ? await lineXp(database, userId, id, true) : [];
+  const rewards = done && !context.history ? await lineXp(database, userId, id, true) : [];
   const [row] = await database.select().from(schema.dayItems).where(eq(schema.dayItems.id, id)).limit(1);
   return { kind: "item", item: serialiseDayItem(row), rewards, timed: false } as const;
 }
@@ -137,20 +144,25 @@ today.post("/lines", async (c) => {
   return c.json(saved, 201);
 });
 
-/** A whole day pasted from Notes: every line saved, then one replan. */
+/**
+ * A whole day pasted from Notes: every line saved, then one replan. With
+ * `history`, a past day brought in from Notes: saved as it was written, with
+ * no XP for what was ticked back then and nothing for the planner to move.
+ */
 today.post("/lines/batch", async (c) => {
   const { userId } = c.get("session");
-  const body = await c.req.json<{ lines?: unknown }>().catch(() => null);
+  const body = await c.req.json<{ lines?: unknown; history?: unknown }>().catch(() => null);
   if (!body || !Array.isArray(body.lines) || !body.lines.length) return c.json({ error: "Nothing to add." }, 400);
-  if (body.lines.length > 60) return c.json({ error: "That's more than a day's worth. Paste up to 60 lines." }, 422);
+  if (body.lines.length > 120) return c.json({ error: "That's more than a day's worth. Paste up to 120 lines." }, 422);
   const database = db(c.env.DB);
   const context = await lineContext(database, userId);
+  context.history = body.history === true;
   const saved = [];
   for (const line of body.lines as LineBody[]) {
     const result = await insertLine(context, line);
     if (!("error" in result)) saved.push(result);
   }
-  if (saved.some((line) => line.timed)) await replan(database, userId);
+  if (!context.history && saved.some((line) => line.timed)) await replan(database, userId);
   return c.json({ lines: saved, rewards: saved.flatMap((line) => line.rewards) }, 201);
 });
 

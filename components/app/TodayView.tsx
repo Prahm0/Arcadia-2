@@ -574,7 +574,6 @@ function TodayCard(props: TodayCardProps) {
                   time={formatClock(event.startAt, timezone)}
                   subtime={formatDurationMinutes(minutes)}
                   dot={subjectColour(subjects, event.subject)}
-                  spark
                   note=""
                   done={event.outcome === "completed"}
                   muted={event.outcome === "missed"}

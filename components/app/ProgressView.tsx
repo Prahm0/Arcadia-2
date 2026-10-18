@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { useStreak } from "@/lib/app/useStreak";
 import { useStudySky } from "@/lib/app/StudySkyProvider";
-import { reviewLeads, weekProgress } from "@/lib/app/weekProgress";
+import { reviewLeads } from "@/lib/app/weekProgress";
 import { dateKey } from "@/lib/api/time";
 import { nextLevelUnlock } from "@/shared/progress";
 import PageHeader from "./PageHeader";
@@ -62,7 +62,6 @@ export default function ProgressView() {
   const previous = analytics?.previous ?? { minutes: 0, sessions: 0 };
   const totals = analytics?.sky ?? { minutes: 0, sessions: 0, subjects: [] };
   const collected = sky?.cards.filter((card) => card.earnedAt !== null).length ?? 0;
-  const todayProgress = useMemo(() => dayProgress(data.events, timezone, today), [data.events, timezone, today]);
 
   const review = (
     <section className="mt-6">
@@ -89,9 +88,7 @@ export default function ProgressView() {
       />
 
       <div className="mx-auto w-full max-w-[1000px] px-6 pb-16 pt-6 sm:px-10">
-        <YourSky
-          ring={todayProgress}
-        />
+        <YourSky />
 
         {progress ? (
           <section aria-label="Level progress" className="mt-5 flex items-center gap-4 rounded-xl border px-5 py-4" style={{ background: "var(--app-surface)", borderColor: "var(--app-border)" }}>
@@ -132,18 +129,6 @@ export default function ProgressView() {
   );
 }
 
-function dayProgress(events: Parameters<typeof weekProgress>[0], timezone: string, today: string) {
-  let planned = 0;
-  let done = 0;
-  for (const event of events) {
-    if (event.category !== "study") continue;
-    const day = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(event.startAt));
-    if (day !== today) continue;
-    planned += 1;
-    if (event.outcome === "completed") done += 1;
-  }
-  return { done, planned, ratio: planned ? done / planned : 0 };
-}
 
 function Achievements({ achievements }: { achievements: Achievement[] }) {
   if (!achievements.length) return null;

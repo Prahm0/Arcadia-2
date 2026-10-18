@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useStudySky } from "@/lib/app/StudySkyProvider";
-import { constellationById, type ConstellationDefinition, type ConstellationId, type SkyCard } from "@/shared/constellations";
+import { constellationById, focusTime, type ConstellationDefinition, type ConstellationId, type SkyCard } from "@/shared/constellations";
 import AppButton, { appButtonClass } from "../AppButton";
 import ConstellationArtwork from "./ConstellationArtwork";
 import ConstellationCard, { skyDate } from "./ConstellationCard";
@@ -16,11 +16,7 @@ export interface FocusTotals {
   subjects: Array<{ subject: string; minutes: number; sessions: number }>;
 }
 
-export default function YourSky({
-  ring,
-}: {
-  ring: { done: number; planned: number; ratio: number };
-}) {
+export default function YourSky() {
   const { sky, loading, error, refresh, update, acknowledge } = useStudySky();
   const [showAll, setShowAll] = useState(false);
   const [detailId, setDetailId] = useState<ConstellationId | null>(null);
@@ -53,6 +49,8 @@ export default function YourSky({
   const followed = cards.find((card) => card.id === sky?.preferences.followed) ?? cards[0];
   const definition = followed ? constellationById(followed.id)! : null;
   const count = followed?.milestones.filter((star) => star.earnedAt !== null).length ?? 0;
+  const next = followed?.milestones.find((star) => star.earnedAt === null);
+  const nextStar = followed && definition && next ? nextStarProgress(definition, followed.value, next.index) : null;
   const detail = cards.find((card) => card.id === detailId);
   const detailDefinition = detail ? constellationById(detail.id)! : null;
   const listed = [...cards].sort((a, b) => (b.addedAt ?? 0) - (a.addedAt ?? 0));
@@ -96,16 +94,18 @@ export default function YourSky({
                 <p className="text-[11px] font-semibold uppercase tracking-[.13em]" style={{ color: "var(--app-accent-strong)" }}>Building now</p>
                 <h3 className="mt-2 text-[30px] font-semibold tracking-[-.04em]">{definition.name}</h3>
                 <p className="mt-2 text-[14px] leading-relaxed" style={{ color: "var(--app-text-muted)" }}>
-                  {count} of {definition.points.length} stars · {ring.planned > 0 && ring.ratio < 1 ? "next star tonight if you close your ring" : ring.planned > 0 ? "today's ring is closed" : "add a study block to begin"}.
+                  {count} of {definition.points.length} stars{nextStar ? "" : " · complete, it's in your collection"}.
                 </p>
 
-                <div className="my-6 flex items-center gap-4 rounded-xl px-4 py-3" style={{ background: "var(--app-surface-soft)" }}>
-                  <TodayRing ratio={ring.ratio} />
-                  <div>
-                    <p className="text-[13px] font-semibold" style={{ color: "var(--app-text)" }}>Today&apos;s ring</p>
-                    <p className="mt-0.5 text-[12px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>{ring.done} of {ring.planned} study blocks</p>
+                {nextStar ? (
+                  <div className="my-6 flex items-center gap-4 rounded-xl px-4 py-3" style={{ background: "var(--app-surface-soft)" }}>
+                    <TodayRing ratio={nextStar.ratio} />
+                    <div>
+                      <p className="text-[13px] font-semibold" style={{ color: "var(--app-text)" }}>Next star</p>
+                      <p className="mt-0.5 text-[12px] tabular-nums" style={{ color: "var(--app-text-muted)" }}>{nextStar.left}</p>
+                    </div>
                   </div>
-                </div>
+                ) : <div className="my-3" />}
 
                 <div className="flex flex-wrap gap-2">
                   {followed.earnedAt ? (
@@ -310,4 +310,17 @@ function SkyFacts({ definition }: { definition: ConstellationDefinition }) {
       ))}
     </dl>
   );
+}
+
+/** How close the next star is, and what's left to light it, in the constellation's own unit. */
+function nextStarProgress(definition: ConstellationDefinition, value: number, index: number) {
+  const target = definition.thresholds[index];
+  const from = index > 0 ? definition.thresholds[index - 1] : 0;
+  const ratio = Math.max(0, Math.min(1, (value - from) / Math.max(1, target - from)));
+  const left = Math.max(1, target - value);
+  const text = definition.metric === "minutes" ? `${focusTime(left)} more focus`
+    : definition.metric === "days" ? `${left} more study ${left === 1 ? "day" : "days"}`
+      : definition.metric === "subjects" ? `${left} more ${left === 1 ? "subject" : "subjects"}`
+        : `${left} more ${left === 1 ? "session" : "sessions"}`;
+  return { ratio, left: text };
 }

@@ -150,6 +150,10 @@ public class FocusGuardPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func setPreferences(_ call: CAPPluginCall) {
         let blocking = call.getBool("blockingEnabled")
         let nudges = call.getBool("nudgesEnabled")
+        // How long the block screen's "5 more minutes" makes you wait (ShieldActionExtension).
+        if let wait = call.getInt("unlockWaitSeconds") {
+            defaults.set(min(max(wait, 0), 300), forKey: "focusGuard.unlockWaitSeconds")
+        }
         DispatchQueue.main.async {
             if let blocking = blocking {
                 self.defaults.set(blocking, forKey: Keys.blockingEnabled)

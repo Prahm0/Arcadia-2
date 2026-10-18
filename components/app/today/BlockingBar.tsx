@@ -2,19 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { formatClock } from "@/lib/api/time";
+import { readUnlockWait } from "@/lib/app/blockTimes";
 import { snoozeBlock, useFocusGuardStatus } from "@/lib/capacitor/focusGuard";
 
-/** How long the second tap is waited for before "5 more minutes" resets. */
-const CONFIRM_MS = 4_000;
+/** How long "Open for 5 minutes" stays on offer once the wait is over. */
+const OFFER_MS = 15_000;
 
 /**
- * While a study block has apps blocked (iPhone): when they open again, and
- * "5 more minutes", which takes a deliberate second tap. The block screen
- * offers the same; this is for when Arcadia is already open.
+ * While apps are blocked (iPhone): when they open again, and "5 more
+ * minutes", Opal style: tap it and wait out a countdown (5 seconds unless
+ * the student chose longer) before the apps can open. The wait is the point;
+ * by the end of it most people don't want them any more.
  */
 export default function BlockingBar({ timezone }: { timezone: string }) {
   const [status, setStatus] = useFocusGuardStatus();
-  const [confirming, setConfirming] = useState(false);
+  // Seconds left on the wait, 0 once it's done and the offer is open, null when idle.
+  const [waiting, setWaiting] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
 
@@ -24,10 +27,13 @@ export default function BlockingBar({ timezone }: { timezone: string }) {
   }, []);
 
   useEffect(() => {
-    if (!confirming) return;
-    const timer = window.setTimeout(() => setConfirming(false), CONFIRM_MS);
+    if (waiting === null) return;
+    // Counting down, then the offer stays open a little while before it resets.
+    const timer = waiting > 0
+      ? window.setTimeout(() => setWaiting(waiting - 1), 1_000)
+      : window.setTimeout(() => setWaiting(null), OFFER_MS);
     return () => window.clearTimeout(timer);
-  }, [confirming]);
+  }, [waiting]);
 
   if (!status?.autoBlocking || !status.active || !status.endsAt) return null;
   const snoozed = status.snoozedUntil && status.snoozedUntil > now ? status.snoozedUntil : null;
@@ -35,8 +41,9 @@ export default function BlockingBar({ timezone }: { timezone: string }) {
   const until = formatClock(new Date(status.endsAt).toISOString(), timezone);
 
   async function press() {
-    if (!confirming) return setConfirming(true);
-    setConfirming(false);
+    if (waiting === null) return setWaiting(readUnlockWait());
+    if (waiting > 0) return;
+    setWaiting(null);
     setBusy(true);
     try {
       const next = await snoozeBlock(5);
@@ -57,11 +64,11 @@ export default function BlockingBar({ timezone }: { timezone: string }) {
         <button
           type="button"
           onClick={() => void press()}
-          disabled={busy}
-          className="shrink-0 text-[13px] font-medium hover:underline disabled:opacity-60"
-          style={{ color: confirming ? "var(--app-text)" : "var(--app-text-muted)" }}
+          disabled={busy || (waiting !== null && waiting > 0)}
+          className="shrink-0 text-[13px] font-medium tabular-nums hover:underline disabled:opacity-80"
+          style={{ color: waiting === 0 ? "var(--app-text)" : "var(--app-text-muted)" }}
         >
-          {confirming ? "Tap again for 5 minutes" : "5 more minutes"}
+          {waiting === null ? "5 more minutes" : waiting > 0 ? `Wait ${waiting}s…` : "Open for 5 minutes"}
         </button>
       )}
     </div>

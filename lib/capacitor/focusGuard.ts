@@ -50,7 +50,8 @@ export interface BlockReport {
 interface FocusGuardPlugin {
   status(): Promise<FocusGuardStatus>;
   pickApps(): Promise<FocusGuardStatus>;
-  setPreferences(options: { blockingEnabled?: boolean; nudgesEnabled?: boolean }): Promise<FocusGuardStatus>;
+  /** `unlockWaitSeconds` is read from 1.3 on; older builds ignore it. */
+  setPreferences(options: { blockingEnabled?: boolean; nudgesEnabled?: boolean; unlockWaitSeconds?: number }): Promise<FocusGuardStatus>;
   beginFocus(options: { endsAt: number; subject: string }): Promise<FocusGuardStatus>;
   endFocus(): Promise<FocusGuardStatus>;
   // Builds with automatic blocking only (status.autoBlocking).

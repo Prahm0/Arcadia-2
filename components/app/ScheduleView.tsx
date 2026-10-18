@@ -45,10 +45,11 @@ import {
 // v2: the view now opens on Week (Day on phones) instead of the term grid,
 // which students found overwhelming. A new key lets everyone start there once.
 const PREFS_KEY = "arcadia:planner:v2";
+// The term grid is gone from the switcher: students found it overwhelming.
+// Week and Day are the whole Schedule now.
 const MODES: Array<{ value: ScheduleMode; label: string; key: string }> = [
-  { value: "term", label: "Term", key: "1" },
-  { value: "week", label: "Week", key: "2" },
-  { value: "day", label: "Day", key: "3" },
+  { value: "week", label: "Week", key: "1" },
+  { value: "day", label: "Day", key: "2" },
 ];
 
 interface Prefs {
@@ -103,6 +104,8 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
         setPrefs({
           ...DEFAULT_PREFS,
           ...saved,
+          // Anyone left on the old term grid opens on the week instead.
+          mode: saved.mode === "day" ? "day" : "week",
           subjects: Array.isArray(saved.subjects) ? saved.subjects : [],
         });
       } catch {
@@ -230,9 +233,8 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
       // Arrow keys inside the term grid move between squares instead.
       if (event.key.startsWith("Arrow") && (event.target as HTMLElement).closest?.('[role="grid"]')) return;
       const actions: Record<string, () => void> = {
-        "1": () => setMode("term"),
-        "2": () => setMode("week"),
-        "3": () => setMode("day"),
+        "1": () => setMode("week"),
+        "2": () => setMode("day"),
         w: () => setMode("week"),
         d: () => setMode("day"),
         t: goToday,

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import BackButton from "./BackButton";
 import { HeaderNotices } from "./Notices";
 
 interface PageHeaderProps {
@@ -27,6 +28,7 @@ export default function PageHeader({ eyebrow, title, meta, action, width = 1160,
     >
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
       <div className="min-w-0">
+        <BackButton />
         {eyebrow ? (
           <p className="text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>
             {eyebrow}

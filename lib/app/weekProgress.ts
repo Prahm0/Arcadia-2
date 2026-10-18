@@ -45,20 +45,23 @@ export function reviewLeads(today: string): boolean {
   return weekday === 0 || weekday === 1;
 }
 
-/** Minutes of study done on each day of this week, Monday first, for the bar chart on Progress. */
+/** Minutes of study done (and planned) on each day of this week, Monday first, for the chart on Progress. */
 export function weekDays(events: Block[], timezone: string, today: string) {
   const start = mondayOf(today);
   const days = Array.from({ length: 7 }, (_, index) => {
     const date = new Date(`${start}T12:00:00Z`);
     date.setUTCDate(date.getUTCDate() + index);
     const key = date.toISOString().slice(0, 10);
-    return { day: key, minutes: 0, isToday: key === today, future: key > today };
+    return { day: key, minutes: 0, planned: 0, isToday: key === today, future: key > today };
   });
   const byDay = new Map(days.map((entry) => [entry.day, entry]));
   for (const event of events) {
-    if (event.category !== "study" || event.outcome !== "completed") continue;
+    if (event.category !== "study") continue;
     const entry = byDay.get(localDay(event.startAt, timezone));
-    if (entry) entry.minutes += Math.max(0, Math.round((Date.parse(event.endAt) - Date.parse(event.startAt)) / 60000));
+    if (!entry) continue;
+    const length = Math.max(0, Math.round((Date.parse(event.endAt) - Date.parse(event.startAt)) / 60000));
+    entry.planned += length;
+    if (event.outcome === "completed") entry.minutes += length;
   }
   return days;
 }

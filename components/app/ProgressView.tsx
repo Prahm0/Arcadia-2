@@ -168,52 +168,135 @@ function Achievements({ achievements }: { achievements: Achievement[] }) {
   );
 }
 
-/** This week at a glance: three numbers and a bar per day. */
+const RING = { time: "#3fb26b", blocks: "#e2a92b", days: "#3a9bd9" };
+const DEFAULT_WEEK_GOAL = 300;
+
+/**
+ * This week, the way a fitness app shows a week: three rings (time studied,
+ * blocks done, days you studied), then a bar for each day against the
+ * day's plan, with today picked out. Before any study it still looks alive:
+ * the rings sit ready and the bars show the plan waiting to be filled.
+ */
 function ThisWeek({ minutes, lastWeek, done, planned, streak, days }: {
   minutes: number;
   lastWeek: number;
   done: number;
   planned: number;
   streak: number;
-  days: Array<{ day: string; minutes: number; isToday: boolean; future: boolean }>;
+  days: Array<{ day: string; minutes: number; planned: number; isToday: boolean; future: boolean }>;
 }) {
-  const most = Math.max(60, ...days.map((entry) => entry.minutes));
+  const goal = Math.max(60, days.reduce((sum, entry) => sum + entry.planned, 0) || DEFAULT_WEEK_GOAL);
+  const activeDays = days.filter((entry) => entry.minutes > 0).length;
+  const rings = [
+    { key: "time", colour: RING.time, ratio: minutes / goal, value: formatMinutes(minutes), of: `of ${formatMinutes(goal)}`, label: "Study time" },
+    { key: "blocks", colour: RING.blocks, ratio: planned ? done / planned : 0, value: String(done), of: `of ${planned || 0} blocks`, label: "Blocks done" },
+    { key: "days", colour: RING.days, ratio: activeDays / 7, value: String(activeDays), of: "of 7 days", label: "Study days" },
+  ];
+  const most = Math.max(30, ...days.map((entry) => Math.max(entry.minutes, entry.planned)));
   const change = lastWeek > 0 ? minutes - lastWeek : null;
+  const best = days.reduce((top, entry) => (entry.minutes > top.minutes ? entry : top), days[0]);
+  const empty = minutes === 0;
+
   return (
-    <section aria-label="This week" className="rounded-[24px] p-5 sm:p-6" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
-      <p className="text-[13px] font-semibold" style={{ color: "var(--app-text-muted)" }}>This week</p>
-      <div className="mt-3 grid grid-cols-3 gap-3">
-        <Stat value={formatMinutes(minutes)} label={change === null ? "studied" : change >= 0 ? `${formatMinutes(change)} more than last week` : `${formatMinutes(-change)} less than last week`} />
-        <Stat value={`${done}${planned ? `/${planned}` : ""}`} label="blocks done" />
-        <Stat value={`${streak} ${streak === 1 ? "day" : "days"}`} label="streak" />
+    <section aria-label="This week" className="overflow-hidden rounded-[28px] p-5 sm:p-7" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-[20px] font-semibold tracking-[-0.01em]" style={{ color: "var(--app-text)" }}>This week</h2>
+        {streak > 0 ? (
+          <span className="rounded-full px-3 py-1 text-[13px] font-semibold" style={{ background: "rgba(226,169,43,.16)", color: "var(--app-text)" }}>
+            🔥 {streak} day streak
+          </span>
+        ) : null}
       </div>
-      <div className="mt-6 grid grid-cols-7 items-end gap-2" style={{ height: 120 }} aria-hidden="true">
-        {days.map((entry) => (
-          <div key={entry.day} className="flex h-full flex-col items-center justify-end gap-1.5">
-            <div
-              className="w-full max-w-[34px] rounded-[8px] transition-[height] duration-500"
-              style={{
-                height: `${Math.max(entry.minutes ? 8 : 4, (entry.minutes / most) * 92)}px`,
-                background: entry.minutes ? "var(--app-accent)" : "var(--app-surface-soft)",
-                opacity: entry.future ? 0.5 : 1,
-              }}
-            />
-            <span className="text-[11.5px] font-medium" style={{ color: entry.isToday ? "var(--app-text)" : "var(--app-text-muted)" }}>
-              {new Intl.DateTimeFormat("en-AU", { weekday: "narrow", timeZone: "UTC" }).format(new Date(`${entry.day}T12:00:00Z`))}
-            </span>
-          </div>
-        ))}
+
+      <div className="mt-5 flex flex-col items-center gap-6 sm:flex-row sm:gap-8">
+        <ActivityRings rings={rings} />
+        <ul className="grid w-full flex-1 gap-3">
+          {rings.map((ring) => (
+            <li key={ring.key} className="flex items-center gap-3">
+              <span aria-hidden="true" className="size-3 shrink-0 rounded-full" style={{ background: ring.colour }} />
+              <div className="min-w-0 flex-1">
+                <p className="text-[12.5px] font-medium" style={{ color: "var(--app-text-muted)" }}>{ring.label}</p>
+                <p className="text-[22px] font-semibold leading-tight tracking-[-0.02em] tabular-nums" style={{ color: ring.colour }}>
+                  {ring.value} <span className="text-[14px] font-medium" style={{ color: "var(--app-text-muted)" }}>{ring.of}</span>
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="mt-7">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-[13px] font-semibold" style={{ color: "var(--app-text)" }}>Minutes each day</p>
+          <p className="text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
+            {empty
+              ? "Tick your first block and watch this fill"
+              : change === null
+                ? `Best day: ${new Intl.DateTimeFormat("en-AU", { weekday: "long", timeZone: "UTC" }).format(new Date(`${best.day}T12:00:00Z`))}`
+                : change >= 0 ? `↑ ${formatMinutes(change)} on last week` : `↓ ${formatMinutes(-change)} on last week`}
+          </p>
+        </div>
+        <div className="mt-4 grid grid-cols-7 items-end gap-2 sm:gap-3" style={{ height: 150 }}>
+          {days.map((entry, index) => {
+            const label = new Intl.DateTimeFormat("en-AU", { weekday: "narrow", timeZone: "UTC" }).format(new Date(`${entry.day}T12:00:00Z`));
+            const planHeight = (entry.planned / most) * 118;
+            const doneHeight = (entry.minutes / most) * 118;
+            return (
+              <div key={entry.day} className="flex h-full flex-col items-center justify-end gap-1.5" title={`${formatMinutes(entry.minutes)} of ${formatMinutes(entry.planned)}`}>
+                <span className="text-[10.5px] font-semibold tabular-nums" style={{ color: entry.minutes ? "var(--app-text)" : "transparent" }}>
+                  {entry.minutes ? formatMinutes(entry.minutes) : "0"}
+                </span>
+                <div className="relative w-full max-w-[38px] rounded-[10px]" style={{ height: Math.max(10, planHeight, doneHeight), background: "var(--app-surface-soft)", outline: entry.isToday ? `2px solid ${RING.time}` : undefined, outlineOffset: 2 }}>
+                  <div
+                    className="progress-bar-grow absolute inset-x-0 bottom-0 rounded-[10px]"
+                    style={{ height: doneHeight, background: `linear-gradient(180deg, ${RING.time}, #2f8a52)`, animationDelay: `${index * 60}ms` }}
+                  />
+                </div>
+                <span className="text-[12px] font-semibold" style={{ color: entry.isToday ? "var(--app-text)" : "var(--app-text-muted)" }}>{label}</span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-3 flex items-center gap-4 text-[12px]" style={{ color: "var(--app-text-muted)" }}>
+          <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-[3px]" style={{ background: RING.time }} />Done</span>
+          <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-[3px]" style={{ background: "var(--app-surface-soft)", boxShadow: "inset 0 0 0 1px var(--app-border)" }} />Planned</span>
+        </div>
       </div>
     </section>
   );
 }
 
-function Stat({ value, label }: { value: string; label: string }) {
+/** Three concentric rings that fill to their ratio, like a fitness app's activity rings. */
+function ActivityRings({ rings }: { rings: Array<{ key: string; colour: string; ratio: number; label: string; value: string; of: string }> }) {
+  const size = 168;
+  const stroke = 18;
+  const gap = 4;
   return (
-    <div className="min-w-0">
-      <p className="text-[24px] font-semibold leading-none tracking-[-0.02em] tabular-nums sm:text-[28px]" style={{ color: "var(--app-text)" }}>{value}</p>
-      <p className="mt-1.5 text-[12.5px] leading-snug" style={{ color: "var(--app-text-muted)" }}>{label}</p>
-    </div>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={rings.map((ring) => `${ring.label} ${ring.value} ${ring.of}`).join(", ")} className="shrink-0 -rotate-90">
+      {rings.map((ring, index) => {
+        const r = size / 2 - stroke / 2 - index * (stroke + gap);
+        const c = 2 * Math.PI * r;
+        const ratio = Math.max(0, Math.min(1, ring.ratio));
+        return (
+          <g key={ring.key}>
+            <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={ring.colour} strokeOpacity={0.18} strokeWidth={stroke} />
+            <circle
+              className="progress-ring-fill"
+              cx={size / 2}
+              cy={size / 2}
+              r={r}
+              fill="none"
+              stroke={ring.colour}
+              strokeWidth={stroke}
+              strokeLinecap="round"
+              strokeDasharray={c}
+              strokeDashoffset={ratio > 0 ? c * (1 - Math.max(ratio, 0.02)) : c}
+              style={{ ["--ring-c" as string]: `${c}`, animationDelay: `${index * 120}ms` }}
+            />
+          </g>
+        );
+      })}
+    </svg>
   );
 }
 

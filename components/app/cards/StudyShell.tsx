@@ -28,7 +28,7 @@ export default function StudyShell({
   children: ReactNode;
 }) {
   return (
-    <div className="mx-auto flex min-h-[calc(100svh-7rem)] w-full max-w-[760px] flex-col px-4 pb-28 pt-4 sm:px-8 lg:min-h-[calc(100svh-2.5rem)] lg:pb-8">
+    <div className="mx-auto flex min-h-[calc(100svh-7rem)] w-full max-w-[760px] flex-col px-4 pb-28 pt-4 sm:px-8 lg:min-h-[calc(100svh-2.5rem-env(safe-area-inset-top,0px))] lg:pb-8">
       <header className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <Link
           href={backHref}

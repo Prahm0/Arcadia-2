@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api/client";
 import AppButton from "./AppButton";
 import SettingRow, { SettingIcons } from "./SettingRow";
+import { isNative } from "@/lib/capacitor/platform";
 
 interface ExportLink {
   url: string | null;
@@ -75,7 +76,10 @@ export default function CalendarExport({ isGuest }: { isGuest: boolean }) {
     setBusy("apple");
     try {
       const url = link?.url ?? (await createLink());
-      window.location.href = webcal(url);
+      // In the iPhone app a webcal:// link on our own domain would load inside
+      // the app and fail; a new window hands it to iOS, which opens Calendar.
+      if (isNative()) window.open(webcal(url), "_blank");
+      else window.location.href = webcal(url);
       setNotice({ tone: "info", text: "Calendar should open and ask to subscribe. If nothing happens, copy the link below instead." });
     } catch (err) {
       setNotice({ tone: "error", text: err instanceof Error ? err.message : "Couldn't make your calendar link." });

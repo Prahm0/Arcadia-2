@@ -462,7 +462,7 @@ function Planner({ now, today, timezone }: { now: Date; today: string; timezone:
 
       ) : (
         /* Tablets and up: the planner fills the window. */
-        <div className="hidden md:flex md:h-[calc(100svh-3rem-72px)] md:flex-col lg:h-[calc(100svh-2.5rem)]">
+        <div className="hidden md:flex md:h-[calc(100svh-3rem-72px)] md:flex-col lg:h-[calc(100svh-2.5rem-env(safe-area-inset-top,0px))]">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 py-3 lg:px-5" style={{ borderColor: "var(--app-border)" }}>
             <button
               type="button"

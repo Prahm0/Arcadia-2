@@ -14,7 +14,7 @@ export default function MenuBar() {
   const nativeIPad = useNativeIPad();
   return (
     <div
-      className="sticky top-0 z-40 hidden h-10 items-center gap-1 border-b pl-3 pr-14 lg:flex"
+      className="sticky top-0 z-40 hidden h-[calc(2.5rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)] items-center gap-1 border-b pl-3 pr-14 lg:flex"
       style={{ background: "var(--app-surface)", borderColor: "var(--app-border)" }}
     >
       <Link

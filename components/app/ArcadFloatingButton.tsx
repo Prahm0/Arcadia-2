@@ -523,7 +523,7 @@ export default function ArcadFloatingButton() {
         {mounted ? null : launcher}
         <div
           ref={dockRef}
-          className="sticky top-10 h-[calc(100svh-2.5rem)] shrink-0 overflow-hidden"
+          className="sticky top-[calc(2.5rem+env(safe-area-inset-top,0px))] h-[calc(100svh-2.5rem-env(safe-area-inset-top,0px))] shrink-0 overflow-hidden"
           style={{
             width: mounted && open ? panelWidth : 0,
             transition: dragging ? "none" : "width 300ms var(--ease-out-expo)",

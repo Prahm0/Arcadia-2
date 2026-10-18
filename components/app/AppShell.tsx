@@ -260,7 +260,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
         {/* Sidebar, desktop only. Mobile uses MobileBottomNav + MobileMoreSheet. */}
         <aside
           className={cn(
-            "hidden lg:sticky lg:top-10 lg:h-[calc(100svh-2.5rem)] lg:w-[232px] lg:shrink-0 lg:flex-col lg:overflow-y-auto",
+            "hidden lg:sticky lg:top-[calc(2.5rem+env(safe-area-inset-top,0px))] lg:h-[calc(100svh-2.5rem-env(safe-area-inset-top,0px))] lg:w-[232px] lg:shrink-0 lg:flex-col lg:overflow-y-auto",
             sidebarOpen ? "lg:flex" : "lg:hidden",
           )}
           style={{
@@ -626,7 +626,7 @@ function SidebarRail({
 
   return (
     <aside
-      className="hidden lg:sticky lg:top-10 lg:flex lg:h-[calc(100svh-2.5rem)] lg:w-[56px] lg:shrink-0 lg:flex-col lg:overflow-hidden"
+      className="hidden lg:sticky lg:top-[calc(2.5rem+env(safe-area-inset-top,0px))] lg:flex lg:h-[calc(100svh-2.5rem-env(safe-area-inset-top,0px))] lg:w-[56px] lg:shrink-0 lg:flex-col lg:overflow-hidden"
       style={{ background: "var(--app-surface-soft)", borderRight: "1px solid var(--app-border)" }}
     >
       <div className="flex flex-col items-center gap-1 px-2 pt-3">

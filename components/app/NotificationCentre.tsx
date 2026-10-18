@@ -68,7 +68,7 @@ export default function NotificationCentre({ notices }: NotificationCentreProps)
         aria-expanded={open}
         aria-controls="notification-centre"
         onClick={mounted ? closeCentre : openCentre}
-        className="ui-hover fixed right-2 top-[calc(env(safe-area-inset-top,0px)+0.25rem)] z-40 grid h-10 w-10 place-items-center rounded-md border-0 bg-transparent p-0 transition-colors lg:right-2 lg:top-1 lg:h-8 lg:w-8"
+        className="ui-hover fixed right-2 top-[calc(env(safe-area-inset-top,0px)+0.25rem)] z-40 grid h-10 w-10 place-items-center rounded-md border-0 bg-transparent p-0 transition-colors lg:right-2 lg:top-[calc(env(safe-area-inset-top,0px)+0.25rem)] lg:h-8 lg:w-8"
         style={{ color: "var(--app-text-soft)" }}
       >
         <span className="relative grid place-items-center">

@@ -136,7 +136,7 @@ export default function CalendarExport({ isGuest }: { isGuest: boolean }) {
 
   return (
     <>
-      <SettingRow icon={SettingIcons.link} title="Your plan in your calendar" detail="Study blocks and deadlines in Google or Apple Calendar, kept up to date with a private link.">
+      <SettingRow icon={SettingIcons.link} title="Your plan in your calendar" detail="See your study blocks and deadlines in Google or Apple Calendar.">
         <AppButton type="button" variant="primary" onClick={addToGoogle} loading={busy === "google"} disabled={loading}>
           Add to Google
         </AppButton>
@@ -162,10 +162,9 @@ export default function CalendarExport({ isGuest }: { isGuest: boolean }) {
           </div>
           <p className="type-mono-label" style={{ color: "var(--app-text-faint)" }}>
             {link.lastFetchedAt
-              ? `Last picked up by your calendar ${relativeTime(link.lastFetchedAt)}.`
-              : "Not picked up by a calendar yet."}{" "}
-            Google refreshes every few hours, Apple as often as you set. Outlook or another app? Add it by URL
-            with this link. Keep it to yourself: anyone with it can see your plan.
+              ? `Last updated in your calendar ${relativeTime(link.lastFetchedAt)}.`
+              : "Not added to a calendar yet."}{" "}
+            Keep this link private.
           </p>
           <div className="flex flex-wrap gap-2">
             <AppButton type="button" variant="ghost" size="sm" onClick={resetLink} loading={busy === "reset"}>

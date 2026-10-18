@@ -239,6 +239,7 @@ export default function SettingsView() {
   const calendarFeeds = data.calendarFeeds ?? [];
   const [newFeedUrl, setNewFeedUrl] = useState("");
   const [newFeedName, setNewFeedName] = useState("");
+  const [showFeedForm, setShowFeedForm] = useState(false);
   const [addingFeed, setAddingFeed] = useState(false);
   const [feedBusy, setFeedBusy] = useState<string | null>(null);
   const [feedNotice, setFeedNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
@@ -315,6 +316,7 @@ export default function SettingsView() {
       }));
       setNewFeedUrl("");
       setNewFeedName("");
+      setShowFeedForm(false);
       if (response.feed.lastSyncError) {
         setFeedNotice({
           tone: "error",
@@ -652,97 +654,65 @@ export default function SettingsView() {
           </div>
         </Card>
 
-        <Card id="calendar-export" className="scroll-mt-24">
-          <SectionHeader label="Add to your calendar" />
-          <CalendarExport isGuest={isGuest} />
-        </Card>
-
         <Card id="calendars" className="scroll-mt-24">
-          <SectionHeader label="Google Calendar" />
-          {!hasPaidPlan ? <PlanGate onUpgrade={() => router.push("/app/pricing")} /> : null}
-          <SettingRow
-            icon={SettingIcons.calendar}
-            title={google.connected ? "Connected" : "Bring in your Google events"}
-            detail={google.connected
-              ? google.lastSyncAt
-                ? `Last sync ${relativeTime(google.lastSyncAt)}. Imported events show as fixed on Schedule.`
-                : "Just connected. The first sync is running, refresh in a minute."
-              : "School, work and personal events, so Arcadia plans around them. Read-only: nothing in Google changes."}
-          >
-            {google.connected ? (
-              <>
-                <AppButton type="button" variant="secondary" onClick={syncGoogle} loading={googleBusy === "sync"} disabled={!hasPaidPlan}>Sync now</AppButton>
-                <AppButton type="button" variant="ghost" onClick={disconnectGoogle} loading={googleBusy === "disconnect"}>Disconnect</AppButton>
-              </>
-            ) : (
-              <AppButton type="button" variant="primary" onClick={connectGoogle} disabled={!hasPaidPlan}>Connect</AppButton>
-            )}
-          </SettingRow>
-          {googleNotice ? (
-            <p
-              className="mt-3 text-[13px]"
-              style={{ color: googleNotice.tone === "error" ? "var(--app-danger)" : "var(--app-success)" }}
+          <SectionHeader label="Calendars" />
+          <CalendarExport isGuest={isGuest} />
+
+          <div className="mt-5 flex flex-col gap-4 border-t pt-5" style={{ borderColor: "var(--app-border)" }}>
+            {!hasPaidPlan ? <PlanGate onUpgrade={() => router.push("/app/pricing")} /> : null}
+            <SettingRow
+              icon={SettingIcons.calendar}
+              title="Google Calendar"
+              detail={google.connected
+                ? google.lastSyncAt
+                  ? `Connected. Last sync ${relativeTime(google.lastSyncAt)}.`
+                  : "Connected. First sync running."
+                : "Bring your events in so Arcadia plans around them."}
             >
-              {googleNotice.text}
-            </p>
-          ) : null}
-        </Card>
-
-        <Card>
-          <SectionHeader label="Calendar subscriptions" />
-          {!hasPaidPlan ? <PlanGate onUpgrade={() => router.push("/app/pricing")} /> : null}
-          <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>
-            Paste any calendar URL, Apple, Canvas, Outlook, or a per-calendar
-            Google link, and Arcadia will pull its events in as fixed blocks on
-            Schedule. Read-only, so nothing is written back.
-          </p>
-
-          <form onSubmit={addCalendarFeed} className="mt-4 flex flex-col gap-3">
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <input
-                type="url"
-                required
-                value={newFeedUrl}
-                onChange={(event) => setNewFeedUrl(event.target.value)}
-                placeholder="https://p01-calendars.icloud.com/…/calendar.ics"
-                className="flex-1 rounded-md px-3 py-2.5 text-[13.5px] outline-none"
-                style={{
-                  background: "var(--app-surface-soft)",
-                  boxShadow: "var(--elev-inset)",
-                  color: "var(--app-text)",
-                }}
-                disabled={addingFeed || !hasPaidPlan}
-              />
-              <input
-                type="text"
-                value={newFeedName}
-                onChange={(event) => setNewFeedName(event.target.value)}
-                placeholder="Label (optional)"
-                maxLength={60}
-                className="rounded-md px-3 py-2.5 text-[13.5px] outline-none sm:w-[180px]"
-                style={{
-                  background: "var(--app-surface-soft)",
-                  boxShadow: "var(--elev-inset)",
-                  color: "var(--app-text)",
-                }}
-                disabled={addingFeed || !hasPaidPlan}
-              />
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <p className="type-mono-label" style={{ color: "var(--app-text-faint)" }}>
-                Apple Calendar → share icon → &ldquo;Public Calendar&rdquo; → copy URL. Canvas →
-                calendar page → &ldquo;Calendar feed&rdquo; link.
+              {google.connected ? (
+                <>
+                  <AppButton type="button" variant="secondary" onClick={syncGoogle} loading={googleBusy === "sync"} disabled={!hasPaidPlan}>Sync now</AppButton>
+                  <AppButton type="button" variant="ghost" onClick={disconnectGoogle} loading={googleBusy === "disconnect"}>Disconnect</AppButton>
+                </>
+              ) : (
+                <AppButton type="button" variant="primary" onClick={connectGoogle} disabled={!hasPaidPlan}>Connect</AppButton>
+              )}
+            </SettingRow>
+            {googleNotice ? (
+              <p className="text-[13px]" style={{ color: googleNotice.tone === "error" ? "var(--app-danger)" : "var(--app-success)" }}>
+                {googleNotice.text}
               </p>
-              <AppButton
-                type="submit"
-                variant="primary"
-                loading={addingFeed}
-                disabled={!hasPaidPlan || !newFeedUrl.trim()}
-              >
-                Add calendar
+            ) : null}
+
+            <SettingRow icon={SettingIcons.link} title="Apple, Outlook or Canvas" detail="Paste a calendar link to bring its events in.">
+              <AppButton type="button" variant="secondary" onClick={() => setShowFeedForm((open) => !open)} disabled={!hasPaidPlan}>
+                {showFeedForm ? "Cancel" : "Add link"}
               </AppButton>
-            </div>
-          </form>
+            </SettingRow>
+            {showFeedForm ? (
+              <form onSubmit={addCalendarFeed} className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    type="url"
+                    required
+                    autoFocus
+                    value={newFeedUrl}
+                    onChange={(event) => setNewFeedUrl(event.target.value)}
+                    placeholder="Paste a calendar link (.ics or webcal)"
+                    className="min-w-0 flex-1 rounded-md px-3 py-2.5 text-[13.5px] outline-none"
+                    style={{ background: "var(--app-surface-soft)", boxShadow: "var(--elev-inset)", color: "var(--app-text)" }}
+                    disabled={addingFeed || !hasPaidPlan}
+                  />
+                  <AppButton type="submit" variant="primary" loading={addingFeed} disabled={!hasPaidPlan || !newFeedUrl.trim()}>
+                    Add
+                  </AppButton>
+                </div>
+                <p className="text-[12px]" style={{ color: "var(--app-text-faint)" }}>
+                  Apple Calendar: tap share, turn on Public Calendar, copy the link.
+                </p>
+              </form>
+            ) : null}
+          </div>
 
           {calendarFeeds.length > 0 ? (
             <ul className="mt-5 flex flex-col gap-3">

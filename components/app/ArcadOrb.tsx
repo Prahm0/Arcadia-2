@@ -269,6 +269,8 @@ export default function ArcadOrb({ state = "idle", size = 40, className }: Arcad
           <span className="arcad-orb-float absolute inset-0">
             <Image
               src="/brand/arcad-orb-body.png"
+              // Small and on screen at once: lazy loading left a pale blob until it arrived.
+              loading="eager"
               alt=""
               width={size}
               height={size}

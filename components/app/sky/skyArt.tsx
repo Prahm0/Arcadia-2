@@ -94,7 +94,7 @@ export function Figure({ definition, points, sizes, lit }: {
       </g>;
       const bright = index === 0 || (definition.mags?.[index] ?? 9) < 1.6;
       const s = r * 5.2;
-      return <g key={index}>
+      return <g key={index} className={styles.starLit} style={{ "--i": index } as CSSProperties}>
         <circle className={styles.halo} style={{ "--i": index } as CSSProperties} cx={x} cy={y} r={r * 7} fill={`url(#${glow})`} opacity=".55" />
         {bright && <path d={`M${x - r * 6.5} ${y}H${x + r * 6.5}M${x} ${y - r * 6.5}V${y + r * 6.5}`} stroke={STAR_WHITE} strokeOpacity=".5" strokeWidth=".6" />}
         {bright && <path d={`M${x - r * 2.6} ${y - r * 2.6}L${x + r * 2.6} ${y + r * 2.6}M${x - r * 2.6} ${y + r * 2.6}L${x + r * 2.6} ${y - r * 2.6}`} stroke={STAR_WHITE} strokeOpacity=".25" strokeWidth=".5" />}

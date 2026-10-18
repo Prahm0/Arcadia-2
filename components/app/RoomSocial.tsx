@@ -189,7 +189,7 @@ function MemberProfile({ code, member, canRemove, onRemove }: { code: string; me
           <Stat label="Today" value={formatDuration(member.todaySeconds)} />
           <Stat label="Past 7 days" value={profile ? formatDuration(profile.weekSeconds) : "…"} />
           <Stat label="All-time focus" value={profile ? formatDuration(profile.totalSeconds) : "…"} />
-          <Stat label="Streak cards" value={member.constellation ? String(member.constellation.cards) : "0"} />
+          <Stat label="Constellations" value={member.constellation ? String(member.constellation.cards) : "0"} />
         </dl>
       )}
       {canRemove ? (

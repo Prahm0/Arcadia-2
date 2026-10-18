@@ -65,7 +65,7 @@ export default function ConstellationArtwork({ definition, card, preview = false
   const [mx, my] = plate.meteor;
   return <div ref={root} className={styles.stage} style={{ "--sky-colour": gold } as CSSProperties} data-animated={ambient && visible}>
     <div className={styles.nebula} aria-hidden="true" />
-    <svg viewBox={`0 0 ${W} ${H}`} fill="none" role={interactive ? undefined : "img"} aria-hidden={interactive || undefined} aria-label={interactive ? undefined : `${definition.name}, ${preview ? "reward preview" : `${card?.milestones.filter((star) => star.earnedAt !== null).length || 0} of ${definition.points.length} stars lit`}`}>
+    <svg viewBox={`0 0 ${W} ${H}`} fill="none" role={interactive ? undefined : "img"} aria-hidden={interactive || undefined} aria-label={interactive ? undefined : `${definition.name}, ${preview ? "preview" : `${card?.milestones.filter((star) => star.earnedAt !== null).length || 0} of ${definition.points.length} stars lit`}`}>
       <defs>
         <radialGradient id={id("band")}><stop offset="0" stopColor="#dfe6f5" stopOpacity=".14" /><stop offset=".5" stopColor="#c9d4ec" stopOpacity=".05" /><stop offset="1" stopColor="#c9d4ec" stopOpacity="0" /></radialGradient>
         <linearGradient id={id("meteor")} x1="1" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#fff" /><stop offset=".25" stopColor="#fff4dc" stopOpacity=".6" /><stop offset="1" stopColor="#fff4dc" stopOpacity="0" /></linearGradient>

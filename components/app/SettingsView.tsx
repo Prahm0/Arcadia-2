@@ -299,6 +299,22 @@ export default function SettingsView() {
     }
   }
 
+  // Off means every subject's weekly study is 0: only deadlines and exams get blocks.
+  const fillsFreeTime = data.subjects.some((subject) => (subject.weeklyMinutes ?? 0) > 0);
+  const [planBusy, setPlanBusy] = useState(false);
+  async function saveFillFreeTime(next: boolean) {
+    setPlanBusy(true);
+    try {
+      for (const subject of data.subjects) {
+        // Back on: each subject returns to its usual year-level amount.
+        await api(`/api/subjects/${encodeURIComponent(subject.id)}`, { method: "PATCH", body: JSON.stringify({ weeklyMinutes: next ? null : 0 }) });
+      }
+      await reload();
+    } finally {
+      setPlanBusy(false);
+    }
+  }
+
   async function addCalendarFeed(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const url = newFeedUrl.trim();
@@ -652,6 +668,19 @@ export default function SettingsView() {
               </button>
             ))}
           </div>
+        </Card>
+
+        <Card id="study-plan" className="scroll-mt-24">
+          <SectionHeader label="Study plan" />
+          <PreferenceToggle
+            label="Fill my free time with study"
+            detail={fillsFreeTime
+              ? "Arcadia spreads study for every subject across your week, and plans prep before deadlines."
+              : "Off: you plan your own days. Arcadia only adds prep before deadlines and exams."}
+            checked={fillsFreeTime}
+            disabled={planBusy}
+            onChange={(next) => void saveFillFreeTime(next)}
+          />
         </Card>
 
         <Card id="calendars" className="scroll-mt-24">

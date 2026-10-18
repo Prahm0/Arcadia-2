@@ -338,8 +338,9 @@ events.patch("/:id/sleep-time", async (c) => {
 
 /**
  * Taking a block off the schedule. A block Arcadia planned is kept as skipped
- * rather than deleted, or the next re-plan would put it straight back; the
- * time it stood for gets planned somewhere else.
+ * rather than deleted, or the next re-plan would put it straight back. For
+ * deadline prep that time counts as covered (bookedTaskTime), so nothing
+ * replaces it; subject time stays off that day.
  */
 events.delete("/:id", async (c) => {
   const { userId } = c.get("session");

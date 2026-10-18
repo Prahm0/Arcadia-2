@@ -42,6 +42,7 @@ import AddLine, { type NoteTarget } from "./today/AddLine";
 import LineRow from "./today/LineRow";
 import { matchSubject } from "@/lib/app/quickAdd";
 import GapSuggestion from "./today/GapSuggestion";
+import TimeSheet from "./today/TimeSheet";
 import BlockingBar from "./today/BlockingBar";
 import TodayProgress from "./TodayProgress";
 import EmptyArt from "./EmptyArt";
@@ -79,6 +80,8 @@ export default function TodayView() {
   const [progressRefresh, setProgressRefresh] = useState(0);
   const [openEventId, setOpenEventId] = useState<string | null>(null);
   const [openEventMode, setOpenEventMode] = useState<EventSheetMode>("details");
+  // One of the student's own lines getting a time from the time picker.
+  const [timeFor, setTimeFor] = useState<NoteEntry | null>(null);
 
   // ?new=1 and ?add=1 (links from elsewhere) focus the "Add to today..." line; AddLine handles both.
 
@@ -286,6 +289,7 @@ export default function TodayView() {
       });
       void reload();
     },
+    time: (entry) => setTimeFor(entry),
     note: async (entry, note) => {
       if (entry.kind === "item") {
         patchItem(entry.item.id, { note });
@@ -414,6 +418,31 @@ export default function TodayView() {
           report={doneMoment.report ?? null}
           timezone={timezone}
           onClose={() => setDoneMoment(null)}
+        />
+      ) : null}
+      {timeFor ? (
+        <TimeSheet
+          title={timeFor.kind === "item" ? timeFor.item.text : timeFor.event.title}
+          start={timeFor.kind === "block" ? Math.round((Date.parse(timeFor.event.startAt) - dayStartMs) / 60000) : null}
+          end={timeFor.kind === "block" && timeFor.event.kind === "note-range" ? Math.round((Date.parse(timeFor.event.endAt) - dayStartMs) / 60000) : null}
+          onClose={() => setTimeFor(null)}
+          onSave={async (start, end) => {
+            const entry = timeFor;
+            const kind = entry.kind === "item" ? "item" : "event";
+            const id = entry.kind === "item" ? entry.item.id : entry.event.id;
+            await api(`/api/today/lines/${kind}/${encodeURIComponent(id)}`, {
+              method: "PUT",
+              body: JSON.stringify({
+                day,
+                title: entry.kind === "item" ? entry.item.text : entry.event.title,
+                subject: entry.kind === "item" ? entry.item.subject : entry.event.subject,
+                start,
+                end,
+                evening: false,
+              }),
+            });
+            void reload();
+          }}
         />
       ) : null}
       <LifeHappened
@@ -608,6 +637,7 @@ function TodayCard(props: TodayCardProps) {
                 fresh={fresh}
                 index={index}
                 actions={[
+                  { label: entry.kind === "item" ? "Set time" : "Change time", onSelect: () => onLine.time(entry) },
                   { label: isToday ? "Tomorrow" : "Move to today", onSelect: () => void onLine.tomorrow(entry) },
                   { label: "Delete", onSelect: () => void onLine.remove(entry), danger: true },
                 ]}
@@ -847,6 +877,8 @@ interface LineActions {
   remove: (entry: NoteEntry) => Promise<void>;
   note: (entry: NoteEntry, note: string) => Promise<void>;
   edit: (entry: NoteEntry, text: string) => Promise<void>;
+  /** Opens the time picker for one of the student's own lines. */
+  time: (entry: NoteEntry) => void;
 }
 
 /** A line as the student would type it, so editing shows "SLC 10:50", not just "SLC". */

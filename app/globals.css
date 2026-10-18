@@ -1807,3 +1807,12 @@ html.keyboard-open .app-mobile-nav {
 @media (prefers-reduced-motion: reduce) {
   .arcad-sheet { transition: none; }
 }
+
+/* Progress: rings sweep in and bars grow from the bottom on first show. */
+@keyframes progress-ring-sweep { from { stroke-dashoffset: var(--ring-c); } }
+@keyframes progress-bar-rise { from { transform: scaleY(0); } }
+.progress-ring-fill { animation: progress-ring-sweep 900ms cubic-bezier(.22, 1, .36, 1) both; }
+.progress-bar-grow { transform-origin: bottom; animation: progress-bar-rise 600ms cubic-bezier(.22, 1, .36, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .progress-ring-fill, .progress-bar-grow { animation: none; }
+}

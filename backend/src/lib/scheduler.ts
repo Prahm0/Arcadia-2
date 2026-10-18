@@ -197,6 +197,8 @@ export interface PlanDay {
    * moving a block to another day or removing it. Nothing puts them back.
    */
   takenOff: Set<string>;
+  /** Deadlines the student removed a block for on this day: their work stays off it. */
+  tasksOff: Set<string>;
 }
 
 /**
@@ -627,8 +629,15 @@ export function groundwork(
     const date = localDateKey(at, tz);
     takenOff.set(date, (takenOff.get(date) ?? new Set<string>()).add(subjectKey(subject)));
   };
+  // A deadline block the student removed keeps that deadline off that day.
+  const tasksOff = new Map<string, Set<string>>();
   for (const event of inputs.existing) {
-    // Deadline work still has to get done, so only subject time stays away.
+    if (event.category !== "study" || !event.taskId || event.status !== "cancelled") continue;
+    const date = localDateKey(event.startAt, tz);
+    tasksOff.set(date, (tasksOff.get(date) ?? new Set<string>()).add(event.taskId));
+  }
+  for (const event of inputs.existing) {
+    // Deadline work is kept off a day only when its own block was removed (above).
     if (event.category !== "study" || event.taskId) continue;
     if (event.status === "cancelled") takeOff(event.startAt, event.subject);
     else if (event.movedFrom !== null && localDateKey(event.movedFrom, tz) !== localDateKey(event.startAt, tz)) {
@@ -671,6 +680,7 @@ export function groundwork(
         .reduce((sum, event) => sum + (event.endAt - event.startAt), 0),
       cap: holidayCap(localDateKey(day, tz)),
       takenOff: takenOff.get(localDateKey(day, tz)) ?? new Set<string>(),
+      tasksOff: tasksOff.get(localDateKey(day, tz)) ?? new Set<string>(),
     });
   }
 
@@ -696,12 +706,17 @@ export interface QueueEntry {
 /**
  * Deadline work already sitting in blocks a rebuild keeps: ones the student
  * (or Arcad, on their say-so) moved or added, and the one under way. Without
- * this a moved block's time gets booked a second time somewhere else.
+ * this a moved block's time gets booked a second time somewhere else. Blocks
+ * the student removed count too, so removing one doesn't bring it back.
  */
 export function bookedTaskTime(keep: EventSelect[], now: number): Map<string, number> {
   const booked = new Map<string, number>();
   for (const event of keep) {
-    if (!event.taskId || event.category !== "study" || event.outcome !== "planned" || event.endAt <= now) continue;
+    if (!event.taskId || event.category !== "study") continue;
+    // A block the student removed means "I don't need this time": it counts
+    // as covered, or the next rebuild books the same time somewhere else.
+    const removed = event.status === "cancelled";
+    if (!removed && (event.outcome !== "planned" || event.endAt <= now)) continue;
     booked.set(event.taskId, (booked.get(event.taskId) ?? 0) + (event.endAt - event.startAt));
   }
   return booked;
@@ -774,6 +789,10 @@ export function applyLayout(
 
     if (item.taskId) {
       const entry = queue.find((candidate) => candidate.task.id === item.taskId);
+      if (day.tasksOff.has(item.taskId)) {
+        problems.push(`${label}: the student took that deadline off this day`);
+        continue;
+      }
       if (!entry || entry.remaining <= 0) {
         problems.push(`${label}: that deadline work is already fully booked, or isn't on their list`);
         continue;
@@ -1079,7 +1098,7 @@ export function planStudy(userId: string, inputs: ScheduleInputs, g: Groundwork)
       const earliest = day.free[0]?.start;
       if (earliest === undefined) break;
       const candidates = queue.filter(
-        (item) => item.remaining > 0 && item.task.dueAt > earliest && allowed(item),
+        (item) => item.remaining > 0 && item.task.dueAt > earliest && allowed(item) && !day.tasksOff.has(item.task.id),
       );
       const entry = candidates.find((item) => item.task.id !== last) ?? candidates[0];
       if (!entry) break;

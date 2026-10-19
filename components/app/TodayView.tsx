@@ -43,6 +43,7 @@ import LineRow from "./today/LineRow";
 import { matchSubject } from "@/lib/app/quickAdd";
 import GapSuggestion from "./today/GapSuggestion";
 import TimeSheet from "./today/TimeSheet";
+import LaterOffer from "./LaterOffer";
 import BlockingBar from "./today/BlockingBar";
 import TodayProgress from "./TodayProgress";
 import EmptyArt from "./EmptyArt";
@@ -445,6 +446,7 @@ export default function TodayView() {
           }}
         />
       ) : null}
+      {isToday ? <LaterOffer /> : null}
       <LifeHappened
         open={showLife}
         autoReason={lifeAutoReason}

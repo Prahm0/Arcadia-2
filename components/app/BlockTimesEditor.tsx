@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import AppButton from "./AppButton";
+import { useDashboardData } from "@/lib/app/DashboardProvider";
 import {
   UNLOCK_WAITS,
   blockTimeDays,
@@ -26,6 +28,8 @@ const fromInput = (value: string) => {
  * like Opal's schedules, and how long "5 more minutes" makes you wait.
  */
 export default function BlockTimesEditor() {
+  const { data } = useDashboardData();
+  const paid = data.user.tier === "pro" || data.user.tier === "max";
   const [times, setTimes] = useState<BlockTime[]>(readBlockTimes);
   const [wait, setWait] = useState(readUnlockWait);
   const [draft, setDraft] = useState<{ label: string; start: string; end: string; days: number[] } | null>(null);
@@ -52,7 +56,18 @@ export default function BlockTimesEditor() {
       <div>
         <p className="text-[14px] font-medium" style={{ color: "var(--app-text)" }}>Block times</p>
         <p className="mt-0.5 text-[13px]" style={{ color: "var(--app-text-muted)" }}>Your apps are also blocked at these times, every week.</p>
-        {times.length ? (
+        {!paid ? (
+          <div className="mt-3 rounded-xl p-4" style={{ background: "var(--app-surface-soft)" }}>
+            <p className="text-[14px] font-semibold" style={{ color: "var(--app-text)" }}>Block times are part of Pro</p>
+            <p className="mt-1 text-[13px]" style={{ color: "var(--app-text-muted)" }}>
+              Like Opal, built into your planner: &ldquo;Night, 9pm to 7am&rdquo;, &ldquo;After school, 4 to 6pm&rdquo;. Your study blocks still block apps on the free plan.
+            </p>
+            <Link href="/app/pricing" className="mt-3 inline-flex h-10 items-center rounded-full px-4 text-[14px] font-semibold" style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}>
+              Try Pro free for 7 days
+            </Link>
+          </div>
+        ) : null}
+        {paid && times.length ? (
           <ul className="mt-3 flex flex-col gap-2">
             {times.map((time) => (
               <li key={time.id} className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ background: "var(--app-surface-soft)" }}>
@@ -74,7 +89,7 @@ export default function BlockTimesEditor() {
           </ul>
         ) : null}
 
-        {draft ? (
+        {!paid ? null : draft ? (
           <div className="mt-3 flex flex-col gap-3 rounded-xl p-4" style={{ background: "var(--app-surface-soft)" }}>
             <input
               id="block-time-label"

@@ -25,7 +25,7 @@ import { TIERS } from "./PricingView";
 type PlanKey = "pro" | "max";
 
 const PRO_MONTHLY = 12.82;
-const WINBACK_PERCENT = 41;
+export const WINBACK_PERCENT = 41;
 const WINBACK_PRICE = Math.round(PRO_MONTHLY * (1 - WINBACK_PERCENT / 100) * 100) / 100;
 
 const PLANS: {
@@ -100,7 +100,7 @@ export default function OnboardingPaywall({
       if (res?.url) {
         analytics.checkoutStarted(plan, "month");
         onCheckoutStarted?.();
-        window.location.href = res.url;
+        window.location.assign(res.url);
         return;
       }
       throw new Error("Checkout URL missing.");
@@ -245,16 +245,19 @@ export default function OnboardingPaywall({
   );
 }
 
-function WinbackOffer({
+export function WinbackOffer({
   busy,
   error,
   onClaim,
   onDecline,
+  later = false,
 }: {
   busy: boolean;
   error: string | null;
   onClaim: () => void;
   onDecline: () => void;
+  /** Shown after a few days of use (LaterOffer), not on the way out of onboarding. */
+  later?: boolean;
 }) {
   return (
     <div
@@ -272,10 +275,12 @@ function WinbackOffer({
           One-time offer
         </p>
         <h2 className="mt-3 text-[24px] font-semibold leading-[1.15] tracking-[-0.015em]" style={{ color: "var(--app-text)" }}>
-          Wait, take <span className="accent-serif">{WINBACK_PERCENT}% off</span> Pro.
+          {later ? "You've been putting in the work." : "Wait,"} take <span className="accent-serif">{WINBACK_PERCENT}% off</span> Pro.
         </h2>
         <p className="mt-3 text-[14px]" style={{ color: "var(--app-text-muted)" }}>
-          Your first look at Arcadia Pro, monthly, at the best price we offer. This offer won&rsquo;t show again.
+          {later
+            ? "Arcad 20 times a day, your calendars in your plan and block times for your apps, at the best price we offer. This offer won't show again."
+            : <>Your first look at Arcadia Pro, monthly, at the best price we offer. This offer won&rsquo;t show again.</>}
         </p>
 
         <div className="mt-6 flex items-baseline justify-center gap-2">

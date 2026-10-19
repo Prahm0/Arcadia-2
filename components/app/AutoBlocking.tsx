@@ -48,7 +48,9 @@ export default function AutoBlocking() {
 
   useEffect(() => {
     if (!status?.blockingSupported) return;
-    const blocks = [...guardedBlocks(data.events, now), ...blockTimeBlocks(times, now, GUARD_HORIZON_MS)]
+    // Block times are Pro; study blocks block apps on every plan.
+    const paid = data.user.tier === "pro" || data.user.tier === "max";
+    const blocks = [...guardedBlocks(data.events, now), ...(paid ? blockTimeBlocks(times, now, GUARD_HORIZON_MS) : [])]
       .sort((a, b) => a.startsAt - b.startsAt)
       .slice(0, MAX_GUARDED);
     const live = liveBlock(blocks, now);
@@ -59,7 +61,7 @@ export default function AutoBlocking() {
     if (key === sent.current) return;
     sent.current = key;
     void guardBlocks(blocks, live, status);
-  }, [data.events, now, status, times]);
+  }, [data.events, data.user.tier, now, status, times]);
 
   return null;
 }

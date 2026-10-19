@@ -708,7 +708,16 @@ function MessageLimitNotice({ usage }: { usage: ArcadUsage }) {
       <p className="text-[13.5px] font-medium" style={{ color: "var(--app-text)" }}>
         You&apos;ve used your {usage.cap} {tierName} messages for today. Resets at midnight.
       </p>
-      {upgradeName && weeklyPrice !== null ? (
+      {usage.tier === "free" ? (
+        <>
+          <p className="mt-1 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
+            Pro gives you 20 a day, so Arcad can keep rebuilding your week whenever it changes.
+          </p>
+          <Link href="/app/pricing" className="mt-1.5 inline-flex text-[13px] font-semibold hover:underline" style={{ color: "var(--app-arcad)" }}>
+            Try Pro free for 7 days
+          </Link>
+        </>
+      ) : upgradeName && weeklyPrice !== null ? (
         <Link href="/app/pricing" className="mt-1 inline-flex text-[12.5px] font-medium hover:underline" style={{ color: "var(--app-arcad)" }}>
           Upgrade to {upgradeName} · ${weeklyPrice.toFixed(2)}/week
         </Link>

@@ -21,9 +21,10 @@ registerHooks({
   },
 });
 
-const { atLocalMinutes, startOfLocalDay } = await import("./src/lib/time.ts");
+const { atLocalMinutes, localDateKey, startOfLocalDay } = await import("./src/lib/time.ts");
 const { groundwork, planStudy } = await import("./src/lib/scheduler.ts");
 const { localInstant } = await import("./src/lib/plan-changes.ts");
+const { recoveryDueAt, recoveryInputProblem } = await import("./src/lib/recovery.ts");
 
 const MINUTE = 60_000;
 const local = (ms, tz) =>
@@ -100,6 +101,23 @@ test("defect 5: a new block keeps a break after the block under way", () => {
   const study = planStudy("u", data, g).planned.filter((r) => r.category === "study").sort((a, b) => a.startAt - b.startAt);
   const first = study.find((r) => r.startAt >= underway.endAt);
   assert.ok(first.startAt - underway.endAt >= 10 * MINUTE, `gap ${(first.startAt - underway.endAt) / MINUTE} min`);
+});
+
+test("recovery only confirms a commitment it can actually schedule", () => {
+  const now = Date.parse("2026-11-03T06:20:00Z");
+  const tz = "Australia/Brisbane";
+  assert.equal(recoveryInputProblem({ reason: "busy", busyStart: "18:00", busyEnd: "17:00" }, now, tz), "Choose an end time after the start time.");
+  assert.equal(recoveryInputProblem({ reason: "busy", busyStart: "16:00", busyEnd: "18:00" }, now, tz), null);
+  assert.equal(recoveryInputProblem({ reason: "new_deadline", dueOn: "2026-02-30" }, now, tz), "Choose a valid due date.");
+  assert.equal(recoveryInputProblem({ reason: "new_deadline", dueOn: "2026-11-02" }, now, tz), "Choose a due date that hasn't passed.");
+  assert.equal(recoveryInputProblem({ reason: "new_deadline", dueOn: "2026-11-10", size: "medium" }, now, tz), null);
+});
+
+test("recovery deadlines stay on the student’s selected local date", () => {
+  const tz = "Pacific/Auckland";
+  const dueAt = recoveryDueAt("2026-12-20", tz);
+  assert.equal(localDateKey(dueAt, tz), "2026-12-20");
+  assert.equal(local(dueAt, tz), "20/12/26, 23:59");
 });
 
 // The end-to-end check against the research harness's scenarios lives on the

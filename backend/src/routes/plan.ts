@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { db } from "../db";
 import { getMonthPlan, makeMonthPlan } from "../lib/month-plan";
 import { track } from "../lib/posthog";
-import { getRecoveryAvailability, recoverPlan, RecoveryAlreadyUsedError, type RecoveryInput, type RecoveryReason } from "../lib/recovery";
+import { getRecoveryAvailability, recoverPlan, RecoveryAlreadyUsedError, RecoveryValidationError, type RecoveryInput, type RecoveryReason } from "../lib/recovery";
 import { replan } from "../lib/replan";
 import { resetCounts, resetSchedule } from "../lib/reset";
 import { awardXp } from "../lib/rewards";
@@ -90,6 +90,9 @@ plan.post("/recover", async (c) => {
     const rewards = recoveryId ? await awardXp(database, userId, "recovery", recoveryId, XP.recovery) : [];
     return c.json({ ...result, rewards });
   } catch (err) {
+    if (err instanceof RecoveryValidationError) {
+      return c.json({ error: err.message }, 400);
+    }
     if (err instanceof RecoveryAlreadyUsedError) {
       return c.json({ error: err.message, code: "recovery_already_used", reason: err.reason }, 409);
     }

@@ -172,6 +172,7 @@ export default function LifeHappened({
 
   const selected = REASONS.find((r) => r.key === reason) ?? null;
   const deadlineReady = reason !== "new_deadline" || Boolean(dlDue);
+  const busyTimesValid = reason !== "busy" || !busyStart || !busyEnd || busyEnd > busyStart;
 
   return (
     <div
@@ -247,27 +248,34 @@ export default function LifeHappened({
             </div>
 
             {selected?.key === "busy" ? (
-              <div className="mt-4 flex items-end gap-3">
-                <label className="flex-1 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
-                  From
-                  <input
-                    type="time"
-                    value={busyStart}
-                    onChange={(e) => setBusyStart(e.target.value)}
-                    className="mt-1 w-full rounded-md px-3 py-2 text-[14px]"
-                    style={{ background: "var(--app-surface-soft)", color: "var(--app-text)", border: "1px solid var(--app-border)" }}
-                  />
-                </label>
-                <label className="flex-1 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
-                  Until
-                  <input
-                    type="time"
-                    value={busyEnd}
-                    onChange={(e) => setBusyEnd(e.target.value)}
-                    className="mt-1 w-full rounded-md px-3 py-2 text-[14px]"
-                    style={{ background: "var(--app-surface-soft)", color: "var(--app-text)", border: "1px solid var(--app-border)" }}
-                  />
-                </label>
+              <div className="mt-4">
+                <div className="flex items-end gap-3">
+                  <label className="flex-1 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
+                    From
+                    <input
+                      type="time"
+                      value={busyStart}
+                      onChange={(e) => setBusyStart(e.target.value)}
+                      className="mt-1 w-full rounded-md px-3 py-2 text-[14px]"
+                      style={{ background: "var(--app-surface-soft)", color: "var(--app-text)", border: "1px solid var(--app-border)" }}
+                    />
+                  </label>
+                  <label className="flex-1 text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>
+                    Until
+                    <input
+                      type="time"
+                      value={busyEnd}
+                      onChange={(e) => setBusyEnd(e.target.value)}
+                      className="mt-1 w-full rounded-md px-3 py-2 text-[14px]"
+                      style={{ background: "var(--app-surface-soft)", color: "var(--app-text)", border: "1px solid var(--app-border)" }}
+                    />
+                  </label>
+                </div>
+                {!busyTimesValid ? (
+                  <p className="mt-2 text-[12.5px]" style={{ color: "var(--app-danger)" }}>
+                    Choose an end time after the start time.
+                  </p>
+                ) : null}
               </div>
             ) : null}
 
@@ -299,6 +307,7 @@ export default function LifeHappened({
                     type="date"
                     value={dlDue}
                     onChange={(e) => setDlDue(e.target.value)}
+                    min={new Date().toLocaleDateString("en-CA", { timeZone: tz })}
                     className="flex-1 rounded-md px-3 py-2 text-[14px]"
                     style={{ background: "var(--app-surface-soft)", color: "var(--app-text)", border: "1px solid var(--app-border)" }}
                   />
@@ -330,7 +339,7 @@ export default function LifeHappened({
 
             {selected ? (
               <div className="mt-5">
-                <AppButton variant="primary" onClick={() => reason && run(reason)} loading={loading} disabled={!deadlineReady || ((reason === "less_time" || reason === "tired") && Boolean(availability?.[reason]))} className="w-full">
+                <AppButton variant="primary" onClick={() => reason && run(reason)} loading={loading} disabled={!deadlineReady || !busyTimesValid || ((reason === "less_time" || reason === "tired") && Boolean(availability?.[reason]))} className="w-full">
                   Fix my week
                 </AppButton>
               </div>

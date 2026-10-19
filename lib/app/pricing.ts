@@ -30,6 +30,7 @@ export const TIER_COPY = {
       "Arcad, 20 messages a day: it plans, explains and rebuilds your week",
       "Your school, Google, Apple and Canvas calendars in your plan",
       "Upload notes and PDFs, Arcad answers from them",
+      "Block times for your apps, like Opal: night, after school, whenever you choose",
       "Study rooms for up to 30, with shared timers",
       "Room icon and shared 7-day focus goal",
       "Full analytics, subject breakdown, streaks, trends",

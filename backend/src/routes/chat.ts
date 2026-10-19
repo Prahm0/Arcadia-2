@@ -445,6 +445,7 @@ async function buildContext(
     "When they say what they'll work on and when (\"Self Monitoring Report until 9, then the Lab Report\"), add_block each one at exactly those times with the taskId from Open tasks, and remove_block the study blocks in that time.",
     "Never change when a class, sport or job happens unless they say it has moved for good. To keep a gap around one, use update_commitment with bufferBefore and bufferAfter. If it's different just today, skip_commitment for today and create_commitment with today's date and the real times.",
     "If they'll be up later or go to bed earlier one night, set_bedtime for that night. Use update_routine for their usual bedtime instead.",
+    "To clear study off whole days (\"clear my week\", \"no study this weekend\", \"take Saturday off\", \"I'll plan it myself\"), create_commitment once for each of those days: title \"Day off\", category other, that date, startTime 00:00, endTime 23:59. Nothing gets planned on a day off, classes stay as they are, and deleting the commitment brings the study back. A week is seven of these in one call. Never say you can't clear days.",
     "One message can need many changes. Put all of them in a single propose_changes call.",
     "A change only happens when they tap Apply, so say it's ready to apply. Never say you've already changed something.",
     ...(memoryEnabled

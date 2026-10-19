@@ -54,6 +54,7 @@ export const PROPOSE_TOOL = {
       "skip_commitment: id and date, when a repeating commitment isn't on that one day. If it's on at different times that day, also create_commitment with that date and the new times.",
       "set_bedtime: date and bedtime (HH:MM) for one night, when they'll be up later or go to bed earlier than usual. Their usual bedtime stays the same.",
       "delete_commitment: id.",
+      "To keep whole days free of study (\"clear my week\"), create_commitment per day with title Day off, that date, 00:00 to 23:59.",
       "update_subject: subject and weeklyMinutes, for more or less time on a subject every week.",
       "create_subject: subject name and optional weeklyMinutes, for a new class or course. Never use this if the subject already exists.",
       "delete_subject: subject name. This removes the subject from planning but keeps their tasks.",

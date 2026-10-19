@@ -133,6 +133,10 @@ export interface AdminMoney {
     newThisPeriod: number;
     /** On a free trial (Stripe or App Store): not paying yet, so not in the totals or MRR. */
     trialing: number;
+    /** Of those, on the website (Stripe). */
+    trialingWeb: number;
+    /** Of those, in the iPhone or iPad app (App Store, read live from RevenueCat). */
+    trialingAppStore: number;
   };
   /** App Store test purchases (sandbox, TestFlight), left out of the above. */
   sandbox: number;

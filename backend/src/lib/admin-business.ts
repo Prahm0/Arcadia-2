@@ -179,7 +179,7 @@ export async function adminMoney(
     row.mrrCents += mrrCents;
     plans.set(key, row);
   };
-  const paying = { total: 0, stripe: 0, appStore: 0, pro: 0, max: 0, cancelling: 0, pastDue: 0, newThisPeriod: 0, trialing: 0 };
+  const paying = { total: 0, stripe: 0, appStore: 0, pro: 0, max: 0, cancelling: 0, pastDue: 0, newThisPeriod: 0, trialing: 0, trialingWeb: 0, trialingAppStore: 0 };
   let mrrStripe = 0;
   let mrrAppStore = 0;
   let sandbox = 0;
@@ -198,6 +198,7 @@ export async function adminMoney(
     // A free trial hasn't paid anything yet: counted on its own, not in MRR.
     if (sub.status === "trialing") {
       paying.trialing += 1;
+      paying.trialingWeb += 1;
       continue;
     }
     const mrr = subscriptionMrr(sub);
@@ -237,6 +238,7 @@ export async function adminMoney(
       if (!plan) return;
       if (sub.period_type === "trial") {
         paying.trialing += 1;
+        paying.trialingAppStore += 1;
         return;
       }
       const listed = sub.period_type === "intro" && plan.tier === "pro" && plan.interval === "monthly"

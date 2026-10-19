@@ -8,6 +8,24 @@ import { blockDoneLine, blockMinutes, ringMinutes } from "@/lib/app/blockDone";
 import { attemptsLine } from "@/lib/app/autoBlocking";
 import type { BlockReport } from "@/lib/capacitor/focusGuard";
 import { tap } from "@/lib/capacitor/haptics";
+import { useDashboardData } from "@/lib/app/DashboardProvider";
+import { PAID_PRICING } from "@/lib/app/pricing";
+import { useNativeIOS } from "@/lib/capacitor/platform";
+
+/** Pro monthly in the App Store (backend/src/lib/admin-business.ts), which differs a little from the web price. */
+const APP_STORE_PRO_MONTHLY = 12.99;
+
+const TRIAL_OFFER_KEY = "arcadia:trial-offer-shown";
+
+/** A free account's first block done: the one time we offer the free week here. */
+function firstOffer(tier: string | undefined): boolean {
+  if (tier && tier !== "free") return false;
+  try {
+    return !window.localStorage.getItem(TRIAL_OFFER_KEY);
+  } catch {
+    return false;
+  }
+}
 
 const RING_R = 88;
 const RING_C = 2 * Math.PI * RING_R;
@@ -79,6 +97,15 @@ export default function BlockDoneMoment({
   }, [breakEndsAt]);
 
   const { ring, next, line } = view;
+  const { data } = useDashboardData();
+  // Decided once when the moment opens, and only ever shown once.
+  const [offer] = useState(() => firstOffer(data.user.tier));
+  const nativeIOS = useNativeIOS();
+  const monthly = nativeIOS ? APP_STORE_PRO_MONTHLY : PAID_PRICING.pro.monthly;
+  useEffect(() => {
+    if (!offer) return;
+    try { window.localStorage.setItem(TRIAL_OFFER_KEY, String(Date.now())); } catch { /* shown again next time, fine */ }
+  }, [offer]);
   const ratio = (filled ? ring.after : ring.before) / ring.goal;
   const name = event.subject || event.title;
   const breakLeft = breakEndsAt === null ? 0 : Math.max(0, Math.ceil((breakEndsAt - nowMs) / 1000));
@@ -167,6 +194,28 @@ export default function BlockDoneMoment({
               Keep going
             </Link>
           </div>
+        </div>
+      ) : null}
+
+      {offer ? (
+        <div className="mt-6 w-full max-w-sm rounded-[24px] p-5 text-left" style={{ background: "var(--app-hero-cta)", color: "var(--app-hero-cta-on)" }}>
+          <p className="text-[13px] font-semibold opacity-80">That&apos;s how it feels when the plan works</p>
+          <p className="mt-1 text-[19px] font-semibold leading-snug">Try Pro free for 7 days</p>
+          <ul className="mt-3 flex flex-col gap-1.5 text-[14px] leading-snug">
+            <li>✦ Tell Arcad anything, 20 times a day, and your week rebuilds itself</li>
+            <li>✦ Your school, Google and Apple calendars in your plan</li>
+            <li>✦ Upload your notes and Arcad answers from them</li>
+          </ul>
+          <p className="mt-3 text-[12.5px] opacity-75">
+            Then A${monthly.toFixed(2)} a month. ChatGPT Plus is about A$30, and it doesn&apos;t know your week.
+          </p>
+          <Link
+            href="/app/pricing"
+            className="ui-press mt-4 inline-flex h-11 w-full items-center justify-center rounded-full text-[15px] font-semibold"
+            style={{ background: "var(--app-hero)", color: "var(--app-hero-on)" }}
+          >
+            Start my free week
+          </Link>
         </div>
       ) : null}
 

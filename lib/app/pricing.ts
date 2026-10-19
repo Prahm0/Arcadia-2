@@ -24,12 +24,12 @@ export const TIER_COPY = {
     ],
   },
   pro: {
-    headline: "Planning on autopilot, Arcad in the loop.",
+    headline: "Your planner, study coach and focus app in one.",
     features: [
       "Everything in Free",
-      "Arcad, 20 messages a day",
-      "Google / Apple / Canvas calendar sync",
-      "Upload PDFs & notes, Arcad answers from them",
+      "Arcad, 20 messages a day: it plans, explains and rebuilds your week",
+      "Your school, Google, Apple and Canvas calendars in your plan",
+      "Upload notes and PDFs, Arcad answers from them",
       "Study rooms for up to 30, with shared timers",
       "Room icon and shared 7-day focus goal",
       "Full analytics, subject breakdown, streaks, trends",

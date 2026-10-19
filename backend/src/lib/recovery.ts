@@ -2,7 +2,7 @@ import { and, asc, desc, eq, gte, inArray, lt } from "drizzle-orm";
 import { schema, type Database } from "../db";
 import { newId } from "./ids";
 import { replan } from "./replan";
-import { DAY, MINUTE, localDateKey, startOfLocalDay } from "./time";
+import { DAY, MINUTE, localDateKey, localDayTime, parseClock, startOfLocalDay } from "./time";
 
 /**
  * The Recovery Loop. When life changes, the student picks a reason and we
@@ -32,6 +32,14 @@ export class RecoveryAlreadyUsedError extends Error {
     super("You've already used this option today.");
     this.reason = reason;
     this.name = "RecoveryAlreadyUsedError";
+  }
+}
+
+/** A request that cannot produce the scheduling change the student asked for. */
+export class RecoveryValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "RecoveryValidationError";
   }
 }
 
@@ -202,6 +210,35 @@ function clockNow(now: number, tz: string): string {
   return `${pad(Math.floor(minutesIntoDay / 60))}:${pad(minutesIntoDay % 60)}`;
 }
 
+function validDate(value: unknown): value is string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = Date.parse(`${value}T12:00:00Z`);
+  return Number.isFinite(parsed) && new Date(parsed).toISOString().slice(0, 10) === value;
+}
+
+/** End of a named calendar day in the student's timezone. */
+export function recoveryDueAt(day: string, tz: string): number {
+  return localDayTime(day, 23 * 60 + 59, tz);
+}
+
+/**
+ * Recovery writes commitments directly, so validate its clocks here rather
+ * than relying on the scheduler to discard an unusable interval later.
+ */
+export function recoveryInputProblem(input: RecoveryInput, now: number, tz: string): string | null {
+  if (input.reason === "busy") {
+    const start = parseClock(typeof input.busyStart === "string" ? input.busyStart : clockNow(now, tz));
+    const end = parseClock(typeof input.busyEnd === "string" ? input.busyEnd : "23:59");
+    if (start === null || end === null || end <= start) return "Choose an end time after the start time.";
+  }
+  if (input.reason === "new_deadline") {
+    if (input.dueOn !== undefined && !validDate(input.dueOn)) return "Choose a valid due date.";
+    if (typeof input.dueOn === "string" && recoveryDueAt(input.dueOn, tz) <= now) return "Choose a due date that hasn't passed.";
+    if (input.size !== undefined && !(input.size in SIZE_MINUTES)) return "Choose how much work this deadline needs.";
+  }
+  return null;
+}
+
 function dateLabel(at: number, tz: string): string {
   return new Date(at).toLocaleDateString("en-AU", {
     weekday: "short",
@@ -233,6 +270,8 @@ export async function recoverPlan(
   const tz = profile?.timezone ?? "Australia/Brisbane";
   const now = Date.now();
   const today = localDateKey(now, tz);
+  const inputProblem = recoveryInputProblem(input, now, tz);
+  if (inputProblem) throw new RecoveryValidationError(inputProblem);
 
   const before = await upcomingStudy(database, userId, now);
 
@@ -312,13 +351,13 @@ export async function recoverPlan(
       notes: "Added from a recovery",
     });
   } else if (input.reason === "new_deadline") {
-    const name = (input.title || "New deadline").slice(0, 120);
+    const name = (typeof input.title === "string" ? input.title.trim() : "").slice(0, 120) || "New deadline";
     // End of the given local day, so prep books in the days before it.
-    const dueAt = input.dueOn
-      ? startOfLocalDay(Date.parse(`${input.dueOn}T12:00:00Z`), tz) + DAY - MINUTE
+    const dueAt = typeof input.dueOn === "string"
+      ? recoveryDueAt(input.dueOn, tz)
       : now + 7 * DAY;
     const taskId = newId("tsk");
-    const subject = input.subject || null;
+    const subject = typeof input.subject === "string" && input.subject.trim() ? input.subject.trim().slice(0, 120) : null;
     await database.insert(schema.tasks).values({
       id: taskId,
       userId,

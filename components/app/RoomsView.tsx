@@ -196,7 +196,6 @@ export default function RoomsView() {
                     Create a room
                   </AppButton>
                 }
-                hint="No chat, no notifications, just who's working."
               />
             </div>
           ) : (

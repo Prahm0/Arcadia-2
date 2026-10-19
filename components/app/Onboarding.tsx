@@ -9,8 +9,6 @@ import { AU_STATES, countryOptions, guessCountry } from "@/lib/app/countries";
 import { fittedWeeklyMinutes, formatWeekly } from "@/lib/app/studyTargets";
 import { WEEKDAYS } from "./CommitmentSheet";
 import OnboardingBuild from "./OnboardingBuild";
-import OnboardingPaywall from "./OnboardingPaywall";
-import { setOnboardingOfferPending } from "@/lib/app/onboarding-offer";
 import { SOURCE_COOKIE } from "@/lib/appStore";
 import { HEARD_FROM, HEARD_FROM_DETAIL, type HeardFrom } from "@/shared/heardFrom";
 import { courseByKey, coursesFor, defaultCourse } from "@/shared/education";
@@ -125,12 +123,9 @@ const toggleDay = (days: number[], day: number) =>
  * should know. The last screen hands it to Arcad, which plans the next month
  * while a progress bar shows each stage (see OnboardingBuild).
  */
-export default function Onboarding({ userId, defaultName, defaultTimezone, onComplete }: OnboardingProps) {
+export default function Onboarding({ defaultName, defaultTimezone, onComplete }: OnboardingProps) {
   const [step, setStep] = useState(0);
   const [building, setBuilding] = useState(false);
-  // Once the plan builds, the existing post-onboarding paywall is the only
-  // interruption before the student reaches their real plan.
-  const [showPaywall, setShowPaywall] = useState(false);
 
   // You
   const [name, setName] = useState(defaultName);
@@ -391,21 +386,18 @@ export default function Onboarding({ userId, defaultName, defaultTimezone, onCom
     setStep((s) => Math.max(0, s - 1));
   }
 
-  if (showPaywall) {
-    return <OnboardingPaywall onContinueFree={onComplete} onCheckoutStarted={() => setOnboardingOfferPending(userId, false)} />;
-  }
-
   if (building) {
     return (
       <OnboardingBuild
         save={async () => {
           const body = payload();
           await api("/api/onboarding", { method: "POST", body: JSON.stringify(body) });
-          setOnboardingOfferPending(userId, true);
           analytics.onboardingCompleted(body.subjects.length, body.tasks.length);
         }}
         onBack={() => setBuilding(false)}
-        onDone={() => setShowPaywall(true)}
+        // Straight into their plan: Pro is offered once they've felt it work
+        // (the first block done, then the one-time offer; see LaterOffer).
+        onDone={onComplete}
       />
     );
   }

@@ -203,6 +203,9 @@ export const profiles = sqliteTable("profiles", {
     .primaryKey()
     .references(() => users.id, { onDelete: "cascade" }),
   displayName: text("display_name"),
+  // Community competition is strictly opt-in. The public board uses a
+  // generated nickname rather than this name.
+  communityLeaderboardOptIn: integer("community_leaderboard_opt_in", { mode: "boolean" }).notNull().default(false),
   grade: text("grade"),
   timezone: text("timezone").notNull().default("Australia/Brisbane"),
   onboardingComplete: integer("onboarding_complete", { mode: "boolean" }).notNull().default(false),

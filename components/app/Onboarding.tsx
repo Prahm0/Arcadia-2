@@ -160,6 +160,9 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
   const [schoolStart, setSchoolStart] = useState("08:30");
   const [schoolEnd, setSchoolEnd] = useState("15:15");
   const [activities, setActivities] = useState<Activity[]>([]);
+  // Some students only want help around real deadlines, not a fully filled
+  // timetable. Keep that choice in onboarding instead of hiding it in Settings.
+  const [fillFreeTime, setFillFreeTime] = useState(true);
 
   // Routine
   const [wakeTime, setWakeTime] = useState("06:30");
@@ -350,7 +353,7 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
           name: subject,
           color: SUBJECT_COLORS[index % SUBJECT_COLORS.length],
           priority: GOING.find((option) => option.value === detail.going)?.priority ?? 2,
-          weeklyMinutes: weeklyFor(subject),
+          weeklyMinutes: fillFreeTime ? weeklyFor(subject) : 0,
           targetGrade: detail.targetGrade.trim() || null,
           notes: detail.notes.trim(),
         };
@@ -853,6 +856,17 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
                   onChange={setMaxDaily}
                   hint="Arcadia never plans more than this. You can change it later."
                 />
+              </div>
+              <div className="mt-5 flex items-start justify-between gap-4 rounded-md p-4" style={{ background: "var(--app-surface-soft)" }}>
+                <span className="min-w-0">
+                  <span className="block text-[14px] font-medium" style={{ color: "var(--app-text)" }}>
+                    Plan my free time with study
+                  </span>
+                  <span className="mt-0.5 block text-[12.5px] leading-5" style={{ color: "var(--app-text-muted)" }}>
+                    Turn this off if you want to choose your own study days. Arcadia will still book prep before deadlines and exams.
+                  </span>
+                </span>
+                <Toggle label="Plan my free time with study" checked={fillFreeTime} onChange={setFillFreeTime} hideLabel />
               </div>
             </div>
           </div>

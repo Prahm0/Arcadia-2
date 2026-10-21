@@ -11,12 +11,14 @@ interface Entry {
   place: number;
   name: string;
   seconds: number;
+  sessions: number;
   isYou: boolean;
 }
 
 interface LeaderboardResponse {
   optedIn: boolean;
   entries: Entry[];
+  activeStudents: number;
 }
 
 /**
@@ -59,30 +61,33 @@ export default function CommunityLeaderboardView() {
 
   const entries = data?.entries ?? [];
   const me = entries.find((entry) => entry.isYou);
+  const leaders = entries.slice(0, 3);
+  const leader = entries[0];
+  const minutesBehind = me && leader && !me.isYou ? Math.max(0, Math.ceil((leader.seconds - me.seconds) / 60)) : 0;
 
   return (
     <>
       <PageHeader width={760} title="Leaderboard" />
-      <main className="mx-auto w-full max-w-[760px] px-6 pb-16 pt-6 sm:px-10">
+      <main className="mx-auto w-full max-w-[760px] px-4 pb-16 pt-4 sm:px-10 sm:pt-6">
         <section className="overflow-hidden rounded-2xl border p-5 sm:p-7" style={{ background: "var(--app-surface)", borderColor: "var(--app-border)", boxShadow: "var(--elev-1)" }}>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="type-eyebrow" style={{ color: "var(--app-accent-strong)" }}>Community focus league</p>
-              <h1 className="mt-1 text-[26px] font-semibold tracking-[-0.02em]" style={{ color: "var(--app-text)" }}>Make this week count.</h1>
+              <p className="type-eyebrow" style={{ color: "var(--app-accent-strong)" }}>This week&apos;s focus league</p>
+              <h1 className="mt-1 text-[26px] font-semibold tracking-[-0.02em]" style={{ color: "var(--app-text)" }}>Climb by studying.</h1>
               <p className="mt-2 max-w-[500px] text-[14px] leading-6" style={{ color: "var(--app-text-muted)" }}>
-                Past 7 days of completed focus time. Every public name is an anonymous Arcadia nickname.
+                Completed focus from the past 7 days. Names stay anonymous.
               </p>
             </div>
             <span className="rounded-full px-3 py-1.5 text-[12px] font-semibold" style={{ background: "rgba(226,169,43,.16)", color: "var(--app-text)" }}>Weekly</span>
           </div>
 
-          <div className="mt-6 rounded-xl p-4" style={{ background: "var(--app-surface-soft)" }}>
+          <div className="mt-5 rounded-xl p-4" style={{ background: "var(--app-surface-soft)" }}>
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-[14px] font-semibold" style={{ color: "var(--app-text)" }}>Join the leaderboard</p>
                 <p className="mt-1 text-[12.5px] leading-5" style={{ color: "var(--app-text-muted)" }}>
                   {data?.optedIn
-                    ? me ? `You are #${me.place} this week.` : "You are in. Complete a focus session to appear."
+                    ? me ? `You&apos;re #${me.place}. ${minutesBehind ? `${formatMinutes(minutesBehind)} to the lead.` : "You&apos;re setting the pace."}` : "You&apos;re in. Finish a focus session to enter the board."
                     : "Opt in to add your completed focus time to the board."}
                 </p>
               </div>
@@ -94,16 +99,34 @@ export default function CommunityLeaderboardView() {
 
           {error ? <p role="alert" className="mt-4 text-[13px]" style={{ color: "var(--app-danger)" }}>{error}</p> : null}
 
-          <ol className="mt-5 flex flex-col gap-2" aria-label="Community leaderboard rankings">
+          {!loading && entries.length > 0 ? (
+            <div className="mt-5 grid grid-cols-3 gap-2" aria-label="Weekly focus snapshot">
+              <Stat label="Your rank" value={me ? `#${me.place}` : "Not ranked"} />
+              <Stat label="Focus time" value={me ? formatMinutes(Math.floor(me.seconds / 60)) : "0 min"} />
+              <Stat label="Sessions" value={me ? String(me.sessions) : "0"} />
+            </div>
+          ) : null}
+
+          {!loading && leaders.length > 0 ? (
+            <ol className="mt-5 grid grid-cols-3 gap-2" aria-label="Top students this week">
+              {leaders.map((entry, index) => <Podium key={entry.id} entry={entry} tone={index} />)}
+            </ol>
+          ) : null}
+
+          <div className="mt-5 flex items-center justify-between">
+            <p className="text-[13px] font-semibold" style={{ color: "var(--app-text)" }}>The board</p>
+            {!loading && data ? <p className="text-[12px]" style={{ color: "var(--app-text-muted)" }}>{data.activeStudents} studying</p> : null}
+          </div>
+          <ol className="mt-2 flex flex-col gap-1.5" aria-label="Community leaderboard rankings">
             {loading ? (
               <li className="rounded-xl px-4 py-8 text-center text-[14px]" style={{ background: "var(--app-surface-soft)", color: "var(--app-text-muted)" }}>Loading the leaderboard…</li>
             ) : entries.length === 0 ? (
               <li className="rounded-xl px-4 py-8 text-center text-[14px]" style={{ background: "var(--app-surface-soft)", color: "var(--app-text-muted)" }}>No completed focus sessions yet. The first session sets the pace.</li>
-            ) : entries.map((entry, index) => (
-              <li key={entry.id} className="relative flex items-center gap-3 overflow-hidden rounded-xl px-4 py-3" style={{ background: entry.isYou ? "var(--app-accent-soft)" : "var(--app-surface-soft)", boxShadow: entry.isYou ? "inset 0 0 0 1px var(--app-border-strong)" : undefined }}>
-                <span className="grid size-8 shrink-0 place-items-center rounded-full text-[13px] font-bold tabular-nums" style={{ background: index < 3 ? "rgba(226,169,43,.18)" : "var(--app-surface)", color: "var(--app-text)" }}>{entry.place}</span>
+            ) : entries.map((entry) => (
+              <li key={entry.id} className="relative flex items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5" style={{ background: entry.isYou ? "var(--app-accent-soft)" : "var(--app-surface-soft)", boxShadow: entry.isYou ? "inset 0 0 0 1px var(--app-border-strong)" : undefined }}>
+                <span className="grid size-7 shrink-0 place-items-center rounded-full text-[12px] font-bold tabular-nums" style={{ background: entry.place <= 3 ? "rgba(226,169,43,.18)" : "var(--app-surface)", color: "var(--app-text)" }}>{entry.place}</span>
                 <span className="min-w-0 flex-1 truncate text-[14px] font-medium" style={{ color: "var(--app-text)" }}>{entry.name}</span>
-                <span className="text-[14px] font-semibold tabular-nums" style={{ color: "var(--app-accent-strong)" }}>{formatMinutes(Math.floor(entry.seconds / 60))}</span>
+                <span className="text-[13px] font-semibold tabular-nums" style={{ color: "var(--app-accent-strong)" }}>{formatMinutes(Math.floor(entry.seconds / 60))}</span>
               </li>
             ))}
           </ol>
@@ -115,4 +138,20 @@ export default function CommunityLeaderboardView() {
       </main>
     </>
   );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-xl px-3 py-3 text-center" style={{ background: "var(--app-surface-soft)" }}>
+    <p className="text-[15px] font-semibold tabular-nums" style={{ color: "var(--app-text)" }}>{value}</p>
+    <p className="mt-0.5 text-[10px] font-medium" style={{ color: "var(--app-text-muted)" }}>{label}</p>
+  </div>;
+}
+
+function Podium({ entry, tone }: { entry: Entry; tone: number }) {
+  const medals = ["✦", "◆", "•"];
+  return <li className="min-w-0 rounded-xl px-2 py-3 text-center" style={{ background: tone === 0 ? "rgba(226,169,43,.16)" : "var(--app-surface-soft)", boxShadow: entry.isYou ? "inset 0 0 0 1px var(--app-border-strong)" : undefined }}>
+    <p className="text-[14px]" style={{ color: tone === 0 ? "var(--app-gold)" : "var(--app-text-faint)" }}>{medals[tone]}</p>
+    <p className="mt-1 truncate text-[12px] font-semibold" style={{ color: "var(--app-text)" }}>{entry.isYou ? "You" : entry.name}</p>
+    <p className="mt-0.5 text-[11px] font-medium tabular-nums" style={{ color: "var(--app-accent-strong)" }}>{formatMinutes(Math.floor(entry.seconds / 60))}</p>
+  </li>;
 }

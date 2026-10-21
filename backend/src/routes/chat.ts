@@ -4,7 +4,7 @@ import { db, schema } from "../db";
 import { newId } from "../lib/ids";
 import { saveMemories } from "../lib/memories";
 import { ARCAD_VOICE, PROPOSE_TOOL, REMEMBER_TOOL, complete, proposeChanges, type ChatMessage, type ProposedChanges } from "../lib/openai";
-import { applyOperations, prepareOperations, scheduleContext } from "../lib/plan-changes";
+import { applyOperations, clearUpcomingScheduleOperations, prepareOperations, scheduleContext } from "../lib/plan-changes";
 import { replan } from "../lib/replan";
 import { commitmentBuffers, skipDates, subjectKey, weeklyTargetMinutes } from "../lib/scheduler";
 import { describeBrief, recentMissReasonContext, subjectBriefs } from "../lib/study-context";
@@ -748,6 +748,24 @@ async function workOutChanges(
   };
   const score = (prepared: Awaited<ReturnType<typeof prepareOperations>>) =>
     prepared.operations.length * 10 - prepared.problems.length;
+
+  // Do not make a student depend on a model successfully inventing seven
+  // separate changes for the most common reset request. Specific requests
+  // (for a day, weekend or date) still go to Arcad below.
+  const lastMessage = [...prompt].reverse().find((message) => message.role === "user")?.content;
+  const text = typeof lastMessage === "string" ? lastMessage.trim().toLowerCase().replace(/[.!?]+$/, "") : "";
+  if (/^(?:please )?(?:clear|wipe|empty) (?:my |the )?(?:whole |entire )?(?:schedule|plan|week|calendar)$/.test(text)) {
+    const [profile] = await database
+      .select({ timezone: schema.profiles.timezone })
+      .from(schema.profiles)
+      .where(eq(schema.profiles.userId, userId))
+      .limit(1);
+    const proposed = {
+      summary: "Keep your next 7 days free of study. Your classes, commitments and tasks stay put.",
+      operations: clearUpcomingScheduleOperations(profile?.timezone ?? "Australia/Brisbane"),
+    };
+    return { proposed, prepared: await prepareOperations(database, userId, proposed.operations) };
+  }
 
   let best: { proposed: ProposedChanges; prepared: Awaited<ReturnType<typeof prepareOperations>> } | null = null;
   const messages: ChatMessage[] = [

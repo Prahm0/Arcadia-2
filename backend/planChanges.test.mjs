@@ -20,7 +20,7 @@ registerHooks({
   },
 });
 
-const { findTask, localInstant, prepareRoutineUpdate, prepareSubjectCreate, prepareSubjectDelete } = await import("./src/lib/plan-changes.ts");
+const { clearUpcomingScheduleOperations, findTask, localInstant, prepareRoutineUpdate, prepareSubjectCreate, prepareSubjectDelete } = await import("./src/lib/plan-changes.ts");
 const { bookedTaskTime, groundwork, skipDates, taskQueue } = await import("./src/lib/scheduler.ts");
 
 const MINUTE = 60_000;
@@ -36,6 +36,15 @@ test("dates it can't read come back null", () => {
   assert.equal(localInstant("next thursday", 600, "Australia/Brisbane"), null);
   assert.equal(localInstant("2026-02-31", 600, "Australia/Brisbane"), null);
   assert.equal(localInstant(undefined, 600, "Australia/Brisbane"), null);
+});
+
+test("clear schedule keeps the next seven local days free, across daylight saving", () => {
+  const operations = clearUpcomingScheduleOperations("Australia/Sydney", Date.parse("2026-10-03T13:00:00Z"));
+  assert.equal(operations.length, 7);
+  assert.deepEqual(operations.map((operation) => operation.date), [
+    "2026-10-03", "2026-10-04", "2026-10-05", "2026-10-06", "2026-10-07", "2026-10-08", "2026-10-09",
+  ]);
+  assert.ok(operations.every((operation) => operation.title === "Day off" && operation.startTime === "00:00" && operation.endTime === "23:59"));
 });
 
 const now = Date.parse("2026-10-01T05:00:00Z");

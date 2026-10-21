@@ -2,7 +2,7 @@ import { and, asc, eq, gte, lt } from "drizzle-orm";
 import { schema, type Database } from "../db";
 import { newId } from "./ids";
 import { MAX_COMMITMENT_BUFFER, commitmentBuffers, releaseFromLayout, skipDates, subjectKey, weeklyTargetMinutes } from "./scheduler";
-import { DAY, MINUTE, atLocalMinutes, iso, localDateKey, parseClock, startOfLocalDay, zoneOffsetMinutes } from "./time";
+import { DAY, MINUTE, atLocalMinutes, iso, localDateKey, nextLocalDay, parseClock, startOfLocalDay, zoneOffsetMinutes } from "./time";
 
 /**
  * The changes Arcad proposes in chat (propose_changes), checked when it
@@ -26,6 +26,29 @@ const CATEGORIES = new Set(["school", "sport", "extracurricular", "other"]);
 // Kept in step with lib/app/categoryColors.ts. The Worker cannot import from
 // the web bundle, and subjects store a literal colour rather than a token.
 const SUBJECT_COLORS = ["#2f7cf6", "#e8603c", "#23a35a", "#d9468f", "#14a0b4", "#d49b00", "#8a5cf0"];
+
+/**
+ * The safe meaning of "clear my schedule": leave the next seven local days
+ * free of study, while preserving classes, work, sport, tasks and history.
+ * Day-off commitments keep the scheduler from immediately filling the space.
+ */
+export function clearUpcomingScheduleOperations(timeZone: string, now = Date.now()): Operation[] {
+  const operations: Operation[] = [];
+  let day = startOfLocalDay(now, timeZone);
+  for (let index = 0; index < 7; index += 1) {
+    operations.push({
+      op: "create_commitment",
+      title: "Day off",
+      category: "other",
+      recurrence: "none",
+      date: localDateKey(day, timeZone),
+      startTime: "00:00",
+      endTime: "23:59",
+    });
+    day = nextLocalDay(day, timeZone);
+  }
+  return operations;
+}
 
 const str = (operation: Operation, key: string) =>
   typeof operation[key] === "string" && (operation[key] as string).trim() ? (operation[key] as string).trim() : undefined;

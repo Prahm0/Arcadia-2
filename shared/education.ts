@@ -39,7 +39,9 @@ export interface Course {
   about: string;
 }
 
-const AU_YEARS = ["Year 10", "Year 11", "Year 12"];
+// Arcadia's senior-course suggestions begin in Year 10, but Year 9 students
+// can still use the planner with the same flexible subject setup.
+const AU_YEARS = ["Year 9", "Year 10", "Year 11", "Year 12"];
 const ATAR: CourseGoal = { label: "ATAR target", placeholder: "90", range: { min: 30, max: 99.95, step: 0.05 } };
 const AU_LANGUAGES = ["Japanese", "Chinese", "French", "Spanish", "German", "Italian", "Indonesian"];
 

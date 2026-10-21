@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, gte, like, not, sql } from "drizzle-orm";
+import { and, count, desc, eq, gt, gte, like, not, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, schema } from "../db";
 import { rankCommunityLeaderboard } from "../lib/community-leaderboard";
@@ -17,7 +17,7 @@ leaderboard.get("/", async (c) => {
   const now = Date.now();
   const focusSeconds = sql<number>`coalesce(sum(${schema.studySessions.seconds}), 0)`;
   const rows = await database
-    .select({ userId: schema.studySessions.userId, seconds: focusSeconds })
+    .select({ userId: schema.studySessions.userId, seconds: focusSeconds, sessions: count() })
     .from(schema.studySessions)
     .innerJoin(schema.profiles, eq(schema.profiles.userId, schema.studySessions.userId))
     .innerJoin(schema.users, eq(schema.users.id, schema.studySessions.userId))
@@ -38,8 +38,15 @@ leaderboard.get("/", async (c) => {
     .limit(1);
 
   const entries = rankCommunityLeaderboard(rows.map((row) => ({ userId: row.userId, seconds: Number(row.seconds) })), userId)
-    .map((entry) => ({ id: entry.userId, place: entry.place, name: entry.name, seconds: entry.seconds, isYou: entry.isYou }));
-  return c.json({ optedIn: profile?.optedIn ?? false, entries, updatedAt: now });
+    .map((entry) => ({
+      id: entry.userId,
+      place: entry.place,
+      name: entry.name,
+      seconds: entry.seconds,
+      sessions: Number(rows.find((row) => row.userId === entry.userId)?.sessions ?? 0),
+      isYou: entry.isYou,
+    }));
+  return c.json({ optedIn: profile?.optedIn ?? false, entries, activeStudents: entries.length, updatedAt: now });
 });
 
 leaderboard.patch("/", async (c) => {

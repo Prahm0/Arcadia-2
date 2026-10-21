@@ -31,6 +31,9 @@ test("weekly study time reads every course's year labels", () => {
   // Unchanged for existing Australian students.
   assert.equal(weeklyMinutesForGrade("Year 12"), 180);
   assert.equal(weeklyMinutesForGrade("Year 10"), 120);
+  assert.equal(weeklyMinutesForGrade("Year 9"), 120);
+  assert.equal(weeklyMinutesForGrade("Year 8"), 120);
+  assert.equal(weeklyMinutesForGrade("Year 7"), 120);
   assert.equal(weeklyMinutesForGrade("First year uni"), 240);
   assert.equal(weeklyMinutesForGrade("Second year+"), 240);
   assert.equal(weeklyMinutesForGrade(null), 150);
@@ -41,4 +44,13 @@ test("weekly study time reads every course's year labels", () => {
   assert.equal(weeklyMinutesForGrade("6th Year"), 180);
   assert.equal(weeklyMinutesForGrade("IB Year 1"), 180);
   assert.equal(weeklyMinutesForGrade("Postgrad"), 240);
+});
+
+test("Australian courses include Years 7 to 9 without treating them as senior years", () => {
+  for (const course of [defaultCourse("AU", "QLD"), defaultCourse("AU", "NSW"), defaultCourse("AU", "VIC")]) {
+    for (const year of ["Year 7", "Year 8", "Year 9"]) {
+      assert.ok(course.years.includes(year));
+      assert.ok(!course.finalYears.includes(year));
+    }
+  }
 });

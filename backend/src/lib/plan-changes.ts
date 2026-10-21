@@ -50,6 +50,41 @@ export function clearUpcomingScheduleOperations(timeZone: string, now = Date.now
   return operations;
 }
 
+/**
+ * A full-day study pause is represented by a one-off commitment so a rebuild
+ * has something durable to plan around. Existing future study events must be
+ * removed as well: otherwise a user sees their old blocks until a later
+ * rebuild, which makes a successful clear look broken.
+ */
+async function removeStudyDuringPause(
+  database: Database,
+  loaded: Loaded,
+  date: string,
+  now: number,
+): Promise<number> {
+  const startAt = localInstant(date, 0, loaded.timeZone);
+  if (startAt === null) return 0;
+  const endAt = nextLocalDay(startAt, loaded.timeZone);
+  const removable = loaded.events.filter(
+    (event) =>
+      event.category === "study" &&
+      event.status === "planned" &&
+      event.outcome === "planned" &&
+      !event.startedAt &&
+      event.endAt > now &&
+      event.startAt < endAt &&
+      event.endAt > startAt,
+  );
+  for (const event of removable) {
+    await database.delete(schema.events).where(and(eq(schema.events.id, event.id), eq(schema.events.userId, loaded.userId)));
+  }
+  if (removable.length) {
+    const removedIds = new Set(removable.map((event) => event.id));
+    loaded.events = loaded.events.filter((event) => !removedIds.has(event.id));
+  }
+  return removable.length;
+}
+
 const str = (operation: Operation, key: string) =>
   typeof operation[key] === "string" && (operation[key] as string).trim() ? (operation[key] as string).trim() : undefined;
 const num = (operation: Operation, key: string) =>
@@ -624,6 +659,18 @@ export async function applyOperations(
           startTime: String(commitment.startTime),
           endTime: String(commitment.endTime),
         });
+        // A Day off is Arcad's durable way to keep a day free after the next
+        // rebuild. Clear the already-rendered study blocks now too, including
+        // before onboarding has finished and a rebuild is intentionally skipped.
+        if (
+          commitment.title === "Day off" &&
+          commitment.recurrence === "none" &&
+          commitment.startTime === "00:00" &&
+          commitment.endTime === "23:59" &&
+          typeof commitment.date === "string"
+        ) {
+          await removeStudyDuringPause(database, loaded, commitment.date, now);
+        }
         done = true;
       }
     } else if (op === "delete_commitment") {

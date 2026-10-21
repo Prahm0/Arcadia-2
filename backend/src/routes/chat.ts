@@ -720,6 +720,12 @@ export default chat;
 /** How many times the planning model gets its problems back to fix. */
 const CHANGE_REPAIR_ROUNDS = 1;
 
+/** Broad reset phrasing gets a deterministic, checked plan rather than a model guess. */
+export function isClearScheduleRequest(message: string): boolean {
+  const text = message.trim().toLowerCase().replace(/\s+/g, " ").replace(/[.!?]+$/, "");
+  return /^(?:please )?(?:clear|wipe|empty|delete) (?:my |the )?(?:whole |entire )?(?:schedule|schedules|plan|week|calendar)(?: (?:and )?(?:delete|remove|clear) (?:everything|it all|all))?$/.test(text);
+}
+
 /**
  * The plan changes to offer for the student's last message. The chat model
  * decided a change is wanted; the planning model works out the full set,
@@ -753,15 +759,14 @@ async function workOutChanges(
   // separate changes for the most common reset request. Specific requests
   // (for a day, weekend or date) still go to Arcad below.
   const lastMessage = [...prompt].reverse().find((message) => message.role === "user")?.content;
-  const text = typeof lastMessage === "string" ? lastMessage.trim().toLowerCase().replace(/[.!?]+$/, "") : "";
-  if (/^(?:please )?(?:clear|wipe|empty) (?:my |the )?(?:whole |entire )?(?:schedule|plan|week|calendar)$/.test(text)) {
+  if (typeof lastMessage === "string" && isClearScheduleRequest(lastMessage)) {
     const [profile] = await database
       .select({ timezone: schema.profiles.timezone })
       .from(schema.profiles)
       .where(eq(schema.profiles.userId, userId))
       .limit(1);
     const proposed = {
-      summary: "Keep your next 7 days free of study. Your classes, commitments and tasks stay put.",
+      summary: "Clear your planned study blocks for the next 7 days. Your classes, commitments and tasks stay put.",
       operations: clearUpcomingScheduleOperations(profile?.timezone ?? "Australia/Brisbane"),
     };
     return { proposed, prepared: await prepareOperations(database, userId, proposed.operations) };

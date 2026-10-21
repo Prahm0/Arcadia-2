@@ -7,7 +7,7 @@ import { cn } from "@/lib/cn";
 import { dateKey, formatClock } from "@/lib/api/time";
 import { categoryBlock, hueBlock, type CategoryBlockStyle } from "@/lib/app/categoryColors";
 import { studyTitle, subjectColour } from "@/lib/app/subjectColour";
-import type { DayColumn } from "./calendar";
+import { placeBlocks, type DayColumn } from "./calendar";
 
 const HOUR_START = 7;
 const HOUR_END = 23;
@@ -174,9 +174,23 @@ export function MobileDaySchedule({
   const HEIGHT = 960;
   const selectedDay = days[selectedDayIndex];
   const touchStart = useRef<{ x: number; y: number } | null>(null);
-  const blocks = events
+  const allDayBlocks = events
     .map((event) => ({ event, position: positionFor(event, days, timezone) }))
-    .filter(({ position }) => position.visible && position.dayIndex === selectedDayIndex);
+    .filter(({ event, position }) => event.kind === "all-day" && position.visible && position.dayIndex === selectedDayIndex)
+    .map(({ event, position }) => ({ event, position, column: 0, columns: 1 }));
+  // Use the same collision layout as the desktop calendar. The old phone
+  // timeline gave every event the full width, so overlapping sessions were
+  // painted on top of each other and their titles became unreadable.
+  const placed = placeBlocks(events, selectedDay);
+  const timedBlocks = [...placed.sleep.map((block) => ({ ...block, column: 0, columns: 1 })), ...placed.blocks]
+    .map((block) => ({
+      event: block.event,
+      position: gridPosition(block.start, block.end),
+      column: block.column,
+      columns: block.columns,
+    }))
+    .filter(({ position }) => position.visible);
+  const blocks = [...allDayBlocks, ...timedBlocks];
   // Blocks slide to their new times when Arcad replans; swiping days doesn't animate.
   const dayRef = useRef<HTMLDivElement>(null);
   useFlip(dayRef, flipKey(blocks.map(({ event }) => event)), selectedDay?.key ?? "");
@@ -252,27 +266,37 @@ export function MobileDaySchedule({
             className="absolute bottom-0 left-14 right-0 top-0 z-0 cursor-copy active:bg-[color:var(--app-accent-soft)]/40"
           />
 
-          {blocks.map(({ event, position }) => {
+          {blocks.map(({ event, position, column, columns }) => {
             const styles = mobileBlockStyle(event, subjects);
             const completed = event.outcome === "completed";
             const missed = event.outcome === "missed";
+            const compact = position.height < 4.3;
+            const tiny = position.height < 2.3;
             return (
               <button
                 key={event.id}
                 data-flip-id={event.id}
                 type="button"
                 onClick={() => onSelectEvent(event)}
-                className={cn("absolute left-[60px] right-2 z-10 overflow-hidden rounded-md px-3 py-2 text-left active:scale-[0.99]", completed && "opacity-55", missed && "opacity-40")}
+                aria-label={`${event.category === "study" ? studyTitle(event) : event.title}, ${formatClock(event.startAt, timezone)} to ${formatClock(event.endAt, timezone)}`}
+                className={cn(
+                  "absolute z-10 overflow-hidden rounded-md text-left active:scale-[0.99]",
+                  compact ? "px-2 py-1" : "px-3 py-2",
+                  completed && "opacity-55",
+                  missed && "opacity-40",
+                )}
                 style={{
                   top: `${position.top}%`,
-                  height: `${Math.max(position.height, 4.4)}%`,
+                  height: `${position.height}%`,
+                  left: mobileBlockLeft(column, columns),
+                  width: mobileBlockWidth(columns),
                   background: styles.bg,
                   color: styles.text,
                   border: `1px ${event.category === "sleep" ? "dashed" : "solid"} ${styles.border}`,
                 }}
               >
-                <span className="block truncate text-[13px] font-medium">{event.category === "study" ? studyTitle(event) : event.title}</span>
-                <span className="mt-0.5 block text-[11px] tabular-nums opacity-70">{formatClock(event.startAt, timezone)}–{formatClock(event.endAt, timezone)}</span>
+                {!tiny ? <span className={cn("block truncate font-medium", compact ? "text-[11px] leading-[1.15]" : "text-[13px]")}>{event.category === "study" ? studyTitle(event) : event.title}</span> : null}
+                {!compact ? <span className="mt-0.5 block text-[11px] tabular-nums opacity-70">{formatClock(event.startAt, timezone)}–{formatClock(event.endAt, timezone)}</span> : null}
               </button>
             );
           })}
@@ -287,6 +311,24 @@ export function MobileDaySchedule({
       </div>
     </section>
   );
+}
+
+function gridPosition(startHours: number, endHours: number) {
+  const top = Math.max(0, ((startHours - HOUR_START) / HOUR_SPAN) * 100);
+  const bottom = Math.min(100, ((endHours - HOUR_START) / HOUR_SPAN) * 100);
+  return { top, height: Math.max(0, bottom - top), visible: endHours > HOUR_START && startHours < HOUR_END };
+}
+
+/** Calendar width excluding the time rail (60px) and the right gutter (8px). */
+function mobileBlockLeft(column: number, columns: number) {
+  if (columns <= 1) return "60px";
+  const fraction = column / columns;
+  return `calc(60px + ${fraction * 100}% - ${68 * fraction}px)`;
+}
+
+function mobileBlockWidth(columns: number) {
+  if (columns <= 1) return "calc(100% - 68px)";
+  return `calc(${100 / columns}% - ${68 / columns + 3}px)`;
 }
 
 function positionFor(event: PlannerEvent, days: DayColumn[], timezone: string) {

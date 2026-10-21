@@ -87,7 +87,7 @@ export default function CommunityLeaderboardView() {
                 <p className="text-[14px] font-semibold" style={{ color: "var(--app-text)" }}>Join the leaderboard</p>
                 <p className="mt-1 text-[12.5px] leading-5" style={{ color: "var(--app-text-muted)" }}>
                   {data?.optedIn
-                    ? me ? `You&apos;re #${me.place}. ${minutesBehind ? `${formatMinutes(minutesBehind)} to the lead.` : "You&apos;re setting the pace."}` : "You&apos;re in. Finish a focus session to enter the board."
+                    ? me ? `You're #${me.place}. ${minutesBehind ? `${formatMinutes(minutesBehind)} to the lead.` : "You're setting the pace."}` : "You're in. Finish a focus session to enter the board."
                     : "Opt in to add your completed focus time to the board."}
                 </p>
               </div>

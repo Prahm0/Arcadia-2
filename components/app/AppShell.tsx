@@ -108,8 +108,10 @@ const NAV_GROUPS: NavGroup[] = [
     key: "progress",
     label: "Progress",
     icon: icon(<><path d="M4 15v-4M9 15V7M14 15v-6" /><path d="M2 17h16" /></>),
-    href: "/app/progress",
-    items: [],
+    items: [
+      { label: "Progress", href: "/app/progress", icon: icon(<><path d="M4 15v-4M9 15V7M14 15v-6" /><path d="M2 17h16" /></>) },
+      { label: "Leaderboard", href: "/app/leaderboard", icon: icon(<><path d="M10 3l1.7 3.45 3.8.55-2.75 2.68.65 3.78L10 11.68 6.6 13.46l.65-3.78L4.5 7l3.8-.55L10 3z" /></>) },
+    ],
   },
   {
     // A row of its own, not only the small gear by your name: on an iPad it

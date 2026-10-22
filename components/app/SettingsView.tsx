@@ -995,8 +995,8 @@ export default function SettingsView() {
           <Card>
             <SectionHeader label="Email reminders" />
             <PreferenceToggle
-              label="Email reminders"
-              detail="A short email around 4pm on days you have study blocks planned, with a button to start your first session."
+              label="Study emails"
+              detail="One useful email a day at most: a short plan Monday to Saturday, then your weekly recap on Sunday."
               checked={emailReminders}
               disabled={emailBusy}
               onChange={(next) => void saveEmailReminders(next)}

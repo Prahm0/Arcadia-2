@@ -197,12 +197,21 @@ export interface StudyPlanBlock {
   minutes: number;
 }
 
+export interface WeeklySummary {
+  minutes: number;
+  sessions: number;
+  topSubject: string | null;
+  topSubjectMinutes: number;
+  nextWeekBlocks: number;
+}
+
 /** Most blocks listed in one email; the rest become "and 2 more". */
 const PLAN_EMAIL_BLOCK_LIMIT = 6;
 
 /**
- * The 4pm "here is today's plan" reminder. Short on purpose: the blocks, one
- * big button, and an unsubscribe link (required by the Spam Act).
+ * The 4pm "start with this" reminder. It is deliberately short: one clear
+ * next block, enough context to make the rest of the day feel manageable,
+ * and one way back into Arcadia.
  */
 export function studyPlanEmail(args: {
   firstName: string;
@@ -211,11 +220,12 @@ export function studyPlanEmail(args: {
   unsubscribeUrl: string;
 }) {
   const count = args.blocks.length;
-  const shown = args.blocks.slice(0, PLAN_EMAIL_BLOCK_LIMIT);
-  const more = count - shown.length;
-  const subject = `Your plan for today: ${count} ${count === 1 ? "session" : "sessions"}`;
-  const intro = "here is what is lined up for today. Starting is the hardest part, so just begin with the first one.";
-  const lead = (name: string) => (name ? `Hi ${name}, ${intro}` : `${intro[0].toUpperCase()}${intro.slice(1)}`);
+  const first = args.blocks[0]!;
+  const shown = args.blocks.slice(1, PLAN_EMAIL_BLOCK_LIMIT);
+  const more = count - shown.length - 1;
+  const remainingMinutes = args.blocks.reduce((sum, block) => sum + block.minutes, 0);
+  const subject = `Your next block: ${first.subject} at ${first.time}`;
+  const lead = args.firstName ? `Hi ${args.firstName}, your next study block is ready.` : "Your next study block is ready.";
 
   const rows = shown
     .map(
@@ -233,25 +243,77 @@ export function studyPlanEmail(args: {
 
   const body = `
     <p style="margin:0 0 20px;font-size:15px;line-height:1.55;color:#3a3a4a;">
-      ${lead(escapeHtml(args.firstName))}
+      ${escapeHtml(lead)} You have ${remainingMinutes} focused ${remainingMinutes === 1 ? "minute" : "minutes"} planned for the rest of today.
     </p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;border:1px solid #d8e2db;border-radius:10px;border-collapse:separate;overflow:hidden;background:#f5f8f5;">
+      <tr><td style="padding:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+        <div style="font-size:13px;font-weight:600;color:#2f4a3a;text-transform:uppercase;letter-spacing:0.06em;">Start here</div>
+        <div style="margin-top:5px;font-size:18px;font-weight:600;color:#1c2420;">${escapeHtml(first.subject)}</div>
+        <div style="margin-top:3px;font-size:14px;color:#52625a;">${escapeHtml(first.time)} &middot; ${first.minutes} min</div>
+      </td></tr>
+    </table>
+    ${shown.length || more > 0 ? `${shown.length ? `<p style="margin:0 0 8px;font-size:13px;font-weight:600;color:#6b7280;">After that</p>` : ""}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;border:1px solid #ececf1;border-radius:10px;border-collapse:separate;overflow:hidden;">
       ${rows}${moreRow}
-    </table>
-    ${emailButton(args.appLink, "Start your first session")}`;
+    </table>` : ""}
+    ${emailButton(args.appLink, "Open today's plan")}`;
 
-  const footer = `You are getting this because daily plan reminders are on in your Arcadia settings. <a href="${args.unsubscribeUrl}" style="color:#2f4a3a;text-decoration:underline;">Unsubscribe in one click</a>, or switch them off any time under Settings.`;
+  const footer = `You are getting this because study emails are on in your Arcadia settings. <a href="${args.unsubscribeUrl}" style="color:#2f4a3a;text-decoration:underline;">Unsubscribe in one click</a>, or switch them off any time under Settings.`;
 
-  const lines = shown.map((block) => `- ${block.subject}, ${block.time}, ${block.minutes} min`);
+  const lines = [`Start here: ${first.subject}, ${first.time}, ${first.minutes} min`, ...shown.map((block) => `- ${block.subject}, ${block.time}, ${block.minutes} min`)];
   if (more > 0) lines.push(`- and ${more} more in the app`);
-  const text = `${lead(args.firstName)}\n\n${lines.join("\n")}\n\nStart your first session:\n${args.appLink}\n\nYou are getting this because daily plan reminders are on in your Arcadia settings. Unsubscribe in one click:\n${args.unsubscribeUrl}\n\narcadiahq.app`;
+  const text = `${lead}\nYou have ${remainingMinutes} focused ${remainingMinutes === 1 ? "minute" : "minutes"} planned for the rest of today.\n\n${lines.join("\n")}\n\nOpen today's plan:\n${args.appLink}\n\nYou are getting this because study emails are on in your Arcadia settings. Unsubscribe in one click:\n${args.unsubscribeUrl}\n\narcadiahq.app`;
 
   return {
     subject,
     text,
     html: emailLayout({
-      heading: "Your plan for today",
-      preheader: `${count} ${count === 1 ? "session" : "sessions"} planned. Start with the first one.`,
+      heading: "Your next study block",
+      preheader: `${escapeHtml(first.subject)} at ${first.time}. Open Arcadia when you are ready.`,
+      body,
+      footer,
+    }),
+  };
+}
+
+/** A short, honest Sunday recap. It only uses logged focus and existing plan blocks. */
+export function weeklySummaryEmail(args: {
+  firstName: string;
+  summary: WeeklySummary;
+  appLink: string;
+  unsubscribeUrl: string;
+}) {
+  const hours = Math.floor(args.summary.minutes / 60);
+  const minutes = args.summary.minutes % 60;
+  const focused = hours ? `${hours}h${minutes ? ` ${minutes}m` : ""}` : `${minutes}m`;
+  const sessionLabel = `${args.summary.sessions} ${args.summary.sessions === 1 ? "session" : "sessions"}`;
+  const greeting = args.firstName ? `Hi ${args.firstName}, here is what you made time for this week.` : "Here is what you made time for this week.";
+  const highlight = args.summary.topSubject
+    ? `<p style="margin:0 0 18px;font-size:14px;line-height:1.5;color:#52625a;">Most of your focus went to <strong style="color:#1c2420;">${escapeHtml(args.summary.topSubject)}</strong> with ${args.summary.topSubjectMinutes} min.</p>`
+    : "";
+  const nextWeek = args.summary.nextWeekBlocks > 0
+    ? `Next week already has ${args.summary.nextWeekBlocks} ${args.summary.nextWeekBlocks === 1 ? "study block" : "study blocks"} planned.`
+    : "Your next week is ready whenever you are.";
+  const body = `
+    <p style="margin:0 0 18px;font-size:15px;line-height:1.55;color:#3a3a4a;">${escapeHtml(greeting)}</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;border-radius:12px;border-collapse:separate;overflow:hidden;background:#0a0e14;">
+      <tr><td style="padding:22px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+        <div style="font-size:13px;font-weight:600;color:#bac7bf;text-transform:uppercase;letter-spacing:0.06em;">Your focused time</div>
+        <div style="margin-top:4px;font-size:30px;line-height:1.1;font-weight:650;color:#ffffff;">${focused}</div>
+        <div style="margin-top:6px;font-size:14px;color:#d9e1dc;">across ${sessionLabel}</div>
+      </td></tr>
+    </table>
+    ${highlight}
+    <p style="margin:0 0 20px;font-size:15px;line-height:1.55;color:#3a3a4a;">${nextWeek}</p>
+    ${emailButton(args.appLink, "See next week")}`;
+  const footer = `You are getting this because study emails are on in your Arcadia settings. <a href="${args.unsubscribeUrl}" style="color:#2f4a3a;text-decoration:underline;">Unsubscribe in one click</a>, or switch them off any time under Settings.`;
+  const text = `${greeting}\n\nYou focused for ${focused} across ${sessionLabel}.${args.summary.topSubject ? `\nMost of your focus went to ${args.summary.topSubject} with ${args.summary.topSubjectMinutes} min.` : ""}\n\n${nextWeek}\n\nSee next week:\n${args.appLink}\n\nYou are getting this because study emails are on in your Arcadia settings. Unsubscribe in one click:\n${args.unsubscribeUrl}\n\narcadiahq.app`;
+  return {
+    subject: `Your week in Arcadia: ${focused} focused`,
+    text,
+    html: emailLayout({
+      heading: "Your week in focus",
+      preheader: `${focused} focused across ${sessionLabel}.`,
       body,
       footer,
     }),

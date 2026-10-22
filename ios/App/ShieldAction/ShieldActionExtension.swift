@@ -4,8 +4,8 @@ import UserNotifications
 
 /// The block screen's buttons.
 ///
-/// - "Back to Arcadia": closes the blocked app and sends a notification that
-///   opens Arcadia (a block screen can't open another app itself).
+/// - "Back to Arcadia": opens the parental-controls app directly on iOS
+///   26.5 and later. Older iOS versions receive a notification fallback.
 /// - "5 more minutes": Opal style friction. The first tap starts a wait (5
 ///   seconds unless the student chose longer in Arcadia); a tap during the
 ///   wait does nothing; a tap after it, within a minute, opens the apps for
@@ -33,8 +33,15 @@ class ShieldActionExtension: ShieldActionDelegate {
     private func respond(to action: ShieldAction, _ completionHandler: @escaping (ShieldActionResponse) -> Void) {
         switch action {
         case .primaryButtonPressed:
-            openArcadia()
-            completionHandler(.close)
+            // iOS 26.5 added the only supported way for a shield action to
+            // return to its host app. The previous close response always
+            // dropped the student at the Home Screen.
+            if #available(iOS 26.5, *) {
+                completionHandler(.openParentalControlsApp)
+            } else {
+                queueReturnNotification()
+                completionHandler(.close)
+            }
         case .secondaryButtonPressed:
             let now = Date().timeIntervalSince1970 * 1000
             let wait = unlockWaitMs()
@@ -93,7 +100,7 @@ class ShieldActionExtension: ShieldActionDelegate {
         try? DeviceActivityCenter().startMonitoring(DeviceActivityName(rawValue: name), during: schedule)
     }
 
-    private func openArcadia() {
+    private func queueReturnNotification() {
         let content = UNMutableNotificationContent()
         content.title = "Back to Arcadia"
         content.body = "Tap to open your study block."

@@ -1,7 +1,10 @@
 import { DAY, MINUTE, zoneOffsetMinutes } from "./time.ts";
 
-/** Local time the daily plan email goes out: 4pm. */
+/** Local time the daily plan email goes out: 4pm, Monday to Saturday. */
 export const SEND_AT_MINUTE = 16 * 60;
+/** Sunday is for one useful weekly recap instead of a second daily email. */
+export const WEEKLY_SUMMARY_DAY = 0;
+export const WEEKLY_SUMMARY_AT_MINUTE = 18 * 60;
 /**
  * How long after 4pm a student is still picked up. The cron runs every
  * minute, but a run can be skipped or hit the per-run send cap, so there is
@@ -12,13 +15,28 @@ export const SEND_WINDOW_MINUTES = 30;
 export const INACTIVE_AFTER_MS = 14 * DAY;
 
 /** Minutes since 4pm on the wall clock in `timeZone`, wrapping at midnight. */
-export function minutesSinceSendTime(timeZone: string, now: number): number {
+function localMinute(timeZone: string, now: number): number {
   const localMinute = Math.floor((((now / MINUTE + zoneOffsetMinutes(timeZone, now)) % 1440) + 1440) % 1440);
-  return (localMinute - SEND_AT_MINUTE + 1440) % 1440;
+  return localMinute;
+}
+
+export function minutesSinceSendTime(timeZone: string, now: number): number {
+  return (localMinute(timeZone, now) - SEND_AT_MINUTE + 1440) % 1440;
 }
 
 export function inSendWindow(timeZone: string, now: number): boolean {
   return minutesSinceSendTime(timeZone, now) < SEND_WINDOW_MINUTES;
+}
+
+/** The Sunday recap replaces the usual daily email, never adds to it. */
+export function inDailyPlanWindow(timeZone: string, now: number): boolean {
+  return new Date(now + zoneOffsetMinutes(timeZone, now) * MINUTE).getUTCDay() !== WEEKLY_SUMMARY_DAY && inSendWindow(timeZone, now);
+}
+
+/** Sunday at 6pm local time, with the same small cron catch-up window. */
+export function inWeeklySummaryWindow(timeZone: string, now: number): boolean {
+  if (new Date(now + zoneOffsetMinutes(timeZone, now) * MINUTE).getUTCDay() !== WEEKLY_SUMMARY_DAY) return false;
+  return (localMinute(timeZone, now) - WEEKLY_SUMMARY_AT_MINUTE + 1440) % 1440 < SEND_WINDOW_MINUTES;
 }
 
 /** user_active_days stores UTC days; count the student as active until the end of that day. */

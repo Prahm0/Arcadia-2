@@ -1,10 +1,10 @@
 import { and, eq, gte, inArray, like, lte, max, not } from "drizzle-orm";
 import { db, schema, type Database } from "../db";
 import type { Env } from "../types";
-import { sendEmail, studyPlanEmail } from "./email";
-import { formatBlockTime, inSendWindow, lastActiveAt, skipReason } from "./email-reminder-rules";
+import { sendEmail, studyPlanEmail, weeklySummaryEmail } from "./email";
+import { formatBlockTime, inDailyPlanWindow, inWeeklySummaryWindow, lastActiveAt, skipReason } from "./email-reminder-rules";
 import { signUnsubscribeToken, unsubscribeUrl } from "./email-unsubscribe";
-import { DAY, localDateKey, nextLocalDay, startOfLocalDay } from "./time";
+import { DAY, localDateKey, nextLocalDay, startOfLocalDay, startOfLocalWeek } from "./time";
 
 /** Most emails one cron run sends. D1 and fetch calls share a per-invocation subrequest budget. */
 const MAX_SENDS_PER_RUN = 100;
@@ -12,6 +12,7 @@ const MAX_SENDS_PER_RUN = 100;
 const BATCH = 90;
 
 const dedupeKeyFor = (localDay: string) => `email-plan:${localDay}`;
+const weeklyDedupeKeyFor = (localDay: string) => `email-weekly:${localDay}`;
 
 function batches<T>(items: T[], size = BATCH): T[][] {
   const result: T[][] = [];
@@ -45,7 +46,7 @@ function plannedToday(events: (typeof schema.events.$inferSelect)[], timezone: s
     .map((event) => ({ subject: event.subject || event.title, startAt: event.startAt, endAt: event.endAt }));
 }
 
-async function buildEmail(env: Env, candidate: Candidate, blocks: PlannedBlock[], now: number) {
+async function buildEmail(env: Env, candidate: Candidate, blocks: PlannedBlock[]) {
   const token = await signUnsubscribeToken(env, candidate.userId);
   if (!token) return null;
   const firstName = (candidate.displayName || candidate.name).trim().split(/\s+/)[0] ?? "";
@@ -61,6 +62,58 @@ async function buildEmail(env: Env, candidate: Candidate, blocks: PlannedBlock[]
     unsubscribeUrl: url,
   });
   // One-click unsubscribe for mail clients (RFC 8058), alongside the footer link.
+  const headers = { "List-Unsubscribe": `<${url}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" };
+  return { ...content, headers };
+}
+
+function weekEnd(weekStart: number, timezone: string): number {
+  let end = weekStart;
+  for (let day = 0; day < 7; day += 1) end = nextLocalDay(end, timezone);
+  return end;
+}
+
+async function buildWeeklyEmail(args: {
+  env: Env;
+  candidate: Candidate;
+  sessions: (typeof schema.studySessions.$inferSelect)[];
+  upcomingEvents: (typeof schema.events.$inferSelect)[];
+  now: number;
+}) {
+  const { env, candidate, sessions, upcomingEvents, now } = args;
+  const weekStart = startOfLocalWeek(now, candidate.timezone);
+  const weekEndAt = weekEnd(weekStart, candidate.timezone);
+  const focused = sessions.filter((session) => (
+    session.type === "focus" && session.seconds > 0 && session.endedAt >= weekStart && session.endedAt < weekEndAt
+  ));
+  const minutes = Math.round(focused.reduce((sum, session) => sum + session.seconds, 0) / 60);
+  if (!minutes) return null;
+
+  const bySubject = new Map<string, number>();
+  for (const session of focused) {
+    if (!session.subject?.trim()) continue;
+    bySubject.set(session.subject, (bySubject.get(session.subject) ?? 0) + session.seconds);
+  }
+  const top = [...bySubject.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
+  const nextWeekEnd = weekEnd(weekEndAt, candidate.timezone);
+  const nextWeekBlocks = upcomingEvents.filter((event) => (
+    event.outcome === "planned" && event.startAt >= weekEndAt && event.startAt < nextWeekEnd
+  )).length;
+  const token = await signUnsubscribeToken(env, candidate.userId);
+  if (!token) return null;
+  const firstName = (candidate.displayName || candidate.name).trim().split(/\s+/)[0] ?? "";
+  const url = unsubscribeUrl(env, token);
+  const content = weeklySummaryEmail({
+    firstName,
+    summary: {
+      minutes,
+      sessions: focused.length,
+      topSubject: top?.[0] ?? null,
+      topSubjectMinutes: top ? Math.round(top[1] / 60) : 0,
+      nextWeekBlocks,
+    },
+    appLink: `${env.APP_ORIGIN}/app`,
+    unsubscribeUrl: url,
+  });
   const headers = { "List-Unsubscribe": `<${url}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" };
   return { ...content, headers };
 }
@@ -87,6 +140,43 @@ async function loadEvents(database: Database, userIds: string[], now: number) {
   return byUser;
 }
 
+async function loadWeeklySessions(database: Database, userIds: string[], now: number) {
+  const byUser = new Map<string, (typeof schema.studySessions.$inferSelect)[]>();
+  for (const ids of batches(userIds)) {
+    const rows = await database
+      .select()
+      .from(schema.studySessions)
+      .where(and(inArray(schema.studySessions.userId, ids), gte(schema.studySessions.endedAt, now - 8 * DAY), lte(schema.studySessions.endedAt, now)));
+    for (const row of rows) {
+      const list = byUser.get(row.userId) ?? [];
+      list.push(row);
+      byUser.set(row.userId, list);
+    }
+  }
+  return byUser;
+}
+
+async function loadUpcomingEvents(database: Database, userIds: string[], now: number) {
+  const byUser = new Map<string, (typeof schema.events.$inferSelect)[]>();
+  for (const ids of batches(userIds)) {
+    const rows = await database
+      .select()
+      .from(schema.events)
+      .where(and(
+        inArray(schema.events.userId, ids),
+        eq(schema.events.category, "study"),
+        gte(schema.events.startAt, now),
+        lte(schema.events.startAt, now + 8 * DAY),
+      ));
+    for (const row of rows) {
+      const list = byUser.get(row.userId) ?? [];
+      list.push(row);
+      byUser.set(row.userId, list);
+    }
+  }
+  return byUser;
+}
+
 /**
  * The 4pm plan email. Runs from the one-minute cron like dispatchStreakRisks:
  * work out which timezones are inside their send window, then check each
@@ -103,7 +193,11 @@ export async function dispatchEmailReminders(env: Env, now = Date.now()): Promis
     .selectDistinct({ timezone: schema.profiles.timezone })
     .from(schema.profiles)
     .where(eq(schema.profiles.emailRemindersEnabled, true));
-  const dueZones = zoneRows.map((row) => row.timezone).filter((timezone) => inSendWindow(timezone, now));
+  // Sunday has a single weekly recap at 6pm instead of the usual 4pm plan
+  // email. That keeps reminder mail to one message a day.
+  const dueZones = zoneRows
+    .map((row) => row.timezone)
+    .filter((timezone) => inDailyPlanWindow(timezone, now));
   if (!dueZones.length) return;
 
   const candidates: Candidate[] = [];
@@ -181,10 +275,94 @@ export async function dispatchEmailReminders(env: Env, now = Date.now()): Promis
       if (!claimed.length) continue;
 
       sends += 1;
-      const email = await buildEmail(env, candidate, blocks, now);
+      const email = await buildEmail(env, candidate, blocks);
       const ok = email ? await sendEmail(env, { to: candidate.email, ...email }) : false;
       if (!ok) {
         console.error("[email-reminders] send failed", { userId: candidate.userId });
+        await database
+          .delete(schema.pushDeliveries)
+          .where(and(eq(schema.pushDeliveries.userId, candidate.userId), eq(schema.pushDeliveries.dedupeKey, dedupeKey)));
+      }
+    }
+  }
+}
+
+/**
+ * A Sunday 6pm local weekly recap. Students receive it only after logging
+ * real focus time that week, and never alongside a Sunday plan reminder.
+ */
+export async function dispatchWeeklyEmailSummaries(env: Env, now = Date.now()): Promise<void> {
+  if (!env.RESEND_API_KEY || !env.TOKEN_ENCRYPTION_KEY) return;
+  const database = db(env.DB);
+  const zoneRows = await database
+    .selectDistinct({ timezone: schema.profiles.timezone })
+    .from(schema.profiles)
+    .where(eq(schema.profiles.emailRemindersEnabled, true));
+  const dueZones = zoneRows.map((row) => row.timezone).filter((timezone) => inWeeklySummaryWindow(timezone, now));
+  if (!dueZones.length) return;
+
+  const candidates: Candidate[] = [];
+  for (const zones of batches(dueZones)) {
+    candidates.push(...await database
+      .select({
+        userId: schema.profiles.userId,
+        email: schema.users.email,
+        name: schema.users.name,
+        displayName: schema.profiles.displayName,
+        timezone: schema.profiles.timezone,
+        createdAt: schema.users.createdAt,
+        lastSignInAt: schema.users.lastSignInAt,
+      })
+      .from(schema.profiles)
+      .innerJoin(schema.users, eq(schema.users.id, schema.profiles.userId))
+      .where(and(
+        eq(schema.profiles.emailRemindersEnabled, true),
+        inArray(schema.profiles.timezone, zones),
+        eq(schema.users.emailVerified, true),
+        not(like(schema.users.email, "%@arcadia.local")),
+      )));
+  }
+
+  let sends = 0;
+  for (const group of batches(candidates)) {
+    if (sends >= MAX_SENDS_PER_RUN) break;
+    const ids = group.map((candidate) => candidate.userId);
+    const [sessions, upcomingEvents, sentRows] = await Promise.all([
+      loadWeeklySessions(database, ids, now),
+      loadUpcomingEvents(database, ids, now),
+      database
+        .select({ userId: schema.pushDeliveries.userId, dedupeKey: schema.pushDeliveries.dedupeKey })
+        .from(schema.pushDeliveries)
+        .where(and(inArray(schema.pushDeliveries.userId, ids), like(schema.pushDeliveries.dedupeKey, "email-weekly:%"))),
+    ]);
+    const sent = new Set(sentRows.map((row) => `${row.userId}|${row.dedupeKey}`));
+
+    for (const candidate of group) {
+      if (sends >= MAX_SENDS_PER_RUN) break;
+      const today = localDateKey(now, candidate.timezone);
+      const dedupeKey = weeklyDedupeKeyFor(today);
+      if (sent.has(`${candidate.userId}|${dedupeKey}`)) continue;
+
+      const email = await buildWeeklyEmail({
+        env,
+        candidate,
+        sessions: sessions.get(candidate.userId) ?? [],
+        upcomingEvents: upcomingEvents.get(candidate.userId) ?? [],
+        now,
+      });
+      if (!email) continue;
+
+      const claimed = await database
+        .insert(schema.pushDeliveries)
+        .values({ userId: candidate.userId, dedupeKey, sentAt: now })
+        .onConflictDoNothing()
+        .returning({ dedupeKey: schema.pushDeliveries.dedupeKey });
+      if (!claimed.length) continue;
+
+      sends += 1;
+      const ok = await sendEmail(env, { to: candidate.email, ...email });
+      if (!ok) {
+        console.error("[email-reminders] weekly send failed", { userId: candidate.userId });
         await database
           .delete(schema.pushDeliveries)
           .where(and(eq(schema.pushDeliveries.userId, candidate.userId), eq(schema.pushDeliveries.dedupeKey, dedupeKey)));
@@ -223,7 +401,7 @@ export async function sendPlanEmailNow(
   const blocks = plannedToday(events, row.timezone, now);
   if (!blocks.length) return { status: "no_blocks" };
 
-  const email = await buildEmail(env, row, blocks, now);
+  const email = await buildEmail(env, row, blocks);
   if (!email) return { status: "no_signing_key" };
   const sent = await sendEmail(env, { to: row.email, ...email });
   // Without RESEND_API_KEY (local dev) hand back the HTML so it can be previewed.

@@ -42,7 +42,7 @@ import uploads from "./routes/uploads";
 import waitlist from "./routes/waitlist";
 import type { Env, Variables } from "./types";
 import { dispatchPushCheckIns } from "./lib/push";
-import { dispatchEmailReminders } from "./lib/email-reminders";
+import { dispatchEmailReminders, dispatchWeeklyEmailSummaries } from "./lib/email-reminders";
 import { refreshWantedLayouts } from "./lib/day-plan";
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -156,6 +156,7 @@ export default {
   async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(dispatchPushCheckIns(env));
     ctx.waitUntil(dispatchEmailReminders(env).catch((error) => console.error("[email-reminders]", error)));
+    ctx.waitUntil(dispatchWeeklyEmailSummaries(env).catch((error) => console.error("[weekly-email-summaries]", error)));
     ctx.waitUntil(refreshWantedLayouts(env));
   },
 } satisfies ExportedHandler<Env>;

@@ -17,6 +17,9 @@ export const CREATOR_LINKS: Record<string, { code?: string }> = {
   wichita: {},
   liam: {},
   alrezapour: {},
+  // Our own bios, so each platform shows up as its own source.
+  tiktok: {},
+  instagram: {},
 };
 
 /** The App Store's offer code redemption page, with the code filled in. */

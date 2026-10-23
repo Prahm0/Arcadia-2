@@ -126,6 +126,10 @@ const NAV_GROUPS: NavGroup[] = [
 ];
 
 export default function AppShell({ user, notices = [], children }: AppShellProps) {
+  // Pro given free (a creator deal, a referral) has no subscription to manage.
+  const giftedUntil = user && !user.hasSubscription && user.proBonusUntil
+    ? new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short" }).format(new Date(user.proBonusUntil))
+    : null;
   const pathname = usePathname();
   const router = useRouter();
   const streakSummary = useStreak();
@@ -455,7 +459,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
                       Arcadia {user.tier === "max" ? "Max" : "Pro"}
                     </span>
                     <span className="text-[10.5px]" style={{ color: "var(--app-text-muted)" }}>
-                      Manage subscription
+                      {giftedUntil ? `Free until ${giftedUntil}` : "Manage subscription"}
                     </span>
                   </span>
                 </span>

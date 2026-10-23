@@ -163,11 +163,19 @@ export default function PricingView() {
     <>
       <PageHeader width={1080}
         title={
-          <>
-            Pick your <span className="accent-serif">Arcadia</span>.
-          </>
+          trialEligible ? (
+            <>
+              Try <span className="accent-serif">Pro</span> free for 7 days.
+            </>
+          ) : (
+            <>
+              Pick your <span className="accent-serif">Arcadia</span>.
+            </>
+          )
         }
-        meta="Prices in AUD, billed via Stripe. Cancel anytime from Settings."
+        meta={trialEligible
+          ? "Cancel anytime from Settings before the week is up. Prices in AUD, billed via Stripe."
+          : "Prices in AUD, billed via Stripe. Cancel anytime from Settings."}
       />
 
       <div className="mx-auto flex w-full max-w-[1080px] flex-col gap-6 px-6 py-8 sm:px-10">

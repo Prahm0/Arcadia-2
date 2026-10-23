@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
+import { useDashboardData } from "@/lib/app/DashboardProvider";
 
 interface MoreItem {
   label: string;
@@ -36,6 +37,8 @@ interface MobileMoreSheetProps {
 
 export default function MobileMoreSheet({ open, onClose }: MobileMoreSheetProps) {
   const pathname = usePathname() ?? "";
+  const { data } = useDashboardData();
+  const paid = data.user.tier === "pro" || data.user.tier === "max";
 
   useEffect(() => {
     if (!open) return;
@@ -68,6 +71,24 @@ export default function MobileMoreSheet({ open, onClose }: MobileMoreSheetProps)
         }}
       >
         <div className="mx-auto mb-3 h-1 w-10 rounded-full" style={{ background: "var(--app-border-strong)" }} />
+        {paid ? null : (
+          // Free students get one clear way to the plans, above everything else.
+          <Link
+            href="/app/pricing"
+            onClick={onClose}
+            className="mb-3 flex min-h-[56px] items-center gap-3.5 rounded-2xl px-4"
+            style={{ background: "var(--app-arcad)", color: "var(--app-arcad-on)", boxShadow: "0 6px 18px -8px var(--app-arcad)" }}
+          >
+            <svg aria-hidden="true" viewBox="0 0 20 20" width="18" height="18" fill="currentColor">
+              <path d="M10 2.5l1.15 4.15L15.5 8l-4.35 1.35L10 13.5 8.85 9.35 4.5 8l4.35-1.35L10 2.5z" />
+            </svg>
+            <span className="flex flex-1 flex-col leading-tight">
+              <span className="text-[16px] font-semibold">Upgrade to Pro</span>
+              <span className="text-[12.5px] opacity-85">Try it free for 7 days</span>
+            </span>
+            <span aria-hidden="true">›</span>
+          </Link>
+        )}
         <ul className="overflow-hidden rounded-2xl" style={{ background: "var(--app-surface)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}>
           {ITEMS.map((item, index) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);

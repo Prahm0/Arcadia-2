@@ -20,6 +20,8 @@ import { dateKey, formatMinutes } from "@/lib/api/time";
 import { matchSubject } from "@/lib/app/quickAdd";
 import PageHeader from "./PageHeader";
 import EmptyArt from "./EmptyArt";
+import AppButton from "./AppButton";
+import NewTaskSheet from "./NewTaskSheet";
 
 const SAVE_AFTER_MS = 700;
 const INDENT_PX = 22;
@@ -43,6 +45,7 @@ export default function PrioritiesView() {
   const [focusedId, setFocusedId] = useState<string | null>(null);
   // Lines just sent to Today, so their button reads "On today".
   const [sent, setSent] = useState<ReadonlySet<string>>(new Set());
+  const [adding, setAdding] = useState(false);
   const inputs = useRef(new Map<string, HTMLTextAreaElement>());
   const focusNext = useRef<{ id: string; caret: number } | null>(null);
   const dirty = useRef(false);
@@ -201,6 +204,28 @@ export default function PrioritiesView() {
   const today = dateKey(new Date().toISOString(), timezone);
   const soon = lines ? dueSoon(lines, today) : [];
 
+  // A deadline added from the sheet joins the list at the end, as the server
+  // adds it. Only new lines are taken, so nothing being typed is lost.
+  async function closeDeadlineSheet() {
+    setAdding(false);
+    await save();
+    try {
+      const response = await api<{ items: SavedPriority[] }>("/api/priorities");
+      const fresh = fromSaved(response.items);
+      setLines((current) => {
+        if (!current) return current;
+        const known = new Set(current.map((line) => line.id));
+        const added = fresh.filter((line) => !known.has(line.id));
+        if (!added.length) return current;
+        // Drop the lone empty starter line once there's something real.
+        const kept = current.length === 1 && !current[0].text.trim() ? [] : current;
+        return [...kept, ...added];
+      });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Couldn't load your new deadline. Reload to see it.");
+    }
+  }
+
   async function sendToToday(line: OutlineLine) {
     setSent((current) => new Set(current).add(line.id));
     try {
@@ -218,7 +243,17 @@ export default function PrioritiesView() {
 
   return (
     <>
-      <PageHeader width={760} title="Priorities" meta={lines ? `${open} open` : undefined} />
+      <PageHeader
+        width={760}
+        title="Priorities"
+        meta={lines ? `${open} open` : undefined}
+        action={
+          <AppButton variant="primary" onClick={() => setAdding(true)} icon={<PlusIcon />}>
+            Add deadline
+          </AppButton>
+        }
+      />
+      <NewTaskSheet open={adding} onClose={() => void closeDeadlineSheet()} />
       <div className="mx-auto w-full max-w-[760px] px-4 pb-16 pt-4 sm:px-8">
         {error ? (
           <p role="alert" className="mb-3 px-2 text-[13px]" style={{ color: "var(--app-danger)" }}>
@@ -327,6 +362,14 @@ export default function PrioritiesView() {
         )}
       </div>
     </>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path d="M10 4v12M4 10h12" strokeLinecap="round" />
+    </svg>
   );
 }
 

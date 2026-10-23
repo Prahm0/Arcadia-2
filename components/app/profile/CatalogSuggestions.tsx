@@ -81,7 +81,7 @@ export default function CatalogSuggestions({ subjectId, hasSyllabus, onAdded }: 
       ) : (
         <p className="text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>No matching syllabus yet. You can upload yours below.</p>
       )}
-      {message ? <p role={upgrade ? "alert" : "status"} className="mt-2 text-[12.5px]" style={{ color: upgrade ? "var(--app-danger)" : "var(--app-text-soft)" }}>{message}{upgrade ? <> <Link href="/app/pricing" className="underline">View Pro and Max</Link></> : null}</p> : null}
+      {message ? <p role={upgrade ? "alert" : "status"} className="mt-2 text-[12.5px]" style={{ color: upgrade ? "var(--app-danger)" : "var(--app-text-soft)" }}>{message}{upgrade ? <> <Link href="/app/pricing" className="underline">See Pro</Link></> : null}</p> : null}
     </div>
   );
 }

@@ -959,7 +959,7 @@ export default function SettingsView() {
           <Card>
             <SectionHeader label="Push check-ins" />
             {!hasPaidPlan ? (
-              <SettingRow icon={SettingIcons.bell} title="Check-ins on this device" detail="A nudge before study or sleep, and when a session needs logging. Included with Pro and Max.">
+              <SettingRow icon={SettingIcons.bell} title="Check-ins on this device" detail="A nudge before study or sleep, and when a session needs logging. Included with Pro.">
                 <AppButton type="button" variant="secondary" onClick={() => router.push("/app/pricing")}>See plans</AppButton>
               </SettingRow>
             ) : !pushCheckinsSupported() ? (
@@ -1342,7 +1342,7 @@ function PlanGate({ onUpgrade }: { onUpgrade: () => void }) {
       style={{ background: "var(--app-accent-soft)", color: "var(--app-accent-strong)" }}
     >
       <p className="text-[13px]">
-        Calendar sync is included with Pro and Max. Upgrade to plan around your real timetable.
+        Calendar sync is included with Pro. Upgrade to plan around your real timetable.
       </p>
       <AppButton type="button" variant="primary" onClick={onUpgrade}>
         See plans
@@ -1419,7 +1419,7 @@ function googleRedirectNotice(): { tone: "info" | "error"; text: string } | null
   if (typeof window === "undefined") return null;
   const flag = new URLSearchParams(window.location.search).get("google");
   if (flag === "connected") return { tone: "info", text: "Google Calendar connected. Fixed events will appear on Schedule after the first sync." };
-  if (flag === "upgrade") return { tone: "error", text: "Google Calendar sync needs a Pro or Max plan." };
+  if (flag === "upgrade") return { tone: "error", text: "Google Calendar sync needs Pro." };
   if (flag === "denied") return { tone: "error", text: "Google didn't grant access. You can try again anytime." };
   return null;
 }

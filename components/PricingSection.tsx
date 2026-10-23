@@ -7,18 +7,17 @@ import FadeIn from "./ui/FadeIn";
 import RevealText from "./ui/RevealText";
 import SectionLabel from "./ui/SectionLabel";
 import Button from "./ui/Button";
-import { PAID_PRICING, TIER_COPY } from "@/lib/app/pricing";
+import { PAID_PRICING, PRO_YEARLY_PER_MONTH, PRO_YEARLY_SAVING, TIER_COPY, aud } from "@/lib/app/pricing";
 
-type Interval = "week" | "month" | "year";
+type Interval = "month" | "year";
 
 interface PaidPricing {
-  weekly: number;
   monthly: number;
   yearly: number;
 }
 
 interface Tier {
-  key: "free" | "pro" | "max";
+  key: "free" | "pro";
   name: string;
   headline: string;
   pricing: PaidPricing | null;
@@ -43,44 +42,15 @@ const TIERS: Tier[] = [
     headline: TIER_COPY.pro.headline,
     pricing: PAID_PRICING.pro,
     features: [...TIER_COPY.pro.features],
-    cta: "Start Pro",
+    cta: "Try Pro free for 7 days",
     highlighted: true,
     badge: "Most popular",
   },
-  {
-    key: "max",
-    name: "Max",
-    headline: TIER_COPY.max.headline,
-    pricing: PAID_PRICING.max,
-    features: [...TIER_COPY.max.features],
-    cta: "Go Max",
-  },
 ];
 
-/**
- * Turns each pricing option into a per-week rate so the headline number
- * is comparable across intervals. Monthly divides across 4.345 weeks
- * (365.25 ÷ 12 ÷ 7); yearly divides across 52.
- */
-function perWeek(pricing: PaidPricing, interval: Interval): number {
-  if (interval === "week") return pricing.weekly;
-  // 4.345 is the same weeks-per-month constant the monthly prices were set
-  // with, so the per-week display matches the intended rate (Max monthly
-  // reads $7.95, not $7.94 from a slightly different divisor).
-  if (interval === "month") return pricing.monthly / 4.345;
-  return pricing.yearly / 52;
-}
-
-function savingsVsWeekly(pricing: PaidPricing, interval: Interval): number {
-  if (interval === "week") return 0;
-  return Math.round(((pricing.weekly - perWeek(pricing, interval)) / pricing.weekly) * 100);
-}
-
 export default function PricingSection() {
-  const [interval, setInterval] = useState<Interval>("month");
-  const proPricing = TIERS.find((t) => t.key === "pro")?.pricing ?? null;
-  const monthlySavings = proPricing ? savingsVsWeekly(proPricing, "month") : 0;
-  const yearlySavings = proPricing ? savingsVsWeekly(proPricing, "year") : 0;
+  // Yearly first: it's the better deal, and what most students should pick.
+  const [interval, setInterval] = useState<Interval>("year");
 
   return (
     <section
@@ -116,23 +86,18 @@ export default function PricingSection() {
             <FadeIn delay={0.2}>
               <p className="type-body-lg max-w-[440px] text-white/60">
                 Start free, you&rsquo;ll feel it in your first week. Pro puts your
-                planning on autopilot with Arcad in the loop. Max adds the learning
-                layer, starting with unlimited flashcards.
+                planning on autopilot with Arcad in the loop, and the first 7 days
+                are on us.
               </p>
             </FadeIn>
           </div>
         </div>
 
         <FadeIn delay={0.25} className="mt-12 flex justify-center lg:mt-16">
-          <IntervalToggle
-            value={interval}
-            onChange={setInterval}
-            monthlySavings={monthlySavings}
-            yearlySavings={yearlySavings}
-          />
+          <IntervalToggle value={interval} onChange={setInterval} />
         </FadeIn>
 
-        <div className="mt-8 grid gap-5 md:grid-cols-3 lg:mt-12">
+        <div className="mx-auto mt-8 grid max-w-[820px] gap-5 md:grid-cols-2 lg:mt-12">
           {TIERS.map((tier, i) => (
             <FadeIn key={tier.key} delay={0.1 + i * 0.08}>
               <TierCard tier={tier} interval={interval} />
@@ -142,7 +107,7 @@ export default function PricingSection() {
 
         <FadeIn delay={0.35} className="mt-10 text-center">
           <p className="type-mono-label text-white/50">
-            Cancel any time from Settings · Prices in AUD, billed via Stripe ·{" "}
+            7 days free, then cancel any time · Prices in AUD ·{" "}
             <Link href="/refunds" className="underline underline-offset-4 hover:text-white">
               refund policy
             </Link>
@@ -153,30 +118,17 @@ export default function PricingSection() {
   );
 }
 
-function IntervalToggle({
-  value,
-  onChange,
-  monthlySavings,
-  yearlySavings,
-}: {
-  value: Interval;
-  onChange: (v: Interval) => void;
-  monthlySavings: number;
-  yearlySavings: number;
-}) {
+function IntervalToggle({ value, onChange }: { value: Interval; onChange: (v: Interval) => void }) {
   return (
     <div
       className="flex items-center gap-1 rounded-full p-1"
       style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
     >
-      <IntervalButton active={value === "week"} onClick={() => onChange("week")}>
-        Weekly
+      <IntervalButton active={value === "year"} onClick={() => onChange("year")}>
+        Yearly · save {PRO_YEARLY_SAVING}%
       </IntervalButton>
       <IntervalButton active={value === "month"} onClick={() => onChange("month")}>
-        Monthly · save {monthlySavings}%
-      </IntervalButton>
-      <IntervalButton active={value === "year"} onClick={() => onChange("year")}>
-        Yearly · save {yearlySavings}%
+        Monthly
       </IntervalButton>
     </div>
   );
@@ -208,15 +160,10 @@ function IntervalButton({
 
 function TierCard({ tier, interval }: { tier: Tier; interval: Interval }) {
   const pricing = tier.pricing;
-  const perWeekRate = pricing ? perWeek(pricing, interval) : null;
-  const billedAmount = pricing
-    ? interval === "week"
-      ? pricing.weekly
-      : interval === "month"
-      ? pricing.monthly
-      : pricing.yearly
-    : null;
-  const billedLabel = interval === "week" ? "week" : interval === "month" ? "month" : "year";
+  // Yearly reads as its monthly equivalent, with what's actually billed below.
+  const perMonth = pricing ? (interval === "month" ? pricing.monthly : PRO_YEARLY_PER_MONTH) : null;
+  const billedAmount = pricing ? (interval === "month" ? pricing.monthly : pricing.yearly) : null;
+  const billedLabel = interval === "month" ? "month" : "year";
 
   return (
     <div
@@ -253,11 +200,11 @@ function TierCard({ tier, interval }: { tier: Tier; interval: Interval }) {
       </div>
 
       <div>
-        {pricing === null || perWeekRate === null || billedAmount === null ? (
+        {pricing === null || perMonth === null || billedAmount === null ? (
           <>
             <div className="flex items-baseline gap-2">
               <span className="text-[38px] font-medium tracking-[-0.02em] text-white">$0</span>
-              <span className="text-[13px] text-white/45">/ week</span>
+              <span className="text-[13px] text-white/45">/ month</span>
             </div>
             <p className="mt-1 type-mono-label text-white/45">Forever free.</p>
           </>
@@ -265,12 +212,15 @@ function TierCard({ tier, interval }: { tier: Tier; interval: Interval }) {
           <>
             <div className="flex items-baseline gap-2">
               <span className="text-[38px] font-medium tracking-[-0.02em] text-white">
-                ${perWeekRate.toFixed(2)}
+                {aud(perMonth)}
               </span>
-              <span className="text-[13px] text-white/45">/ week</span>
+              <span className="text-[13px] text-white/45">/ month</span>
+              {interval === "year" ? (
+                <span className="text-[13px] text-white/35 line-through">{aud(pricing.monthly)}</span>
+              ) : null}
             </div>
             <p className="mt-1 type-mono-label text-white/45">
-              Billed ${billedAmount.toFixed(billedAmount % 1 === 0 ? 0 : 2)} AUD per {billedLabel}
+              7 days free, then {aud(billedAmount)} a {billedLabel}
             </p>
           </>
         )}

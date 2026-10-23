@@ -99,7 +99,7 @@ export default function SheetsView({ startCreating = false }: { startCreating?: 
               </>
             }
             action={newSheet}
-            hint="Sheets are free. Generated drafts are on Pro and Max."
+            hint="Sheets are free. Generated drafts are on Pro."
           />
         ) : (
           groups.map((group) => (

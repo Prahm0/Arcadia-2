@@ -7,17 +7,16 @@ import { analytics } from "@/lib/analytics/events";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { isGuestEmail } from "@/lib/auth/guest";
 import { useNativeIOS } from "@/lib/capacitor/platform";
-import { PAID_PRICING, TIER_COPY } from "@/lib/app/pricing";
+import { PAID_PRICING, PRO_YEARLY_PER_MONTH, PRO_YEARLY_SAVING, TIER_COPY, aud } from "@/lib/app/pricing";
 import PageHeader from "./PageHeader";
 import AppButton from "./AppButton";
 import IosPricingView from "./IosPricingView";
 
 type TierKey = "free" | "pro" | "max";
-type Interval = "week" | "month" | "year";
+type Interval = "month" | "year";
 
 interface PaidPricing {
   /** Amount actually billed each period, in AUD. */
-  weekly: number;
   monthly: number;
   yearly: number;
 }
@@ -43,30 +42,7 @@ export const TIERS: Tier[] = [
     highlighted: true,
     badge: "Most popular",
   },
-  { key: "max", name: "Max", headline: TIER_COPY.max.headline, features: [...TIER_COPY.max.features], pricing: PAID_PRICING.max },
 ];
-
-/**
- * Turns each pricing option into a per-week rate so the headline number
- * is comparable across intervals. Weekly billing uses its own rate as
- * baseline; monthly divides across 4.345 weeks (365.25 ÷ 12 ÷ 7);
- * yearly divides across 52.
- */
-function perWeek(pricing: PaidPricing, interval: Interval): number {
-  if (interval === "week") return pricing.weekly;
-  // 4.345 is the same weeks-per-month constant the monthly prices were set
-  // with, so the per-week display matches the intended rate (e.g. Max
-  // monthly reads $7.95, not $7.94 from a slightly different divisor).
-  if (interval === "month") return pricing.monthly / 4.345;
-  return pricing.yearly / 52;
-}
-
-function savingsVsWeekly(pricing: PaidPricing, interval: Interval): number {
-  if (interval === "week") return 0;
-  const baseline = pricing.weekly;
-  const rate = perWeek(pricing, interval);
-  return Math.round(((baseline - rate) / baseline) * 100);
-}
 
 export default function PricingView() {
   const router = useRouter();
@@ -78,7 +54,8 @@ export default function PricingView() {
   // only changes the wording).
   const trialEligible = !hasSubscription && !isGuest && !data?.user?.subscriptionStatus && !data?.user?.billingProvider;
 
-  const [interval, setInterval] = useState<Interval>("month");
+  // Yearly first: it's the better deal, and what most students should pick.
+  const [interval, setInterval] = useState<Interval>("year");
   const [busyTier, setBusyTier] = useState<TierKey | null>(null);
   const [error, setError] = useState<string | null>(null);
   const nativeIOS = useNativeIOS();
@@ -103,7 +80,7 @@ export default function PricingView() {
 
   if (nativeIOS) return <IosPricingView tiers={TIERS} />;
 
-  async function startCheckout(plan: "pro" | "max") {
+  async function startCheckout(plan: "pro") {
     // Guests can't upgrade, they'd be paying for an @arcadia.local
     // account they can never sign back into. Show them a banner
     // instead of trying to check out. The tier card CTA also flips
@@ -193,7 +170,7 @@ export default function PricingView() {
               <p className="text-[13.5px] font-semibold">You&rsquo;re signed in as a guest.</p>
               <p className="mt-0.5 text-[13px] opacity-90">
                 Guest accounts vanish when you close the tab, so we can&rsquo;t attach a
-                subscription. Create a real account to upgrade to Pro or Max.
+                subscription. Create a real account to upgrade to Pro.
               </p>
             </div>
             <AppButton variant="primary" onClick={() => router.push("/register")}>
@@ -223,7 +200,13 @@ export default function PricingView() {
 
         <IntervalToggle value={interval} onChange={setInterval} />
 
-        <div className="grid gap-4 md:grid-cols-3">
+        {currentTier === "max" ? (
+          <p className="text-center text-[13px]" style={{ color: "var(--app-text-muted)" }}>
+            You&rsquo;re on Max, which isn&rsquo;t sold any more. You keep it for as long as you stay subscribed.
+          </p>
+        ) : null}
+
+        <div className="mx-auto grid w-full max-w-[760px] gap-4 md:grid-cols-2">
           {TIERS.map((tier) => (
             <TierCard
               key={tier.key}
@@ -235,7 +218,7 @@ export default function PricingView() {
               trial={tier.key === "pro" && trialEligible}
               loading={busyTier === tier.key}
               onUpgrade={() => {
-                if (tier.key === "free") return;
+                if (tier.key !== "pro") return;
                 if (hasSubscription) {
                   void openPortal();
                 } else {
@@ -274,24 +257,14 @@ function IntervalToggle({
   value: Interval;
   onChange: (v: Interval) => void;
 }) {
-  // Uses Pro's pricing to headline the savings badge because Pro is the
-  // "most popular" tier the toggle sits above. Max savings are similar
-  // enough that showing Pro's number is honest for both tiers.
-  const proPricing = TIERS.find((t) => t.key === "pro")?.pricing ?? null;
-  const monthlySavings = proPricing ? savingsVsWeekly(proPricing, "month") : 0;
-  const yearlySavings = proPricing ? savingsVsWeekly(proPricing, "year") : 0;
-
   return (
     <div className="mx-auto flex items-center gap-1 rounded-full p-1"
       style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
-      <IntervalButton active={value === "week"} onClick={() => onChange("week")}>
-        Weekly
+      <IntervalButton active={value === "year"} onClick={() => onChange("year")}>
+        Yearly · save {PRO_YEARLY_SAVING}%
       </IntervalButton>
       <IntervalButton active={value === "month"} onClick={() => onChange("month")}>
-        Monthly · save {monthlySavings}%
-      </IntervalButton>
-      <IntervalButton active={value === "year"} onClick={() => onChange("year")}>
-        Yearly · save {yearlySavings}%
+        Monthly
       </IntervalButton>
     </div>
   );
@@ -346,15 +319,10 @@ function TierCard({
   const isFree = tier.key === "free";
   const isCurrent = tier.key === currentTier;
   const pricing = tier.pricing;
-  const perWeekRate = pricing ? perWeek(pricing, interval) : null;
-  const billedAmount = pricing
-    ? interval === "week"
-      ? pricing.weekly
-      : interval === "month"
-      ? pricing.monthly
-      : pricing.yearly
-    : null;
-  const billedLabel = interval === "week" ? "week" : interval === "month" ? "month" : "year";
+  // Yearly reads as its monthly equivalent, with what's actually billed below.
+  const perMonth = pricing ? (interval === "month" ? pricing.monthly : PRO_YEARLY_PER_MONTH) : null;
+  const billedAmount = pricing ? (interval === "month" ? pricing.monthly : pricing.yearly) : null;
+  const billedLabel = interval === "month" ? "month" : "year";
 
   return (
     <div
@@ -391,7 +359,7 @@ function TierCard({
       </div>
 
       <div>
-        {pricing === null || perWeekRate === null || billedAmount === null ? (
+        {pricing === null || perMonth === null || billedAmount === null ? (
           <div className="flex items-baseline gap-1.5">
             <span className="text-[36px] font-semibold" style={{ color: "var(--app-text)" }}>
               $0
@@ -404,11 +372,16 @@ function TierCard({
           <div>
             <div className="flex items-baseline gap-1.5">
               <span className="text-[36px] font-semibold" style={{ color: "var(--app-text)" }}>
-                ${perWeekRate.toFixed(2)}
+                {aud(perMonth)}
               </span>
               <span className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
-                / week AUD
+                / month
               </span>
+              {interval === "year" ? (
+                <span className="ml-1 text-[13px] line-through" style={{ color: "var(--app-text-faint)" }}>
+                  {aud(pricing.monthly)}
+                </span>
+              ) : null}
             </div>
             {trial ? (
               <p className="mt-1 text-[12.5px] font-medium" style={{ color: "var(--app-arcad-strong)" }}>
@@ -416,7 +389,7 @@ function TierCard({
               </p>
             ) : null}
             <p className="mt-1 text-[12px]" style={{ color: "var(--app-text-faint)" }}>
-              {trial ? "Then billed" : "Billed"} ${billedAmount.toFixed(billedAmount % 1 === 0 ? 0 : 2)} per {billedLabel}
+              {trial ? "Then" : "Billed"} {aud(billedAmount)} a {billedLabel}{interval === "year" ? `, ${PRO_YEARLY_SAVING}% less than monthly` : ""}
             </p>
           </div>
         )}
@@ -494,7 +467,7 @@ function Faq() {
       />
       <FaqItem
         q="What if I hit the daily message cap?"
-        a="Arcad tells you and shows when it resets (midnight UTC). Upgrade to Pro or Max any time to lift the cap."
+        a="Arcad tells you and shows when it resets at midnight. Pro raises it to 20 a day."
       />
       <FaqItem
         q="What happens to my data on Free?"
@@ -502,7 +475,7 @@ function Faq() {
       />
       <FaqItem
         q="Student discount?"
-        a="Arcadia is already built for students. Prices are set to sit under the cost of a coffee per week, no separate student tier."
+        a={`Arcadia is already priced for students: Pro is ${aud(PRO_YEARLY_PER_MONTH)} a month on the yearly plan, so there's no separate student tier.`}
       />
     </div>
   );

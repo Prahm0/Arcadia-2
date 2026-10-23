@@ -88,7 +88,8 @@ export function messageUsageSnapshot(tier: Tier, used: number, window = messageU
     tier,
     used,
     cap: DAILY_MESSAGE_CAP[tier],
-    upgradeTier: tier === "free" ? "pro" : tier === "pro" ? "max" : null,
+    // Max isn't sold any more, so only Free has somewhere to go.
+    upgradeTier: tier === "free" ? "pro" : null,
     resetAt: window.resetAt,
   };
 }

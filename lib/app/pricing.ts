@@ -1,10 +1,25 @@
-/** Paid-plan prices in AUD, shared by the pricing page and upgrade prompts. */
+/**
+ * Pro's prices in AUD, shared by the pricing page and upgrade prompts. The
+ * App Store charges the same (set in App Store Connect). Free and Pro are the
+ * only plans on sale: weekly billing and Max were retired, and anyone already
+ * on them keeps what they have.
+ */
 export const PAID_PRICING = {
-  pro: { weekly: 4.95, monthly: 12.82, yearly: 49.4 },
-  max: { weekly: 9.95, monthly: 34.54, yearly: 205.4 },
+  pro: { monthly: 6.99, yearly: 29.99 },
 } as const;
 
 export type PaidTier = keyof typeof PAID_PRICING;
+
+/** Yearly Pro as a monthly amount: 29.99 / 12 = 2.50. */
+export const PRO_YEARLY_PER_MONTH = Math.round((PAID_PRICING.pro.yearly / 12) * 100) / 100;
+
+/** How much cheaper yearly is than paying monthly for a year, in whole percent. */
+export const PRO_YEARLY_SAVING = Math.round((1 - PAID_PRICING.pro.yearly / (PAID_PRICING.pro.monthly * 12)) * 100);
+
+/** "A$6.99", or "A$30" for whole amounts. */
+export function aud(amount: number): string {
+  return `A$${amount.toFixed(amount % 1 === 0 ? 0 : 2)}`;
+}
 
 /**
  * What each plan includes, shared by the in-app pricing page and the landing
@@ -36,16 +51,6 @@ export const TIER_COPY = {
       "Full analytics, subject breakdown, streaks, trends",
       "Custom focus presets",
       "Up to 3 flashcard decks",
-    ],
-  },
-  max: {
-    headline: "The learning layer. Study, not just plan.",
-    features: [
-      "Everything in Pro",
-      "Arcad, 100 messages a day",
-      "Unlimited flashcard decks",
-      "New study tools land here first",
-      "Study rooms for up to 50",
     ],
   },
 } as const;

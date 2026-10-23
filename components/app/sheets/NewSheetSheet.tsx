@@ -180,7 +180,7 @@ function NewSheetForm({ onClose, initialSubject }: { onClose: () => void; initia
               </Label>
             )}
             <p className="text-[12px] leading-[1.45]" style={{ color: "var(--app-text-faint)" }}>
-              Only content from the selected source is used. The draft isn&apos;t saved until you save it. Pro and Max.
+              Only content from the selected source is used. The draft isn&apos;t saved until you save it. On Pro.
             </p>
           </div>
         ) : null}

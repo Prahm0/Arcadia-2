@@ -83,12 +83,35 @@ export default function SettingsView() {
   const { mode, setMode } = useTheme();
   const { sky, update: updateSky } = useStudySky();
 
+  // Links here can point at a card (#billing from the Pro badge,
+  // #help-feedback). Cards above it load late on the iPad and iPhone apps
+  // (App blocking waits on the phone) and push it down, so the jump is
+  // repeated while the page settles, unless the student has scrolled.
   useEffect(() => {
-    if (window.location.hash !== "#help-feedback") return;
-    const frame = window.requestAnimationFrame(() => {
-      document.getElementById("help-feedback")?.scrollIntoView({ block: "start" });
-    });
-    return () => window.cancelAnimationFrame(frame);
+    let timers: number[] = [];
+    let scrolledByHand = false;
+    const markHand = () => { scrolledByHand = true; };
+    const jump = () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+      scrolledByHand = false;
+      const id = window.location.hash.slice(1);
+      if (!id || id === "focus-guard") return;
+      timers = [0, 300, 800, 1600].map((delay) =>
+        window.setTimeout(() => {
+          if (!scrolledByHand) document.getElementById(id)?.scrollIntoView({ block: "start" });
+        }, delay),
+      );
+    };
+    jump();
+    window.addEventListener("hashchange", jump);
+    window.addEventListener("wheel", markHand, { passive: true });
+    window.addEventListener("touchmove", markHand, { passive: true });
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+      window.removeEventListener("hashchange", jump);
+      window.removeEventListener("wheel", markHand);
+      window.removeEventListener("touchmove", markHand);
+    };
   }, []);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");

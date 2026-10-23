@@ -89,6 +89,12 @@ export default function IosPricingView({ tiers }: { tiers: IosTier[] }) {
     };
   }, [data.user.id]);
 
+  // The free week, when this Apple ID can still take it: said up top, as
+  // many students didn't know it existed.
+  const freeTrial = hasSubscription
+    ? null
+    : options.find((option) => option.tier === "pro" && option.introOffer?.free && introEligible.has(option.productIdentifier))?.introOffer ?? null;
+
   const optionByTier = useMemo(
     () => new Map(options.map((option) => [`${option.tier}:${option.interval}`, option])),
     [options],
@@ -165,11 +171,19 @@ export default function IosPricingView({ tiers }: { tiers: IosTier[] }) {
       <PageHeader
         width={1080}
         title={
-          <>
-            Pick your <span className="accent-serif">Arcadia</span>.
-          </>
+          freeTrial ? (
+            <>
+              Try <span className="accent-serif">Pro</span> free for {freeTrial.length}.
+            </>
+          ) : (
+            <>
+              Pick your <span className="accent-serif">Arcadia</span>.
+            </>
+          )
         }
-        meta="Subscriptions are securely processed through the App Store."
+        meta={freeTrial
+          ? "Cancel anytime in your App Store settings before it ends. Subscriptions are processed through the App Store."
+          : "Subscriptions are securely processed through the App Store."}
       />
 
       <div className="mx-auto flex w-full max-w-[1080px] flex-col gap-6 px-6 py-8 sm:px-10">

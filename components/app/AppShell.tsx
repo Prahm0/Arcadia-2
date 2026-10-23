@@ -133,6 +133,9 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
   const sessionStart = useSessionStartWatcher();
   const streak = streakSummary.current;
   const [signingOut, setSigningOut] = useState(false);
+  // Many students didn't know about the free week, so every upgrade button
+  // says it, for anyone who hasn't subscribed before.
+  const trialOpen = trialAvailable(user);
   const [sidebarOpen, setSidebarOpen] = useState(readSidebarPref);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -261,7 +264,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
               style={{ background: "var(--app-arcad)", color: "var(--app-arcad-on)" }}
             >
               <span aria-hidden="true">✦</span>
-              Upgrade
+              {trialOpen ? "Try Pro free" : "Upgrade"}
             </Link>
           )}
         </div>
@@ -477,7 +480,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
             ) : (
               <Link
                 href="/app/pricing"
-                className="flex h-9 items-center justify-center gap-2 rounded-lg px-3 text-[13px] font-semibold transition-opacity hover:opacity-90"
+                className="flex min-h-9 items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-[13px] font-semibold transition-opacity hover:opacity-90"
                 style={{
                   background: "var(--app-arcad)",
                   color: "var(--app-arcad-on)",
@@ -487,7 +490,10 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
                 <svg aria-hidden="true" viewBox="0 0 20 20" width="15" height="15" fill="currentColor">
                   <path d="M10 2.5l1.15 4.15L15.5 8l-4.35 1.35L10 13.5 8.85 9.35 4.5 8l4.35-1.35L10 2.5z" />
                 </svg>
-                Upgrade to Pro
+                <span className="flex flex-col items-start leading-tight">
+                  Upgrade to Pro
+                  {trialOpen ? <span className="text-[11px] font-medium opacity-85">7 days free</span> : null}
+                </span>
               </Link>
             )}
           </div>
@@ -698,7 +704,7 @@ function SidebarRail({
               ? { background: "var(--app-arcad-soft)", color: "var(--app-arcad-strong)" }
               : { background: "var(--app-arcad)", color: "var(--app-arcad-on)" }
           }
-          {...tipProps(paid ? `Arcadia ${user?.tier === "max" ? "Max" : "Pro"}, manage subscription` : "Upgrade to Pro")}
+          {...tipProps(paid ? `Arcadia ${user?.tier === "max" ? "Max" : "Pro"}, manage subscription` : trialAvailable(user) ? "Try Pro free for 7 days" : "Upgrade to Pro")}
         >
           {SPARK_ICON}
         </Link>
@@ -780,4 +786,9 @@ function BrandMark() {
       )}
     </Link>
   );
+}
+
+/** Hasn't subscribed before, so the free week is still theirs to take. */
+function trialAvailable(user: AppShellProps["user"]): boolean {
+  return Boolean(user) && !user?.hasSubscription && !user?.subscriptionStatus && !user?.billingProvider;
 }

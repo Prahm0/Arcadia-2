@@ -382,7 +382,8 @@ function IosTierCard({
     >
       {tier.badge ? (
         <div className="absolute -top-3 right-6 rounded-md px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ background: "var(--app-arcad)", color: "var(--app-arcad-on)" }}>
-          {tier.badge}
+          {/* The free week, when Apple says this Apple ID can still take it. */}
+          {intro?.free ? `${intro.length} free` : tier.badge}
         </div>
       ) : null}
       <div>

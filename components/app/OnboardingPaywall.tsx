@@ -152,7 +152,7 @@ export default function OnboardingPaywall({
                   className="type-mono-label absolute -top-2.5 right-5 rounded-full px-2.5 py-0.5 text-[10.5px]"
                   style={{ background: "var(--app-arcad)", color: "var(--app-arcad-on)" }}
                 >
-                  Most popular
+                  7 days free
                 </div>
               ) : null}
               <div>

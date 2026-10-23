@@ -44,7 +44,7 @@ const TIERS: Tier[] = [
     features: [...TIER_COPY.pro.features],
     cta: "Try Pro free for 7 days",
     highlighted: true,
-    badge: "Most popular",
+    badge: "7 days free",
   },
 ];
 

@@ -40,7 +40,7 @@ export const TIERS: Tier[] = [
     features: [...TIER_COPY.pro.features],
     pricing: PAID_PRICING.pro,
     highlighted: true,
-    badge: "Most popular",
+    badge: "Best value",
   },
 ];
 
@@ -342,7 +342,8 @@ function TierCard({
           className="absolute -top-3 right-6 rounded-md px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]"
           style={{ background: "var(--app-arcad)", color: "var(--app-arcad-on)" }}
         >
-          {tier.badge}
+          {/* The free week, for anyone who can still take it. */}
+          {trial ? "7 days free" : tier.badge}
         </div>
       ) : null}
 

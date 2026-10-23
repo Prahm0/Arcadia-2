@@ -23,6 +23,9 @@ export interface Env {
   STRIPE_PRICE_MAX_WEEKLY: string;
   STRIPE_PRICE_MAX_MONTHLY: string;
   STRIPE_PRICE_MAX_YEARLY: string;
+  /** Pro at A$6.99 a month and A$29.99 a year: the only prices on sale. */
+  STRIPE_PRICE_PRO_MONTHLY_V2: string;
+  STRIPE_PRICE_PRO_YEARLY_V2: string;
   // Stripe coupon id for the onboarding win-back offer (e.g. 41% off Pro
   // monthly). Non-secret. Empty until a coupon is created in Stripe; the
   // win-back checkout then just runs at full price.

@@ -8,7 +8,7 @@ import { analytics } from "@/lib/analytics/events";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { useStreak } from "@/lib/app/useStreak";
 import { buildContextualStarters, buildGreeting, type Starter } from "@/lib/app/arcadStarters";
-import { PAID_PRICING, type PaidTier } from "@/lib/app/pricing";
+import { PAID_PRICING, aud, type PaidTier } from "@/lib/app/pricing";
 import { requestDashboardRefresh } from "@/lib/app/useDashboardAutoRefresh";
 import AppButton from "./AppButton";
 import ArcadOrb from "./ArcadOrb";
@@ -693,8 +693,6 @@ function ArcadPage() {
 
 function MessageLimitNotice({ usage }: { usage: ArcadUsage }) {
   const tierName = usage.tier === "free" ? "free" : usage.tier === "pro" ? "Pro" : "Max";
-  const upgradeName = usage.upgradeTier === "pro" ? "Pro" : usage.upgradeTier === "max" ? "Max" : null;
-  const weeklyPrice = usage.upgradeTier ? PAID_PRICING[usage.upgradeTier].weekly : null;
 
   return (
     <div
@@ -717,10 +715,6 @@ function MessageLimitNotice({ usage }: { usage: ArcadUsage }) {
             Try Pro free for 7 days
           </Link>
         </>
-      ) : upgradeName && weeklyPrice !== null ? (
-        <Link href="/app/pricing" className="mt-1 inline-flex text-[12.5px] font-medium hover:underline" style={{ color: "var(--app-arcad)" }}>
-          Upgrade to {upgradeName} · ${weeklyPrice.toFixed(2)}/week
-        </Link>
       ) : null}
     </div>
   );
@@ -780,9 +774,8 @@ function Suggestions({ starters, onPick }: { starters: Starter[]; onPick: (start
 
 function SendErrorNote({ error }: { error: SendError }) {
   if (error.capped) {
-    const upgradeTier = error.upgradeTier;
-    const upgradeName = upgradeTier === "pro" ? "Pro" : upgradeTier === "max" ? "Max" : null;
-    const weeklyPrice = upgradeTier ? PAID_PRICING[upgradeTier].weekly : null;
+    // Only Free can upgrade now that Max isn't sold.
+    const upgradeTier = error.upgradeTier === "pro" ? "pro" : null;
     return (
       <div
         className="ml-9 mt-4 rounded-lg px-4 py-3"
@@ -791,13 +784,13 @@ function SendErrorNote({ error }: { error: SendError }) {
         <p className="text-[14px]" style={{ color: "var(--app-text)" }}>
           {error.message}
         </p>
-        {upgradeName && weeklyPrice !== null ? (
+        {upgradeTier ? (
           <Link
             href="/app/pricing"
             className="mt-2.5 inline-flex h-8 items-center rounded-md px-3 text-[13px] font-medium"
             style={{ background: "var(--app-arcad)", color: "var(--app-arcad-on)" }}
           >
-            Upgrade to {upgradeName} · ${weeklyPrice.toFixed(2)}/week
+            Try Pro free for 7 days · then {aud(PAID_PRICING.pro.monthly)}/month
           </Link>
         ) : null}
       </div>

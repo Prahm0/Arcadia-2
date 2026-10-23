@@ -358,7 +358,7 @@ function DropOverlay({ canUpload }: { canUpload: boolean }) {
       >
         <UploadGlyph size={22} />
         <p className="mt-2 text-[16px] font-semibold" style={{ color: "var(--app-text)" }}>
-          {canUpload ? "Drop to upload" : "Uploads are on Pro and Max"}
+          {canUpload ? "Drop to upload" : "Uploads are on Pro"}
         </p>
         <p className="text-[13px]" style={{ color: "var(--app-text-muted)" }}>
           {canUpload ? "You'll pick the subject next." : "Drop it anyway to see what's included."}

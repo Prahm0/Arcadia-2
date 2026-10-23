@@ -88,7 +88,7 @@ export default function DropArea({
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-[14px] font-medium" style={{ color: "var(--app-text)" }}>
-            {canUpload ? (over ? "Drop to upload" : title) : "Uploads are on Pro and Max"}
+            {canUpload ? (over ? "Drop to upload" : title) : "Uploads are on Pro"}
           </span>
           <span className="mt-0.5 block text-[12.5px] leading-snug" style={{ color: "var(--app-text-muted)" }}>
             {canUpload ? disabled || hint : "Arcad reads your syllabus and notes, then plans around them. See what's included."}

@@ -141,7 +141,7 @@ chat.post("/", async (c) => {
             : `You've hit today's cap of ${cap.cap} Arcad messages. Resets at midnight.`,
         code: "message_cap_reached",
         tier,
-        upgradeTier: tier === "free" ? "pro" : tier === "pro" ? "max" : null,
+        upgradeTier: tier === "free" ? "pro" : null,
         cap: cap.cap,
         used: cap.used,
         usage: messageUsageSnapshot(tier, cap.used, cap.window),

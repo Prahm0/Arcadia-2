@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PAID_PRICING } from "@/lib/app/pricing";
 import * as Sentry from "@sentry/nextjs";
 import { api } from "@/lib/api/client";
 import { analytics } from "@/lib/analytics/events";
@@ -19,12 +20,12 @@ import { TIERS } from "./PricingView";
 
 /**
  * Shown once, right after the plan is built, before the student reaches the
- * app. Presents Pro and Max; if they try to leave (X or "continue free"), a
+ * app. Presents Pro; if they try to leave (X or "continue free"), a
  * one-time win-back offers Pro monthly at a discount before they drop to Free.
  */
 type PlanKey = "pro" | "max";
 
-const PRO_MONTHLY = 12.82;
+const PRO_MONTHLY = PAID_PRICING.pro.monthly;
 export const WINBACK_PERCENT = 41;
 const WINBACK_PRICE = Math.round(PRO_MONTHLY * (1 - WINBACK_PERCENT / 100) * 100) / 100;
 
@@ -48,18 +49,6 @@ const PLANS: {
       "Full analytics, up to 3 flashcard decks",
     ],
     highlighted: true,
-  },
-  {
-    key: "max",
-    name: "Max",
-    price: 34.54,
-    blurb: "The learning layer. Study, not just plan.",
-    features: [
-      "Everything in Pro",
-      "100 Arcad messages a day",
-      "Unlimited flashcard decks",
-      "New study tools land here first",
-    ],
   },
 ];
 
@@ -147,7 +136,7 @@ export default function OnboardingPaywall({
           </p>
         </div>
 
-        <div className="mt-10 grid gap-4 md:grid-cols-2">
+        <div className="mx-auto mt-10 grid w-full max-w-[420px] gap-4">
           {PLANS.map((plan) => (
             <div
               key={plan.key}
@@ -210,7 +199,7 @@ export default function OnboardingPaywall({
                   loading={busy === plan.key}
                   className="w-full"
                 >
-                  {plan.highlighted ? "Try free for 7 days" : "Go Max"}
+                  Try free for 7 days
                 </AppButton>
               </div>
             </div>

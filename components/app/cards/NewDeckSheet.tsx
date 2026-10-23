@@ -258,7 +258,7 @@ function NewDeckForm({ onClose, initialSubject }: { onClose: () => void; initial
             )}
 
             <p className="text-[12px] leading-[1.45]" style={{ color: "var(--app-text-faint)" }}>
-              Generation is available on Pro and Max. Arcad creates one new deck from this source.
+              Generation is available on Pro. Arcad creates one new deck from this source.
             </p>
           </div>
         ) : null}

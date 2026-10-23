@@ -48,37 +48,33 @@ billing.post("/developer-tier", async (c) => {
 });
 
 /**
- * Returns the price ID for the {plan, interval} combo from the Worker's
- * env. Wrangler carries these as vars so switching sandbox → live is a
- * config change, not a redeploy of the code. Empty string means the
- * interval hasn't been set up in Stripe yet, treated as null.
+ * The price checkout sells for Pro, monthly or yearly. Only the current
+ * prices: weekly and Max are no longer sold, and an empty id means the new
+ * price isn't set up yet, treated as null so nobody is charged an old price
+ * the pricing page no longer shows.
  */
 function priceIdFor(env: Env, plan: Plan, interval: Interval): string | null {
-  const lookup: Record<string, string | undefined> = {
-    "pro:week": env.STRIPE_PRICE_PRO_WEEKLY,
-    "pro:month": env.STRIPE_PRICE_PRO_MONTHLY,
-    "pro:year": env.STRIPE_PRICE_PRO_YEARLY,
-    "max:week": env.STRIPE_PRICE_MAX_WEEKLY,
-    "max:month": env.STRIPE_PRICE_MAX_MONTHLY,
-    "max:year": env.STRIPE_PRICE_MAX_YEARLY,
-  };
-  const value = lookup[`${plan}:${interval}`];
+  if (plan !== "pro") return null;
+  const value = interval === "month" ? env.STRIPE_PRICE_PRO_MONTHLY_V2 : interval === "year" ? env.STRIPE_PRICE_PRO_YEARLY_V2 : "";
   return value && value.length > 0 ? value : null;
 }
 
 function intervalForPriceId(env: Env, priceId: string): Interval | null {
   if ([env.STRIPE_PRICE_PRO_WEEKLY, env.STRIPE_PRICE_MAX_WEEKLY].includes(priceId)) return "week";
-  if ([env.STRIPE_PRICE_PRO_MONTHLY, env.STRIPE_PRICE_MAX_MONTHLY].includes(priceId)) return "month";
-  if ([env.STRIPE_PRICE_PRO_YEARLY, env.STRIPE_PRICE_MAX_YEARLY].includes(priceId)) return "year";
+  if ([env.STRIPE_PRICE_PRO_MONTHLY, env.STRIPE_PRICE_MAX_MONTHLY, env.STRIPE_PRICE_PRO_MONTHLY_V2].includes(priceId)) return "month";
+  if ([env.STRIPE_PRICE_PRO_YEARLY, env.STRIPE_PRICE_MAX_YEARLY, env.STRIPE_PRICE_PRO_YEARLY_V2].includes(priceId)) return "year";
   return null;
 }
 
+/** Old prices still count, so people already on them keep their plan. */
 function tierForPriceId(env: Env, priceId: string): "pro" | "max" | null {
   const proIds = [
     env.STRIPE_PRICE_PRO_WEEKLY,
     env.STRIPE_PRICE_PRO_MONTHLY,
     env.STRIPE_PRICE_PRO_YEARLY,
-  ].filter((id) => id.length > 0);
+    env.STRIPE_PRICE_PRO_MONTHLY_V2,
+    env.STRIPE_PRICE_PRO_YEARLY_V2,
+  ].filter((id) => id && id.length > 0);
   const maxIds = [
     env.STRIPE_PRICE_MAX_WEEKLY,
     env.STRIPE_PRICE_MAX_MONTHLY,
@@ -123,20 +119,20 @@ billing.post("/checkout", async (c) => {
   if (body.winback && !couponId) {
     return c.json({ error: "That offer isn't available right now.", code: "winback_unavailable" }, 409);
   }
-  if (plan !== "pro" && plan !== "max") {
-    return c.json({ error: "Pick a Pro or Max plan." }, 400);
+  if (plan !== "pro") {
+    return c.json({ error: "Pro is the plan on sale. Pick monthly or yearly." }, 400);
   }
-  if (interval !== "week" && interval !== "month" && interval !== "year") {
-    return c.json({ error: "Interval must be week, month, or year." }, 400);
+  if (interval !== "month" && interval !== "year") {
+    return c.json({ error: "Pick monthly or yearly." }, 400);
   }
   const priceId = priceIdFor(c.env, plan, interval);
   if (!priceId) {
     return c.json(
       {
-        error: `${plan === "pro" ? "Pro" : "Max"} isn't available on the ${interval}ly plan yet.`,
+        error: "Pro's new prices are being set up. Try again in a few minutes.",
         code: "interval_not_configured",
       },
-      400,
+      503,
     );
   }
 

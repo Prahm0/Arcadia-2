@@ -43,7 +43,8 @@ export default function IosPricingView({ tiers }: { tiers: IosTier[] }) {
   // the other tier in the same group as an upgrade or downgrade. Only a web
   // (Stripe) subscription has to be changed where it was bought.
   const lockedElsewhere = hasSubscription && billingProvider !== "app_store";
-  const [interval, setInterval] = useState<RevenueCatInterval>("month");
+  // Yearly first: it's the better deal, and what most students should pick.
+  const [interval, setInterval] = useState<RevenueCatInterval>("year");
   const [options, setOptions] = useState<IosPurchaseOption[]>([]);
   const [loadingOffers, setLoadingOffers] = useState(true);
   const [busy, setBusy] = useState<"purchase" | "restore" | "manage" | null>(null);
@@ -94,6 +95,13 @@ export default function IosPricingView({ tiers }: { tiers: IosTier[] }) {
   const freeTrial = hasSubscription
     ? null
     : options.find((option) => option.tier === "pro" && option.introOffer?.free && introEligible.has(option.productIdentifier))?.introOffer ?? null;
+
+  // Yearly as a monthly amount, and how much it saves, from the App Store's own prices.
+  const proMonthly = options.find((option) => option.tier === "pro" && option.interval === "month");
+  const proYearly = options.find((option) => option.tier === "pro" && option.interval === "year");
+  const yearlySaving = proMonthly && proYearly && proMonthly.price > 0
+    ? Math.round((1 - proYearly.price / (proMonthly.price * 12)) * 100)
+    : null;
 
   const optionByTier = useMemo(
     () => new Map(options.map((option) => [`${option.tier}:${option.interval}`, option])),
@@ -209,9 +217,15 @@ export default function IosPricingView({ tiers }: { tiers: IosTier[] }) {
           </div>
         ) : null}
 
-        <IntervalToggle value={interval} onChange={setInterval} />
+        <IntervalToggle value={interval} onChange={setInterval} saving={yearlySaving} />
 
-        <div className="grid gap-4 md:grid-cols-3" aria-busy={loadingOffers}>
+        {currentTier === "max" ? (
+          <p className="text-center text-[13px]" style={{ color: "var(--app-text-muted)" }}>
+            You&rsquo;re on Max, which isn&rsquo;t sold any more. You keep it for as long as you stay subscribed.
+          </p>
+        ) : null}
+
+        <div className="mx-auto grid w-full max-w-[760px] gap-4 md:grid-cols-2" aria-busy={loadingOffers}>
           {tiers.map((tier) => (
             <IosTierCard
               key={tier.key}
@@ -222,6 +236,7 @@ export default function IosPricingView({ tiers }: { tiers: IosTier[] }) {
                 return option && !hasSubscription && introEligible.has(option.productIdentifier) ? option.introOffer : null;
               })()}
               interval={interval}
+              saving={yearlySaving}
               currentTier={currentTier}
               hasSubscription={hasSubscription}
               lockedElsewhere={lockedElsewhere}
@@ -282,21 +297,30 @@ export default function IosPricingView({ tiers }: { tiers: IosTier[] }) {
 
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <IosFaqItem q="Can I cancel any time?" a="Yes. Manage your subscription from your Apple ID subscription settings. You keep access until the end of the current billing period." />
-          <IosFaqItem q="What if I hit the daily message cap?" a="Arcad tells you and shows when it resets. Pro and Max include a higher daily cap." />
+          <IosFaqItem q="What if I hit the daily message cap?" a="Arcad tells you and shows when it resets. Pro raises it to 20 a day." />
         </div>
       </div>
     </>
   );
 }
 
-function IntervalToggle({ value, onChange }: { value: RevenueCatInterval; onChange: (value: RevenueCatInterval) => void }) {
+function IntervalToggle({ value, onChange, saving }: { value: RevenueCatInterval; onChange: (value: RevenueCatInterval) => void; saving: number | null }) {
   return (
     <div className="mx-auto flex items-center gap-1 rounded-full p-1" style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)" }}>
-      <IntervalButton active={value === "week"} onClick={() => onChange("week")}>Weekly</IntervalButton>
+      <IntervalButton active={value === "year"} onClick={() => onChange("year")}>{saving && saving > 0 ? `Yearly · save ${saving}%` : "Yearly"}</IntervalButton>
       <IntervalButton active={value === "month"} onClick={() => onChange("month")}>Monthly</IntervalButton>
-      <IntervalButton active={value === "year"} onClick={() => onChange("year")}>Yearly</IntervalButton>
     </div>
   );
+}
+
+/** "A$2.50" a month for a yearly price, in the App Store's own currency. */
+function monthlyEquivalent(option: IosPurchaseOption): string | null {
+  if (!(option.price > 0) || !option.currencyCode) return null;
+  try {
+    return new Intl.NumberFormat("en-AU", { style: "currency", currency: option.currencyCode }).format(Math.round((option.price / 12) * 100) / 100);
+  } catch {
+    return null;
+  }
 }
 
 function IntervalButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -317,6 +341,7 @@ function IosTierCard({
   option,
   intro,
   interval,
+  saving,
   currentTier,
   hasSubscription,
   lockedElsewhere,
@@ -331,6 +356,8 @@ function IosTierCard({
   /** The introductory offer this Apple ID can use on this plan, if any. */
   intro: IntroOffer | null;
   interval: RevenueCatInterval;
+  /** Yearly's saving over paying monthly, in percent. */
+  saving: number | null;
   currentTier: TierKey;
   hasSubscription: boolean;
   lockedElsewhere: boolean;
@@ -370,14 +397,23 @@ function IosTierCard({
           </div>
         ) : option ? (
           <div>
-            <span className="text-[36px] font-semibold" style={{ color: "var(--app-text)" }}>{option.priceString}</span>
+            {interval === "year" && monthlyEquivalent(option) ? (
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-[36px] font-semibold" style={{ color: "var(--app-text)" }}>{monthlyEquivalent(option)}</span>
+                <span className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>/ month</span>
+              </div>
+            ) : (
+              <span className="text-[36px] font-semibold" style={{ color: "var(--app-text)" }}>{option.priceString}</span>
+            )}
             {intro ? (
               <p className="mt-1 text-[12.5px] font-medium" style={{ color: "var(--app-arcad-strong)" }}>
                 {intro.free ? `First ${intro.length} free` : `First ${intro.length} for ${intro.priceString}`}
               </p>
             ) : null}
             <p className="mt-1 text-[12px]" style={{ color: "var(--app-text-faint)" }}>
-              {intro ? "Then billed" : "Billed"} per {billedLabel} through the App Store
+              {interval === "year"
+                ? `${intro ? "Then" : "Billed"} ${option.priceString} a year${saving && saving > 0 ? `, ${saving}% less than monthly` : ""}, through the App Store`
+                : `${intro ? "Then billed" : "Billed"} per ${billedLabel} through the App Store`}
             </p>
           </div>
         ) : (

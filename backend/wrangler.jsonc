@@ -33,6 +33,12 @@
     "STRIPE_PRICE_MAX_WEEKLY": "price_1UImh99e8rebDtOcRg3WSl9V",
     "STRIPE_PRICE_MAX_MONTHLY": "price_1UImhN9e8rebDtOckTgt2JRz",
     "STRIPE_PRICE_MAX_YEARLY": "price_1UImhc9e8rebDtOc6mo8AfL0",
+    // What's on sale now: Pro A$6.99 a month and A$29.99 a year. The ids
+    // above stay so people already on those plans keep them; checkout only
+    // sells these two, and refuses (rather than charging an old price) while
+    // they're empty. Live ids: A$6.99 monthly, A$29.99 yearly.
+    "STRIPE_PRICE_PRO_MONTHLY_V2": "price_1UTgSh9e8rebDtOcoRwYRtfc",
+    "STRIPE_PRICE_PRO_YEARLY_V2": "price_1UTgTB9e8rebDtOc8ZUFoug6",
     // Coupon applied to the onboarding win-back offer (41% off Pro monthly).
     // Create a 41%-off coupon in Stripe and paste its id here. Empty = no
     // discount (the offer still works, just at full price).

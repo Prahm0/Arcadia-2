@@ -10,10 +10,7 @@ import type { BlockReport } from "@/lib/capacitor/focusGuard";
 import { tap } from "@/lib/capacitor/haptics";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { PAID_PRICING } from "@/lib/app/pricing";
-import { useNativeIOS } from "@/lib/capacitor/platform";
 
-/** Pro monthly in the App Store (backend/src/lib/admin-business.ts), which differs a little from the web price. */
-const APP_STORE_PRO_MONTHLY = 12.99;
 
 const TRIAL_OFFER_KEY = "arcadia:trial-offer-shown";
 
@@ -100,8 +97,8 @@ export default function BlockDoneMoment({
   const { data } = useDashboardData();
   // Decided once when the moment opens, and only ever shown once.
   const [offer] = useState(() => firstOffer(data.user.tier));
-  const nativeIOS = useNativeIOS();
-  const monthly = nativeIOS ? APP_STORE_PRO_MONTHLY : PAID_PRICING.pro.monthly;
+  // The App Store charges the same as the web.
+  const monthly = PAID_PRICING.pro.monthly;
   useEffect(() => {
     if (!offer) return;
     try { window.localStorage.setItem(TRIAL_OFFER_KEY, String(Date.now())); } catch { /* shown again next time, fine */ }

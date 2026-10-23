@@ -257,10 +257,10 @@ function KindOption({
 
 function LockedSheet({ onClose }: { onClose: () => void }) {
   return (
-    <Sheet open eyebrow="Pro and Max" title="Upload your course material" onClose={onClose}>
+    <Sheet open eyebrow="Pro" title="Upload your course material" onClose={onClose}>
       <div className="space-y-4">
         <p className="text-[14px] leading-[1.55]" style={{ color: "var(--app-text-soft)" }}>
-          On Pro and Max, Arcad reads what you upload and uses it:
+          On Pro, Arcad reads what you upload and uses it:
         </p>
         <ul className="space-y-2 text-[13.5px] leading-[1.5]" style={{ color: "var(--app-text)" }}>
           <li className="flex gap-2.5">

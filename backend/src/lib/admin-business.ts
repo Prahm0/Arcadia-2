@@ -134,8 +134,8 @@ interface RevenueCatSubscription {
 /** App Store list prices in A$, the fallback when RevenueCat sends no price. */
 const APP_STORE_PRICES: Record<string, number> = {
   "pro.weekly": 4.99,
-  "pro.monthly": 12.99,
-  "pro.yearly": 49.99,
+  "pro.monthly": 6.99,
+  "pro.yearly": 29.99,
   "max.weekly": 9.99,
   "max.monthly": 29.99,
   "max.yearly": 199.99,

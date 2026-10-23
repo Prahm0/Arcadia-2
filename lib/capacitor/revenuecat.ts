@@ -9,6 +9,9 @@ export interface IosPurchaseOption {
   interval: RevenueCatInterval;
   productIdentifier: string;
   priceString: string;
+  /** The price as a number, in `currencyCode`, for per-month and savings maths. */
+  price: number;
+  currencyCode: string;
   title: string;
   /** Apple introductory price (e.g. first month discounted), when one is set up. */
   introPriceString: string | null;
@@ -125,6 +128,8 @@ export async function getIosPurchaseOptions(userId: string): Promise<IosPurchase
           ...target,
           productIdentifier: aPackage.product.identifier,
           priceString: aPackage.product.priceString,
+          price: aPackage.product.price,
+          currencyCode: aPackage.product.currencyCode,
           title: aPackage.product.title,
           introPriceString: aPackage.product.introPrice?.priceString ?? null,
           introOffer: introOfferFrom(aPackage.product.introPrice),

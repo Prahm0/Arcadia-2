@@ -629,17 +629,21 @@ export function groundwork(
     const date = localDateKey(at, tz);
     takenOff.set(date, (takenOff.get(date) ?? new Set<string>()).add(subjectKey(subject)));
   };
-  // A deadline block the student removed keeps that deadline off that day.
+  // A block the student removed or marked missed says "not this, today":
+  // refilling the day would put the same work straight back beside it.
+  const dropped = (event: EventSelect) => event.status === "cancelled" || event.outcome === "missed";
+  // A deadline block removed or missed keeps that deadline off that day. Its
+  // work still gets booked on another day (a missed block isn't covered).
   const tasksOff = new Map<string, Set<string>>();
   for (const event of inputs.existing) {
-    if (event.category !== "study" || !event.taskId || event.status !== "cancelled") continue;
+    if (event.category !== "study" || !event.taskId || !dropped(event)) continue;
     const date = localDateKey(event.startAt, tz);
     tasksOff.set(date, (tasksOff.get(date) ?? new Set<string>()).add(event.taskId));
   }
   for (const event of inputs.existing) {
     // Deadline work is kept off a day only when its own block was removed (above).
     if (event.category !== "study" || event.taskId) continue;
-    if (event.status === "cancelled") takeOff(event.startAt, event.subject);
+    if (dropped(event)) takeOff(event.startAt, event.subject);
     else if (event.movedFrom !== null && localDateKey(event.movedFrom, tz) !== localDateKey(event.startAt, tz)) {
       takeOff(event.movedFrom, event.subject);
     }

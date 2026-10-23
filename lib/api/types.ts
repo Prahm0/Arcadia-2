@@ -10,6 +10,8 @@ export interface AuthUser {
   tier?: "free" | "pro" | "max";
   developerAccess?: boolean;
   hasSubscription?: boolean;
+  /** When free Pro (a gift or referral reward) ends, while it's on. */
+  proBonusUntil?: string | null;
   billingProvider?: "stripe" | "app_store" | null;
   subscriptionStatus?: string | null;
   subscriptionCurrentPeriodEnd?: string | null;

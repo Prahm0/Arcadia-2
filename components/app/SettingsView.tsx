@@ -167,6 +167,10 @@ export default function SettingsView() {
   const tier = data.user.tier ?? "free";
   const hasPaidPlan = tier === "pro" || tier === "max";
   const hasSubscription = Boolean(data.user.hasSubscription);
+  // Gifted Pro with no subscription behind it has nothing to manage or cancel.
+  const giftedUntil = !hasSubscription && data.user.proBonusUntil
+    ? new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "long" }).format(new Date(data.user.proBonusUntil))
+    : null;
   const nativeIOS = useNativeIOS();
   const [pushEndpoint, setPushEndpoint] = useState<string | null>(null);
   const [pushPreferences, setPushPreferences] = useState<PushPreferences>(DEFAULT_PUSH_PREFERENCES);
@@ -1016,13 +1020,15 @@ export default function SettingsView() {
                 title={`Arcadia ${data.user.developerAccess ? `Developer · ${tier === "free" ? "Free" : tier === "pro" ? "Pro" : "Max"}` : tier === "free" ? "Free" : tier === "pro" ? "Pro" : "Max"}`}
                 detail={data.user.developerAccess
                   ? "Developer access lets you switch feature tiers for free. Any existing subscription is billed separately."
+                  : giftedUntil
+                  ? `Free Pro until ${giftedUntil}. It's not a subscription, so there's nothing to cancel and you won't be charged.`
                   : tier === "free"
                   ? "2 Arcad messages per day. Upgrade any time."
                   : tier === "pro"
                   ? "20 Arcad messages per day, calendar sync, uploads."
                   : "100 Arcad messages per day, unlimited flashcard decks."}
               >
-                  {tier === "free" && !data.user.developerAccess ? (
+                  {(tier === "free" || giftedUntil) && !data.user.developerAccess ? (
                     <AppButton
                       variant="primary"
                       onClick={() => router.push("/app/pricing")}

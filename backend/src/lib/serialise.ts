@@ -156,6 +156,8 @@ export function serialiseUser(user: UserRow, profile: ProfileRow | null) {
     onboardingComplete: profile?.onboardingComplete ?? false,
     tier: effectiveTier(user.tier, user.developerAccess, user.proBonusUntil, Date.now(), user.developerTier),
     developerAccess: user.developerAccess,
+    // Pro given free (a creator deal, a referral): when it runs out, if it's still on.
+    proBonusUntil: user.proBonusUntil && user.proBonusUntil > Date.now() ? new Date(user.proBonusUntil).toISOString() : null,
     hasSubscription:
       Boolean(user.stripeCustomerId) ||
       (user.billingProvider === "app_store" && user.subscriptionStatus === "active"),

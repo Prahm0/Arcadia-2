@@ -14,6 +14,7 @@ import ShareCard from "./ShareCard";
 import WeeklyReviewCard from "./WeeklyReviewCard";
 import ConsistencyHeatmap from "./ConsistencyHeatmap";
 import YourSky, { type FocusTotals } from "./sky/YourSky";
+import ActivityRings from "./ActivityRings";
 
 interface AnalyticsResponse {
   sky: FocusTotals;
@@ -263,40 +264,6 @@ function ThisWeek({ minutes, lastWeek, done, planned, streak, days }: {
         </div>
       </div>
     </section>
-  );
-}
-
-/** Three concentric rings that fill to their ratio, like a fitness app's activity rings. */
-function ActivityRings({ rings }: { rings: Array<{ key: string; colour: string; ratio: number; label: string; value: string; of: string }> }) {
-  const size = 168;
-  const stroke = 18;
-  const gap = 4;
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={rings.map((ring) => `${ring.label} ${ring.value} ${ring.of}`).join(", ")} className="shrink-0 -rotate-90">
-      {rings.map((ring, index) => {
-        const r = size / 2 - stroke / 2 - index * (stroke + gap);
-        const c = 2 * Math.PI * r;
-        const ratio = Math.max(0, Math.min(1, ring.ratio));
-        return (
-          <g key={ring.key}>
-            <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={ring.colour} strokeOpacity={0.18} strokeWidth={stroke} />
-            <circle
-              className="progress-ring-fill"
-              cx={size / 2}
-              cy={size / 2}
-              r={r}
-              fill="none"
-              stroke={ring.colour}
-              strokeWidth={stroke}
-              strokeLinecap="round"
-              strokeDasharray={c}
-              strokeDashoffset={ratio > 0 ? c * (1 - Math.max(ratio, 0.02)) : c}
-              style={{ ["--ring-c" as string]: `${c}`, animationDelay: `${index * 120}ms` }}
-            />
-          </g>
-        );
-      })}
-    </svg>
   );
 }
 

@@ -25,6 +25,7 @@ import NotificationCentre from "./NotificationCentre";
 import PageMount from "./PageMount";
 import ShortcutsDialog from "./ShortcutsDialog";
 import PushCheckInPrompt from "./PushCheckInPrompt";
+import SidebarMomentum from "./SidebarMomentum";
 import SearchDialog, { SEARCH_ICON, useModKey } from "./SearchDialog";
 import SessionStartModal from "./SessionStartModal";
 import SleepStartPrompt from "./SleepStartPrompt";
@@ -271,7 +272,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
         {/* Sidebar, desktop only. Mobile uses MobileBottomNav + MobileMoreSheet. */}
         <aside
           className={cn(
-            "hidden lg:sticky lg:top-[calc(2.5rem+env(safe-area-inset-top,0px))] lg:h-[calc(100svh-2.5rem-env(safe-area-inset-top,0px))] lg:w-[232px] lg:shrink-0 lg:flex-col lg:overflow-y-auto",
+            "hidden lg:sticky lg:top-[calc(2.5rem+env(safe-area-inset-top,0px))] lg:h-[calc(100svh-2.5rem-env(safe-area-inset-top,0px))] lg:w-[232px] lg:shrink-0 lg:flex-col lg:overflow-hidden",
             sidebarOpen ? "lg:flex" : "lg:hidden",
           )}
           style={{
@@ -426,11 +427,15 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
             })}
           </nav>
 
-          <div className="mt-auto flex flex-col gap-1 px-2 pb-3 pt-4">
+          <div className="px-2 pb-1 pt-3 [@media(max-height:780px)]:hidden">
+            <SidebarMomentum />
+          </div>
+
+          <div className="flex flex-col gap-1 px-2 pt-2">
             {user?.tier === "pro" || user?.tier === "max" ? (
               <Link
                 href="/app/settings#billing"
-                className="flex items-center justify-between gap-2 rounded-lg px-3.5 py-2.5 transition-opacity hover:opacity-90"
+                className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 transition-opacity hover:opacity-90"
                 style={{ background: "var(--app-arcad-soft)" }}
                 aria-label={`Arcadia ${user.tier === "max" ? "Max" : "Pro"}, manage subscription`}
               >
@@ -446,10 +451,10 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
                     <path d="M10 2.5l1.15 4.15L15.5 8l-4.35 1.35L10 13.5 8.85 9.35 4.5 8l4.35-1.35L10 2.5z" />
                   </svg>
                   <span className="flex flex-col leading-tight">
-                    <span className="text-[13px] font-semibold" style={{ color: "var(--app-arcad-strong)" }}>
+                    <span className="text-[12px] font-semibold" style={{ color: "var(--app-arcad-strong)" }}>
                       Arcadia {user.tier === "max" ? "Max" : "Pro"}
                     </span>
-                    <span className="text-[11px]" style={{ color: "var(--app-text-muted)" }}>
+                    <span className="text-[10.5px]" style={{ color: "var(--app-text-muted)" }}>
                       Manage subscription
                     </span>
                   </span>
@@ -472,7 +477,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
             ) : (
               <Link
                 href="/app/pricing"
-                className="flex h-10 items-center justify-center gap-2 rounded-lg px-3.5 text-[14px] font-semibold transition-opacity hover:opacity-90"
+                className="flex h-9 items-center justify-center gap-2 rounded-lg px-3 text-[13px] font-semibold transition-opacity hover:opacity-90"
                 style={{
                   background: "var(--app-arcad)",
                   color: "var(--app-arcad-on)",
@@ -485,6 +490,8 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
                 Upgrade to Pro
               </Link>
             )}
+          </div>
+          <div className="mt-auto flex flex-col gap-1 px-2 pb-3 pt-1">
             {user ? (
               <div
                 className="mt-1 flex items-center gap-1 border-t pt-2"
@@ -647,6 +654,7 @@ function SidebarRail({
         <button type="button" onClick={onSearch} className={RAIL_BUTTON} style={{ color: "var(--app-text-muted)" }} {...tipProps("Search")}>
           {SEARCH_ICON}
         </button>
+        <SidebarMomentum compact />
       </div>
 
       {/* Only the pages scroll on a short window; search and the account stay put. */}

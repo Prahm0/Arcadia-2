@@ -11,8 +11,8 @@ const RAIL_DEADLINES = 3;
 /**
  * The column beside Today: just what's due next, as quiet text with no card
  * around it, beside Today on wide screens only (on a phone it was a repeat at
- * the bottom). The streak and today's ring live in the main column, so they
- * aren't repeated here. TodayView hides the column when nothing is due.
+ * the bottom). The shared sidebar holds the live momentum, so this space is
+ * kept for deadlines and the day's details. TodayView hides it when nothing is due.
  */
 export default function TodayRail() {
   const { data } = useDashboardData();

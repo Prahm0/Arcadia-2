@@ -216,6 +216,21 @@ test("a skipped day frees that day only", () => {
   assert.deepEqual(trainingDays, ["2026-10-20"]);
 });
 
+test("a missed block keeps its subject and its deadline off that day, like a removed one", () => {
+  const study = (extra) => ({
+    id: "evt_x", category: "study", source: "auto", status: "missed", outcome: "missed", pinned: true,
+    startAt: at("12:00"), endAt: at("12:45"), movedFrom: null, taskId: null, subject: "Chemistry", ...extra,
+  });
+  const plan = (existing) => groundwork("usr_test", { profile, existing, commitments: [] }, tuesday, tuesday + 86_400_000, tuesday).days[0];
+
+  assert.ok(plan([study()]).takenOff.has("chemistry"));
+  assert.ok(plan([study({ taskId: "tsk_essay", subject: null })]).tasksOff.has("tsk_essay"));
+  // A missed deadline block isn't counted as covered, so its work moves to another day.
+  assert.equal(bookedTaskTime([study({ taskId: "tsk_essay" })], tuesday).get("tsk_essay"), undefined);
+  // A block still planned keeps the subject on.
+  assert.ok(!plan([study({ status: "planned", outcome: "planned" })]).takenOff.has("chemistry"));
+});
+
 // QLD: term 3 ends Fri 18 Sep 2026 and term 4 starts Tue 6 Oct, so Mon 21
 // Sep is in the holidays and Wed 7 Oct is a school day.
 const brisbane = "Australia/Brisbane";

@@ -20,6 +20,7 @@ export const CREATOR_LINKS: Record<string, { code?: string }> = {
   // Our own bios, so each platform shows up as its own source.
   tiktok: {},
   instagram: {},
+  linkedin: {},
 };
 
 /** The App Store's offer code redemption page, with the code filled in. */

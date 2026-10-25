@@ -44,6 +44,7 @@ import { matchSubject } from "@/lib/app/quickAdd";
 import GapSuggestion from "./today/GapSuggestion";
 import TimeSheet from "./today/TimeSheet";
 import LaterOffer from "./LaterOffer";
+import FirstBlockPrompt from "./FirstBlockPrompt";
 import BlockingBar from "./today/BlockingBar";
 import TodayProgress from "./TodayProgress";
 import EmptyArt from "./EmptyArt";
@@ -447,6 +448,7 @@ export default function TodayView() {
         />
       ) : null}
       {isToday ? <LaterOffer /> : null}
+      {isToday ? <FirstBlockPrompt /> : null}
       <LifeHappened
         open={showLife}
         autoReason={lifeAutoReason}

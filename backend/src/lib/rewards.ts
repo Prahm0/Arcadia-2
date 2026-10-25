@@ -1,5 +1,5 @@
 import { and, eq, gte, sql } from "drizzle-orm";
-import { XP } from "../../../shared/progress";
+import { lockInBonusXp, XP } from "../../../shared/progress";
 import { schema, type Database } from "../db";
 import { newId } from "./ids";
 import { startOfLocalDay } from "./time";
@@ -15,6 +15,21 @@ export async function awardFocusXp(database: Database, userId: string, sourceId:
   const [{ used = 0 } = {}] = await database.select({ used: sql<number>`coalesce(sum(${schema.xpEvents.xp}), 0)` }).from(schema.xpEvents).where(and(eq(schema.xpEvents.userId, userId), eq(schema.xpEvents.source, "focus_minute"), gte(schema.xpEvents.createdAt, dayStart)));
   const earned = Math.max(0, Math.min(Math.floor(minutes), XP.focusDailyCap - Number(used)));
   return earned > 0 ? awardXp(database, userId, "focus_minute", sourceId, earned) : [];
+}
+
+/**
+ * A small bonus for a 7 to 10 lock-in reflection, capped so the honest
+ * reflection stays more important than farming a self-reported score.
+ */
+export async function awardLockInXp(database: Database, userId: string, sourceId: string, score: number, dayStart: number): Promise<Reward[]> {
+  const requested = lockInBonusXp(score);
+  if (!requested) return [];
+  const [{ used = 0 } = {}] = await database
+    .select({ used: sql<number>`coalesce(sum(${schema.xpEvents.xp}), 0)` })
+    .from(schema.xpEvents)
+    .where(and(eq(schema.xpEvents.userId, userId), eq(schema.xpEvents.source, "focus_quality"), gte(schema.xpEvents.createdAt, dayStart)));
+  const earned = Math.max(0, Math.min(requested, XP.lockInDailyCap - Number(used)));
+  return earned > 0 ? awardXp(database, userId, "focus_quality", sourceId, earned) : [];
 }
 
 /** Ten XP for ticking one of your own lines, at most lineDailyCap a day so a long list isn't a farm. */

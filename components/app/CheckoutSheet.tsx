@@ -7,6 +7,7 @@ import type { PlannerEvent } from "@/lib/api/types";
 import { blockTopics, type Confidence } from "@/shared/studyLog";
 import AppButton from "./AppButton";
 import ConfidencePicker from "./focus/ConfidencePicker";
+import LockInCheckIn from "./focus/LockInCheckIn";
 import { Label, Sheet, TextInput } from "./profile/ui";
 
 interface CheckoutProps {
@@ -15,6 +16,8 @@ interface CheckoutProps {
   initialDone: number[];
   /** Minutes actually spent. */
   minutes: number;
+  /** The timer record created while this scheduled block ran. */
+  activityId?: string | null;
   onClose: () => void;
   onSaved: (event: PlannerEvent) => Promise<void> | void;
 }
@@ -33,7 +36,7 @@ export default function CheckoutSheet({ open, ...props }: CheckoutProps & { open
   );
 }
 
-function CheckoutForm({ event, initialDone, minutes, onClose, onSaved }: CheckoutProps) {
+function CheckoutForm({ event, initialDone, minutes, activityId, onClose, onSaved }: CheckoutProps) {
   const steps = event.plan?.steps ?? [];
   const [done, setDone] = useState<number[]>(initialDone);
   const [leftover, setLeftover] = useState("");
@@ -72,23 +75,33 @@ function CheckoutForm({ event, initialDone, minutes, onClose, onSaved }: Checkou
 
   if (saved) {
     return (
-      <div className="space-y-4">
-        <p className="text-[15px]" style={{ color: "var(--app-text)" }}>
-          {leftover.trim() ? "Logged. Arcad will start there next time." : `Logged ${minutes} min. Nice work.`}
-        </p>
-        <div className="flex justify-end gap-2">
-          <AppButton variant="ghost" onClick={onClose}>
-            Stay here
-          </AppButton>
-          <Link
-            href="/app"
-            className="inline-flex h-8 items-center rounded-md px-3 text-[13px] font-medium"
-            style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}
-          >
-            Back to Today
-          </Link>
+      <>
+        {activityId ? (
+          <LockInCheckIn
+            activityId={activityId}
+            minutes={minutes}
+            subject={event.subject || event.title}
+            onClose={onClose}
+          />
+        ) : null}
+        <div className="space-y-4">
+          <p className="text-[15px]" style={{ color: "var(--app-text)" }}>
+            {leftover.trim() ? "Logged. Arcad will start there next time." : `Logged ${minutes} min. Nice work.`}
+          </p>
+          <div className="flex justify-end gap-2">
+            <AppButton variant="ghost" onClick={onClose}>
+              Stay here
+            </AppButton>
+            <Link
+              href="/app"
+              className="inline-flex h-8 items-center rounded-md px-3 text-[13px] font-medium"
+              style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}
+            >
+              Back to Today
+            </Link>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 

@@ -2,12 +2,19 @@ export const XP = {
   studyBlock: 20,
   focusMinute: 1,
   focusDailyCap: 120,
+  /** Small, capped bonus for an honest high-quality focus reflection. */
+  lockInDailyCap: 20,
   recovery: 10,
   ringClosed: 25,
   /** Ticking one of your own lines on Today, up to lineDailyCap a day. */
   line: 10,
   lineDailyCap: 100,
 } as const;
+
+/** A small quality bonus that never replaces the XP earned for real minutes. */
+export function lockInBonusXp(score: number): number {
+  return Number.isInteger(score) && score >= 7 && score <= 10 ? (score - 6) * 2 : 0;
+}
 
 /** A day stays on track after 70% of its planned study is completed. */
 export const CONSISTENCY_THRESHOLD = 0.7;

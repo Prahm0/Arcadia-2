@@ -17,6 +17,8 @@ interface CheckoutProps {
   minutes: number;
   onClose: () => void;
   onSaved: (event: PlannerEvent) => Promise<void> | void;
+  /** Called after a saved session is closed for the next screen. */
+  onFinished?: () => void;
 }
 
 /**
@@ -33,7 +35,7 @@ export default function CheckoutSheet({ open, ...props }: CheckoutProps & { open
   );
 }
 
-function CheckoutForm({ event, initialDone, minutes, onClose, onSaved }: CheckoutProps) {
+function CheckoutForm({ event, initialDone, minutes, onClose, onSaved, onFinished }: CheckoutProps) {
   const steps = event.plan?.steps ?? [];
   const [done, setDone] = useState<number[]>(initialDone);
   const [leftover, setLeftover] = useState("");
@@ -82,6 +84,7 @@ function CheckoutForm({ event, initialDone, minutes, onClose, onSaved }: Checkou
           </AppButton>
           <Link
             href="/app"
+            onClick={onFinished}
             className="inline-flex h-8 items-center rounded-md px-3 text-[13px] font-medium"
             style={{ background: "var(--app-accent)", color: "var(--app-accent-on)" }}
           >

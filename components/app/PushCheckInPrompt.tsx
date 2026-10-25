@@ -2,40 +2,41 @@
 
 import { useEffect, useState } from "react";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
-import { claimAutomaticInterruption, hasCompletedStudyBlock } from "@/lib/app/firstStudyBlock";
+import { BLOCK_DONE_MOMENT_CLOSED_EVENT, claimAutomaticInterruption } from "@/lib/app/firstStudyBlock";
 import { enablePushCheckins, pushCheckinsSupported, pushPermission } from "@/lib/app/pushCheckins";
 import { isGuestEmail } from "@/lib/auth/guest";
 import AppButton from "./AppButton";
 
-const VISITS_KEY = "arcadia:app-visits";
 const DISMISSED_KEY = "arcadia:push-checkins-dismissed";
 
-/** Shows a user-initiated permission prompt from the second app visit onward. */
+/** A user-initiated prompt offered immediately after a student finishes their first block. */
 export default function PushCheckInPrompt() {
   const { data } = useDashboardData();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const paid = data.user.tier === "pro" || data.user.tier === "max";
 
   useEffect(() => {
-    if (!paid || isGuestEmail(data.user.email) || !pushCheckinsSupported() || !hasCompletedStudyBlock(data.events)) return;
+    if (isGuestEmail(data.user.email) || !pushCheckinsSupported()) return;
     let active = true;
-    // Asked of iOS in the app, where there's no browser Notification API.
-    void pushPermission().then((permission) => {
-      if (!active || permission !== "prompt") return;
-      try {
-        const visits = Number(window.localStorage.getItem(VISITS_KEY) ?? "0") + 1;
-        window.localStorage.setItem(VISITS_KEY, String(visits));
-        if (visits >= 2 && window.localStorage.getItem(DISMISSED_KEY) !== "1" && claimAutomaticInterruption()) setOpen(true);
-      } catch {
-        // If storage is unavailable, keep the permission request in Settings.
-      }
-    }).catch(() => {});
+    const offerAfterBlock = () => {
+      // This only opens our explanation. The operating-system permission is
+      // still requested from the student pressing the explicit enable button.
+      void pushPermission().then((permission) => {
+        if (!active || permission !== "prompt") return;
+        try {
+          if (window.localStorage.getItem(DISMISSED_KEY) !== "1" && claimAutomaticInterruption()) setOpen(true);
+        } catch {
+          // If storage is unavailable, Settings remains the place to opt in.
+        }
+      }).catch(() => {});
+    };
+    window.addEventListener(BLOCK_DONE_MOMENT_CLOSED_EVENT, offerAfterBlock);
     return () => {
       active = false;
+      window.removeEventListener(BLOCK_DONE_MOMENT_CLOSED_EVENT, offerAfterBlock);
     };
-  }, [data.events, data.user.email, paid]);
+  }, [data.user.email]);
 
   function dismiss() {
     try {
@@ -70,7 +71,7 @@ export default function PushCheckInPrompt() {
         className="relative w-full max-w-[440px] rounded-t-xl p-6 sm:rounded-xl"
         style={{ background: "var(--app-elev)", boxShadow: "var(--elev-3)", color: "var(--app-text)" }}
       >
-        <p className="type-eyebrow" style={{ color: "var(--app-accent-strong)" }}>Pro check-ins</p>
+        <p className="type-eyebrow" style={{ color: "var(--app-accent-strong)" }}>After your first block</p>
         <h2 id="push-checkin-title" className="mt-2 text-[23px] font-medium tracking-[-0.02em]">
           Want Arcad to keep you on track?
         </h2>

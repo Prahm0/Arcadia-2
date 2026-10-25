@@ -60,7 +60,7 @@ function Gate({ children }: { children: ReactNode }) {
         style={{ background: "var(--app-bg)", color: "var(--app-text)" }}
       >
         <p className="text-[20px] font-medium tracking-[-0.015em]">
-          Couldn't <span className="accent-serif">reach</span> the server.
+          Couldn&apos;t <span className="accent-serif">reach</span> the server.
         </p>
         <p className="max-w-[380px] text-[14px]" style={{ color: "var(--app-text-muted)" }}>
           {state.error}
@@ -86,6 +86,8 @@ function Gate({ children }: { children: ReactNode }) {
   const finishOnboarding = () => {
     setOnboardingOfferPending(user.id, false);
     void reload();
+    // The plan is fresh. Lead with the action that proves it is useful.
+    router.replace("/app/sessions?first=1");
   };
   const notices = user.onboardingComplete ? (state.data.notices ?? []) : [];
 

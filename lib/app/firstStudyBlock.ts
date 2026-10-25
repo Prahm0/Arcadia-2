@@ -5,6 +5,16 @@ const AUTOMATIC_INTERRUPTION_KEY = "arcadia:automatic-interruption";
 
 /** Fired once a signed-in student has completed their first study block. */
 export const FIRST_STUDY_BLOCK_EVENT = "arcadia:first-study-block-completed";
+/** The celebration closed, so a quiet optional follow-up may appear. */
+export const BLOCK_DONE_MOMENT_CLOSED_EVENT = "arcadia:block-done-moment-closed";
+
+export function announceBlockDoneMomentClosed(): void {
+  try {
+    window.dispatchEvent(new Event(BLOCK_DONE_MOMENT_CLOSED_EVENT));
+  } catch {
+    /* A notification prompt is optional. */
+  }
+}
 
 let automaticInterruptionClaimed = false;
 

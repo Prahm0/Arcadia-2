@@ -15,6 +15,7 @@ import {
 import { api } from "@/lib/api/client";
 import { setPresence } from "@/lib/api/presence";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
+import { announceBlockDoneMomentClosed } from "@/lib/app/firstStudyBlock";
 import type { DashboardResponse, PlannerEvent, SessionPlan } from "@/lib/api/types";
 import { subjectColour } from "@/lib/app/subjectColour";
 import { useReplaceEvent, useSessionPlan } from "@/lib/app/useSessionPlan";
@@ -875,6 +876,7 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
             writeDoneSteps(linkedEvent.id, []);
             await reload();
           }}
+          onFinished={announceBlockDoneMomentClosed}
         />
       ) : null}
       <EventDetailSheet

@@ -52,20 +52,33 @@ function FocusViewRoute() {
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const { data } = useDashboardData();
   const { session, select } = useFocusSession();
   const eventId = params.get("eventId");
+  const firstBlock = params.get("first") === "1";
+  const firstEvent = useMemo(
+    () => data.events
+      .filter((event) => event.category === "study" && event.status !== "cancelled" && event.outcome === "planned")
+      .sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt))[0] ?? null,
+    [data.events],
+  );
+  const selectedEventId = eventId ?? (firstBlock ? firstEvent?.id ?? null : null);
 
   useEffect(() => {
+    if (firstBlock && !eventId && firstEvent) {
+      router.replace(`${pathname}?eventId=${encodeURIComponent(firstEvent.id)}&first=1`);
+      return;
+    }
     // Coming back through a plain Focus link mid-session returns to that
     // session rather than quietly starting a free timer beside it.
-    if (!eventId && session?.eventId && session.phase !== "idle") {
+    if (!firstBlock && !eventId && session?.eventId && session.phase !== "idle") {
       router.replace(`${pathname}?eventId=${encodeURIComponent(session.eventId)}`);
       return;
     }
-    if (session?.eventId !== eventId) select(eventId);
-  }, [eventId, session?.eventId, session?.phase, select, router, pathname]);
+    if (session?.eventId !== selectedEventId) select(selectedEventId);
+  }, [eventId, firstBlock, firstEvent, selectedEventId, session?.eventId, session?.phase, select, router, pathname]);
 
-  if (!session || session.eventId !== eventId) return null;
+  if (!session || session.eventId !== selectedEventId) return null;
   return <FocusViewInner session={session} />;
 }
 
@@ -93,6 +106,7 @@ function FocusViewInner({ session }: { session: FocusSession }) {
   const [recentsError, setRecentsError] = useState(false);
   const replaceEvent = useReplaceEvent();
   const [studyWithMeOpen, setStudyWithMeOpen] = useState(false);
+  const firstBlock = params.get("first") === "1";
 
   function openStudyWithMe() {
     if (!isNative() && document.documentElement.requestFullscreen) {
@@ -158,6 +172,11 @@ function FocusViewInner({ session }: { session: FocusSession }) {
 
   const todayMinutes = Number(data.analytics?.todayMinutes ?? 0);
 
+  function startFocus() {
+    start();
+    if (firstBlock) router.replace(eventId ? `${pathname}?eventId=${encodeURIComponent(eventId)}` : pathname);
+  }
+
   return (
     <>
       <PageHeader width={960}
@@ -166,6 +185,18 @@ function FocusViewInner({ session }: { session: FocusSession }) {
         // No tour popping up over a session that has just started.
         action={<SessionsSwitch />}
       />
+
+      {firstBlock && phase === "idle" ? (
+        <section className="mx-auto max-w-[960px] px-6 pt-5 sm:px-10" aria-label="Your first study block">
+          <div className="rounded-xl border px-5 py-4 sm:px-6" style={{ background: "var(--app-accent-soft)", borderColor: "var(--app-border)" }}>
+            <p className="type-eyebrow" style={{ color: "var(--app-accent-strong)" }}>Your plan is ready</p>
+            <h1 className="mt-1 text-[22px] font-semibold tracking-[-0.02em]" style={{ color: "var(--app-text)" }}>Start your first block</h1>
+            <p className="mt-1 text-[14px] leading-6" style={{ color: "var(--app-text-soft)" }}>
+              {linkedEvent ? `${linkedEvent.subject ?? "Study"} is ready when you are. One block is enough to begin.` : "Pick a timer length and begin when you are ready."}
+            </p>
+          </div>
+        </section>
+      ) : null}
 
       {studySave.status !== "idle" && <div className="mx-auto max-w-[960px] px-6 pt-4 sm:px-10"><div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 text-[13px]" style={{ borderColor: "var(--app-border)", background: "var(--app-surface)", color: "var(--app-text)" }}><span>{studySave.status === "saving" ? "Saving your study progress…" : studySave.status === "pending" ? "Your session is waiting to sync. Keep this browser’s data to retry later." : studySave.receipt.cards.length ? `✦ ${studySave.receipt.cards.length === 1 ? "New constellation unlocked" : "New constellations unlocked"}${studySave.receipt.xp ? ` · +${studySave.receipt.xp} XP` : ""}` : studySave.receipt.stars ? `✦ ${studySave.receipt.stars} new ${studySave.receipt.stars === 1 ? "star" : "stars"} in your constellation${studySave.receipt.xp ? ` · +${studySave.receipt.xp} XP` : ""}` : studySave.receipt.xp ? `✦ +${studySave.receipt.xp} XP earned.` : "Your study session is saved."}</span>{studySave.status === "pending" ? <AppButton onClick={() => void studySave.retry()}>Retry save</AppButton> : studySave.status === "saved" ? <Link href={studySave.receipt.cards.length ? "/app/progress#constellations" : "/app/progress#sky"} className="text-[12px] underline underline-offset-4">{studySave.receipt.cards.length ? "View collection" : "View progress"}</Link> : null}</div></div>}
 
@@ -306,7 +337,7 @@ function FocusViewInner({ session }: { session: FocusSession }) {
             <div className="flex flex-col items-center gap-1.5">
               <button
                 type="button"
-                onClick={running ? pause : start}
+                onClick={running ? pause : startFocus}
                 aria-label={running ? "Pause" : phase === "idle" ? "Start" : "Resume"}
                 className="ui-press grid h-16 w-16 place-items-center rounded-full shadow-[var(--elev-2)]"
                 style={{ background: phaseColour, color: "var(--app-accent-on)" }}

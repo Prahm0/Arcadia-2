@@ -63,7 +63,7 @@ interface OnboardingBody {
     style?: string;
     memoryEnabled?: boolean;
   };
-  /** "How did you hear about Arcadia?" (shared/heardFrom.ts). Optional. */
+  /** Required acquisition source, selected with one tap during onboarding. */
   heardFrom?: string | null;
   heardFromDetail?: string | null;
 }
@@ -98,7 +98,8 @@ onboarding.post("/", async (c) => {
   const state = country === "AU" ? (text(body.state, 8)?.toUpperCase() ?? null) : null;
   const atar = Number(body.atarTarget);
   const name = (body.name ?? "").trim().slice(0, 120);
-  const heardFrom = isHeardFrom(body.heardFrom) ? body.heardFrom : null;
+  if (!isHeardFrom(body.heardFrom)) return c.json({ error: "Choose how you found Arcadia." }, 400);
+  const heardFrom = body.heardFrom;
 
   await database
     .update(schema.profiles)
@@ -125,8 +126,8 @@ onboarding.post("/", async (c) => {
       arcadAbout: String(arcad.about ?? "").trim().slice(0, TEXT_LIMIT),
       arcadStyle: String(arcad.style ?? "").trim().slice(0, TEXT_LIMIT),
       memoryEnabled: arcad.memoryEnabled !== false,
-      // Onboarding sent twice keeps the first answer rather than wiping it.
-      ...(heardFrom ? { heardFrom, heardFromDetail: cleanHeardFromDetail(heardFrom, body.heardFromDetail) } : {}),
+      heardFrom,
+      heardFromDetail: cleanHeardFromDetail(heardFrom, body.heardFromDetail),
     })
     .where(eq(schema.profiles.userId, userId));
 

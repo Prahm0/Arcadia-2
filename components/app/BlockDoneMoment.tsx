@@ -11,6 +11,7 @@ import { tap } from "@/lib/capacitor/haptics";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { PAID_PRICING } from "@/lib/app/pricing";
 import { isGuestEmail } from "@/lib/auth/guest";
+import { announceBlockDoneMomentClosed } from "@/lib/app/firstStudyBlock";
 import InviteNudge from "./InviteNudge";
 
 
@@ -84,7 +85,10 @@ export default function BlockDoneMoment({
   // Escape closes; read through a ref so a new onClose doesn't replay the fill.
   const closeRef = useRef(onClose);
   useEffect(() => {
-    closeRef.current = onClose;
+    closeRef.current = () => {
+      announceBlockDoneMomentClosed();
+      onClose();
+    };
   }, [onClose]);
 
   useEffect(() => {
@@ -248,7 +252,7 @@ export default function BlockDoneMoment({
         ref={next ? undefined : (node) => {
           primary.current = node;
         }}
-        onClick={onClose}
+        onClick={() => closeRef.current()}
         className="ui-press mt-6 rounded-full px-4 py-2 text-[14.5px] font-medium underline-offset-4 hover:underline"
         style={{ color: soft }}
       >

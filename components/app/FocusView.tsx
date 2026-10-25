@@ -21,6 +21,7 @@ import { clampMinutes, formatClock, useFocusSession, type FocusSession } from ".
 import { isNative } from "@/lib/capacitor/platform";
 import StudyWithMe from "./focus/StudyWithMe";
 import SessionRating from "./focus/SessionRating";
+import LockInCheckIn from "./focus/LockInCheckIn";
 import TopicSelect from "./focus/TopicSelect";
 
 type AsideTab = "setup" | "todo" | "recents";
@@ -160,6 +161,14 @@ function FocusViewInner({ session }: { session: FocusSession }) {
 
   return (
     <>
+      {session.lockInSession ? (
+        <LockInCheckIn
+          activityId={session.lockInSession.activityId}
+          minutes={session.lockInSession.minutes}
+          subject={session.lockInSession.subject}
+          onClose={session.clearLockInSession}
+        />
+      ) : null}
       <PageHeader width={960}
         title="Sessions"
         meta={`${phase === "break" ? "On a break · " : ""}${todayMinutes} min focused today`}

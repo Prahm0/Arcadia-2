@@ -201,6 +201,9 @@ export interface FocusSession {
   /** A free session just logged on a topic, waiting to be rated. */
   rateable: { activityId: string; topic: string } | null;
   clearRateable: () => void;
+  /** A finished free timer session, ready for a private lock-in reflection. */
+  lockInSession: { activityId: string; minutes: number; subject: string } | null;
+  clearLockInSession: () => void;
   distractions: number;
   addDistraction: () => void;
 
@@ -374,6 +377,7 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
   const [goal, setGoal] = useState(linkedEvent?.title ?? "");
   const [topic, setTopic] = useState<TopicChoice | null>(null);
   const [rateable, setRateable] = useState<{ activityId: string; topic: string } | null>(null);
+  const [lockInSession, setLockInSession] = useState<{ activityId: string; minutes: number; subject: string } | null>(null);
   const [distractions, setDistractions] = useState(0);
   const [complete, setComplete] = useState(false);
   const [logged, setLogged] = useState(0);
@@ -486,7 +490,15 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
       : remaining;
     const elapsed = phase === "focus" ? preset.focus - left : 0;
     const counts = elapsed >= RESET_LOG_MIN_SECONDS;
-    if (counts) void logSession("focus", elapsed);
+    const minutes = Math.max(1, Math.round(elapsed / 60));
+    if (counts) {
+      const saved = logSession("focus", elapsed);
+      if (!linkedEvent) {
+        void saved.then((activityId) => {
+          if (activityId) setLockInSession({ activityId, minutes, subject });
+        }).catch(() => {});
+      }
+    }
     timerEndsAtRef.current = null;
     setRunning(false);
     setPhase("idle");
@@ -494,7 +506,7 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
     setDistractions(0);
     setComplete(false);
     if (linkedEvent) setCheckout({ minutes: Math.max(1, Math.round((elapsed || preset.focus) / 60)) });
-    else if (counts) setFinishedMinutes(Math.max(1, Math.round(elapsed / 60)));
+    else if (counts) setFinishedMinutes(minutes);
   }
 
   // Counts down against the wall clock rather than by one per tick: once the
@@ -567,7 +579,12 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
       return;
     }
     if (phase === "focus") {
-      void logSession("focus", preset.focus, { markEvent: "completed" });
+      const saved = logSession("focus", preset.focus, { markEvent: "completed" });
+      if (!linkedEvent) {
+        void saved.then((activityId) => {
+          if (activityId) setLockInSession({ activityId, minutes: Math.round(preset.focus / 60), subject });
+        }).catch(() => {});
+      }
       setPhase("break");
       setRemaining(preset.break);
     } else if (phase === "break") {
@@ -635,10 +652,12 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
     type: string,
     seconds: number,
     opts: { markEvent?: "completed" | "missed" } = {},
-  ) {
+  ): Promise<string | null> {
+    let savedActivityId: string | null = null;
     if (seconds > 0) {
       activityId.current ??= crypto.randomUUID();
       const id = activityId.current;
+      savedActivityId = id;
       // A free focus session on a topic goes in the study log; a block logs
       // through its plan and check-out instead.
       const onTopic = !linkedEvent && type === "focus" && topic ? topic : null;
@@ -687,11 +706,13 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
 
     // A session that just finished should be at the top of Recents already.
     setLogged((count) => count + 1);
+    return savedActivityId;
   }
 
   function start() {
     setComplete(false);
     setFinishedMinutes(null);
+    setLockInSession(null);
     timerEndsAtRef.current = null;
     if (phase === "idle") {
       setPhase("focus");
@@ -811,6 +832,8 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
     setTopic,
     rateable,
     clearRateable: () => setRateable(null),
+    lockInSession,
+    clearLockInSession: () => setLockInSession(null),
     distractions,
     addDistraction: () => setDistractions((d) => d + 1),
     plan,
@@ -869,6 +892,7 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
           event={linkedEvent}
           initialDone={doneSteps}
           minutes={checkout?.minutes ?? linkedMinutes ?? 0}
+          activityId={activityId.current}
           onClose={() => setCheckout(null)}
           onSaved={async (updated) => {
             replaceEvent(updated);

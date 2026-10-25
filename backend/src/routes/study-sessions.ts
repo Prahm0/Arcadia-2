@@ -6,7 +6,7 @@ import { trackMany, type ServerEvent } from "../lib/posthog";
 import { DAY, startOfLocalDay } from "../lib/time";
 import type { Env, Variables } from "../types";
 import { readStudySky } from "../lib/constellations";
-import { awardFocusXp } from "../lib/rewards";
+import { awardFocusXp, awardLockInXp } from "../lib/rewards";
 import { replaceLog } from "../lib/study-log";
 
 interface SessionInput {
@@ -121,9 +121,52 @@ studySessions.get("/", async (c) => {
       subject: row.subject,
       goal: row.goal,
       distractions: row.distractions,
+      lockInScore: row.lockInScore,
+      lockInReflection: row.lockInReflection,
       endedAt: new Date(row.endedAt).toISOString(),
     })),
   });
+});
+
+/**
+ * A single, private reflection for a completed timer session. The small XP
+ * bonus is deliberately capped and does not change logged study minutes.
+ */
+studySessions.post("/:activityId/lock-in", async (c) => {
+  const { userId } = c.get("session");
+  const activityId = c.req.param("activityId");
+  if (!/^[a-zA-Z0-9_-]{8,100}$/.test(activityId)) return c.json({ error: "Invalid session." }, 400);
+  const body = await c.req.json<{ score?: unknown; reflection?: unknown }>().catch(() => null);
+  const score = Number(body?.score);
+  if (!Number.isInteger(score) || score < 1 || score > 10) return c.json({ error: "Choose a score from 1 to 10." }, 400);
+  const reflection = typeof body?.reflection === "string"
+    ? body.reflection.replace(/\s+/g, " ").trim().slice(0, 280)
+    : "";
+
+  const database = db(c.env.DB);
+  const [session] = await database
+    .select({ id: schema.studySessions.id, lockInScore: schema.studySessions.lockInScore, seconds: schema.studySessions.seconds, endedAt: schema.studySessions.endedAt })
+    .from(schema.studySessions)
+    .where(and(eq(schema.studySessions.userId, userId), eq(schema.studySessions.activityId, activityId)))
+    .limit(1);
+  if (!session) return c.json({ error: "That session hasn't synced yet." }, 404);
+  if (session.lockInScore !== null) return c.json({ error: "You've already reflected on that session." }, 409);
+
+  await database
+    .update(schema.studySessions)
+    .set({ lockInScore: score, lockInReflection: reflection || null })
+    .where(eq(schema.studySessions.id, session.id));
+
+  const [profile] = await database
+    .select({ timezone: schema.profiles.timezone })
+    .from(schema.profiles)
+    .where(eq(schema.profiles.userId, userId))
+    .limit(1);
+  const rewards = session.seconds >= 10 * 60
+    ? await awardLockInXp(database, userId, session.id, score, startOfLocalDay(session.endedAt, profile?.timezone || "Australia/Sydney"))
+    : [];
+  trackMany(c, [{ userId, event: "focus_lock_in_reflected", properties: { score, hasReflection: Boolean(reflection), minutes: Math.round(session.seconds / 60) } }]);
+  return c.json({ ok: true, rewards });
 });
 
 export default studySessions;

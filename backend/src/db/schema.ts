@@ -444,6 +444,9 @@ export const studySessions = sqliteTable(
     subject: text("subject"),
     goal: text("goal"),
     distractions: integer("distractions").notNull().default(0),
+    /** A student's private 1 to 10 reflection after a timer session. */
+    lockInScore: integer("lock_in_score"),
+    lockInReflection: text("lock_in_reflection"),
     endedAt: integer("ended_at").notNull(),
     createdAt: integer("created_at").notNull().default(now),
   },

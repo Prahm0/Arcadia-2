@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { signedOutPath } from "@/lib/api/client";
 import { useEffect, type ReactNode } from "react";
 import AppShell from "@/components/app/AppShell";
 import Onboarding from "@/components/app/Onboarding";
@@ -33,7 +34,7 @@ function Gate({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    if (state.status === "unauthenticated") router.replace("/login");
+    if (state.status === "unauthenticated") router.replace(signedOutPath());
   }, [state.status, router]);
 
   if (state.status === "loading") {

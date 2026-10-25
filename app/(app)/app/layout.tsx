@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { signedOutPath } from "@/lib/api/client";
+import { markFirstBlockPrompt } from "@/components/app/FirstBlockPrompt";
 import { useEffect, type ReactNode } from "react";
 import AppShell from "@/components/app/AppShell";
 import Onboarding from "@/components/app/Onboarding";
@@ -86,6 +87,8 @@ function Gate({ children }: { children: ReactNode }) {
   const offerPending = user.onboardingComplete && isOnboardingOfferPending(user.id);
   const finishOnboarding = () => {
     setOnboardingOfferPending(user.id, false);
+    // Today then offers to start the first block straight away.
+    markFirstBlockPrompt(user.id);
     void reload();
   };
   const notices = user.onboardingComplete ? (state.data.notices ?? []) : [];

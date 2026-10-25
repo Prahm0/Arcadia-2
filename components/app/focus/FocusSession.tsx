@@ -221,7 +221,10 @@ export interface FocusSession {
   pause: () => void;
   reset: () => void;
   skip: () => void;
+  /** Ends focus now and keeps the minutes studied, however early. */
   finishSession: () => void;
+  /** Minutes a free session just logged when finished early, for the "logged" note. */
+  finishedMinutes: number | null;
   /** "Start now" from Today: straight into a running focus block. */
   beginNow: () => void;
   /** Back to an idle free timer, before the page drops the study block. */
@@ -385,6 +388,7 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
   const replaceEvent = useReplaceEvent();
   const [doneSteps, setDoneSteps] = useState<number[]>(() => readDoneSteps(eventId));
   const [checkout, setCheckout] = useState<{ minutes: number } | null>(null);
+  const [finishedMinutes, setFinishedMinutes] = useState<number | null>(null);
   const [missReasonEvent, setMissReasonEvent] = useState<PlannerEvent | null>(null);
   const sessionGoal = plan?.topic ?? goal;
   const colour = linkedEvent ? subjectColour(data.subjects, linkedEvent.subject) ?? "var(--app-accent)" : null;
@@ -470,14 +474,27 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /** Ends a scheduled session now: log the time spent and check out. */
+  /**
+   * Ends focus now and keeps what was studied: a 70 minute timer stopped with
+   * 28 left logs 42 minutes. A scheduled block then checks out with that
+   * time; a free session just says it's logged.
+   */
   function finishSession() {
-    const elapsed = phase === "focus" ? preset.focus - remaining : 0;
-    if (elapsed >= RESET_LOG_MIN_SECONDS) void logSession("focus", elapsed);
+    // Read the clock itself while it runs; the shown second can lag a tick.
+    const left = running && timerEndsAtRef.current !== null
+      ? Math.max(0, Math.ceil((timerEndsAtRef.current - Date.now()) / 1000))
+      : remaining;
+    const elapsed = phase === "focus" ? preset.focus - left : 0;
+    const counts = elapsed >= RESET_LOG_MIN_SECONDS;
+    if (counts) void logSession("focus", elapsed);
+    timerEndsAtRef.current = null;
     setRunning(false);
     setPhase("idle");
     setRemaining(preset.focus);
-    setCheckout({ minutes: Math.max(1, Math.round((elapsed || preset.focus) / 60)) });
+    setDistractions(0);
+    setComplete(false);
+    if (linkedEvent) setCheckout({ minutes: Math.max(1, Math.round((elapsed || preset.focus) / 60)) });
+    else if (counts) setFinishedMinutes(Math.max(1, Math.round(elapsed / 60)));
   }
 
   // Counts down against the wall clock rather than by one per tick: once the
@@ -674,6 +691,7 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
 
   function start() {
     setComplete(false);
+    setFinishedMinutes(null);
     timerEndsAtRef.current = null;
     if (phase === "idle") {
       setPhase("focus");
@@ -810,6 +828,7 @@ function FocusEngine({ eventId, store, pipWindow, pip, pipExpanded, onPipExpande
     reset,
     skip,
     finishSession,
+    finishedMinutes,
     beginNow,
     detach,
     pip,

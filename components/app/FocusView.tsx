@@ -82,8 +82,10 @@ function FocusViewInner({ session }: { session: FocusSession }) {
     phase, remaining, running, progress, totalForPhase, phaseColour, colour,
     subject, goal, sessionGoal, distractions,
     plan, planLoading, planRefreshing, refreshPlan, todos,
-    start, pause, reset, skip, finishSession, pip,
+    start, pause, reset, skip, finishSession, finishedMinutes, pip,
   } = session;
+  // Minutes studied so far in this focus block, for "Finish session".
+  const studiedMinutes = phase === "focus" ? Math.floor((totalForPhase - remaining) / 60) : 0;
 
   // A scheduled session already knows what it's on, so it opens on its to-dos.
   const [tab, setTab] = useState<AsideTab>(eventId ? "todo" : "setup");
@@ -321,6 +323,21 @@ function FocusViewInner({ session }: { session: FocusSession }) {
               </svg>
             </TimerControl>
           </div>
+
+          {phase === "focus" && studiedMinutes >= 1 ? (
+            <button
+              type="button"
+              onClick={finishSession}
+              className="ui-press app-enter mt-6 rounded-full px-5 py-2.5 text-[14px] font-semibold"
+              style={{ background: "var(--app-surface)", boxShadow: "var(--elev-1)", color: "var(--app-text)" }}
+            >
+              Finish session · {studiedMinutes} min studied
+            </button>
+          ) : phase === "idle" && finishedMinutes ? (
+            <p role="status" className="app-enter mt-6 text-[13.5px] font-medium" style={{ color: "var(--app-success)" }}>
+              ✓ {finishedMinutes} min logged
+            </p>
+          ) : null}
 
           {phase !== "idle" ? (
             <button

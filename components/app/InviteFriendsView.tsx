@@ -4,15 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api/client";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
+import { shareInviteLink, type ReferralSummary } from "@/lib/app/invite";
 import AppButton from "./AppButton";
 import PageHeader from "./PageHeader";
 
-interface ReferralSummary {
-  code: string;
-  inviteLink: string;
-  qualifiedReferrals: number;
-  bonusDays: number;
-}
 
 type Status = "loading" | "ready" | "error";
 
@@ -69,16 +64,9 @@ export default function InviteFriendsView() {
 
   async function shareInvite() {
     if (!summary) return;
-    const text = "Arcadia keeps your study plan useful when life changes. Join with my link, then invite a friend of your own to unlock 7 days of Pro.";
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: "Plan with Arcadia", text, url: summary.inviteLink });
-        return;
-      } catch (reason) {
-        if (reason instanceof DOMException && reason.name === "AbortError") return;
-      }
-    }
-    await copyInviteLink();
+    const result = await shareInviteLink(summary.inviteLink);
+    if (result === "copied") setNotice("Invite link copied.");
+    if (result === "failed") setNotice("Copy the invite link above.");
   }
 
   return (

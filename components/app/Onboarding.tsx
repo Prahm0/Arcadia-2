@@ -222,7 +222,8 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
   const blocker = useMemo((): string | null => {
     switch (currentStep.key) {
       case "you":
-        return name.trim() ? null : "Add your name to keep going.";
+        if (!name.trim()) return "Add your name to keep going.";
+        return heardFrom ? null : "Choose how you found Arcadia.";
       case "subjects":
         return selectedSubjects.length ? null : "Pick at least one subject.";
       case "goals":
@@ -242,7 +243,7 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
         return null;
     }
   }, [
-    currentStep.key, name, selectedSubjects.length, atarValid, atarGoal, goalValid, goalRange, course.goal?.label, goesToSchool, schoolDays.length,
+    currentStep.key, name, heardFrom, selectedSubjects.length, atarValid, atarGoal, goalValid, goalRange, course.goal?.label, goesToSchool, schoolDays.length,
     schoolStart, schoolEnd, activityProblem, wakeTime, bedtime, deadlineProblem,
   ]);
 
@@ -370,7 +371,7 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
         breakMinutes,
       },
       arcad: { about: about.trim(), style: style.trim(), memoryEnabled },
-      heardFrom: heardFrom || null,
+      heardFrom,
       heardFromDetail: heardFrom && heardDetail.trim() ? heardDetail.trim() : null,
     };
   }
@@ -516,7 +517,7 @@ export default function Onboarding({ defaultName, defaultTimezone, onComplete }:
                     role="radio"
                     active={heardFrom === option.key}
                     onClick={() => {
-                      setHeardFrom(heardFrom === option.key ? "" : option.key);
+                      setHeardFrom(option.key);
                       if (option.key !== heardFrom) setHeardDetail(option.key === "creator" ? linkedCreator() ?? "" : "");
                     }}
                   >

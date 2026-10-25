@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
+import { isGuestEmail } from "@/lib/auth/guest";
 
 interface MoreItem {
   label: string;
@@ -39,6 +40,8 @@ export default function MobileMoreSheet({ open, onClose }: MobileMoreSheetProps)
   const pathname = usePathname() ?? "";
   const { data } = useDashboardData();
   const paid = data.user.tier === "pro" || data.user.tier === "max";
+  // Subscribers' Pro is paid for, so the invite reward isn't theirs to earn.
+  const canInvite = !data.user.hasSubscription && !isGuestEmail(data.user.email);
 
   useEffect(() => {
     if (!open) return;
@@ -89,6 +92,21 @@ export default function MobileMoreSheet({ open, onClose }: MobileMoreSheetProps)
             <span aria-hidden="true">›</span>
           </Link>
         )}
+        {canInvite ? (
+          <Link
+            href="/app/invite"
+            onClick={onClose}
+            className="mb-3 flex min-h-[56px] items-center gap-3.5 rounded-2xl px-4"
+            style={{ background: "var(--app-surface)", boxShadow: "inset 0 0 0 1px var(--app-border)", color: "var(--app-text)" }}
+          >
+            <span aria-hidden="true" className="text-[17px]">🎁</span>
+            <span className="flex flex-1 flex-col leading-tight">
+              <span className="text-[16px] font-semibold">Invite friends</span>
+              <span className="text-[12.5px]" style={{ color: "var(--app-text-muted)" }}>Get a free week of Pro for each one</span>
+            </span>
+            <span aria-hidden="true" style={{ color: "var(--app-text-faint)" }}>›</span>
+          </Link>
+        ) : null}
         <ul className="overflow-hidden rounded-2xl" style={{ background: "var(--app-surface)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}>
           {ITEMS.map((item, index) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);

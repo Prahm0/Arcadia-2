@@ -10,9 +10,24 @@ import type { BlockReport } from "@/lib/capacitor/focusGuard";
 import { tap } from "@/lib/capacitor/haptics";
 import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { PAID_PRICING } from "@/lib/app/pricing";
+import { isGuestEmail } from "@/lib/auth/guest";
+import InviteNudge from "./InviteNudge";
 
 
 const TRIAL_OFFER_KEY = "arcadia:trial-offer-shown";
+const INVITE_NUDGE_KEY = "arcadia:invite-nudge-shown";
+/** The invite card shows at most once every few days, so it never nags. */
+const INVITE_NUDGE_EVERY_MS = 3 * 24 * 60 * 60 * 1000;
+
+function inviteNudgeDue(user: { tier?: string; hasSubscription?: boolean; email?: string } | undefined): boolean {
+  if (!user || user.hasSubscription || isGuestEmail(user.email)) return false;
+  try {
+    const last = Number(window.localStorage.getItem(INVITE_NUDGE_KEY));
+    return !last || Date.now() - last > INVITE_NUDGE_EVERY_MS;
+  } catch {
+    return false;
+  }
+}
 
 /** A free account's first block done: the one time we offer the free week here. */
 function firstOffer(tier: string | undefined): boolean {
@@ -97,8 +112,14 @@ export default function BlockDoneMoment({
   const { data } = useDashboardData();
   // Decided once when the moment opens, and only ever shown once.
   const [offer] = useState(() => firstOffer(data.user.tier));
+  // The free-week offer comes first; the invite card waits for a later block.
+  const [inviteNudge] = useState(() => !offer && inviteNudgeDue(data.user));
   // The App Store charges the same as the web.
   const monthly = PAID_PRICING.pro.monthly;
+  useEffect(() => {
+    if (!inviteNudge) return;
+    try { window.localStorage.setItem(INVITE_NUDGE_KEY, String(Date.now())); } catch { /* shown again next time, fine */ }
+  }, [inviteNudge]);
   useEffect(() => {
     if (!offer) return;
     try { window.localStorage.setItem(TRIAL_OFFER_KEY, String(Date.now())); } catch { /* shown again next time, fine */ }
@@ -213,6 +234,12 @@ export default function BlockDoneMoment({
           >
             Start my free week
           </Link>
+        </div>
+      ) : null}
+
+      {inviteNudge ? (
+        <div className="mt-6 w-full max-w-sm">
+          <InviteNudge />
         </div>
       ) : null}
 

@@ -273,7 +273,7 @@ export default function SettingsView() {
   const [feedNotice, setFeedNotice] = useState<{ tone: "info" | "error"; text: string } | null>(null);
 
   useEffect(() => {
-    if (isGuest || !hasPaidPlan || !pushCheckinsSupported()) return;
+    if (isGuest || !pushCheckinsSupported()) return;
     getPushSubscriptionStatus()
       .then((value) => {
         if (!value) return;
@@ -281,7 +281,7 @@ export default function SettingsView() {
         setPushPreferences(value.preferences);
       })
       .catch(() => {});
-  }, [hasPaidPlan, isGuest]);
+  }, [isGuest]);
 
   const emailReminders = data.profile?.emailReminders !== false;
 
@@ -958,11 +958,7 @@ export default function SettingsView() {
         {isGuest ? null : (
           <Card>
             <SectionHeader label="Push check-ins" />
-            {!hasPaidPlan ? (
-              <SettingRow icon={SettingIcons.bell} title="Check-ins on this device" detail="A nudge before study or sleep, and when a session needs logging. Included with Pro.">
-                <AppButton type="button" variant="secondary" onClick={() => router.push("/app/pricing")}>See plans</AppButton>
-              </SettingRow>
-            ) : !pushCheckinsSupported() ? (
+            {!pushCheckinsSupported() ? (
               <p className="text-[13.5px]" style={{ color: "var(--app-text-muted)" }}>
                 This browser doesn&apos;t support push check-ins. On iPhone, add Arcadia to your Home Screen first.
               </p>

@@ -12,6 +12,7 @@ import { useDashboardData } from "@/lib/app/DashboardProvider";
 import { PAID_PRICING } from "@/lib/app/pricing";
 import { isGuestEmail } from "@/lib/auth/guest";
 import InviteNudge from "./InviteNudge";
+import ReminderAsk from "./ReminderAsk";
 
 
 const TRIAL_OFFER_KEY = "arcadia:trial-offer-shown";
@@ -114,12 +115,19 @@ export default function BlockDoneMoment({
   const [offer] = useState(() => firstOffer(data.user.tier));
   // The free-week offer comes first; the invite card waits for a later block.
   const [inviteNudge] = useState(() => !offer && inviteNudgeDue(data.user));
+  // Asking for reminders matters more than the invite, so it takes the slot.
+  const [askingReminders, setAskingReminders] = useState(false);
+  const showInvite = inviteNudge && !askingReminders;
   // The App Store charges the same as the web.
   const monthly = PAID_PRICING.pro.monthly;
   useEffect(() => {
-    if (!inviteNudge) return;
-    try { window.localStorage.setItem(INVITE_NUDGE_KEY, String(Date.now())); } catch { /* shown again next time, fine */ }
-  }, [inviteNudge]);
+    if (!showInvite) return;
+    // Counted as shown once it's been on screen a moment, not if reminders took its place.
+    const timer = window.setTimeout(() => {
+      try { window.localStorage.setItem(INVITE_NUDGE_KEY, String(Date.now())); } catch { /* shown again next time, fine */ }
+    }, 1_500);
+    return () => window.clearTimeout(timer);
+  }, [showInvite]);
   useEffect(() => {
     if (!offer) return;
     try { window.localStorage.setItem(TRIAL_OFFER_KEY, String(Date.now())); } catch { /* shown again next time, fine */ }
@@ -215,6 +223,13 @@ export default function BlockDoneMoment({
         </div>
       ) : null}
 
+      {/* Guests have no account to send reminders to. */}
+      {isGuestEmail(data.user.email) ? null : (
+        <div className="mt-6 w-full max-w-sm empty:hidden">
+          <ReminderAsk onShowing={setAskingReminders} />
+        </div>
+      )}
+
       {offer ? (
         <div className="mt-6 w-full max-w-sm rounded-[24px] p-5 text-left" style={{ background: "var(--app-hero-cta)", color: "var(--app-hero-cta-on)" }}>
           <p className="text-[13px] font-semibold opacity-80">That&apos;s how it feels when the plan works</p>
@@ -237,7 +252,7 @@ export default function BlockDoneMoment({
         </div>
       ) : null}
 
-      {inviteNudge ? (
+      {showInvite ? (
         <div className="mt-6 w-full max-w-sm">
           <InviteNudge />
         </div>

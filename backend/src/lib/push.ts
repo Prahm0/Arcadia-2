@@ -5,7 +5,6 @@ import type { Env } from "../types";
 import { apnsConfigured, sendApns } from "./apns";
 import { livePresence } from "./presence";
 import { streakAtRisk } from "./streak-risk";
-import { effectiveTier, isPaidTier } from "./tiers";
 import { DAY, MINUTE, localDateKey, parseClock, zoneOffsetMinutes } from "./time";
 
 export type PushKind = "session_start" | "late_start" | "session_followup" | "streak";
@@ -91,11 +90,12 @@ export async function sendPushToUser(
   if (!web && !native) return;
 
   const [user] = await database
-    .select({ email: schema.users.email, tier: schema.users.tier, developerAccess: schema.users.developerAccess, developerTier: schema.users.developerTier, proBonusUntil: schema.users.proBonusUntil })
+    .select({ email: schema.users.email })
     .from(schema.users)
     .where(eq(schema.users.id, userId))
     .limit(1);
-  if (!user || user.email.endsWith("@arcadia.local") || !isPaidTier(effectiveTier(user.tier, user.developerAccess, user.proBonusUntil, Date.now(), user.developerTier))) return;
+  // Every signed-up student gets reminders; only guests (no account to reach) don't.
+  if (!user || user.email.endsWith("@arcadia.local")) return;
 
   const [subscriptions, tokens] = await Promise.all([
     web ? database.select().from(schema.pushSubscriptions).where(eq(schema.pushSubscriptions.userId, userId)) : [],

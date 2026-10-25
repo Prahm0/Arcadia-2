@@ -10,16 +10,18 @@ import AppButton from "./AppButton";
 const VISITS_KEY = "arcadia:app-visits";
 const DISMISSED_KEY = "arcadia:push-checkins-dismissed";
 
-/** Shows a user-initiated permission prompt from the second app visit onward. */
+/**
+ * A second chance at reminders, from the second app visit onward, for anyone
+ * who skipped the ask on the block-done screen. Free for every student.
+ */
 export default function PushCheckInPrompt() {
   const { data } = useDashboardData();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const paid = data.user.tier === "pro" || data.user.tier === "max";
 
   useEffect(() => {
-    if (!paid || isGuestEmail(data.user.email) || !pushCheckinsSupported() || !hasCompletedStudyBlock(data.events)) return;
+    if (isGuestEmail(data.user.email) || !pushCheckinsSupported() || !hasCompletedStudyBlock(data.events)) return;
     let active = true;
     // Asked of iOS in the app, where there's no browser Notification API.
     void pushPermission().then((permission) => {
@@ -35,7 +37,7 @@ export default function PushCheckInPrompt() {
     return () => {
       active = false;
     };
-  }, [data.events, data.user.email, paid]);
+  }, [data.events, data.user.email]);
 
   function dismiss() {
     try {
@@ -70,7 +72,7 @@ export default function PushCheckInPrompt() {
         className="relative w-full max-w-[440px] rounded-t-xl p-6 sm:rounded-xl"
         style={{ background: "var(--app-elev)", boxShadow: "var(--elev-3)", color: "var(--app-text)" }}
       >
-        <p className="type-eyebrow" style={{ color: "var(--app-accent-strong)" }}>Pro check-ins</p>
+        <p className="type-eyebrow" style={{ color: "var(--app-accent-strong)" }}>Reminders</p>
         <h2 id="push-checkin-title" className="mt-2 text-[23px] font-medium tracking-[-0.02em]">
           Want Arcad to keep you on track?
         </h2>
@@ -80,7 +82,7 @@ export default function PushCheckInPrompt() {
         {error ? <p className="mt-3 text-[13px]" style={{ color: "var(--app-danger)" }}>{error}</p> : null}
         <div className="mt-6 flex items-center justify-end gap-2">
           <AppButton type="button" variant="ghost" onClick={dismiss} disabled={saving}>Not now</AppButton>
-          <AppButton type="button" variant="primary" onClick={() => void enable()} loading={saving}>Enable check-ins</AppButton>
+          <AppButton type="button" variant="primary" onClick={() => void enable()} loading={saving}>Turn on reminders</AppButton>
         </div>
       </section>
     </div>

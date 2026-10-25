@@ -24,6 +24,9 @@
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
 		A11E00010000000000000001 /* AppleSignInPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11E00020000000000000001 /* AppleSignInPlugin.swift */; };
+		A7C400000000000000000001 /* WidgetDataPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C400000000000000000007 /* WidgetDataPlugin.swift */; };
+		A7C400000000000000000002 /* ArcadiaWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C400000000000000000008 /* ArcadiaWidgets.swift */; };
+		A7C400000000000000000003 /* ArcadiaWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A7C400000000000000000006 /* ArcadiaWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		F0C500010000000000000001 /* FocusGuardPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0C500010000000000000002 /* FocusGuardPlugin.swift */; };
 		F0C500010000000000000011 /* RatingPromptPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0C500010000000000000012 /* RatingPromptPlugin.swift */; };
 		F0C500020000000000000004 /* FocusMonitorExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0C500020000000000000002 /* FocusMonitorExtension.swift */; };
@@ -52,6 +55,13 @@
 			remoteGlobalIDString = F0C500020000000000000007;
 			remoteInfo = FocusMonitor;
 		};
+		A7C400000000000000000004 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A7C40000000000000000000E;
+			remoteInfo = ArcadiaWidgets;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -61,6 +71,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
+				A7C400000000000000000003 /* ArcadiaWidgets.appex in Embed Foundation Extensions */,
 				F0C500020000000000000005 /* FocusMonitor.appex in Embed Foundation Extensions */,
 				331257C9E60FFF3CE184146A /* ShieldConfiguration.appex in Embed Foundation Extensions */,
 				370AD9384FF333A575819B82 /* ShieldAction.appex in Embed Foundation Extensions */,
@@ -87,6 +98,11 @@
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		A11E00020000000000000001 /* AppleSignInPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInPlugin.swift; sourceTree = "<group>"; };
+		A7C400000000000000000006 /* ArcadiaWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ArcadiaWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		A7C400000000000000000007 /* WidgetDataPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetDataPlugin.swift; sourceTree = "<group>"; };
+		A7C400000000000000000008 /* ArcadiaWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArcadiaWidgets.swift; sourceTree = "<group>"; };
+		A7C400000000000000000009 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A7C40000000000000000000A /* ArcadiaWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ArcadiaWidgets.entitlements; sourceTree = "<group>"; };
 		B70BE69E6A2335F492EB38F2 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BE1958A7401D1BA35DF5265D /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D42F3821E7C17D8DCF00A7B8 /* ShieldConfiguration.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = ShieldConfiguration.entitlements; sourceTree = "<group>"; };
@@ -134,6 +150,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A7C40000000000000000000D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -154,6 +177,7 @@
 			children = (
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
+				A7C40000000000000000000B /* ArcadiaWidgets */,
 				F0C500020000000000000006 /* FocusMonitor */,
 				504EC3051FED79650016851F /* Products */,
 				955460564EC1CDD090A57934 /* Frameworks */,
@@ -166,6 +190,7 @@
 			isa = PBXGroup;
 			children = (
 				504EC3041FED79650016851F /* App.app */,
+				A7C400000000000000000006 /* ArcadiaWidgets.appex */,
 				F0C500020000000000000001 /* FocusMonitor.appex */,
 				DFF1A5099059AC55A5FC7996 /* ShieldConfiguration.appex */,
 				838EC1EEC3E94B3D6DE7B8E2 /* ShieldAction.appex */,
@@ -178,6 +203,7 @@
 			children = (
 				9582B6822FE993A50072D4E8 /* SceneDelegate.swift */,
 				A11E00020000000000000001 /* AppleSignInPlugin.swift */,
+				A7C400000000000000000007 /* WidgetDataPlugin.swift */,
 				F0C500010000000000000002 /* FocusGuardPlugin.swift */,
 				F0C500010000000000000012 /* RatingPromptPlugin.swift */,
 				F0C500010000000000000003 /* AppScreenTime.entitlements */,
@@ -191,6 +217,16 @@
 				50B271D01FEDC1A000F3C39B /* public */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		A7C40000000000000000000B /* ArcadiaWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				A7C400000000000000000008 /* ArcadiaWidgets.swift */,
+				A7C400000000000000000009 /* Info.plist */,
+				A7C40000000000000000000A /* ArcadiaWidgets.entitlements */,
+			);
+			path = ArcadiaWidgets;
 			sourceTree = "<group>";
 		};
 		5EEAE1F166A7F4D43B28BBEB /* ShieldAction */ = {
@@ -246,6 +282,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				A7C400000000000000000005 /* PBXTargetDependency */,
 				F0C50002000000000000000D /* PBXTargetDependency */,
 				1714E30C4CBC4EDAAE21C2F1 /* PBXTargetDependency */,
 				F35878D55A68DEDAEFCD971C /* PBXTargetDependency */,
@@ -257,6 +294,23 @@
 			productName = App;
 			productReference = 504EC3041FED79650016851F /* App.app */;
 			productType = "com.apple.product-type.application";
+		};
+		A7C40000000000000000000E /* ArcadiaWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A7C40000000000000000000F /* Build configuration list for PBXNativeTarget "ArcadiaWidgets" */;
+			buildPhases = (
+				A7C40000000000000000000C /* Sources */,
+				A7C40000000000000000000D /* Frameworks */,
+				A7C400000000000000000010 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ArcadiaWidgets;
+			productName = ArcadiaWidgets;
+			productReference = A7C400000000000000000006 /* ArcadiaWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 		B970E266045A4CDEDEC6BDDF /* ShieldAction */ = {
 			isa = PBXNativeTarget;
@@ -318,6 +372,10 @@
 				LastSwiftUpdateCheck = 0920;
 				LastUpgradeCheck = 0920;
 				TargetAttributes = {
+					A7C40000000000000000000E = {
+						CreatedOnToolsVersion = 16.0;
+						ProvisioningStyle = Automatic;
+					};
 					504EC3031FED79650016851F = {
 						CreatedOnToolsVersion = 9.2;
 						LastSwiftMigration = 1100;
@@ -349,6 +407,7 @@
 				F0C500020000000000000007 /* FocusMonitor */,
 				EE9609078F21E903294F4594 /* ShieldConfiguration */,
 				B970E266045A4CDEDEC6BDDF /* ShieldAction */,
+				A7C40000000000000000000E /* ArcadiaWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -383,6 +442,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		F0C50002000000000000000A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A7C400000000000000000010 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -424,6 +490,7 @@
 				A11E00010000000000000001 /* AppleSignInPlugin.swift in Sources */,
 				F0C500010000000000000001 /* FocusGuardPlugin.swift in Sources */,
 				F0C500010000000000000011 /* RatingPromptPlugin.swift in Sources */,
+				A7C400000000000000000001 /* WidgetDataPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -440,6 +507,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				F0C500020000000000000004 /* FocusMonitorExtension.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A7C40000000000000000000C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A7C400000000000000000002 /* ArcadiaWidgets.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -464,6 +539,11 @@
 			isa = PBXTargetDependency;
 			target = F0C500020000000000000007 /* FocusMonitor */;
 			targetProxy = F0C50002000000000000000C /* PBXContainerItemProxy */;
+		};
+		A7C400000000000000000005 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A7C40000000000000000000E /* ArcadiaWidgets */;
+			targetProxy = A7C400000000000000000004 /* PBXContainerItemProxy */;
 		};
 		F35878D55A68DEDAEFCD971C /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -810,6 +890,51 @@
 			};
 			name = Release;
 		};
+		A7C400000000000000000011 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = ArcadiaWidgets/ArcadiaWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 6;
+				INFOPLIST_FILE = ArcadiaWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.3;
+				PRODUCT_BUNDLE_IDENTIFIER = app.arcadiahq.arcadia.ArcadiaWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A7C400000000000000000012 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = ArcadiaWidgets/ArcadiaWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 6;
+				INFOPLIST_FILE = ArcadiaWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.3;
+				PRODUCT_BUNDLE_IDENTIFIER = app.arcadiahq.arcadia.ArcadiaWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -854,6 +979,15 @@
 			buildConfigurations = (
 				F0C50002000000000000000E /* Debug */,
 				F0C50002000000000000000F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A7C40000000000000000000F /* Build configuration list for PBXNativeTarget "ArcadiaWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A7C400000000000000000011 /* Debug */,
+				A7C400000000000000000012 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

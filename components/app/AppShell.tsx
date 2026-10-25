@@ -37,6 +37,8 @@ import { isGuestEmail } from "@/lib/auth/guest";
 import { initialiseRevenueCat, logOutRevenueCat } from "@/lib/capacitor/revenuecat";
 import { releaseFocusGuard } from "@/lib/capacitor/focusGuard";
 import { unlinkNativePush, useNativePush } from "@/lib/capacitor/nativePush";
+import { clearNativeWidgets } from "@/lib/capacitor/widgetData";
+import IosWidgetSync from "./IosWidgetSync";
 
 interface AppShellProps {
   user: AuthUser | null;
@@ -203,6 +205,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
     await Promise.all([
       unlinkNativePush().catch((error) => console.warn("[native-push] unlink failed", error)),
       releaseFocusGuard(),
+      clearNativeWidgets(),
     ]);
     try {
       await api("/api/auth/logout", { method: "POST" });
@@ -221,6 +224,7 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
       style={{ background: "var(--app-bg)", color: "var(--app-text)" }}
     >
       <FirstStudyBlockMarker />
+      <IosWidgetSync />
       <AutoBlocking />
       <OfflineBanner />
       <MenuBar />

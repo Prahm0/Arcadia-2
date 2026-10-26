@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { isNative } from "@/lib/capacitor/platform";
+import { routeFromArcadiaWidgetUrl } from "@/lib/capacitor/widgetData";
 
 /**
  * Makes the iOS app behave like an app, not a web page:
@@ -49,12 +50,27 @@ export default function NativeShell() {
     const scheme = window.matchMedia("(prefers-color-scheme: dark)");
     const onScheme = () => void syncStatusBar();
     scheme.addEventListener("change", onScheme);
+    const appUrlHandles: Array<{ remove: () => Promise<void> }> = [];
+    const openWidgetUrl = (url: string) => {
+      const route = routeFromArcadiaWidgetUrl(url);
+      if (route && window.location.pathname + window.location.search !== route) {
+        window.location.assign(route);
+      }
+    };
+    void import("@capacitor/app").then(async ({ App }) => {
+      const launch = await App.getLaunchUrl();
+      if (launch?.url) openWidgetUrl(launch.url);
+      appUrlHandles.push(await App.addListener("appUrlOpen", ({ url }) => openWidgetUrl(url)));
+    }).catch(() => {
+      // The browser has no native URL bridge.
+    });
     return () => {
       cancelled = true;
       observer.disconnect();
       scheme.removeEventListener("change", onScheme);
       root.classList.remove("keyboard-open");
       for (const handle of keyboardHandles) void handle.remove();
+      for (const handle of appUrlHandles) void handle.remove();
     };
   }, []);
   return null;

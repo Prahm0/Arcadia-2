@@ -31,5 +31,6 @@ class MainViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(AppleSignInPlugin())
         bridge?.registerPluginInstance(FocusGuardPlugin())
         bridge?.registerPluginInstance(RatingPromptPlugin())
+        bridge?.registerPluginInstance(WidgetDataPlugin())
     }
 }

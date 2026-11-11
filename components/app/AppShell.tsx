@@ -205,7 +205,8 @@ export default function AppShell({ user, notices = [], children }: AppShellProps
     await Promise.all([
       unlinkNativePush().catch((error) => console.warn("[native-push] unlink failed", error)),
       releaseFocusGuard(),
-      clearNativeWidgets(),
+      // Older App Store builds have no widget bridge, so this rejects there.
+      clearNativeWidgets().catch(() => {}),
     ]);
     try {
       await api("/api/auth/logout", { method: "POST" });

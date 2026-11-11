@@ -31,7 +31,8 @@ const WidgetData = registerPlugin<WidgetDataPlugin>("ArcadiaWidgetData");
 
 /**
  * Writes the latest plan summary to the app group shared with WidgetKit.
- * This stays a no-op in browsers and on older installed iOS builds.
+ * A no-op in browsers. Older installed iOS builds have no bridge, so the
+ * call rejects there and callers must catch it.
  */
 export async function updateNativeWidgets(snapshot: ArcadiaWidgetSnapshot): Promise<void> {
   if (!isNativeIOS()) return;
